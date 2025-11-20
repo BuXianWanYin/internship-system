@@ -16,12 +16,29 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="学院">
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+            @change="handleSchoolChange"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院">
           <el-select
             v-model="searchForm.collegeId"
             placeholder="请选择学院"
             clearable
             style="width: 200px"
+            :disabled="!searchForm.schoolId"
           >
             <el-option
               v-for="college in collegeList"
@@ -29,6 +46,17 @@
               :label="college.collegeName"
               :value="college.collegeId"
             />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="searchForm.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -233,7 +261,9 @@ const submitting = ref(false)
 // 搜索表单
 const searchForm = reactive({
   teacherNo: '',
-  collegeId: null
+  schoolId: null,
+  collegeId: null,
+  status: null
 })
 
 // 分页
@@ -308,7 +338,7 @@ const formRules = {
   ]
 }
 
-// 加载学院列表
+// 加载学院列表（所有）
 const loadCollegeList = async () => {
   try {
     const res = await collegeApi.getCollegePage({ current: 1, size: 1000 })
@@ -393,7 +423,10 @@ const handleSearch = () => {
 // 重置搜索
 const handleReset = () => {
   searchForm.teacherNo = ''
+  searchForm.schoolId = null
   searchForm.collegeId = null
+  searchForm.status = null
+  collegeList.value = []
   handleSearch()
 }
 

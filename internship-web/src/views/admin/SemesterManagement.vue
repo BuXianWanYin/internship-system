@@ -16,6 +16,38 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="年份">
+          <el-input-number
+            v-model="searchForm.year"
+            placeholder="请输入年份"
+            clearable
+            style="width: 200px"
+            :min="2000"
+            :max="2100"
+          />
+        </el-form-item>
+        <el-form-item label="当前学期">
+          <el-select
+            v-model="searchForm.isCurrent"
+            placeholder="请选择"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="是" :value="1" />
+            <el-option label="否" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="searchForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+          />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -131,7 +163,10 @@ const dialogTitle = ref('添加学期')
 const formRef = ref(null)
 
 const searchForm = reactive({
-  semesterName: ''
+  semesterName: '',
+  year: null,
+  isCurrent: null,
+  dateRange: null
 })
 
 const pagination = reactive({
@@ -165,11 +200,16 @@ const formRules = {
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await semesterApi.getSemesterPage({
+    const params = {
       current: pagination.current,
       size: pagination.size,
-      semesterName: searchForm.semesterName || undefined
-    })
+      semesterName: searchForm.semesterName || undefined,
+      year: searchForm.year || undefined,
+      isCurrent: searchForm.isCurrent !== null ? searchForm.isCurrent : undefined,
+      startDate: searchForm.dateRange && searchForm.dateRange[0] ? searchForm.dateRange[0] : undefined,
+      endDate: searchForm.dateRange && searchForm.dateRange[1] ? searchForm.dateRange[1] : undefined
+    }
+    const res = await semesterApi.getSemesterPage(params)
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
@@ -188,6 +228,9 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.semesterName = ''
+  searchForm.year = null
+  searchForm.isCurrent = null
+  searchForm.dateRange = null
   handleSearch()
 }
 

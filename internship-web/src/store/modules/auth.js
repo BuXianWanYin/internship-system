@@ -51,13 +51,21 @@ export const useAuthStore = defineStore('auth', {
 
     /**
      * 登出
+     * @param {boolean} skipApiCall - 是否跳过API调用（当Token失效时使用）
      */
-    async logout() {
+    async logout(skipApiCall = false) {
       try {
-        // 调用后端登出接口
-        await request.post('/auth/logout')
+        // 如果Token存在且未失效，调用后端登出接口
+        if (!skipApiCall && this.token) {
+          await request.post('/auth/logout')
+        }
       } catch (error) {
-        console.error('登出失败:', error)
+        // 如果是401错误（Token失效），静默处理，不打印错误
+        if (error.response && error.response.status === 401) {
+          // Token已失效，直接清除本地数据
+        } else {
+          console.error('登出失败:', error)
+        }
       } finally {
         // 清除本地数据
         this.token = ''

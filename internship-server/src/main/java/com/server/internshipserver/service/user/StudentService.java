@@ -56,10 +56,12 @@ public interface StudentService extends IService<Student> {
      * @param majorId 专业ID（可选）
      * @param collegeId 学院ID（可选）
      * @param schoolId 学校ID（可选）
+     * @param status 状态：1-已审核，0-待审核（可选）
+     * @param enrollmentYear 入学年份（可选）
      * @return 学生列表
      */
     Page<Student> getStudentPage(Page<Student> page, String studentNo, Long classId, 
-                                  Long majorId, Long collegeId, Long schoolId);
+                                  Long majorId, Long collegeId, Long schoolId, Integer status, Integer enrollmentYear);
     
     /**
      * 停用学生（软删除）

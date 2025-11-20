@@ -113,7 +113,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     }
     
     @Override
-    public Page<Major> getMajorPage(Page<Major> page, String majorName, Long collegeId) {
+    public Page<Major> getMajorPage(Page<Major> page, String majorName, Long collegeId, Long schoolId) {
         LambdaQueryWrapper<Major> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
@@ -122,6 +122,31 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         // 条件查询
         if (StringUtils.hasText(majorName)) {
             wrapper.like(Major::getMajorName, majorName);
+        }
+        
+        // 筛选条件：学校ID（如果指定了schoolId，需要通过学院关联）
+        if (schoolId != null) {
+            // 先查询该学校下的学院ID列表
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, schoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                wrapper.in(Major::getCollegeId, collegeIds);
+            } else {
+                // 如果该学校没有学院，返回空结果
+                wrapper.eq(Major::getMajorId, -1L);
+            }
+        }
+        
+        // 筛选条件：学院ID
+        if (collegeId != null) {
+            wrapper.eq(Major::getCollegeId, collegeId);
         }
         
         // 数据权限过滤：根据学院ID过滤
@@ -152,9 +177,6 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
                 // 如果没有学院，返回空结果
                 wrapper.eq(Major::getMajorId, -1L);
             }
-        } else if (collegeId != null) {
-            // 系统管理员可以指定学院ID查询
-            wrapper.eq(Major::getCollegeId, collegeId);
         }
         
         // 按创建时间倒序

@@ -144,7 +144,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     }
     
     @Override
-    public Page<Class> getClassPage(Page<Class> page, String className, Long majorId) {
+    public Page<Class> getClassPage(Page<Class> page, String className, Long majorId, Long collegeId, Long schoolId) {
         LambdaQueryWrapper<Class> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
@@ -153,6 +153,66 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         // 条件查询
         if (StringUtils.hasText(className)) {
             wrapper.like(Class::getClassName, className);
+        }
+        
+        // 筛选条件：学校ID（如果指定了schoolId，需要通过专业和学院关联）
+        if (schoolId != null) {
+            // 先查询该学校下的学院ID列表
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, schoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                // 再查询这些学院的专业ID列表
+                List<Major> majors = majorService.list(
+                        new LambdaQueryWrapper<Major>()
+                                .in(Major::getCollegeId, collegeIds)
+                                .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Major::getMajorId)
+                );
+                if (majors != null && !majors.isEmpty()) {
+                    List<Long> majorIds = majors.stream()
+                            .map(Major::getMajorId)
+                            .collect(Collectors.toList());
+                    wrapper.in(Class::getMajorId, majorIds);
+                } else {
+                    // 如果该学校没有专业，返回空结果
+                    wrapper.eq(Class::getClassId, -1L);
+                }
+            } else {
+                // 如果该学校没有学院，返回空结果
+                wrapper.eq(Class::getClassId, -1L);
+            }
+        }
+        
+        // 筛选条件：学院ID（如果指定了collegeId，需要通过专业关联）
+        if (collegeId != null) {
+            // 先查询该学院下的专业ID列表
+            List<Major> majors = majorService.list(
+                    new LambdaQueryWrapper<Major>()
+                            .eq(Major::getCollegeId, collegeId)
+                            .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Major::getMajorId)
+            );
+            if (majors != null && !majors.isEmpty()) {
+                List<Long> majorIds = majors.stream()
+                        .map(Major::getMajorId)
+                        .collect(Collectors.toList());
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                // 如果该学院没有专业，返回空结果
+                wrapper.eq(Class::getClassId, -1L);
+            }
+        }
+        
+        // 筛选条件：专业ID
+        if (majorId != null) {
+            wrapper.eq(Class::getMajorId, majorId);
         }
         
         // 数据权限过滤：根据专业ID或班级ID过滤
@@ -218,9 +278,6 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
                 // 如果没有学院，返回空结果
                 wrapper.eq(Class::getClassId, -1L);
             }
-        } else if (majorId != null) {
-            // 系统管理员可以指定专业ID查询
-            wrapper.eq(Class::getMajorId, majorId);
         }
         
         // 按创建时间倒序

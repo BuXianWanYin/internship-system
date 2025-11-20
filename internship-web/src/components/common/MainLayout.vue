@@ -72,7 +72,7 @@
             </el-menu-item>
           </el-sub-menu>
 
-          <el-sub-menu index="user" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
+          <el-sub-menu index="user" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN'])">
             <template #title>
               <el-icon><UserFilled /></el-icon>
               <span>用户管理</span>
@@ -88,6 +88,14 @@
             <el-menu-item index="/admin/teacher" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
               <el-icon><UserFilled /></el-icon>
               <template #title>教师管理</template>
+            </el-menu-item>
+            <el-menu-item index="/admin/enterprise" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
+              <el-icon><OfficeBuilding /></el-icon>
+              <template #title>企业管理</template>
+            </el-menu-item>
+            <el-menu-item index="/admin/enterprise-mentor" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])">
+              <el-icon><User /></el-icon>
+              <template #title>企业导师管理</template>
             </el-menu-item>
           </el-sub-menu>
         </el-menu>

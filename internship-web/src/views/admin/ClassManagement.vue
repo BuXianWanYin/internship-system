@@ -16,6 +16,55 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+            @change="handleSchoolChange"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select
+            v-model="searchForm.collegeId"
+            placeholder="请选择学院"
+            clearable
+            style="width: 200px"
+            :disabled="!searchForm.schoolId"
+            @change="handleCollegeChange"
+          >
+            <el-option
+              v-for="college in collegeList"
+              :key="college.collegeId"
+              :label="college.collegeName"
+              :value="college.collegeId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属专业">
+          <el-select
+            v-model="searchForm.majorId"
+            placeholder="请选择专业"
+            clearable
+            style="width: 200px"
+            :disabled="!searchForm.collegeId"
+          >
+            <el-option
+              v-for="major in majorList"
+              :key="major.majorId"
+              :label="major.majorName"
+              :value="major.majorId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -33,7 +82,30 @@
     >
       <el-table-column prop="className" label="班级名称" min-width="180" />
       <el-table-column prop="classCode" label="班级代码" min-width="120" />
-      <el-table-column prop="majorId" label="所属专业ID" width="120" />
+      <el-table-column label="所属专业" min-width="150">
+        <template #default="{ row }">
+          <span v-if="majorMap[row.majorId]">{{ majorMap[row.majorId].majorName }}</span>
+          <span v-else style="color: #909399">加载中...</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="所属学院" min-width="150">
+        <template #default="{ row }">
+          <span v-if="majorMap[row.majorId] && collegeMap[majorMap[row.majorId].collegeId]">
+            {{ collegeMap[majorMap[row.majorId].collegeId].collegeName }}
+          </span>
+          <span v-else style="color: #909399">加载中...</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="所属学校" min-width="150">
+        <template #default="{ row }">
+          <span v-if="majorMap[row.majorId] && 
+                      collegeMap[majorMap[row.majorId].collegeId] && 
+                      schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId]">
+            {{ schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId].schoolName }}
+          </span>
+          <span v-else style="color: #909399">加载中...</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="enrollmentYear" label="入学年份" width="100" align="center" />
       <el-table-column prop="shareCode" label="分享码" width="120" align="center">
         <template #default="{ row }">
@@ -91,8 +163,15 @@
         <el-form-item label="班级代码" prop="classCode">
           <el-input v-model="formData.classCode" placeholder="请输入班级代码" />
         </el-form-item>
-        <el-form-item label="所属专业ID" prop="majorId">
-          <el-input-number v-model="formData.majorId" :min="1" placeholder="请输入专业ID" style="width: 100%" />
+        <el-form-item label="所属专业" prop="majorId">
+          <el-select v-model="formData.majorId" placeholder="请选择专业" style="width: 100%">
+            <el-option
+              v-for="major in majorList"
+              :key="major.majorId"
+              :label="major.majorName"
+              :value="major.majorId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="入学年份" prop="enrollmentYear">
           <el-input-number v-model="formData.enrollmentYear" :min="2000" :max="2100" placeholder="请输入入学年份" style="width: 100%" />
@@ -170,6 +249,9 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import { classApi } from '@/api/system/class'
+import { schoolApi } from '@/api/system/school'
+import { collegeApi } from '@/api/system/college'
+import { majorApi } from '@/api/system/major'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { formatDateTime } from '@/utils/dateUtils'
 
@@ -183,8 +265,18 @@ const formRef = ref(null)
 const currentClassId = ref(null)
 const shareCodeInfo = ref(null)
 
+const schoolList = ref([])
+const schoolMap = ref({})
+const collegeList = ref([])
+const collegeMap = ref({})
+const majorList = ref([])
+const majorMap = ref({})
+
 const searchForm = reactive({
-  className: ''
+  className: '',
+  schoolId: null,
+  collegeId: null,
+  majorId: null
 })
 
 const pagination = reactive({
@@ -225,17 +317,154 @@ const loadData = async () => {
     const res = await classApi.getClassPage({
       current: pagination.current,
       size: pagination.size,
-      className: searchForm.className || undefined
+      className: searchForm.className || undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined
     })
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
+
+      // 批量加载专业、学院和学校信息
+      const majorIds = [...new Set(tableData.value.map(item => item.majorId))]
+      await loadMajorInfo(majorIds)
     }
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
     loading.value = false
   }
+}
+
+const loadSchoolList = async () => {
+  try {
+    const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+    if (res.code === 200) {
+      schoolList.value = res.data.records || []
+      // 构建学校Map
+      schoolList.value.forEach(school => {
+        schoolMap.value[school.schoolId] = school
+      })
+    }
+  } catch (error) {
+    console.error('加载学校列表失败:', error)
+  }
+}
+
+const loadCollegeList = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeList.value = res.data.records || []
+      // 构建学院Map
+      collegeList.value.forEach(college => {
+        collegeMap.value[college.collegeId] = college
+        // 同时加载学校信息
+        if (college.schoolId && !schoolMap.value[college.schoolId]) {
+          loadSchoolInfo([college.schoolId])
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+const loadMajorList = async (collegeId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (collegeId) {
+      params.collegeId = collegeId
+    }
+    const res = await majorApi.getMajorPage(params)
+    if (res.code === 200) {
+      majorList.value = res.data.records || []
+      // 构建专业Map
+      majorList.value.forEach(major => {
+        majorMap.value[major.majorId] = major
+        // 同时加载学院和学校信息
+        if (major.collegeId && !collegeMap.value[major.collegeId]) {
+          loadCollegeInfo([major.collegeId])
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载专业列表失败:', error)
+  }
+}
+
+const loadMajorInfo = async (majorIds) => {
+  try {
+    for (const majorId of majorIds) {
+      if (!majorMap.value[majorId]) {
+        const res = await majorApi.getMajorById(majorId)
+        if (res.code === 200 && res.data) {
+          majorMap.value[majorId] = res.data
+          // 同时加载学院和学校信息
+          if (res.data.collegeId) {
+            await loadCollegeInfo([res.data.collegeId])
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载专业信息失败:', error)
+  }
+}
+
+const loadCollegeInfo = async (collegeIds) => {
+  try {
+    for (const collegeId of collegeIds) {
+      if (!collegeMap.value[collegeId]) {
+        const res = await collegeApi.getCollegeById(collegeId)
+        if (res.code === 200 && res.data) {
+          collegeMap.value[collegeId] = res.data
+          // 同时加载学校信息
+          if (res.data.schoolId && !schoolMap.value[res.data.schoolId]) {
+            await loadSchoolInfo([res.data.schoolId])
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学院信息失败:', error)
+  }
+}
+
+const loadSchoolInfo = async (schoolIds) => {
+  try {
+    for (const schoolId of schoolIds) {
+      if (!schoolMap.value[schoolId]) {
+        const res = await schoolApi.getSchoolById(schoolId)
+        if (res.code === 200 && res.data) {
+          schoolMap.value[schoolId] = res.data
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学校信息失败:', error)
+  }
+}
+
+const handleSchoolChange = () => {
+  // 清空学院和专业选择
+  searchForm.collegeId = null
+  searchForm.majorId = null
+  majorList.value = []
+  // 加载该学校下的学院列表
+  loadCollegeList(searchForm.schoolId)
+}
+
+const handleCollegeChange = () => {
+  // 清空专业选择
+  searchForm.majorId = null
+  // 加载该学院下的专业列表
+  loadMajorList(searchForm.collegeId)
 }
 
 const handleSearch = () => {
@@ -245,6 +474,11 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.className = ''
+  searchForm.schoolId = null
+  searchForm.collegeId = null
+  searchForm.majorId = null
+  collegeList.value = []
+  majorList.value = []
   handleSearch()
 }
 
@@ -383,6 +617,9 @@ const handlePageChange = () => {
 }
 
 onMounted(() => {
+  loadSchoolList()
+  loadCollegeList(null) // 加载所有学院
+  loadMajorList(null) // 加载所有专业
   loadData()
 })
 </script>

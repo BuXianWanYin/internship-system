@@ -160,7 +160,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     
     @Override
     public Page<Student> getStudentPage(Page<Student> page, String studentNo, Long classId, 
-                                         Long majorId, Long collegeId, Long schoolId) {
+                                         Long majorId, Long collegeId, Long schoolId, Integer status, Integer enrollmentYear) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
@@ -181,6 +181,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
         if (schoolId != null) {
             wrapper.eq(Student::getSchoolId, schoolId);
+        }
+        if (status != null) {
+            wrapper.eq(Student::getStatus, status);
+        }
+        if (enrollmentYear != null) {
+            wrapper.eq(Student::getEnrollmentYear, enrollmentYear);
         }
         
         // 数据权限过滤：根据用户角色自动添加查询条件

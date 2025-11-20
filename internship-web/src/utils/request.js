@@ -93,7 +93,8 @@ service.interceptors.response.use(
         case 401:
           message = '未认证，请先登录'
           const authStore = useAuthStore()
-          authStore.logout()
+          // 跳过API调用，直接清除本地数据（避免再次401错误）
+          authStore.logout(true)
           router.push('/login')
           break
         case 403:

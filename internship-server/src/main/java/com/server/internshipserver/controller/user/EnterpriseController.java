@@ -3,7 +3,9 @@ package com.server.internshipserver.controller.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.service.user.EnterpriseService;
+import java.util.List;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -95,6 +97,15 @@ public class EnterpriseController {
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         boolean success = enterpriseService.deleteEnterprise(enterpriseId);
         return success ? Result.success("停用成功") : Result.error("停用失败");
+    }
+    
+    @ApiOperation("根据企业ID查询合作学校列表")
+    @GetMapping("/{enterpriseId}/cooperation-schools")
+    @PreAuthorize("hasAuthority('user:view')")
+    public Result<List<School>> getCooperationSchoolsByEnterpriseId(
+            @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
+        List<School> schools = enterpriseService.getCooperationSchoolsByEnterpriseId(enterpriseId);
+        return Result.success("查询成功", schools);
     }
 }
 

@@ -3,6 +3,9 @@ package com.server.internshipserver.service.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.system.School;
+
+import java.util.List;
 
 /**
  * 企业管理Service接口
@@ -77,5 +80,12 @@ public interface EnterpriseService extends IService<Enterprise> {
      * @return 是否成功
      */
     boolean deleteEnterprise(Long enterpriseId);
+    
+    /**
+     * 根据企业ID查询合作学校列表
+     * @param enterpriseId 企业ID
+     * @return 合作学校列表
+     */
+    List<School> getCooperationSchoolsByEnterpriseId(Long enterpriseId);
 }
 

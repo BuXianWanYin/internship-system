@@ -21,12 +21,63 @@
                 @keyup.enter="handleSearch"
               />
             </el-form-item>
-            <el-form-item label="班级">
+            <el-form-item label="所属学校">
+              <el-select
+                v-model="searchForm.schoolId"
+                placeholder="请选择学校"
+                clearable
+                style="width: 200px"
+                @change="handleSchoolChange"
+              >
+                <el-option
+                  v-for="school in schoolList"
+                  :key="school.schoolId"
+                  :label="school.schoolName"
+                  :value="school.schoolId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="所属学院">
+              <el-select
+                v-model="searchForm.collegeId"
+                placeholder="请选择学院"
+                clearable
+                style="width: 200px"
+                :disabled="!searchForm.schoolId"
+                @change="handleCollegeChange"
+              >
+                <el-option
+                  v-for="college in collegeList"
+                  :key="college.collegeId"
+                  :label="college.collegeName"
+                  :value="college.collegeId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="所属专业">
+              <el-select
+                v-model="searchForm.majorId"
+                placeholder="请选择专业"
+                clearable
+                style="width: 200px"
+                :disabled="!searchForm.collegeId"
+                @change="handleMajorChange"
+              >
+                <el-option
+                  v-for="major in majorList"
+                  :key="major.majorId"
+                  :label="major.majorName"
+                  :value="major.majorId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="所属班级">
               <el-select
                 v-model="searchForm.classId"
                 placeholder="请选择班级"
                 clearable
                 style="width: 200px"
+                :disabled="!searchForm.majorId"
               >
                 <el-option
                   v-for="classItem in classList"
@@ -35,6 +86,27 @@
                   :value="classItem.classId"
                 />
               </el-select>
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select
+                v-model="searchForm.status"
+                placeholder="请选择状态"
+                clearable
+                style="width: 150px"
+              >
+                <el-option label="已审核" :value="1" />
+                <el-option label="待审核" :value="0" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="入学年份">
+              <el-input-number
+                v-model="searchForm.enrollmentYear"
+                placeholder="请输入年份"
+                clearable
+                style="width: 150px"
+                :min="2000"
+                :max="2100"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
@@ -64,10 +136,34 @@
             </template>
           </el-table-column>
           <el-table-column prop="enrollmentYear" label="入学年份" width="100" align="center" />
-          <el-table-column label="班级" min-width="150">
+          <el-table-column label="所属班级" min-width="150">
             <template #default="{ row }">
               <span v-if="classMap[row.classId]">{{ classMap[row.classId].className }}</span>
               <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属专业" min-width="150">
+            <template #default="{ row }">
+              <span v-if="majorMap[row.majorId]">{{ majorMap[row.majorId].majorName }}</span>
+              <span v-else style="color: #909399">加载中...</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属学院" min-width="150">
+            <template #default="{ row }">
+              <span v-if="majorMap[row.majorId] && collegeMap[majorMap[row.majorId].collegeId]">
+                {{ collegeMap[majorMap[row.majorId].collegeId].collegeName }}
+              </span>
+              <span v-else style="color: #909399">加载中...</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属学校" min-width="150">
+            <template #default="{ row }">
+              <span v-if="majorMap[row.majorId] && 
+                          collegeMap[majorMap[row.majorId].collegeId] && 
+                          schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId]">
+                {{ schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId].schoolName }}
+              </span>
+              <span v-else style="color: #909399">加载中...</span>
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="80" align="center">
@@ -418,7 +514,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { studentApi } from '@/api/user/student'
-import { classApi } from '@/api/system'
+import { classApi } from '@/api/system/class'
+import { schoolApi } from '@/api/system/school'
+import { collegeApi } from '@/api/system/college'
+import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
 
 // Tab切换
@@ -430,9 +529,20 @@ const tableData = ref([])
 const userInfoMap = ref({})
 const classMap = ref({})
 const classList = ref([])
+const schoolList = ref([])
+const schoolMap = ref({})
+const collegeList = ref([])
+const collegeMap = ref({})
+const majorList = ref([])
+const majorMap = ref({})
 const searchForm = reactive({
   studentNo: '',
-  classId: null
+  schoolId: null,
+  collegeId: null,
+  majorId: null,
+  classId: null,
+  status: null,
+  enrollmentYear: null
 })
 const pagination = reactive({
   current: 1,
@@ -522,19 +632,26 @@ const loadStudentList = async () => {
       current: pagination.current,
       size: pagination.size,
       studentNo: searchForm.studentNo || undefined,
-      classId: searchForm.classId || undefined
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined,
+      classId: searchForm.classId || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined,
+      enrollmentYear: searchForm.enrollmentYear || undefined
     }
     const res = await studentApi.getStudentPage(params)
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
 
-      // 加载用户信息和班级信息
+      // 加载用户信息、班级信息、专业信息、学院信息、学校信息
       const userIds = [...new Set(tableData.value.map(item => item.userId))]
       const classIds = [...new Set(tableData.value.map(item => item.classId))]
+      const majorIds = [...new Set(tableData.value.map(item => item.majorId))]
 
       await loadUserInfo(userIds)
       await loadClassInfo(classIds)
+      await loadMajorInfo(majorIds)
     }
   } catch (error) {
     ElMessage.error('加载失败：' + (error.message || '未知错误'))
@@ -550,7 +667,15 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.studentNo = ''
+  searchForm.schoolId = null
+  searchForm.collegeId = null
+  searchForm.majorId = null
   searchForm.classId = null
+  searchForm.status = null
+  searchForm.enrollmentYear = null
+  collegeList.value = []
+  majorList.value = []
+  classList.value = []
   pagination.current = 1
   loadStudentList()
 }
@@ -988,8 +1113,136 @@ const loadClassList = async () => {
   }
 }
 
+const loadSchoolList = async () => {
+  try {
+    const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+    if (res.code === 200) {
+      schoolList.value = res.data.records || []
+      schoolList.value.forEach(school => {
+        schoolMap.value[school.schoolId] = school
+      })
+    }
+  } catch (error) {
+    console.error('加载学校列表失败:', error)
+  }
+}
+
+const loadCollegeList = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeList.value = res.data.records || []
+      collegeList.value.forEach(college => {
+        collegeMap.value[college.collegeId] = college
+        if (college.schoolId && !schoolMap.value[college.schoolId]) {
+          loadSchoolInfo([college.schoolId])
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+const loadMajorList = async (collegeId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (collegeId) {
+      params.collegeId = collegeId
+    }
+    const res = await majorApi.getMajorPage(params)
+    if (res.code === 200) {
+      majorList.value = res.data.records || []
+      majorList.value.forEach(major => {
+        majorMap.value[major.majorId] = major
+        if (major.collegeId && !collegeMap.value[major.collegeId]) {
+          loadCollegeInfo([major.collegeId])
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载专业列表失败:', error)
+  }
+}
+
+const loadClassListByMajor = async (majorId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (majorId) {
+      params.majorId = majorId
+    }
+    const res = await classApi.getClassPage(params)
+    if (res.code === 200) {
+      classList.value = res.data.records || []
+      classList.value.forEach(classItem => {
+        classMap.value[classItem.classId] = classItem
+      })
+    }
+  } catch (error) {
+    console.error('加载班级列表失败:', error)
+  }
+}
+
+const loadMajorInfo = async (majorIds) => {
+  try {
+    for (const majorId of majorIds) {
+      if (!majorMap.value[majorId]) {
+        const res = await majorApi.getMajorById(majorId)
+        if (res.code === 200 && res.data) {
+          majorMap.value[majorId] = res.data
+          if (res.data.collegeId) {
+            await loadCollegeInfo([res.data.collegeId])
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载专业信息失败:', error)
+  }
+}
+
+const loadCollegeInfo = async (collegeIds) => {
+  try {
+    for (const collegeId of collegeIds) {
+      if (!collegeMap.value[collegeId]) {
+        const res = await collegeApi.getCollegeById(collegeId)
+        if (res.code === 200 && res.data) {
+          collegeMap.value[collegeId] = res.data
+          if (res.data.schoolId && !schoolMap.value[res.data.schoolId]) {
+            await loadSchoolInfo([res.data.schoolId])
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学院信息失败:', error)
+  }
+}
+
+const loadSchoolInfo = async (schoolIds) => {
+  try {
+    for (const schoolId of schoolIds) {
+      if (!schoolMap.value[schoolId]) {
+        const res = await schoolApi.getSchoolById(schoolId)
+        if (res.code === 200 && res.data) {
+          schoolMap.value[schoolId] = res.data
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学校信息失败:', error)
+  }
+}
+
 // 初始化
 onMounted(() => {
+  loadSchoolList()
+  loadCollegeList(null)
+  loadMajorList(null)
   loadClassList()
   loadStudentList()
 })

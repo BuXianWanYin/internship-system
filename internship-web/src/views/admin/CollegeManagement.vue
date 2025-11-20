@@ -16,6 +16,21 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -33,7 +48,12 @@
     >
       <el-table-column prop="collegeName" label="学院名称" min-width="150" />
       <el-table-column prop="collegeCode" label="学院代码" min-width="120" />
-      <el-table-column prop="schoolId" label="所属学校ID" width="120" />
+      <el-table-column label="所属学校" min-width="150">
+        <template #default="{ row }">
+          <span v-if="schoolMap[row.schoolId]">{{ schoolMap[row.schoolId].schoolName }}</span>
+          <span v-else style="color: #909399">加载中...</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="deanName" label="院长" min-width="100" />
       <el-table-column prop="contactPhone" label="联系电话" min-width="120" />
       <el-table-column prop="status" label="状态" width="80" align="center">
@@ -84,8 +104,15 @@
         <el-form-item label="学院代码" prop="collegeCode">
           <el-input v-model="formData.collegeCode" placeholder="请输入学院代码" />
         </el-form-item>
-        <el-form-item label="所属学校ID" prop="schoolId">
-          <el-input-number v-model="formData.schoolId" :min="1" placeholder="请输入学校ID" style="width: 100%" />
+        <el-form-item label="所属学校" prop="schoolId">
+          <el-select v-model="formData.schoolId" placeholder="请选择学校" style="width: 100%">
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="院长姓名" prop="deanName">
           <el-input v-model="formData.deanName" placeholder="请输入院长姓名" />
@@ -113,6 +140,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { collegeApi } from '@/api/system/college'
+import { schoolApi } from '@/api/system/school'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -121,8 +149,12 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('添加学院')
 const formRef = ref(null)
 
+const schoolList = ref([])
+const schoolMap = ref({})
+
 const searchForm = reactive({
-  collegeName: ''
+  collegeName: '',
+  schoolId: null
 })
 
 const pagination = reactive({
@@ -161,16 +193,51 @@ const loadData = async () => {
     const res = await collegeApi.getCollegePage({
       current: pagination.current,
       size: pagination.size,
-      collegeName: searchForm.collegeName || undefined
+      collegeName: searchForm.collegeName || undefined,
+      schoolId: searchForm.schoolId || undefined
     })
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
+
+      // 批量加载学校信息
+      const schoolIds = [...new Set(tableData.value.map(item => item.schoolId))]
+      await loadSchoolInfo(schoolIds)
     }
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadSchoolList = async () => {
+  try {
+    const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+    if (res.code === 200) {
+      schoolList.value = res.data.records || []
+      // 构建学校Map
+      schoolList.value.forEach(school => {
+        schoolMap.value[school.schoolId] = school
+      })
+    }
+  } catch (error) {
+    console.error('加载学校列表失败:', error)
+  }
+}
+
+const loadSchoolInfo = async (schoolIds) => {
+  try {
+    for (const schoolId of schoolIds) {
+      if (!schoolMap.value[schoolId]) {
+        const res = await schoolApi.getSchoolById(schoolId)
+        if (res.code === 200 && res.data) {
+          schoolMap.value[schoolId] = res.data
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学校信息失败:', error)
   }
 }
 
@@ -181,6 +248,7 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.collegeName = ''
+  searchForm.schoolId = null
   handleSearch()
 }
 
@@ -269,6 +337,7 @@ const handlePageChange = () => {
 }
 
 onMounted(() => {
+  loadSchoolList()
   loadData()
 })
 </script>

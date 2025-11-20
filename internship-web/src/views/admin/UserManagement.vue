@@ -35,6 +35,84 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="searchForm.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="角色">
+          <el-select
+            v-model="searchForm.roleCodes"
+            placeholder="请选择角色"
+            clearable
+            style="width: 200px"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+          >
+            <el-option
+              v-for="role in roleList"
+              :key="role.roleCode"
+              :label="role.roleName"
+              :value="role.roleCode"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+            @change="handleSchoolChange"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院">
+          <el-select
+            v-model="searchForm.collegeId"
+            placeholder="请选择学院"
+            clearable
+            style="width: 200px"
+            :disabled="!searchForm.schoolId"
+            @change="handleCollegeChange"
+          >
+            <el-option
+              v-for="college in collegeList"
+              :key="college.collegeId"
+              :label="college.collegeName"
+              :value="college.collegeId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属班级">
+          <el-select
+            v-model="searchForm.classId"
+            placeholder="请选择班级"
+            clearable
+            style="width: 200px"
+            :disabled="!searchForm.collegeId"
+          >
+            <el-option
+              v-for="classItem in classList"
+              :key="classItem.classId"
+              :label="classItem.className"
+              :value="classItem.classId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -173,13 +251,29 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { userApi } from '@/api/user/user'
+import { roleApi } from '@/api/user/role'
+import { schoolApi } from '@/api/system/school'
+import { collegeApi } from '@/api/system/college'
+import { classApi } from '@/api/system/class'
+import request from '@/utils/request'
 
 // 搜索表单
 const searchForm = reactive({
   username: '',
   realName: '',
-  phone: ''
+  phone: '',
+  status: null,
+  roleCodes: null,
+  schoolId: null,
+  collegeId: null,
+  classId: null
 })
+
+// 筛选选项
+const roleList = ref([])
+const schoolList = ref([])
+const collegeList = ref([])
+const classList = ref([])
 
 // 表格数据
 const tableData = ref([])
@@ -274,7 +368,12 @@ const loadData = async () => {
       size: pagination.size,
       username: searchForm.username || undefined,
       realName: searchForm.realName || undefined,
-      phone: searchForm.phone || undefined
+      phone: searchForm.phone || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined,
+      roleCodes: searchForm.roleCodes && searchForm.roleCodes.length > 0 ? searchForm.roleCodes.join(',') : undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      classId: searchForm.classId || undefined
     }
     const res = await userApi.getUserPage(params)
     if (res.code === 200) {
@@ -299,6 +398,13 @@ const handleReset = () => {
   searchForm.username = ''
   searchForm.realName = ''
   searchForm.phone = ''
+  searchForm.status = null
+  searchForm.roleCodes = null
+  searchForm.schoolId = null
+  searchForm.collegeId = null
+  searchForm.classId = null
+  collegeList.value = []
+  classList.value = []
   handleSearch()
 }
 
@@ -458,8 +564,66 @@ const handleDelete = (row) => {
   }).catch(() => {})
 }
 
+const loadSchoolList = async () => {
+  try {
+    const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+    if (res.code === 200) {
+      schoolList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载学校列表失败:', error)
+  }
+}
+
+const loadCollegeList = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+const loadClassList = async (collegeId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (collegeId) {
+      // 需要通过专业关联查询，这里简化处理，加载所有班级
+      // 实际应该通过专业ID查询，但前端没有专业筛选，所以先加载所有
+    }
+    const res = await classApi.getClassPage(params)
+    if (res.code === 200) {
+      classList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载班级列表失败:', error)
+  }
+}
+
+// 加载角色列表
+const loadRoleList = async () => {
+  try {
+    const res = await roleApi.getAllEnabledRoles()
+    if (res.code === 200) {
+      roleList.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载角色列表失败:', error)
+  }
+}
+
 // 初始化
 onMounted(() => {
+  loadRoleList()
+  loadSchoolList()
+  loadCollegeList(null)
+  loadClassList(null)
   loadData()
 })
 </script>

@@ -48,6 +48,26 @@ export default [
       requiresAuth: true,
       roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
     }
+  },
+  {
+    path: '/admin/enterprise',
+    name: 'EnterpriseManagement',
+    component: () => import('@/views/admin/EnterpriseManagement.vue'),
+    meta: {
+      title: '企业管理',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+    }
+  },
+  {
+    path: '/admin/enterprise-mentor',
+    name: 'EnterpriseMentorManagement',
+    component: () => import('@/views/admin/EnterpriseMentorManagement.vue'),
+    meta: {
+      title: '企业导师管理',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN']
+    }
   }
 ]
 

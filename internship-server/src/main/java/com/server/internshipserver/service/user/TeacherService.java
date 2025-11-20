@@ -89,9 +89,10 @@ public interface TeacherService extends IService<Teacher> {
      * @param teacherNo 工号（可选）
      * @param collegeId 学院ID（可选）
      * @param schoolId 学校ID（可选）
+     * @param status 状态：1-启用，0-禁用（可选）
      * @return 教师列表
      */
-    Page<Teacher> getTeacherPage(Page<Teacher> page, String teacherNo, Long collegeId, Long schoolId);
+    Page<Teacher> getTeacherPage(Page<Teacher> page, String teacherNo, Long collegeId, Long schoolId, Integer status);
     
     /**
      * 停用教师（软删除）

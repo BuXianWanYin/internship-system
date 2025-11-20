@@ -35,9 +35,11 @@ public interface ClassService extends IService<Class> {
      * @param page 分页参数
      * @param className 班级名称（可选）
      * @param majorId 专业ID（可选，用于数据权限过滤）
+     * @param collegeId 学院ID（可选，用于筛选）
+     * @param schoolId 学校ID（可选，用于筛选）
      * @return 班级列表
      */
-    Page<Class> getClassPage(Page<Class> page, String className, Long majorId);
+    Page<Class> getClassPage(Page<Class> page, String className, Long majorId, Long collegeId, Long schoolId);
     
     /**
      * 停用班级（软删除）

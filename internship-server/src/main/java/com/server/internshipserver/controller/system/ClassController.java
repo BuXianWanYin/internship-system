@@ -60,10 +60,12 @@ public class ClassController {
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
             @ApiParam(value = "班级名称", required = false) @RequestParam(required = false) String className,
-            @ApiParam(value = "专业ID", required = false) @RequestParam(required = false) Long majorId) {
+            @ApiParam(value = "专业ID", required = false) @RequestParam(required = false) Long majorId,
+            @ApiParam(value = "学院ID", required = false) @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId) {
         Page<Class> page = new Page<>(current, size);
         // 数据权限过滤已在Service层实现，根据当前登录用户角色自动过滤
-        Page<Class> result = classService.getClassPage(page, className, majorId);
+        Page<Class> result = classService.getClassPage(page, className, majorId, collegeId, schoolId);
         return Result.success(result);
     }
     

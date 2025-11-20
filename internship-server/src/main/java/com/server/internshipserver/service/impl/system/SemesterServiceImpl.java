@@ -112,7 +112,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     }
     
     @Override
-    public Page<Semester> getSemesterPage(Page<Semester> page, String semesterName) {
+    public Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate) {
         LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
@@ -121,6 +121,28 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         // 条件查询
         if (StringUtils.hasText(semesterName)) {
             wrapper.like(Semester::getSemesterName, semesterName);
+        }
+        
+        // 年份筛选
+        if (year != null) {
+            wrapper.and(w -> w
+                .apply("YEAR(start_date) = {0}", year)
+                .or()
+                .apply("YEAR(end_date) = {0}", year)
+            );
+        }
+        
+        // 是否当前学期筛选
+        if (isCurrent != null) {
+            wrapper.eq(Semester::getIsCurrent, isCurrent);
+        }
+        
+        // 日期范围筛选
+        if (StringUtils.hasText(startDate)) {
+            wrapper.ge(Semester::getStartDate, startDate);
+        }
+        if (StringUtils.hasText(endDate)) {
+            wrapper.le(Semester::getEndDate, endDate);
         }
         
         // 按创建时间倒序

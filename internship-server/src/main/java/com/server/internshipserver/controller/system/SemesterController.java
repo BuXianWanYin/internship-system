@@ -56,9 +56,13 @@ public class SemesterController {
     public Result<Page<Semester>> getSemesterPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "学期名称", required = false) @RequestParam(required = false) String semesterName) {
+            @ApiParam(value = "学期名称", required = false) @RequestParam(required = false) String semesterName,
+            @ApiParam(value = "年份", required = false) @RequestParam(required = false) Integer year,
+            @ApiParam(value = "是否当前学期：1-是，0-否", required = false) @RequestParam(required = false) Integer isCurrent,
+            @ApiParam(value = "开始日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String startDate,
+            @ApiParam(value = "结束日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String endDate) {
         Page<Semester> page = new Page<>(current, size);
-        Page<Semester> result = semesterService.getSemesterPage(page, semesterName);
+        Page<Semester> result = semesterService.getSemesterPage(page, semesterName, year, isCurrent, startDate, endDate);
         return Result.success(result);
     }
     

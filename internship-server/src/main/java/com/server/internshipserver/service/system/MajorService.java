@@ -35,9 +35,10 @@ public interface MajorService extends IService<Major> {
      * @param page 分页参数
      * @param majorName 专业名称（可选）
      * @param collegeId 学院ID（可选，用于数据权限过滤）
+     * @param schoolId 学校ID（可选，用于筛选）
      * @return 专业列表
      */
-    Page<Major> getMajorPage(Page<Major> page, String majorName, Long collegeId);
+    Page<Major> getMajorPage(Page<Major> page, String majorName, Long collegeId, Long schoolId);
     
     /**
      * 停用专业（软删除）

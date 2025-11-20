@@ -30,9 +30,14 @@ public class UserController {
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
             @ApiParam(value = "用户名（可选）") @RequestParam(required = false) String username,
             @ApiParam(value = "真实姓名（可选）") @RequestParam(required = false) String realName,
-            @ApiParam(value = "手机号（可选）") @RequestParam(required = false) String phone) {
+            @ApiParam(value = "手机号（可选）") @RequestParam(required = false) String phone,
+            @ApiParam(value = "状态：1-启用，0-禁用（可选）") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "角色代码（可选，多个用逗号分隔，如：ROLE_STUDENT,ROLE_TEACHER）") @RequestParam(required = false) String roleCodes,
+            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId) {
         Page<UserInfo> page = new Page<>(current, size);
-        Page<UserInfo> result = userService.getUserPage(page, username, realName, phone);
+        Page<UserInfo> result = userService.getUserPage(page, username, realName, phone, status, roleCodes, schoolId, collegeId, classId);
         return Result.success("查询成功", result);
     }
     

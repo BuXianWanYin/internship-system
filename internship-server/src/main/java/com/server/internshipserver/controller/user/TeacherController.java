@@ -32,9 +32,10 @@ public class TeacherController {
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
             @ApiParam(value = "工号（可选）") @RequestParam(required = false) String teacherNo,
             @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId) {
+            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "状态：1-启用，0-禁用（可选）") @RequestParam(required = false) Integer status) {
         Page<Teacher> page = new Page<>(current, size);
-        Page<Teacher> result = teacherService.getTeacherPage(page, teacherNo, collegeId, schoolId);
+        Page<Teacher> result = teacherService.getTeacherPage(page, teacherNo, collegeId, schoolId, status);
         return Result.success("查询成功", result);
     }
     

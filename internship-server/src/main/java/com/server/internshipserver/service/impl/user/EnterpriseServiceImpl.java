@@ -9,10 +9,12 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.user.EnterpriseService;
 import com.server.internshipserver.service.user.UserService;
+import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,9 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private EnterpriseSchoolCooperationService cooperationService;
     
     @Override
     public Enterprise getEnterpriseByUserId(Long userId) {
@@ -268,10 +273,11 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         }
         
         // 数据权限过滤：根据用户角色自动添加查询条件
-        // 系统管理员、学校管理员：不添加过滤条件（可以查看所有企业）
+        // 系统管理员：不添加过滤条件（可以查看所有企业）
+        // 学校管理员：只能查看和本校有合作关系的企业
+        // 班主任：只能查看和管理的班级有合作关系的企业
         // 企业管理员：只能查看本企业（通过userId关联）
         if (!dataPermissionUtil.isSystemAdmin()) {
-            // 检查是否为学校管理员（学校管理员可以查看所有企业用于审核）
             String username = SecurityUtil.getCurrentUsername();
             if (username != null) {
                 UserInfo currentUser = userMapper.selectOne(
@@ -281,11 +287,20 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
                 );
                 if (currentUser != null) {
                     List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
-                    // 如果不是系统管理员或学校管理员，则只能查看本企业
-                    if (roleCodes != null && !roleCodes.contains("ROLE_SYSTEM_ADMIN") 
-                            && !roleCodes.contains("ROLE_SCHOOL_ADMIN")) {
-                        // 企业管理员：只能查看本企业
+                    // 企业管理员：只能查看本企业
+                    if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
                         wrapper.eq(Enterprise::getUserId, currentUser.getUserId());
+                    } else {
+                        // 学校管理员或班主任：只能查看有合作关系的企业
+                        List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
+                        if (cooperationEnterpriseIds != null) {
+                            if (cooperationEnterpriseIds.isEmpty()) {
+                                // 如果没有合作关系，返回空结果
+                                wrapper.eq(Enterprise::getEnterpriseId, -1L);
+                            } else {
+                                wrapper.in(Enterprise::getEnterpriseId, cooperationEnterpriseIds);
+                            }
+                        }
                     }
                 }
             }
@@ -312,6 +327,11 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         // 软删除
         enterprise.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(enterprise);
+    }
+    
+    @Override
+    public List<School> getCooperationSchoolsByEnterpriseId(Long enterpriseId) {
+        return cooperationService.getCooperationSchoolsByEnterpriseId(enterpriseId);
     }
 }
 
