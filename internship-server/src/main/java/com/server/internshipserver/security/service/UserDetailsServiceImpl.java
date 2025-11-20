@@ -1,5 +1,6 @@
 package com.server.internshipserver.security.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.domain.user.User;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -33,7 +34,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         
         // 1. 从数据库查询用户信息
         User user = userMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, username)
                         .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );

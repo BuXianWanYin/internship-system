@@ -2,7 +2,9 @@ package com.server.internshipserver.controller.user;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
+import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.user.User;
 import com.server.internshipserver.service.user.EnterpriseService;
 import com.server.internshipserver.service.user.UserService;
 import io.swagger.annotations.Api;
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Api(tags = "企业管理")
 @RestController
-@RequestMapping("/api/user/enterprise")
+@RequestMapping("/user/enterprise")
 public class EnterpriseController {
     
     @Autowired
@@ -92,11 +94,10 @@ public class EnterpriseController {
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
         // 获取当前登录用户ID
-        String username = com.server.internshipserver.common.utils.SecurityUtil.getCurrentUsername();
+        String username = SecurityUtil.getCurrentUsername();
         Long auditorId = null;
         if (username != null) {
-            com.server.internshipserver.domain.user.User user = 
-                    userService.getUserByUsername(username);
+            User user = userService.getUserByUsername(username);
             if (user != null) {
                 auditorId = user.getUserId();
             }

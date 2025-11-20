@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Api(tags = "专业管理")
 @RestController
-@RequestMapping("/api/system/major")
+@RequestMapping("/system/major")
 public class MajorController {
     
     @Autowired

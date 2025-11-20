@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,7 +31,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.OK)
     public Result<?> handleBusinessException(BusinessException e, HttpServletRequest request) {
-        logger.warn("业务异常: {} - {}", request.getRequestURI(), e.getMessage());
+        logger.error("业务异常: {} - {}", request.getRequestURI(), e.getMessage());
         return Result.error(e.getCode(), e.getMessage());
     }
 
@@ -43,7 +44,7 @@ public class GlobalExceptionHandler {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        logger.warn("参数校验失败: {}", message);
+        logger.error("参数校验失败: {}", message);
         return Result.error(ResultCode.PARAM_ERROR.getCode(), message);
     }
 
@@ -56,7 +57,18 @@ public class GlobalExceptionHandler {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        logger.warn("参数绑定失败: {}", message);
+        logger.error("参数绑定失败: {}", message);
+        return Result.error(ResultCode.PARAM_ERROR.getCode(), message);
+    }
+
+    /**
+     * 处理缺少请求参数异常
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleMissingServletRequestParameterException(MissingServletRequestParameterException e, HttpServletRequest request) {
+        String message = String.format("缺少必需的请求参数: %s", e.getParameterName());
+        logger.error("缺少请求参数: {} - {}", request.getRequestURI(), message);
         return Result.error(ResultCode.PARAM_ERROR.getCode(), message);
     }
 
@@ -66,7 +78,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
-        logger.warn("权限不足: {}", e.getMessage());
+        logger.error("权限不足: {}", e.getMessage());
         return Result.error(ResultCode.FORBIDDEN);
     }
 

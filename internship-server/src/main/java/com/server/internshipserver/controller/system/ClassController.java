@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Api(tags = "班级管理")
 @RestController
-@RequestMapping("/api/system/class")
+@RequestMapping("/system/class")
 public class ClassController {
     
     @Autowired

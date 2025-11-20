@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Api(tags = "学生管理")
 @RestController
-@RequestMapping("/api/user/student")
+@RequestMapping("/user/student")
 public class StudentController {
     
     @Autowired

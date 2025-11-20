@@ -20,11 +20,9 @@ export const useAuthStore = defineStore('auth', {
      */
     async login(loginForm) {
       try {
-        const res = await request.post('/auth/login', null, {
-          params: {
-            username: loginForm.username,
-            password: loginForm.password
-          }
+        const res = await request.post('/auth/login', {
+          username: loginForm.username,
+          password: loginForm.password
         })
         if (res.code === 200) {
           this.token = res.data.token

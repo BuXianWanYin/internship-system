@@ -99,6 +99,16 @@ const routes = [
       requiresAuth: true
     }
   },
+  // 用户管理模块路由
+  {
+    path: '/admin/user',
+    name: 'UserManagement',
+    component: () => import('@/views/admin/UserManagement.vue'),
+    meta: {
+      title: '用户管理',
+      requiresAuth: true
+    }
+  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/404'

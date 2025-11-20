@@ -1,10 +1,9 @@
 package com.server.internshipserver.domain.user;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -30,8 +29,9 @@ public class User implements Serializable {
     @TableField("username")
     private String username;
     
-    @ApiModelProperty(value = "密码（BCrypt加密）", required = true)
+    @ApiModelProperty(value = "密码（BCrypt加密）", required = true, hidden = true)
     @TableField("password")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)  // 只允许写入（反序列化），不允许读取（序列化），防止泄露
     private String password;
     
     @ApiModelProperty(value = "真实姓名", required = true, example = "张三")
@@ -63,12 +63,12 @@ public class User implements Serializable {
     private Integer deleteFlag;
     
     @ApiModelProperty(value = "创建时间")
-    @TableField(value = "create_time", fill = com.baomidou.mybatisplus.annotation.FieldFill.INSERT)
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
     
     @ApiModelProperty(value = "更新时间")
-    @TableField(value = "update_time", fill = com.baomidou.mybatisplus.annotation.FieldFill.INSERT_UPDATE)
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 }

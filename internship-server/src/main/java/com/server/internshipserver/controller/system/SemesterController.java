@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Api(tags = "学期管理")
 @RestController
-@RequestMapping("/api/system/semester")
+@RequestMapping("/system/semester")
 public class SemesterController {
     
     @Autowired

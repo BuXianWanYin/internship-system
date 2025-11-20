@@ -5,18 +5,16 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.result.ResultCode;
 import com.server.internshipserver.common.utils.JwtUtil;
 import com.server.internshipserver.common.utils.RedisUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.User;
 import com.server.internshipserver.service.user.UserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -29,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Api(tags = "认证授权管理")
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 public class AuthController {
     
     @Autowired
@@ -39,9 +37,6 @@ public class AuthController {
     private JwtUtil jwtUtil;
     
     @Autowired
-    private UserDetailsService userDetailsService;
-    
-    @Autowired
     private RedisUtil redisUtil;
     
     @Autowired
@@ -49,30 +44,35 @@ public class AuthController {
 
     @ApiOperation("用户登录")
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(
-            @ApiParam(value = "用户名", required = true) @RequestParam String username,
-            @ApiParam(value = "密码", required = true) @RequestParam String password) {
+    public Result<Map<String, Object>> login(@RequestBody User loginUser) {
+        // 参数校验
+        if (!StringUtils.hasText(loginUser.getUsername())) {
+            return Result.error(ResultCode.PARAM_ERROR.getCode(), "用户名不能为空");
+        }
+        if (!StringUtils.hasText(loginUser.getPassword())) {
+            return Result.error(ResultCode.PARAM_ERROR.getCode(), "密码不能为空");
+        }
         
         try {
             // 进行身份认证
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, password));
+                    new UsernamePasswordAuthenticationToken(loginUser.getUsername(), loginUser.getPassword()));
             
             // 认证成功，生成Token
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String token = jwtUtil.generateToken(userDetails);
             
             // 将Token存储到Redis
-            String redisKey = Constants.TOKEN_KEY_PREFIX + username;
+            String redisKey = Constants.TOKEN_KEY_PREFIX + loginUser.getUsername();
             redisUtil.set(redisKey, token, 2, TimeUnit.HOURS);
             
             // 构建返回数据
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
-            data.put("username", username);
+            data.put("username", loginUser.getUsername());
             
             // 添加用户详细信息
-            User user = userService.getUserByUsername(username);
+            User user = userService.getUserByUsername(loginUser.getUsername());
             if (user != null) {
                 Map<String, Object> userInfo = new HashMap<>();
                 userInfo.put("userId", user.getUserId());
@@ -124,7 +124,11 @@ public class AuthController {
 
     @ApiOperation("刷新Token")
     @PostMapping("/refresh")
-    public Result<Map<String, Object>> refreshToken(@RequestParam String token) {
+    public Result<Map<String, Object>> refreshToken(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        if (token == null || token.isEmpty()) {
+            return Result.error(ResultCode.PARAM_ERROR.getCode(), "Token不能为空");
+        }
         try {
             String username = jwtUtil.getUsernameFromToken(token);
             String newToken = jwtUtil.refreshToken(token);

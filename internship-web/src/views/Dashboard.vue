@@ -30,13 +30,38 @@
           </el-card>
         </div>
       </div>
+
+      <!-- 用户管理模块 -->
+      <div class="module-section">
+        <h2 class="section-title">
+          <el-icon class="section-icon"><UserFilled /></el-icon>
+          用户管理
+        </h2>
+        <div class="module-grid">
+          <el-card
+            v-for="item in userModules"
+            :key="item.path"
+            class="module-card"
+            shadow="hover"
+            @click="navigateTo(item.path)"
+          >
+            <div class="card-content">
+              <el-icon class="card-icon" :size="32">
+                <component :is="item.icon" />
+              </el-icon>
+              <h3 class="card-title">{{ item.title }}</h3>
+              <p class="card-desc">{{ item.desc }}</p>
+            </div>
+          </el-card>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { Setting, School, OfficeBuilding, Reading, User, Calendar, Tools } from '@element-plus/icons-vue'
+import { Setting, School, OfficeBuilding, Reading, User, UserFilled, Calendar, Tools } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -76,6 +101,15 @@ const systemModules = [
     desc: '管理系统配置参数',
     path: '/admin/system/config',
     icon: 'Tools'
+  }
+]
+
+const userModules = [
+  {
+    title: '用户管理',
+    desc: '管理系统用户信息',
+    path: '/admin/user',
+    icon: 'UserFilled'
   }
 ]
 

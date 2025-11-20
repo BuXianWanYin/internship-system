@@ -15,6 +15,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -43,23 +44,20 @@ public class SecurityConfig {
         http
             // 禁用CSRF，因为使用JWT
             .csrf().disable()
+            // 配置CORS
+            .cors()
+            .and()
             // 使用无状态session，不使用session
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             // 配置请求权限
             .authorizeRequests()
-                // 允许访问的路径
+                // 允许OPTIONS预检请求
+                .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // 允许访问的路径 白名单 无需token
                 .antMatchers(
-                    "/api/auth/login", 
-                    "/api/auth/register", 
-                    "/api/swagger-ui/**", 
-                    "/api/swagger-ui.html",
-                    "/api/v2/api-docs",
-                    "/api/v2/api-docs/**",
-                    "/api/v3/api-docs/**", 
-                    "/api/swagger-resources/**",
-                    "/api/webjars/**",
-                    "/api/doc.html",
+                    "/auth/login", 
+                    "/auth/register", 
                     "/swagger-ui/**", 
                     "/swagger-ui.html",
                     "/v2/api-docs",

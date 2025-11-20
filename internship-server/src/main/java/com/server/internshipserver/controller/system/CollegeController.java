@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Api(tags = "学院管理")
 @RestController
-@RequestMapping("/api/system/college")
+@RequestMapping("/system/college")
 public class CollegeController {
     
     @Autowired

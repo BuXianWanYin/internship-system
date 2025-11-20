@@ -1,5 +1,6 @@
 package com.server.internshipserver.common.utils;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.SchoolAdmin;
@@ -71,7 +72,7 @@ public class DataPermissionUtil {
         
         // 查询用户信息
         User user = userMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, username)
                         .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
@@ -91,7 +92,7 @@ public class DataPermissionUtil {
         // 检查是否为学校管理员
         if (roleCodes != null && roleCodes.contains("ROLE_SCHOOL_ADMIN")) {
             SchoolAdmin schoolAdmin = schoolAdminMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SchoolAdmin>()
+                    new LambdaQueryWrapper<SchoolAdmin>()
                             .eq(SchoolAdmin::getUserId, user.getUserId())
                             .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -105,7 +106,7 @@ public class DataPermissionUtil {
                 || roleCodes.contains("ROLE_CLASS_TEACHER") 
                 || roleCodes.contains("ROLE_INSTRUCTOR"))) {
             Teacher teacher = teacherMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Teacher>()
+                    new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
                             .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -117,7 +118,7 @@ public class DataPermissionUtil {
         // 检查是否为学生
         if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Student>()
+                    new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -145,7 +146,7 @@ public class DataPermissionUtil {
         
         // 查询用户信息
         User user = userMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, username)
                         .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
@@ -162,7 +163,7 @@ public class DataPermissionUtil {
                 || roleCodes.contains("ROLE_CLASS_TEACHER") 
                 || roleCodes.contains("ROLE_INSTRUCTOR"))) {
             Teacher teacher = teacherMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Teacher>()
+                    new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
                             .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -174,7 +175,7 @@ public class DataPermissionUtil {
         // 学生：从Student表获取
         if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Student>()
+                    new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -202,7 +203,7 @@ public class DataPermissionUtil {
         
         // 查询用户信息
         User user = userMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
+                new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, username)
                         .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
@@ -217,7 +218,7 @@ public class DataPermissionUtil {
         // 班主任：从Class表的class_teacher_id获取
         if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
             Class classInfo = classMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Class>()
+                    new LambdaQueryWrapper<Class>()
                             .eq(Class::getClassTeacherId, user.getUserId())
                             .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
@@ -229,7 +230,7 @@ public class DataPermissionUtil {
         // 学生：从Student表获取
         if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Student>()
+                    new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
