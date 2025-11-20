@@ -5,6 +5,9 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.result.ResultCode;
 import com.server.internshipserver.common.utils.JwtUtil;
 import com.server.internshipserver.common.utils.RedisUtil;
+import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.service.user.UserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -16,6 +19,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Api(tags = "认证授权管理")
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
     
     @Autowired
@@ -39,6 +43,9 @@ public class AuthController {
     
     @Autowired
     private RedisUtil redisUtil;
+    
+    @Autowired
+    private UserService userService;
 
     @ApiOperation("用户登录")
     @PostMapping("/login")
@@ -63,7 +70,18 @@ public class AuthController {
             Map<String, Object> data = new HashMap<>();
             data.put("token", token);
             data.put("username", username);
-            // TODO: 后续添加用户详细信息
+            
+            // 添加用户详细信息
+            User user = userService.getUserByUsername(username);
+            if (user != null) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("userId", user.getUserId());
+                userInfo.put("realName", user.getRealName());
+                userInfo.put("phone", user.getPhone());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("avatar", user.getAvatar());
+                data.put("userInfo", userInfo);
+            }
             
             return Result.success("登录成功", data);
         } catch (Exception e) {
@@ -73,10 +91,35 @@ public class AuthController {
 
     @ApiOperation("用户登出")
     @PostMapping("/logout")
-    public Result<?> logout() {
-        // TODO: 从请求头获取Token，从Redis中删除
-        // 当前实现为简化版本，后续完善
-        return Result.success("登出成功");
+    public Result<?> logout(HttpServletRequest request) {
+        try {
+            // 从请求头获取Token
+            String token = getTokenFromRequest(request);
+            if (token != null && !token.isEmpty()) {
+                // 从Token中获取用户名
+                String username = jwtUtil.getUsernameFromToken(token);
+                if (username != null) {
+                    // 从Redis中删除Token
+                    String redisKey = Constants.TOKEN_KEY_PREFIX + username;
+                    redisUtil.delete(redisKey);
+                }
+            }
+            return Result.success("登出成功");
+        } catch (Exception e) {
+            // 即使出错也返回成功，避免影响用户体验
+            return Result.success("登出成功");
+        }
+    }
+    
+    /**
+     * 从请求头获取Token
+     */
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 
     @ApiOperation("刷新Token")

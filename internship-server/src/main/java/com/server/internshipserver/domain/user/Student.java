@@ -1,0 +1,79 @@
+package com.server.internshipserver.domain.user;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+
+/**
+ * 学生信息实体类
+ */
+@ApiModel(description = "学生信息")
+@Data
+@TableName("student_info")
+public class Student implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
+    
+    @ApiModelProperty(value = "学生ID", example = "1")
+    @TableId(type = IdType.AUTO)
+    private Long studentId;
+    
+    @ApiModelProperty(value = "用户ID", required = true, example = "1")
+    @TableField("user_id")
+    private Long userId;
+    
+    @ApiModelProperty(value = "学号", required = true, example = "202101001")
+    @TableField("student_no")
+    private String studentNo;
+    
+    @ApiModelProperty(value = "所属班级ID", required = true, example = "1")
+    @TableField("class_id")
+    private Long classId;
+    
+    @ApiModelProperty(value = "入学年份", required = true, example = "2021")
+    @TableField("enrollment_year")
+    private Integer enrollmentYear;
+    
+    @ApiModelProperty(value = "毕业年份", example = "2025")
+    @TableField("graduation_year")
+    private Integer graduationYear;
+    
+    @ApiModelProperty(value = "所属专业ID（冗余字段）", example = "1")
+    @TableField("major_id")
+    private Long majorId;
+    
+    @ApiModelProperty(value = "所属学院ID（冗余字段）", example = "1")
+    @TableField("college_id")
+    private Long collegeId;
+    
+    @ApiModelProperty(value = "所属学校ID（冗余字段）", example = "1")
+    @TableField("school_id")
+    private Long schoolId;
+    
+    @ApiModelProperty(value = "状态：1-启用，0-禁用", example = "1")
+    @TableField("status")
+    private Integer status;
+    
+    @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
+    @TableField("delete_flag")
+    private Integer deleteFlag;
+    
+    @ApiModelProperty(value = "创建时间")
+    @TableField(value = "create_time", fill = com.baomidou.mybatisplus.annotation.FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+    
+    @ApiModelProperty(value = "更新时间")
+    @TableField(value = "update_time", fill = com.baomidou.mybatisplus.annotation.FieldFill.INSERT_UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
+}
+

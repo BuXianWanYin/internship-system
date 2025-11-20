@@ -49,7 +49,26 @@ public class SecurityConfig {
             // 配置请求权限
             .authorizeRequests()
                 // 允许访问的路径
-                .antMatchers("/auth/login", "/auth/register", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()
+                .antMatchers(
+                    "/api/auth/login", 
+                    "/api/auth/register", 
+                    "/api/swagger-ui/**", 
+                    "/api/swagger-ui.html",
+                    "/api/v2/api-docs",
+                    "/api/v2/api-docs/**",
+                    "/api/v3/api-docs/**", 
+                    "/api/swagger-resources/**",
+                    "/api/webjars/**",
+                    "/api/doc.html",
+                    "/swagger-ui/**", 
+                    "/swagger-ui.html",
+                    "/v2/api-docs",
+                    "/v2/api-docs/**",
+                    "/v3/api-docs/**", 
+                    "/swagger-resources/**",
+                    "/webjars/**",
+                    "/doc.html"
+                ).permitAll()
                 // 其他请求需要认证
                 .anyRequest().authenticated()
             .and()
