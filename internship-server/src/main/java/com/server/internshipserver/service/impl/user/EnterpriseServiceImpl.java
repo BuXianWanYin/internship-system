@@ -5,17 +5,21 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.Enterprise;
-import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.user.EnterpriseService;
+import com.server.internshipserver.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 企业管理Service实现类
@@ -25,6 +29,12 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     public Enterprise getEnterpriseByUserId(Long userId) {
@@ -164,6 +174,31 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion) {
+        // 获取当前登录用户ID作为审核人
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            throw new BusinessException("无法获取当前登录用户信息");
+        }
+        
+        UserInfo user = userService.getUserByUsername(username);
+        if (user == null) {
+            throw new BusinessException("当前用户不存在");
+        }
+        
+        Long auditorId = user.getUserId();
+        return auditEnterprise(enterpriseId, auditStatus, auditOpinion, auditorId);
+    }
+    
+    /**
+     * 审核企业（内部方法，包含审核人ID）
+     * @param enterpriseId 企业ID
+     * @param auditStatus 审核状态：1-通过，2-拒绝
+     * @param auditOpinion 审核意见
+     * @param auditorId 审核人ID
+     * @return 是否成功
+     */
+    @Transactional(rollbackFor = Exception.class)
     public boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion, Long auditorId) {
         if (enterpriseId == null) {
             throw new BusinessException("企业ID不能为空");
@@ -188,7 +223,7 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         
         // 如果审核通过，激活企业管理员账号
         if (auditStatus == 1 && enterprise.getUserId() != null) {
-            User user = userMapper.selectById(enterprise.getUserId());
+            UserInfo user = userMapper.selectById(enterprise.getUserId());
             if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
                 // 激活账号：设置状态为启用
                 user.setStatus(1);
@@ -230,6 +265,30 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         }
         if (auditStatus != null) {
             wrapper.eq(Enterprise::getAuditStatus, auditStatus);
+        }
+        
+        // 数据权限过滤：根据用户角色自动添加查询条件
+        // 系统管理员、学校管理员：不添加过滤条件（可以查看所有企业）
+        // 企业管理员：只能查看本企业（通过userId关联）
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            // 检查是否为学校管理员（学校管理员可以查看所有企业用于审核）
+            String username = SecurityUtil.getCurrentUsername();
+            if (username != null) {
+                UserInfo currentUser = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, username)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (currentUser != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                    // 如果不是系统管理员或学校管理员，则只能查看本企业
+                    if (roleCodes != null && !roleCodes.contains("ROLE_SYSTEM_ADMIN") 
+                            && !roleCodes.contains("ROLE_SCHOOL_ADMIN")) {
+                        // 企业管理员：只能查看本企业
+                        wrapper.eq(Enterprise::getUserId, currentUser.getUserId());
+                    }
+                }
+            }
         }
         
         // 按创建时间倒序

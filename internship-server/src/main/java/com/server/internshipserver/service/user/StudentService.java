@@ -3,6 +3,10 @@ package com.server.internshipserver.service.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.Student;
+import com.server.internshipserver.domain.user.dto.StudentImportDTO;
+import com.server.internshipserver.domain.user.dto.StudentImportResult;
+
+import java.util.List;
 
 /**
  * 学生管理Service接口
@@ -63,5 +67,53 @@ public interface StudentService extends IService<Student> {
      * @return 是否成功
      */
     boolean deleteStudent(Long studentId);
+    
+    /**
+     * Excel批量导入学生（包含文件验证和解析）
+     * @param file Excel文件
+     * @param classId 班级ID（可选，如果Excel中未指定班级ID则使用此值）
+     * @return 导入结果
+     */
+    StudentImportResult importStudentsFromFile(
+            org.springframework.web.multipart.MultipartFile file, 
+            Long classId);
+    
+    /**
+     * Excel批量导入学生（仅处理已解析的数据）
+     * @param importList 导入数据列表
+     * @param classId 班级ID（如果Excel中未指定，使用此值）
+     * @return 导入结果
+     */
+    StudentImportResult batchImportStudents(
+            List<StudentImportDTO> importList, 
+            Long classId);
+    
+    /**
+     * 学生自主注册（使用分享码）
+     * @param studentImportDTO 学生注册信息
+     * @param shareCode 班级分享码
+     * @return 注册的学生信息
+     */
+    Student registerStudentWithShareCode(
+            StudentImportDTO studentImportDTO, 
+            String shareCode);
+    
+    /**
+     * 分页查询待审核学生列表（班主任审核）
+     * @param page 分页参数
+     * @param studentNo 学号（可选）
+     * @param realName 姓名（可选）
+     * @return 待审核学生列表
+     */
+    Page<Student> getPendingApprovalStudentPage(Page<Student> page, String studentNo, String realName);
+    
+    /**
+     * 审核学生注册申请
+     * @param studentId 学生ID
+     * @param approved 是否通过：true-通过，false-拒绝
+     * @param auditOpinion 审核意见（可选）
+     * @return 是否成功
+     */
+    boolean approveStudentRegistration(Long studentId, boolean approved, String auditOpinion);
 }
 

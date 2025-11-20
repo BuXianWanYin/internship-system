@@ -1,4 +1,4 @@
-// 用户管理API
+// 用户基础管理API
 import request from '@/utils/request'
 
 /**
@@ -32,3 +32,4 @@ export const userApi = {
     })
   }
 }
+

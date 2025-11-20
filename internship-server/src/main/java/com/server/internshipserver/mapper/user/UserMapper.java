@@ -1,7 +1,7 @@
 package com.server.internshipserver.mapper.user;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.domain.user.UserInfo;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -12,7 +12,7 @@ import java.util.List;
  * 用户基础信息Mapper接口
  */
 @Mapper
-public interface UserMapper extends BaseMapper<User> {
+public interface UserMapper extends BaseMapper<UserInfo> {
     
     /**
      * 查询用户角色代码列表

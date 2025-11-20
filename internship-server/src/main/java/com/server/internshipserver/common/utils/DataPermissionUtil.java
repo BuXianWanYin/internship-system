@@ -9,7 +9,7 @@ import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
-import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +60,7 @@ public class DataPermissionUtil {
      * 获取当前用户的学校ID
      * @return 学校ID，如果无法获取则返回null
      */
-    public Long getCurrentUserSchoolId() {
+    public Long getCurrentUserInfoSchoolId() {
         if (isSystemAdmin()) {
             return null; // 系统管理员不限制
         }
@@ -71,10 +71,10 @@ public class DataPermissionUtil {
         }
         
         // 查询用户信息
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getUsername, username)
-                        .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
         
         if (user == null) {
@@ -134,7 +134,7 @@ public class DataPermissionUtil {
      * 获取当前用户的学院ID
      * @return 学院ID，如果无法获取则返回null
      */
-    public Long getCurrentUserCollegeId() {
+    public Long getCurrentUserInfoCollegeId() {
         if (isSystemAdmin()) {
             return null; // 系统管理员不限制
         }
@@ -145,10 +145,10 @@ public class DataPermissionUtil {
         }
         
         // 查询用户信息
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getUsername, username)
-                        .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
         
         if (user == null) {
@@ -191,7 +191,7 @@ public class DataPermissionUtil {
      * 获取当前用户的班级ID
      * @return 班级ID，如果无法获取则返回null
      */
-    public Long getCurrentUserClassId() {
+    public Long getCurrentUserInfoClassId() {
         if (isSystemAdmin()) {
             return null; // 系统管理员不限制
         }
@@ -202,10 +202,10 @@ public class DataPermissionUtil {
         }
         
         // 查询用户信息
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getUsername, username)
-                        .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
         
         if (user == null) {
@@ -240,6 +240,30 @@ public class DataPermissionUtil {
         }
         
         return null;
+    }
+    
+    /**
+     * 获取当前用户的学校ID（简化方法名）
+     * @return 学校ID，如果无法获取则返回null
+     */
+    public Long getCurrentUserSchoolId() {
+        return getCurrentUserInfoSchoolId();
+    }
+    
+    /**
+     * 获取当前用户的学院ID（简化方法名）
+     * @return 学院ID，如果无法获取则返回null
+     */
+    public Long getCurrentUserCollegeId() {
+        return getCurrentUserInfoCollegeId();
+    }
+    
+    /**
+     * 获取当前用户的班级ID（简化方法名）
+     * @return 班级ID，如果无法获取则返回null
+     */
+    public Long getCurrentUserClassId() {
+        return getCurrentUserInfoClassId();
     }
 }
 

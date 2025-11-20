@@ -1,9 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
+import systemRoutes from './modules/system'
+import userRoutes from './modules/user'
 
-// 路由配置
-const routes = [
+// 基础路由配置
+const baseRoutes = [
   {
     path: '/login',
     name: 'Login',
@@ -44,75 +46,17 @@ const routes = [
       requiresAuth: false
     }
   },
-  // 系统管理模块路由
-  {
-    path: '/admin/system/school',
-    name: 'SchoolManagement',
-    component: () => import('@/views/admin/SchoolManagement.vue'),
-    meta: {
-      title: '学校管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/system/college',
-    name: 'CollegeManagement',
-    component: () => import('@/views/admin/CollegeManagement.vue'),
-    meta: {
-      title: '学院管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/system/major',
-    name: 'MajorManagement',
-    component: () => import('@/views/admin/MajorManagement.vue'),
-    meta: {
-      title: '专业管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/system/class',
-    name: 'ClassManagement',
-    component: () => import('@/views/admin/ClassManagement.vue'),
-    meta: {
-      title: '班级管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/system/semester',
-    name: 'SemesterManagement',
-    component: () => import('@/views/admin/SemesterManagement.vue'),
-    meta: {
-      title: '学期管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/admin/system/config',
-    name: 'SystemConfigManagement',
-    component: () => import('@/views/admin/SystemConfigManagement.vue'),
-    meta: {
-      title: '系统配置',
-      requiresAuth: true
-    }
-  },
-  // 用户管理模块路由
-  {
-    path: '/admin/user',
-    name: 'UserManagement',
-    component: () => import('@/views/admin/UserManagement.vue'),
-    meta: {
-      title: '用户管理',
-      requiresAuth: true
-    }
-  },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/404'
   }
+]
+
+// 合并所有路由
+const routes = [
+  ...baseRoutes,
+  ...systemRoutes,
+  ...userRoutes
 ]
 
 const router = createRouter({

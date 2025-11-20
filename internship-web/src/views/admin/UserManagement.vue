@@ -170,7 +170,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
-import { userApi } from '@/api/user'
+import { userApi } from '@/api/user/user'
 
 // 搜索表单
 const searchForm = reactive({

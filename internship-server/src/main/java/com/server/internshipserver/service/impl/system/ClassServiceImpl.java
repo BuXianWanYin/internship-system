@@ -7,8 +7,13 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.Class;
+import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.service.system.ClassService;
+import com.server.internshipserver.service.system.MajorService;
+import com.server.internshipserver.service.user.TeacherService;
+import com.server.internshipserver.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +30,15 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private TeacherService teacherService;
+    
+    @Autowired
+    private MajorService majorService;
+    
+    @Autowired
+    private UserService userService;
     
     private static final int SHARE_CODE_LENGTH = 8;
     private static final int SHARE_CODE_EXPIRE_DAYS = 30;
@@ -249,6 +263,22 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     }
     
     @Override
+    public java.util.Map<String, Object> getShareCodeInfo(Long classId) {
+        Class classInfo = getClassById(classId);
+        if (classInfo == null) {
+            throw new BusinessException("班级不存在");
+        }
+        
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("shareCode", classInfo.getShareCode());
+        data.put("generateTime", classInfo.getShareCodeGenerateTime());
+        data.put("expireTime", classInfo.getShareCodeExpireTime());
+        data.put("useCount", classInfo.getShareCodeUseCount());
+        
+        return data;
+    }
+    
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void incrementShareCodeUseCount(String shareCode) {
         Class classInfo = validateShareCode(shareCode);
@@ -293,6 +323,85 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         }
         
         return shareCode;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean appointClassTeacher(Long classId, Long teacherId) {
+        if (classId == null) {
+            throw new BusinessException("班级ID不能为空");
+        }
+        if (teacherId == null) {
+            throw new BusinessException("教师ID不能为空");
+        }
+        
+        // 查询班级信息
+        Class classInfo = this.getById(classId);
+        if (classInfo == null || classInfo.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("班级不存在");
+        }
+        
+        // 数据权限检查：学院负责人只能任命本院的班级
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (currentUserCollegeId != null) {
+            // 获取班级所属的专业
+            Major major = majorService.getById(classInfo.getMajorId());
+            if (major == null || !currentUserCollegeId.equals(major.getCollegeId())) {
+                throw new BusinessException("无权限任命该班级的班主任");
+            }
+        }
+        
+        // 查询教师信息
+        Teacher teacher = teacherService.getById(teacherId);
+        if (teacher == null || teacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("教师不存在");
+        }
+        
+        // 检查教师是否属于同一个学院（如果是学院负责人操作）
+        if (currentUserCollegeId != null && !currentUserCollegeId.equals(teacher.getCollegeId())) {
+            throw new BusinessException("该教师不属于本学院");
+        }
+        
+        // 设置班主任（使用userId，因为class_teacher_id存储的是user_id）
+        classInfo.setClassTeacherId(teacher.getUserId());
+        
+        // 更新班级信息
+        this.updateById(classInfo);
+        
+        // 分配班主任角色
+        userService.assignRoleToUser(teacher.getUserId(), "ROLE_CLASS_TEACHER");
+        
+        return true;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeClassTeacher(Long classId) {
+        if (classId == null) {
+            throw new BusinessException("班级ID不能为空");
+        }
+        
+        // 查询班级信息
+        Class classInfo = this.getById(classId);
+        if (classInfo == null || classInfo.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("班级不存在");
+        }
+        
+        // 数据权限检查：学院负责人只能取消本院的班级班主任
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (currentUserCollegeId != null) {
+            // 获取班级所属的专业
+            Major major = majorService.getById(classInfo.getMajorId());
+            if (major == null || !currentUserCollegeId.equals(major.getCollegeId())) {
+                throw new BusinessException("无权限取消该班级的班主任");
+            }
+        }
+        
+        // 取消班主任（设置为null）
+        classInfo.setClassTeacherId(null);
+        
+        // 更新班级信息
+        return this.updateById(classInfo);
     }
 }
 

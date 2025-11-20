@@ -6,7 +6,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.system.MajorMapper;
 import com.server.internshipserver.service.system.MajorService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)

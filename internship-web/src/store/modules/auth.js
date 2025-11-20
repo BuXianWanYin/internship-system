@@ -28,7 +28,12 @@ export const useAuthStore = defineStore('auth', {
           this.token = res.data.token
           this.userInfo = {
             username: res.data.username,
-            roles: [] // TODO: 后续从后端获取用户角色
+            userId: res.data.userInfo?.userId,
+            realName: res.data.userInfo?.realName,
+            phone: res.data.userInfo?.phone,
+            email: res.data.userInfo?.email,
+            avatar: res.data.userInfo?.avatar,
+            roles: res.data.userInfo?.roles || []
           }
           
           // 保存到本地存储

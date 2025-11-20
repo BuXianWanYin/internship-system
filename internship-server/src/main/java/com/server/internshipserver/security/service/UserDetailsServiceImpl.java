@@ -2,7 +2,8 @@ package com.server.internshipserver.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
-import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.domain.user.UserInfo;
+import org.springframework.security.core.userdetails.User;
 import com.server.internshipserver.mapper.user.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,10 +34,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
         
         // 1. 从数据库查询用户信息
-        User user = userMapper.selectOne(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getUsername, username)
-                        .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
         
         if (user == null) {
@@ -72,7 +73,17 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
         
         // 6. 构建UserDetails对象
-        return org.springframework.security.core.userdetails.User.builder()
+        return buildUserDetails(user, authorities);
+    }
+    
+    /**
+     * 构建UserDetails对象
+     * @param user 用户实体
+     * @param authorities 权限集合
+     * @return UserDetails对象
+     */
+    private UserDetails buildUserDetails(UserInfo user, Collection<GrantedAuthority> authorities) {
+        return User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .authorities(authorities)

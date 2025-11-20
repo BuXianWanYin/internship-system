@@ -2,11 +2,8 @@ package com.server.internshipserver.controller.user;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
-import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.Enterprise;
-import com.server.internshipserver.domain.user.User;
 import com.server.internshipserver.service.user.EnterpriseService;
-import com.server.internshipserver.service.user.UserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -24,9 +21,6 @@ public class EnterpriseController {
     
     @Autowired
     private EnterpriseService enterpriseService;
-    
-    @Autowired
-    private UserService userService;
     
     @ApiOperation("企业注册")
     @PostMapping("/register")
@@ -64,9 +58,6 @@ public class EnterpriseController {
     public Result<Enterprise> getEnterpriseByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         Enterprise enterprise = enterpriseService.getEnterpriseByUserId(userId);
-        if (enterprise == null) {
-            return Result.error("企业信息不存在");
-        }
         return Result.success("查询成功", enterprise);
     }
     
@@ -93,20 +84,7 @@ public class EnterpriseController {
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId,
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
-        // 获取当前登录用户ID
-        String username = SecurityUtil.getCurrentUsername();
-        Long auditorId = null;
-        if (username != null) {
-            User user = userService.getUserByUsername(username);
-            if (user != null) {
-                auditorId = user.getUserId();
-            }
-        }
-        if (auditorId == null) {
-            return Result.error("无法获取当前登录用户信息");
-        }
-        
-        boolean success = enterpriseService.auditEnterprise(enterpriseId, auditStatus, auditOpinion, auditorId);
+        boolean success = enterpriseService.auditEnterprise(enterpriseId, auditStatus, auditOpinion);
         return success ? Result.success("审核成功") : Result.error("审核失败");
     }
     

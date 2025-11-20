@@ -42,6 +42,16 @@ export const classApi = {
     return request.post('/system/class/share-code/validate', null, {
       params: { shareCode }
     })
+  },
+  // 任命班主任
+  appointClassTeacher(classId, teacherId) {
+    return request.post(`/system/class/${classId}/appoint-teacher`, null, {
+      params: { teacherId }
+    })
+  },
+  // 取消班主任任命
+  removeClassTeacher(classId) {
+    return request.post(`/system/class/${classId}/remove-teacher`)
   }
 }
 

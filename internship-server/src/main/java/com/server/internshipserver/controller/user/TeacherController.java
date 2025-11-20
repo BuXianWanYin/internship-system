@@ -51,9 +51,6 @@ public class TeacherController {
     public Result<Teacher> getTeacherByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         Teacher teacher = teacherService.getTeacherByUserId(userId);
-        if (teacher == null) {
-            return Result.error("教师信息不存在");
-        }
         return Result.success("查询成功", teacher);
     }
     

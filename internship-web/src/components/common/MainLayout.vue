@@ -37,45 +37,57 @@
             <template #title>首页</template>
           </el-menu-item>
 
-          <el-sub-menu index="system">
+          <el-sub-menu index="system" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
             <template #title>
               <el-icon><Setting /></el-icon>
               <span>系统管理</span>
             </template>
-            <el-menu-item index="/admin/system/school">
+            <el-menu-item index="/admin/system/school" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN'])">
               <el-icon><School /></el-icon>
               <template #title>学校管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/college">
+            <el-menu-item index="/admin/system/college" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
               <el-icon><OfficeBuilding /></el-icon>
               <template #title>学院管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/major">
+            <el-menu-item index="/admin/system/major" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
               <el-icon><Reading /></el-icon>
               <template #title>专业管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/class">
+            <el-menu-item index="/admin/system/class" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
               <el-icon><User /></el-icon>
               <template #title>班级管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/semester">
+            <el-menu-item index="/admin/system/semester" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
               <el-icon><Calendar /></el-icon>
               <template #title>学期管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/config">
+            <el-menu-item index="/admin/system/config" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
               <el-icon><Tools /></el-icon>
               <template #title>系统配置</template>
             </el-menu-item>
+            <el-menu-item index="/admin/system/class-teacher" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER'])">
+              <el-icon><UserFilled /></el-icon>
+              <template #title>班主任任命</template>
+            </el-menu-item>
           </el-sub-menu>
 
-          <el-sub-menu index="user">
+          <el-sub-menu index="user" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
             <template #title>
               <el-icon><UserFilled /></el-icon>
               <span>用户管理</span>
             </template>
-            <el-menu-item index="/admin/user">
+            <el-menu-item index="/admin/user" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
               <el-icon><User /></el-icon>
               <template #title>用户管理</template>
+            </el-menu-item>
+            <el-menu-item index="/admin/student/import" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><Upload /></el-icon>
+              <template #title>学生批量导入</template>
+            </el-menu-item>
+            <el-menu-item index="/admin/student/approval" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><DocumentChecked /></el-icon>
+              <template #title>学生注册审核</template>
             </el-menu-item>
           </el-sub-menu>
         </el-menu>
@@ -93,6 +105,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
 import {
   House,
   Setting,
@@ -103,6 +116,8 @@ import {
   UserFilled,
   Calendar,
   Tools,
+  Upload,
+  DocumentChecked,
   ArrowDown as ArrowDownIcon
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
@@ -113,6 +128,7 @@ const authStore = useAuthStore()
 
 const isCollapse = ref(false)
 const userInfo = computed(() => authStore.userInfo)
+const userRoles = computed(() => authStore.roles || [])
 
 // 当前激活的菜单
 const activeMenu = computed(() => {

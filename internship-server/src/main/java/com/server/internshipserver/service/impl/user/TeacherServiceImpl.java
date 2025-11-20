@@ -5,9 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.service.user.TeacherService;
+import com.server.internshipserver.service.user.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,6 +20,12 @@ import org.springframework.util.StringUtils;
  */
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private UserService userService;
     
     @Override
     public Teacher getTeacherByUserId(Long userId) {
@@ -73,6 +82,10 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         
         // 保存
         this.save(teacher);
+        
+        // 分配指导教师角色
+        userService.assignRoleToUser(teacher.getUserId(), "ROLE_INSTRUCTOR");
+        
         return teacher;
     }
     
@@ -134,6 +147,22 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         if (schoolId != null) {
             wrapper.eq(Teacher::getSchoolId, schoolId);
         }
+        
+        // 数据权限过滤：根据用户角色自动添加查询条件
+        // 系统管理员：不添加过滤条件
+        // 学校管理员：添加 school_id = 当前用户学校ID
+        // 学院负责人：添加 college_id = 当前用户学院ID
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院的教师
+            wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的教师
+            wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+        }
+        // 系统管理员不添加限制
         
         // 按创建时间倒序
         wrapper.orderByDesc(Teacher::getCreateTime);

@@ -61,7 +61,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { Setting, School, OfficeBuilding, Reading, User, UserFilled, Calendar, Tools } from '@element-plus/icons-vue'
+import { Setting, School, OfficeBuilding, Reading, User, UserFilled, Calendar, Tools, Upload, DocumentChecked } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
@@ -101,6 +101,12 @@ const systemModules = [
     desc: '管理系统配置参数',
     path: '/admin/system/config',
     icon: 'Tools'
+  },
+  {
+    title: '班主任任命',
+    desc: '任命班级班主任',
+    path: '/admin/system/class-teacher',
+    icon: 'UserFilled'
   }
 ]
 
@@ -109,6 +115,27 @@ const userModules = [
     title: '用户管理',
     desc: '管理系统用户信息',
     path: '/admin/user',
+    icon: 'UserFilled'
+  },
+  {
+    title: '学生批量导入',
+    desc: 'Excel批量导入学生信息',
+    path: '/admin/student/import',
+    icon: 'Upload'
+  },
+  {
+    title: '学生注册审核',
+    desc: '审核学生注册申请',
+    path: '/admin/student/approval',
+    icon: 'DocumentChecked'
+  }
+]
+
+const systemExtraModules = [
+  {
+    title: '班主任任命',
+    desc: '任命班级班主任',
+    path: '/admin/system/class-teacher',
     icon: 'UserFilled'
   }
 ]

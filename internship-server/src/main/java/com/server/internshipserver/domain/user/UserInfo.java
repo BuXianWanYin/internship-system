@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @ApiModel(description = "用户基础信息")
 @Data
 @TableName("user_info")
-public class User implements Serializable {
+public class UserInfo implements Serializable {
     
     private static final long serialVersionUID = 1L;
     

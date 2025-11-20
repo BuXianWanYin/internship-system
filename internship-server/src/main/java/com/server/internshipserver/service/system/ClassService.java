@@ -68,9 +68,31 @@ public interface ClassService extends IService<Class> {
     Class validateShareCode(String shareCode);
     
     /**
+     * 获取分享码信息
+     * @param classId 班级ID
+     * @return 分享码信息（包含分享码、生成时间、过期时间、使用次数）
+     */
+    java.util.Map<String, Object> getShareCodeInfo(Long classId);
+    
+    /**
      * 增加分享码使用次数
      * @param shareCode 分享码
      */
     void incrementShareCodeUseCount(String shareCode);
+    
+    /**
+     * 任命班主任
+     * @param classId 班级ID
+     * @param teacherId 教师ID（对应Teacher表的teacherId）
+     * @return 是否成功
+     */
+    boolean appointClassTeacher(Long classId, Long teacherId);
+    
+    /**
+     * 取消班主任任命
+     * @param classId 班级ID
+     * @return 是否成功
+     */
+    boolean removeClassTeacher(Long classId);
 }
 

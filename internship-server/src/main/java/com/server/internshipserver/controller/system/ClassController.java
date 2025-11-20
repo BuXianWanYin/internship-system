@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -82,15 +81,8 @@ public class ClassController {
     @PostMapping("/{id}/share-code")
     public Result<Map<String, Object>> generateShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
-        String shareCode = classService.generateShareCode(id);
-        Class classInfo = classService.getClassById(id);
-        
-        Map<String, Object> data = new HashMap<>();
-        data.put("shareCode", shareCode);
-        data.put("generateTime", classInfo.getShareCodeGenerateTime());
-        data.put("expireTime", classInfo.getShareCodeExpireTime());
-        data.put("useCount", classInfo.getShareCodeUseCount());
-        
+        classService.generateShareCode(id);
+        Map<String, Object> data = classService.getShareCodeInfo(id);
         return Result.success("生成分享码成功", data);
     }
     
@@ -99,15 +91,8 @@ public class ClassController {
     @PostMapping("/{id}/share-code/regenerate")
     public Result<Map<String, Object>> regenerateShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
-        String shareCode = classService.regenerateShareCode(id);
-        Class classInfo = classService.getClassById(id);
-        
-        Map<String, Object> data = new HashMap<>();
-        data.put("shareCode", shareCode);
-        data.put("generateTime", classInfo.getShareCodeGenerateTime());
-        data.put("expireTime", classInfo.getShareCodeExpireTime());
-        data.put("useCount", classInfo.getShareCodeUseCount());
-        
+        classService.regenerateShareCode(id);
+        Map<String, Object> data = classService.getShareCodeInfo(id);
         return Result.success("重新生成分享码成功", data);
     }
     
@@ -116,14 +101,7 @@ public class ClassController {
     @GetMapping("/{id}/share-code")
     public Result<Map<String, Object>> getShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
-        Class classInfo = classService.getClassById(id);
-        
-        Map<String, Object> data = new HashMap<>();
-        data.put("shareCode", classInfo.getShareCode());
-        data.put("generateTime", classInfo.getShareCodeGenerateTime());
-        data.put("expireTime", classInfo.getShareCodeExpireTime());
-        data.put("useCount", classInfo.getShareCodeUseCount());
-        
+        Map<String, Object> data = classService.getShareCodeInfo(id);
         return Result.success(data);
     }
     
@@ -132,10 +110,26 @@ public class ClassController {
     public Result<Class> validateShareCode(
             @ApiParam(value = "分享码", required = true) @RequestParam String shareCode) {
         Class classInfo = classService.validateShareCode(shareCode);
-        if (classInfo == null) {
-            return Result.error(400, "分享码无效或已过期");
-        }
         return Result.success("分享码验证成功", classInfo);
+    }
+    
+    @ApiOperation("任命班主任")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PostMapping("/{classId}/appoint-teacher")
+    public Result<?> appointClassTeacher(
+            @ApiParam(value = "班级ID", required = true) @PathVariable Long classId,
+            @ApiParam(value = "教师ID", required = true) @RequestParam Long teacherId) {
+        boolean success = classService.appointClassTeacher(classId, teacherId);
+        return success ? Result.success("任命班主任成功") : Result.error("任命班主任失败");
+    }
+    
+    @ApiOperation("取消班主任任命")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PostMapping("/{classId}/remove-teacher")
+    public Result<?> removeClassTeacher(
+            @ApiParam(value = "班级ID", required = true) @PathVariable Long classId) {
+        boolean success = classService.removeClassTeacher(classId);
+        return success ? Result.success("取消班主任任命成功") : Result.error("取消班主任任命失败");
     }
 }
 

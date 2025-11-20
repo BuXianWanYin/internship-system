@@ -45,14 +45,13 @@ public interface EnterpriseService extends IService<Enterprise> {
     Enterprise updateEnterprise(Enterprise enterprise);
     
     /**
-     * 审核企业
+     * 审核企业（自动获取当前登录用户作为审核人）
      * @param enterpriseId 企业ID
      * @param auditStatus 审核状态：1-通过，2-拒绝
      * @param auditOpinion 审核意见
-     * @param auditorId 审核人ID
      * @return 是否成功
      */
-    boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion, Long auditorId);
+    boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion);
     
     /**
      * 根据ID查询企业详情

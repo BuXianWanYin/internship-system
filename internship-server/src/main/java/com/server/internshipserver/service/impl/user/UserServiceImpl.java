@@ -5,9 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
-import com.server.internshipserver.domain.user.User;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.UserRole;
+import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.UserRoleMapper;
 import com.server.internshipserver.service.user.UserService;
+import com.server.internshipserver.service.user.RoleService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,25 +23,34 @@ import org.springframework.util.StringUtils;
  * 用户管理Service实现类
  */
 @Service
-public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
+public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implements UserService {
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
+    @Autowired
+    private RoleService roleService;
+    
+    @Autowired
+    private UserRoleMapper userRoleMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
+    
     @Override
-    public User getUserByUsername(String username) {
+    public UserInfo getUserByUsername(String username) {
         if (!StringUtils.hasText(username)) {
             return null;
         }
         
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, username)
-               .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserInfo::getUsername, username)
+               .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         return this.getOne(wrapper);
     }
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public User addUser(User user) {
+    public UserInfo addUser(UserInfo user) {
         // 参数校验
         if (!StringUtils.hasText(user.getUsername())) {
             throw new BusinessException("用户名不能为空");
@@ -48,10 +63,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         
         // 检查用户名是否已存在
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, user.getUsername())
-               .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        User existUser = this.getOne(wrapper);
+        LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserInfo::getUsername, user.getUsername())
+               .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        UserInfo existUser = this.getOne(wrapper);
         if (existUser != null) {
             throw new BusinessException("用户名已存在");
         }
@@ -72,13 +87,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public User updateUser(User user) {
+    public UserInfo updateUser(UserInfo user) {
         if (user.getUserId() == null) {
             throw new BusinessException("用户ID不能为空");
         }
         
         // 检查用户是否存在
-        User existUser = this.getById(user.getUserId());
+        UserInfo existUser = this.getById(user.getUserId());
         if (existUser == null || existUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("用户不存在");
         }
@@ -86,11 +101,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 如果修改了用户名，检查新用户名是否已存在
         if (StringUtils.hasText(user.getUsername()) 
                 && !user.getUsername().equals(existUser.getUsername())) {
-            LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getUsername, user.getUsername())
-                   .ne(User::getUserId, user.getUserId())
-                   .eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            User usernameExistUser = this.getOne(wrapper);
+            LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserInfo::getUsername, user.getUsername())
+                   .ne(UserInfo::getUserId, user.getUserId())
+                   .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+            UserInfo usernameExistUser = this.getOne(wrapper);
             if (usernameExistUser != null) {
                 throw new BusinessException("用户名已存在");
             }
@@ -110,12 +125,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
     
     @Override
-    public User getUserById(Long userId) {
+    public UserInfo getUserById(Long userId) {
         if (userId == null) {
             throw new BusinessException("用户ID不能为空");
         }
         
-        User user = this.getById(userId);
+        UserInfo user = this.getById(userId);
         if (user == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("用户不存在");
         }
@@ -124,25 +139,58 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
     
     @Override
-    public Page<User> getUserPage(Page<User> page, String username, String realName, String phone) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+    public Page<UserInfo> getUserPage(Page<UserInfo> page, String username, String realName, String phone) {
+        LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(User::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        wrapper.eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 条件查询
         if (StringUtils.hasText(username)) {
-            wrapper.like(User::getUsername, username);
+            wrapper.like(UserInfo::getUsername, username);
         }
         if (StringUtils.hasText(realName)) {
-            wrapper.like(User::getRealName, realName);
+            wrapper.like(UserInfo::getRealName, realName);
         }
         if (StringUtils.hasText(phone)) {
-            wrapper.like(User::getPhone, phone);
+            wrapper.like(UserInfo::getPhone, phone);
         }
         
+        // 数据权限过滤：根据用户角色自动添加查询条件
+        // UserInfo表没有school_id、college_id、class_id字段，需要通过关联查询实现
+        // 系统管理员：不添加过滤条件
+        // 学校管理员：只能查看本校的用户（通过Student、Teacher、SchoolAdmin表关联）
+        // 学院负责人：只能查看本院的用户（通过Student、Teacher表关联）
+        // 班主任：只能查看本班的学生用户（通过Student表关联）
+        // 其他角色：只能查看个人信息（这里不限制，由Controller层控制）
+        
+        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserClassId != null) {
+            // 班主任：只能查看本班的学生用户
+            wrapper.inSql(UserInfo::getUserId, 
+                    "SELECT user_id FROM student_info WHERE class_id = " + currentUserClassId + " AND delete_flag = 0");
+        } else if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院的用户（学生和教师）
+            wrapper.inSql(UserInfo::getUserId, 
+                    "(SELECT user_id FROM student_info WHERE college_id = " + currentUserCollegeId + " AND delete_flag = 0 " +
+                    "UNION " +
+                    "SELECT user_id FROM teacher_info WHERE college_id = " + currentUserCollegeId + " AND delete_flag = 0)");
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的用户（学生、教师、学校管理员）
+            wrapper.inSql(UserInfo::getUserId, 
+                    "(SELECT user_id FROM student_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0 " +
+                    "UNION " +
+                    "SELECT user_id FROM teacher_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0 " +
+                    "UNION " +
+                    "SELECT user_id FROM school_admin_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0)");
+        }
+        // 系统管理员不添加限制
+        
         // 按创建时间倒序
-        wrapper.orderByDesc(User::getCreateTime);
+        wrapper.orderByDesc(UserInfo::getCreateTime);
         
         return this.page(page, wrapper);
     }
@@ -154,7 +202,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户ID不能为空");
         }
         
-        User user = this.getById(userId);
+        UserInfo user = this.getById(userId);
         if (user == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("用户不存在");
         }
@@ -174,7 +222,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("新密码不能为空");
         }
         
-        User user = this.getById(userId);
+        UserInfo user = this.getById(userId);
         if (user == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("用户不存在");
         }
@@ -182,6 +230,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 加密新密码
         user.setPassword(passwordEncoder.encode(newPassword));
         return this.updateById(user);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean assignRoleToUser(Long userId, String roleCode) {
+        if (userId == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        if (!StringUtils.hasText(roleCode)) {
+            throw new BusinessException("角色代码不能为空");
+        }
+        
+        // 检查用户是否存在
+        UserInfo user = this.getById(userId);
+        if (user == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        // 查询角色是否存在
+        Role role = roleService.getRoleByRoleCode(roleCode);
+        if (role == null || role.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("角色不存在：" + roleCode);
+        }
+        
+        // 检查用户是否已经拥有该角色
+        LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserRole::getUserId, userId)
+               .eq(UserRole::getRoleId, role.getRoleId())
+               .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        UserRole existUserRole = userRoleMapper.selectOne(wrapper);
+        if (existUserRole != null) {
+            // 用户已经拥有该角色，直接返回成功
+            return true;
+        }
+        
+        // 创建用户角色关联
+        UserRole userRole = new UserRole();
+        userRole.setUserId(userId);
+        userRole.setRoleId(role.getRoleId());
+        userRole.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        
+        return userRoleMapper.insert(userRole) > 0;
     }
 }
 

@@ -5,18 +5,53 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.ExcelUtil;
+import com.server.internshipserver.domain.user.dto.StudentImportDTO;
+import com.server.internshipserver.domain.user.dto.StudentImportResult;
+import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.user.Student;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.StudentMapper;
+import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.service.system.ClassService;
+import com.server.internshipserver.service.system.CollegeService;
+import com.server.internshipserver.service.system.MajorService;
 import com.server.internshipserver.service.user.StudentService;
+import com.server.internshipserver.service.user.UserService;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * 学生管理Service实现类
  */
 @Service
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ClassService classService;
+    
+    @Autowired
+    private MajorService majorService;
+    
+    @Autowired
+    private CollegeService collegeService;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
+    
+    private final Random random = new Random();
     
     @Override
     public Student getStudentByUserId(Long userId) {
@@ -148,6 +183,31 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             wrapper.eq(Student::getSchoolId, schoolId);
         }
         
+        // 数据权限过滤：根据用户角色自动添加查询条件
+        // 系统管理员：不添加过滤条件
+        // 学校管理员：添加 school_id = 当前用户学校ID
+        // 学院负责人：添加 college_id = 当前用户学院ID
+        // 班主任：添加 class_id = 当前用户班级ID
+        // 学生：添加 user_id = 当前用户ID
+        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserClassId != null) {
+            // 班主任：只能查看本班的学生
+            wrapper.eq(Student::getClassId, currentUserClassId);
+        } else if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院的学生
+            wrapper.eq(Student::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的学生
+            wrapper.eq(Student::getSchoolId, currentUserSchoolId);
+        } else {
+            // 系统管理员或学生：系统管理员不限制，学生需要单独处理
+            // 如果是学生角色，需要添加 user_id 限制（这里假设学生只能通过其他接口查看个人信息）
+            // 系统管理员可以查看所有数据，不添加限制
+        }
+        
         // 按创建时间倒序
         wrapper.orderByDesc(Student::getCreateTime);
         
@@ -169,6 +229,340 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 软删除
         student.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(student);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StudentImportResult importStudentsFromFile(MultipartFile file, Long classId) {
+        // 验证文件
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的Excel文件");
+        }
+        
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls"))) {
+            throw new BusinessException("文件格式错误，请上传Excel文件（.xlsx或.xls）");
+        }
+        
+        // 解析Excel
+        List<StudentImportDTO> importList;
+        try {
+            importList = ExcelUtil.parseStudentImportExcel(file);
+        } catch (Exception e) {
+            throw new BusinessException("文件读取失败：" + e.getMessage());
+        }
+        
+        if (importList.isEmpty()) {
+            throw new BusinessException("Excel文件中没有有效数据");
+        }
+        
+        // 批量导入
+        return batchImportStudents(importList, classId);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StudentImportResult batchImportStudents(List<StudentImportDTO> importList, Long classId) {
+        StudentImportResult result = new StudentImportResult();
+        result.setTotalCount(importList.size());
+        result.setSuccessCount(0);
+        result.setFailCount(0);
+        List<StudentImportDTO> failList = new ArrayList<>();
+        
+        for (StudentImportDTO dto : importList) {
+            try {
+                // 参数校验
+                if (!StringUtils.hasText(dto.getStudentNo())) {
+                    dto.setErrorMessage("学号不能为空");
+                    failList.add(dto);
+                    continue;
+                }
+                if (!StringUtils.hasText(dto.getRealName())) {
+                    dto.setErrorMessage("姓名不能为空");
+                    failList.add(dto);
+                    continue;
+                }
+                if (dto.getEnrollmentYear() == null) {
+                    dto.setErrorMessage("入学年份不能为空");
+                    failList.add(dto);
+                    continue;
+                }
+                
+                // 使用传入的classId或DTO中的classId
+                Long finalClassId = (dto.getClassId() != null) ? dto.getClassId() : classId;
+                if (finalClassId == null) {
+                    dto.setErrorMessage("班级ID不能为空");
+                    failList.add(dto);
+                    continue;
+                }
+                
+                // 验证班级是否存在
+                Class classInfo = classService.getClassById(finalClassId);
+                if (classInfo == null) {
+                    dto.setErrorMessage("班级不存在");
+                    failList.add(dto);
+                    continue;
+                }
+                
+                // 检查学号是否已存在
+                Student existStudent = getStudentByStudentNo(dto.getStudentNo());
+                if (existStudent != null) {
+                    dto.setErrorMessage("学号已存在");
+                    failList.add(dto);
+                    continue;
+                }
+                
+                // 生成用户名（使用学号）
+                String username = dto.getStudentNo();
+                UserInfo existUser = userService.getUserByUsername(username);
+                if (existUser != null) {
+                    dto.setErrorMessage("用户名（学号）已存在");
+                    failList.add(dto);
+                    continue;
+                }
+                
+                // 生成初始密码（8位随机数字）
+                String defaultPassword = generateDefaultPassword();
+                
+                // 创建用户
+                UserInfo user = new UserInfo();
+                user.setUsername(username);
+                user.setPassword(defaultPassword); // UserService会自动加密
+                user.setRealName(dto.getRealName());
+                user.setIdCard(dto.getIdCard());
+                user.setPhone(dto.getPhone());
+                user.setEmail(dto.getEmail());
+                user.setStatus(0); // 待审核状态
+                user = userService.addUser(user);
+                
+                // 获取专业信息以获取collegeId
+                Major major = majorService.getById(classInfo.getMajorId());
+                Long collegeId = null;
+                Long schoolId = null;
+                if (major != null) {
+                    collegeId = major.getCollegeId();
+                    // 获取学院信息以获取schoolId
+                    College college = collegeService.getById(collegeId);
+                    if (college != null) {
+                        schoolId = college.getSchoolId();
+                    }
+                }
+                
+                // 创建学生记录
+                Student student = new Student();
+                student.setUserId(user.getUserId());
+                student.setStudentNo(dto.getStudentNo());
+                student.setClassId(finalClassId);
+                student.setEnrollmentYear(dto.getEnrollmentYear());
+                // 设置冗余字段
+                student.setMajorId(classInfo.getMajorId());
+                student.setCollegeId(collegeId);
+                student.setSchoolId(schoolId);
+                student.setStatus(0); // 待审核状态
+                this.addStudent(student);
+                
+                result.setSuccessCount(result.getSuccessCount() + 1);
+            } catch (Exception e) {
+                dto.setErrorMessage(e.getMessage());
+                failList.add(dto);
+            }
+        }
+        
+        result.setFailCount(failList.size());
+        result.setFailList(failList);
+        return result;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Student registerStudentWithShareCode(StudentImportDTO studentImportDTO, String shareCode) {
+        // 验证分享码
+        Class classInfo = classService.validateShareCode(shareCode);
+        if (classInfo == null) {
+            throw new BusinessException("分享码无效或已过期");
+        }
+        
+        // 参数校验
+        if (!StringUtils.hasText(studentImportDTO.getStudentNo())) {
+            throw new BusinessException("学号不能为空");
+        }
+        if (!StringUtils.hasText(studentImportDTO.getRealName())) {
+            throw new BusinessException("姓名不能为空");
+        }
+        if (studentImportDTO.getEnrollmentYear() == null) {
+            throw new BusinessException("入学年份不能为空");
+        }
+        
+        // 检查学号是否已存在
+        Student existStudent = getStudentByStudentNo(studentImportDTO.getStudentNo());
+        if (existStudent != null) {
+            throw new BusinessException("学号已存在");
+        }
+        
+        // 生成用户名（使用学号）
+        String username = studentImportDTO.getStudentNo();
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            throw new BusinessException("用户名（学号）已存在");
+        }
+        
+        // 生成初始密码（8位随机数字）
+        String defaultPassword = generateDefaultPassword();
+        
+        // 创建用户
+        UserInfo user = new UserInfo();
+        user.setUsername(username);
+        user.setPassword(defaultPassword); // UserService会自动加密
+        user.setRealName(studentImportDTO.getRealName());
+        user.setIdCard(studentImportDTO.getIdCard());
+        user.setPhone(studentImportDTO.getPhone());
+        user.setEmail(studentImportDTO.getEmail());
+        user.setStatus(0); // 待审核状态
+        user = userService.addUser(user);
+        
+        // 获取专业信息以获取collegeId
+        Major major = majorService.getById(classInfo.getMajorId());
+        Long collegeId = null;
+        Long schoolId = null;
+        if (major != null) {
+            collegeId = major.getCollegeId();
+            // 获取学院信息以获取schoolId
+            College college = collegeService.getById(collegeId);
+            if (college != null) {
+                schoolId = college.getSchoolId();
+            }
+        }
+        
+        // 创建学生记录
+        Student student = new Student();
+        student.setUserId(user.getUserId());
+        student.setStudentNo(studentImportDTO.getStudentNo());
+        student.setClassId(classInfo.getClassId());
+        student.setEnrollmentYear(studentImportDTO.getEnrollmentYear());
+        // 设置冗余字段
+        student.setMajorId(classInfo.getMajorId());
+        student.setCollegeId(collegeId);
+        student.setSchoolId(schoolId);
+        student.setStatus(0); // 待审核状态
+        student = this.addStudent(student);
+        
+        // 增加分享码使用次数
+        classService.incrementShareCodeUseCount(shareCode);
+        
+        return student;
+    }
+    
+    /**
+     * 生成默认密码（8位随机数字）
+     */
+    private String generateDefaultPassword() {
+        StringBuilder password = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            password.append(random.nextInt(10));
+        }
+        return password.toString();
+    }
+    
+    @Override
+    public Page<Student> getPendingApprovalStudentPage(Page<Student> page, String studentNo, String realName) {
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        wrapper.eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        // 只查询待审核的学生（status=0）
+        wrapper.eq(Student::getStatus, 0);
+        
+        // 条件查询
+        if (StringUtils.hasText(studentNo)) {
+            wrapper.like(Student::getStudentNo, studentNo);
+        }
+        if (StringUtils.hasText(realName)) {
+            // 需要通过用户表关联查询真实姓名
+            // 先查询符合条件的用户ID列表
+            List<UserInfo> users = userService.list(
+                    new LambdaQueryWrapper<UserInfo>()
+                            .like(UserInfo::getRealName, realName)
+                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .eq(UserInfo::getStatus, 0) // 待审核状态
+            );
+            if (users != null && !users.isEmpty()) {
+                List<Long> userIds = new ArrayList<>();
+                for (UserInfo user : users) {
+                    userIds.add(user.getUserId());
+                }
+                wrapper.in(Student::getUserId, userIds);
+            } else {
+                // 如果没有匹配的用户，返回空结果
+                wrapper.eq(Student::getStudentId, -1L);
+            }
+        }
+        
+        // 数据权限过滤：班主任只能查看本班的学生
+        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
+        if (currentUserClassId != null) {
+            // 班主任：只能查看本班的学生
+            wrapper.eq(Student::getClassId, currentUserClassId);
+        } else {
+            // 系统管理员、学校管理员、学院负责人可以查看所有待审核学生
+            // 不添加额外的过滤条件
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Student::getCreateTime);
+        
+        return this.page(page, wrapper);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean approveStudentRegistration(Long studentId, boolean approved, String auditOpinion) {
+        if (studentId == null) {
+            throw new BusinessException("学生ID不能为空");
+        }
+        
+        // 查询学生信息
+        Student student = this.getById(studentId);
+        if (student == null || student.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("学生不存在");
+        }
+        
+        // 检查学生状态是否为待审核
+        if (student.getStatus() != 0) {
+            throw new BusinessException("该学生不是待审核状态");
+        }
+        
+        // 数据权限检查：班主任只能审核本班的学生
+        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
+        if (currentUserClassId != null && !currentUserClassId.equals(student.getClassId())) {
+            throw new BusinessException("无权限审核该学生");
+        }
+        
+        // 查询用户信息
+        UserInfo user = userService.getUserById(student.getUserId());
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        if (approved) {
+            // 审核通过：激活用户账号（status=1）
+            user.setStatus(1);
+            student.setStatus(1);
+            // 分配学生角色
+            userService.assignRoleToUser(user.getUserId(), "ROLE_STUDENT");
+        } else {
+            // 审核拒绝：保持禁用状态（status=0），或者可以软删除
+            // 这里选择保持status=0，表示审核被拒绝
+            // 如果需要，可以添加一个拒绝原因字段
+            user.setStatus(0);
+            student.setStatus(0);
+        }
+        
+        // 更新用户和学生状态
+        userService.updateUser(user);
+        this.updateById(student);
+        
+        return true;
     }
 }
 
