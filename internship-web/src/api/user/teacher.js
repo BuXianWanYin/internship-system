@@ -17,7 +17,7 @@ export const teacherApi = {
   getTeacherByUserId(userId) {
     return request.get(`/user/teacher/user/${userId}`)
   },
-  // 添加教师
+  // 添加教师（自动创建用户）
   addTeacher(data) {
     return request.post('/user/teacher', data)
   },

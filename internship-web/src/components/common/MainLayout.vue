@@ -89,6 +89,10 @@
               <el-icon><DocumentChecked /></el-icon>
               <template #title>学生注册审核</template>
             </el-menu-item>
+            <el-menu-item index="/admin/teacher" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
+              <el-icon><UserFilled /></el-icon>
+              <template #title>教师管理</template>
+            </el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-aside>

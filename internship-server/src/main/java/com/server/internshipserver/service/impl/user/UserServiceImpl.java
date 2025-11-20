@@ -6,11 +6,18 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.domain.user.SchoolAdmin;
+import com.server.internshipserver.domain.user.Student;
+import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.UserRole;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.mapper.user.SchoolAdminMapper;
+import com.server.internshipserver.mapper.user.StudentMapper;
+import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.UserRoleMapper;
+import com.server.internshipserver.service.user.PermissionService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.service.user.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +25,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 用户管理Service实现类
@@ -35,6 +46,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private PermissionService permissionService;
+    
+    @Autowired
+    private StudentMapper studentMapper;
+    
+    @Autowired
+    private TeacherMapper teacherMapper;
+    
+    @Autowired
+    private SchoolAdminMapper schoolAdminMapper;
     
     @Override
     public UserInfo getUserByUsername(String username) {
@@ -170,22 +193,102 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         if (currentUserClassId != null) {
             // 班主任：只能查看本班的学生用户
-            wrapper.inSql(UserInfo::getUserId, 
-                    "SELECT user_id FROM student_info WHERE class_id = " + currentUserClassId + " AND delete_flag = 0");
+            // 先查询本班的学生user_id列表，然后使用in方法
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getClassId, currentUserClassId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getUserId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> userIds = students.stream()
+                        .map(Student::getUserId)
+                        .collect(Collectors.toList());
+                wrapper.in(UserInfo::getUserId, userIds);
+            } else {
+                // 如果没有学生，返回空结果
+                wrapper.eq(UserInfo::getUserId, -1L);
+            }
         } else if (currentUserCollegeId != null) {
             // 学院负责人：只能查看本院的用户（学生和教师）
-            wrapper.inSql(UserInfo::getUserId, 
-                    "(SELECT user_id FROM student_info WHERE college_id = " + currentUserCollegeId + " AND delete_flag = 0 " +
-                    "UNION " +
-                    "SELECT user_id FROM teacher_info WHERE college_id = " + currentUserCollegeId + " AND delete_flag = 0)");
+            // 先查询本院的学生user_id列表
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getCollegeId, currentUserCollegeId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getUserId)
+            );
+            // 再查询本院的教师user_id列表
+            List<Teacher> teachers = teacherMapper.selectList(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getCollegeId, currentUserCollegeId)
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Teacher::getUserId)
+            );
+            // 合并user_id列表
+            List<Long> userIds = new ArrayList<>();
+            if (students != null && !students.isEmpty()) {
+                userIds.addAll(students.stream()
+                        .map(Student::getUserId)
+                        .collect(Collectors.toList()));
+            }
+            if (teachers != null && !teachers.isEmpty()) {
+                userIds.addAll(teachers.stream()
+                        .map(Teacher::getUserId)
+                        .collect(Collectors.toList()));
+            }
+            if (!userIds.isEmpty()) {
+                wrapper.in(UserInfo::getUserId, userIds);
+            } else {
+                // 如果没有用户，返回空结果
+                wrapper.eq(UserInfo::getUserId, -1L);
+            }
         } else if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的用户（学生、教师、学校管理员）
-            wrapper.inSql(UserInfo::getUserId, 
-                    "(SELECT user_id FROM student_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0 " +
-                    "UNION " +
-                    "SELECT user_id FROM teacher_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0 " +
-                    "UNION " +
-                    "SELECT user_id FROM school_admin_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0)");
+            // 先查询本校的学生user_id列表
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getSchoolId, currentUserSchoolId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getUserId)
+            );
+            // 再查询本校的教师user_id列表
+            List<Teacher> teachers = teacherMapper.selectList(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getSchoolId, currentUserSchoolId)
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Teacher::getUserId)
+            );
+            // 再查询本校的学校管理员user_id列表
+            List<SchoolAdmin> schoolAdmins = schoolAdminMapper.selectList(
+                    new LambdaQueryWrapper<SchoolAdmin>()
+                            .eq(SchoolAdmin::getSchoolId, currentUserSchoolId)
+                            .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(SchoolAdmin::getUserId)
+            );
+            // 合并user_id列表
+            List<Long> userIds = new ArrayList<>();
+            if (students != null && !students.isEmpty()) {
+                userIds.addAll(students.stream()
+                        .map(Student::getUserId)
+                        .collect(Collectors.toList()));
+            }
+            if (teachers != null && !teachers.isEmpty()) {
+                userIds.addAll(teachers.stream()
+                        .map(Teacher::getUserId)
+                        .collect(Collectors.toList()));
+            }
+            if (schoolAdmins != null && !schoolAdmins.isEmpty()) {
+                userIds.addAll(schoolAdmins.stream()
+                        .map(SchoolAdmin::getUserId)
+                        .collect(Collectors.toList()));
+            }
+            if (!userIds.isEmpty()) {
+                wrapper.in(UserInfo::getUserId, userIds);
+            } else {
+                // 如果没有用户，返回空结果
+                wrapper.eq(UserInfo::getUserId, -1L);
+            }
         }
         // 系统管理员不添加限制
         
@@ -271,7 +374,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         userRole.setRoleId(role.getRoleId());
         userRole.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
-        return userRoleMapper.insert(userRole) > 0;
+        boolean success = userRoleMapper.insert(userRole) > 0;
+        
+        // 角色分配成功后，清除用户权限缓存
+        if (success) {
+            permissionService.clearUserPermissionCache(userId);
+        }
+        
+        return success;
     }
 }
 

@@ -7,6 +7,7 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.user.Teacher;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
@@ -185,6 +186,151 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 软删除
         teacher.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(teacher);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Teacher addTeacherWithUser(String teacherNo, String realName, String idCard, String phone,
+                                      String email, Long collegeId, Long schoolId, String title,
+                                      String department, String password, Integer status) {
+        // 参数校验
+        if (!StringUtils.hasText(teacherNo)) {
+            throw new BusinessException("工号不能为空");
+        }
+        if (!StringUtils.hasText(realName)) {
+            throw new BusinessException("真实姓名不能为空");
+        }
+        if (!StringUtils.hasText(password)) {
+            throw new BusinessException("初始密码不能为空");
+        }
+        if (collegeId == null) {
+            throw new BusinessException("所属学院ID不能为空");
+        }
+        
+        // 检查工号是否已存在
+        Teacher existTeacher = getTeacherByTeacherNo(teacherNo);
+        if (existTeacher != null) {
+            throw new BusinessException("工号已存在");
+        }
+        
+        // 生成用户名（使用工号）
+        String username = teacherNo;
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            throw new BusinessException("用户名（工号）已存在");
+        }
+        
+        // 创建用户
+        UserInfo user = new UserInfo();
+        user.setUsername(username);
+        user.setPassword(password); // UserService会自动加密
+        user.setRealName(realName);
+        user.setIdCard(idCard);
+        user.setPhone(phone);
+        user.setEmail(email);
+        if (status == null) {
+            user.setStatus(1); // 默认启用
+        } else {
+            user.setStatus(status);
+        }
+        user = userService.addUser(user);
+        
+        // 创建教师记录
+        Teacher teacher = new Teacher();
+        teacher.setUserId(user.getUserId());
+        teacher.setTeacherNo(teacherNo);
+        teacher.setCollegeId(collegeId);
+        teacher.setSchoolId(schoolId);
+        teacher.setTitle(title);
+        teacher.setDepartment(department);
+        if (status == null) {
+            teacher.setStatus(1); // 默认启用
+        } else {
+            teacher.setStatus(status);
+        }
+        teacher.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        
+        // 保存教师
+        this.save(teacher);
+        
+        // 分配指导教师角色
+        userService.assignRoleToUser(teacher.getUserId(), "ROLE_INSTRUCTOR");
+        
+        return teacher;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Teacher updateTeacherWithUser(Long teacherId, Long userId, String teacherNo, String realName,
+                                         String idCard, String phone, String email, Long collegeId,
+                                         Long schoolId, String title, String department, Integer status) {
+        if (teacherId == null) {
+            throw new BusinessException("教师ID不能为空");
+        }
+        if (userId == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        
+        // 检查教师是否存在
+        Teacher existTeacher = this.getById(teacherId);
+        if (existTeacher == null || existTeacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("教师不存在");
+        }
+        
+        // 如果修改了工号，检查新工号是否已存在
+        if (StringUtils.hasText(teacherNo) && !teacherNo.equals(existTeacher.getTeacherNo())) {
+            Teacher teacherNoExist = getTeacherByTeacherNo(teacherNo);
+            if (teacherNoExist != null) {
+                throw new BusinessException("工号已存在");
+            }
+        }
+        
+        // 更新用户信息
+        UserInfo user = userService.getUserById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        if (StringUtils.hasText(realName)) {
+            user.setRealName(realName);
+        }
+        if (StringUtils.hasText(idCard)) {
+            user.setIdCard(idCard);
+        }
+        if (StringUtils.hasText(phone)) {
+            user.setPhone(phone);
+        }
+        if (StringUtils.hasText(email)) {
+            user.setEmail(email);
+        }
+        if (status != null) {
+            user.setStatus(status);
+        }
+        userService.updateUser(user);
+        
+        // 更新教师信息
+        Teacher teacher = new Teacher();
+        teacher.setTeacherId(teacherId);
+        if (StringUtils.hasText(teacherNo)) {
+            teacher.setTeacherNo(teacherNo);
+        }
+        if (collegeId != null) {
+            teacher.setCollegeId(collegeId);
+        }
+        if (schoolId != null) {
+            teacher.setSchoolId(schoolId);
+        }
+        if (StringUtils.hasText(title)) {
+            teacher.setTitle(title);
+        }
+        if (StringUtils.hasText(department)) {
+            teacher.setDepartment(department);
+        }
+        if (status != null) {
+            teacher.setStatus(status);
+        }
+        this.updateById(teacher);
+        
+        return this.getById(teacherId);
     }
 }
 

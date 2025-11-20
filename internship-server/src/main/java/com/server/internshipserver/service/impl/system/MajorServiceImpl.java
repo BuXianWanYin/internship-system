@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * 专业管理Service实现类
  */
@@ -133,8 +136,22 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
             wrapper.eq(Major::getCollegeId, currentUserCollegeId);
         } else if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的专业（通过学院关联）
-            wrapper.inSql(Major::getCollegeId, 
-                    "SELECT college_id FROM college_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0");
+            // 先查询本校的学院ID列表，然后使用in方法
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, currentUserSchoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                wrapper.in(Major::getCollegeId, collegeIds);
+            } else {
+                // 如果没有学院，返回空结果
+                wrapper.eq(Major::getMajorId, -1L);
+            }
         } else if (collegeId != null) {
             // 系统管理员可以指定学院ID查询
             wrapper.eq(Major::getCollegeId, collegeId);

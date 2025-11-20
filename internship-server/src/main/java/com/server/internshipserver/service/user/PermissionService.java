@@ -36,5 +36,11 @@ public interface PermissionService extends IService<Permission> {
      * @return 权限列表
      */
     List<Permission> getPermissionsByUserId(Long userId);
+    
+    /**
+     * 清除用户权限缓存
+     * @param userId 用户ID
+     */
+    void clearUserPermissionCache(Long userId);
 }
 

@@ -4,18 +4,25 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.domain.user.UserRole;
 import com.server.internshipserver.mapper.user.RoleMapper;
+import com.server.internshipserver.mapper.user.UserRoleMapper;
 import com.server.internshipserver.service.user.RoleService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 角色管理Service实现类
  */
 @Service
 public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements RoleService {
+    
+    @Autowired
+    private UserRoleMapper userRoleMapper;
     
     @Override
     public Role getRoleByRoleCode(String roleCode) {
@@ -44,13 +51,24 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             return null;
         }
         
-        // 通过SQL查询用户角色
-        return baseMapper.selectList(
-                new LambdaQueryWrapper<Role>()
-                        .inSql(Role::getRoleId, 
-                                "SELECT role_id FROM user_role WHERE user_id = " + userId + " AND delete_flag = 0")
-                        .eq(Role::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        // 先查询用户角色关联表，获取role_id列表，然后使用in方法
+        List<UserRole> userRoles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<UserRole>()
+                        .eq(UserRole::getUserId, userId)
+                        .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(UserRole::getRoleId)
         );
+        if (userRoles != null && !userRoles.isEmpty()) {
+            List<Long> roleIds = userRoles.stream()
+                    .map(UserRole::getRoleId)
+                    .collect(Collectors.toList());
+            return baseMapper.selectList(
+                    new LambdaQueryWrapper<Role>()
+                            .in(Role::getRoleId, roleIds)
+                            .eq(Role::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+        }
+        return java.util.Collections.emptyList();
     }
 }
 

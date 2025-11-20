@@ -48,6 +48,16 @@ export default [
       title: '企业注册',
       requiresAuth: false
     }
+  },
+  {
+    path: '/admin/teacher',
+    name: 'TeacherManagement',
+    component: () => import('@/views/admin/TeacherManagement.vue'),
+    meta: {
+      title: '教师管理',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+    }
   }
 ]
 

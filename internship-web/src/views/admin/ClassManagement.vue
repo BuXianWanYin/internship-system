@@ -137,15 +137,19 @@
         <div class="share-code-info">
           <div class="info-item">
             <span class="info-label">生成时间：</span>
-            <span class="info-value">{{ shareCodeInfo.generateTime || '-' }}</span>
+            <span class="info-value">{{ shareCodeInfo.generateTime ? formatDateTime(shareCodeInfo.generateTime) : '-' }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">过期时间：</span>
-            <span class="info-value">{{ shareCodeInfo.expireTime || '-' }}</span>
+            <span class="info-value">{{ shareCodeInfo.expireTime ? formatDateTime(shareCodeInfo.expireTime) : '-' }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">使用次数：</span>
             <span class="info-value">{{ shareCodeInfo.useCount || 0 }} 次</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">已注册学生：</span>
+            <span class="info-value">{{ shareCodeInfo.registeredStudentCount || 0 }} 人</span>
           </div>
         </div>
         <div class="share-code-actions">
@@ -167,6 +171,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import { classApi } from '@/api/system/class'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { formatDateTime } from '@/utils/dateUtils'
 
 const loading = ref(false)
 const submitLoading = ref(false)

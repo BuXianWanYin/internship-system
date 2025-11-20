@@ -3,6 +3,8 @@ package com.server.internshipserver.controller.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Teacher;
+import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
+import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
 import com.server.internshipserver.service.user.TeacherService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -57,16 +59,43 @@ public class TeacherController {
     @ApiOperation("添加教师")
     @PostMapping
     @PreAuthorize("hasAuthority('user:add')")
-    public Result<Teacher> addTeacher(@RequestBody Teacher teacher) {
-        Teacher result = teacherService.addTeacher(teacher);
+    public Result<Teacher> addTeacher(@RequestBody TeacherAddDTO teacherAddDTO) {
+        // 如果提供了userId，使用原有方法（兼容已有接口，通过Teacher对象）
+        // 这里统一使用新方法，自动创建用户
+        Teacher result = teacherService.addTeacherWithUser(
+                teacherAddDTO.getTeacherNo(),
+                teacherAddDTO.getRealName(),
+                teacherAddDTO.getIdCard(),
+                teacherAddDTO.getPhone(),
+                teacherAddDTO.getEmail(),
+                teacherAddDTO.getCollegeId(),
+                teacherAddDTO.getSchoolId(),
+                teacherAddDTO.getTitle(),
+                teacherAddDTO.getDepartment(),
+                teacherAddDTO.getPassword(),
+                teacherAddDTO.getStatus()
+        );
         return Result.success("添加成功", result);
     }
     
     @ApiOperation("更新教师信息")
     @PutMapping
     @PreAuthorize("hasAuthority('user:edit')")
-    public Result<Teacher> updateTeacher(@RequestBody Teacher teacher) {
-        Teacher result = teacherService.updateTeacher(teacher);
+    public Result<Teacher> updateTeacher(@RequestBody TeacherUpdateDTO teacherUpdateDTO) {
+        Teacher result = teacherService.updateTeacherWithUser(
+                teacherUpdateDTO.getTeacherId(),
+                teacherUpdateDTO.getUserId(),
+                teacherUpdateDTO.getTeacherNo(),
+                teacherUpdateDTO.getRealName(),
+                teacherUpdateDTO.getIdCard(),
+                teacherUpdateDTO.getPhone(),
+                teacherUpdateDTO.getEmail(),
+                teacherUpdateDTO.getCollegeId(),
+                teacherUpdateDTO.getSchoolId(),
+                teacherUpdateDTO.getTitle(),
+                teacherUpdateDTO.getDepartment(),
+                teacherUpdateDTO.getStatus()
+        );
         return Result.success("更新成功", result);
     }
     

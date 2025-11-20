@@ -7,9 +7,13 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.Class;
+import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.mapper.system.ClassMapper;
+import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.service.system.ClassService;
 import com.server.internshipserver.service.system.MajorService;
 import com.server.internshipserver.service.user.TeacherService;
@@ -20,7 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * 班级管理Service实现类
@@ -39,6 +45,12 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
+    
+    @Autowired
+    private StudentMapper studentMapper;
     
     private static final int SHARE_CODE_LENGTH = 8;
     private static final int SHARE_CODE_EXPIRE_DAYS = 30;
@@ -157,14 +169,55 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             wrapper.eq(Class::getClassId, currentUserClassId);
         } else if (currentUserCollegeId != null) {
             // 学院负责人：只能查看本院的班级（通过专业关联）
-            wrapper.inSql(Class::getMajorId, 
-                    "SELECT major_id FROM major_info WHERE college_id = " + currentUserCollegeId + " AND delete_flag = 0");
+            // 先查询本院的专业ID列表，然后使用in方法
+            List<Major> majors = majorService.list(
+                    new LambdaQueryWrapper<Major>()
+                            .eq(Major::getCollegeId, currentUserCollegeId)
+                            .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Major::getMajorId)
+            );
+            if (majors != null && !majors.isEmpty()) {
+                List<Long> majorIds = majors.stream()
+                        .map(Major::getMajorId)
+                        .collect(Collectors.toList());
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                // 如果没有专业，返回空结果
+                wrapper.eq(Class::getClassId, -1L);
+            }
         } else if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的班级（通过专业和学院关联）
-            wrapper.inSql(Class::getMajorId, 
-                    "SELECT major_id FROM major_info WHERE college_id IN " +
-                    "(SELECT college_id FROM college_info WHERE school_id = " + currentUserSchoolId + " AND delete_flag = 0) " +
-                    "AND delete_flag = 0");
+            // 先查询本校的学院ID列表
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, currentUserSchoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                // 再查询这些学院的专业ID列表
+                List<Major> majors = majorService.list(
+                        new LambdaQueryWrapper<Major>()
+                                .in(Major::getCollegeId, collegeIds)
+                                .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Major::getMajorId)
+                );
+                if (majors != null && !majors.isEmpty()) {
+                    List<Long> majorIds = majors.stream()
+                            .map(Major::getMajorId)
+                            .collect(Collectors.toList());
+                    wrapper.in(Class::getMajorId, majorIds);
+                } else {
+                    // 如果没有专业，返回空结果
+                    wrapper.eq(Class::getClassId, -1L);
+                }
+            } else {
+                // 如果没有学院，返回空结果
+                wrapper.eq(Class::getClassId, -1L);
+            }
         } else if (majorId != null) {
             // 系统管理员可以指定专业ID查询
             wrapper.eq(Class::getMajorId, majorId);
@@ -269,11 +322,26 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             throw new BusinessException("班级不存在");
         }
         
+        // 查询通过该分享码注册的学生数量（已审核通过的学生）
+        Long registeredStudentCount = 0L;
+        if (StringUtils.hasText(classInfo.getShareCode()) && classInfo.getShareCodeGenerateTime() != null) {
+            // 查询该班级中通过分享码注册的学生数量
+            // 通过创建时间和班级ID来判断（分享码注册的学生创建时间应该在分享码生成时间之后）
+            registeredStudentCount = studentMapper.selectCount(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getClassId, classId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .eq(Student::getStatus, 1) // 已审核通过
+                            .ge(Student::getCreateTime, classInfo.getShareCodeGenerateTime())
+            );
+        }
+        
         java.util.Map<String, Object> data = new java.util.HashMap<>();
         data.put("shareCode", classInfo.getShareCode());
         data.put("generateTime", classInfo.getShareCodeGenerateTime());
         data.put("expireTime", classInfo.getShareCodeExpireTime());
         data.put("useCount", classInfo.getShareCodeUseCount());
+        data.put("registeredStudentCount", registeredStudentCount); // 通过分享码注册的学生数量
         
         return data;
     }
