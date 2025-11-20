@@ -81,14 +81,10 @@
               <el-icon><User /></el-icon>
               <template #title>用户管理</template>
             </el-menu-item>
-            <el-menu-item index="/admin/student/import" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><Upload /></el-icon>
-              <template #title>学生批量导入</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/student/approval" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><DocumentChecked /></el-icon>
-              <template #title>学生注册审核</template>
-            </el-menu-item>
+        <el-menu-item index="/admin/student" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
+          <el-icon><User /></el-icon>
+          <template #title>学生管理</template>
+        </el-menu-item>
             <el-menu-item index="/admin/teacher" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
               <el-icon><UserFilled /></el-icon>
               <template #title>教师管理</template>

@@ -30,6 +30,16 @@ export const userApi = {
     return request.post(`/user/${userId}/reset-password`, null, {
       params: { newPassword }
     })
+  },
+  // 根据用户名查询用户
+  getUserByUsername(username) {
+    return request.get(`/user/username/${username}`)
+  },
+  // 为用户分配角色
+  assignRoleToUser(userId, roleCode) {
+    return request.post(`/user/${userId}/assign-role`, null, {
+      params: { roleCode }
+    })
   }
 }
 

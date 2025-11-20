@@ -2,6 +2,7 @@
   <PageLayout title="用户管理">
     <template #actions>
       <el-button type="primary" :icon="Plus" @click="handleAdd">添加用户</el-button>
+      <el-button type="success" :icon="Upload" @click="handleImport">批量导入</el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -167,8 +168,9 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { userApi } from '@/api/user/user'
 
@@ -425,6 +427,12 @@ const handleResetPasswordSubmit = async () => {
       submitting.value = false
     }
   })
+}
+
+// 批量导入
+const router = useRouter()
+const handleImport = () => {
+  router.push('/admin/student/import')
 }
 
 // 删除

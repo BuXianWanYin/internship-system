@@ -12,21 +12,11 @@ export default [
     }
   },
   {
-    path: '/admin/student/import',
-    name: 'StudentImport',
-    component: () => import('@/views/admin/StudentImport.vue'),
+    path: '/admin/student',
+    name: 'StudentManagement',
+    component: () => import('@/views/admin/StudentManagement.vue'),
     meta: {
-      title: '学生批量导入',
-      requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
-    }
-  },
-  {
-    path: '/admin/student/approval',
-    name: 'StudentApproval',
-    component: () => import('@/views/admin/StudentApproval.vue'),
-    meta: {
-      title: '学生注册审核',
+      title: '学生管理',
       requiresAuth: true,
       roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
     }

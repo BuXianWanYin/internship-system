@@ -35,6 +35,34 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
+    // 如果是blob响应（文件下载），需要特殊处理
+    if (response.config.responseType === 'blob') {
+      // 检查HTTP状态码
+      if (response.status === 200) {
+        // 检查Content-Type，判断是否是错误响应（错误响应通常是JSON格式的blob）
+        const contentType = response.headers['content-type'] || response.headers['Content-Type']
+        if (contentType && contentType.includes('application/json')) {
+          // 错误响应，需要解析JSON
+          return response.data.text().then(text => {
+            try {
+              const errorData = JSON.parse(text)
+              ElMessage.error(errorData.message || '下载失败')
+              return Promise.reject(new Error(errorData.message || '下载失败'))
+            } catch (e) {
+              ElMessage.error('下载失败')
+              return Promise.reject(new Error('下载失败'))
+            }
+          })
+        }
+        // 正常的文件响应，直接返回blob
+        return response.data
+      } else {
+        // HTTP状态码不是200，说明有错误
+        ElMessage.error('下载失败')
+        return Promise.reject(new Error('下载失败'))
+      }
+    }
+    
     const res = response.data
     
     // 如果响应码不是200，说明有错误

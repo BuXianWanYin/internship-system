@@ -79,5 +79,27 @@ public class UserController {
         boolean success = userService.resetPassword(userId, newPassword);
         return success ? Result.success("密码重置成功") : Result.error("密码重置失败");
     }
+    
+    @ApiOperation("根据用户名查询用户")
+    @GetMapping("/username/{username}")
+    @PreAuthorize("hasAuthority('user:view')")
+    public Result<UserInfo> getUserByUsername(
+            @ApiParam(value = "用户名", required = true) @PathVariable String username) {
+        UserInfo user = userService.getUserByUsername(username);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        return Result.success("查询成功", user);
+    }
+    
+    @ApiOperation("为用户分配角色")
+    @PostMapping("/{userId}/assign-role")
+    @PreAuthorize("hasAuthority('user:edit')")
+    public Result<?> assignRoleToUser(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
+            @ApiParam(value = "角色代码", required = true) @RequestParam String roleCode) {
+        boolean success = userService.assignRoleToUser(userId, roleCode);
+        return success ? Result.success("角色分配成功") : Result.error("角色分配失败");
+    }
 }
 
