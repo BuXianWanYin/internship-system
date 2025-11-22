@@ -1,0 +1,163 @@
+package com.server.internshipserver.domain.internship;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.FieldFill;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+/**
+ * 实习申请实体类
+ */
+@ApiModel(description = "实习申请信息")
+@Data
+@TableName("internship_apply")
+public class InternshipApply implements Serializable {
+    
+    private static final long serialVersionUID = 1L;
+    
+    @ApiModelProperty(value = "申请ID", example = "1")
+    @TableId(type = IdType.AUTO)
+    private Long applyId;
+    
+    @ApiModelProperty(value = "学生ID", required = true, example = "1")
+    @TableField("student_id")
+    private Long studentId;
+    
+    @ApiModelProperty(value = "用户ID", required = true, example = "1")
+    @TableField("user_id")
+    private Long userId;
+    
+    @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习", example = "1")
+    @TableField("apply_type")
+    private Integer applyType;
+    
+    @ApiModelProperty(value = "企业ID（合作企业时必填）", example = "1")
+    @TableField("enterprise_id")
+    private Long enterpriseId;
+    
+    @ApiModelProperty(value = "岗位ID（合作企业时可选）", example = "1")
+    @TableField("post_id")
+    private Long postId;
+    
+    @ApiModelProperty(value = "自主实习企业名称", example = "北京科技有限公司")
+    @TableField("self_enterprise_name")
+    private String selfEnterpriseName;
+    
+    @ApiModelProperty(value = "自主实习企业地址", example = "北京市海淀区中关村大街1号")
+    @TableField("self_enterprise_address")
+    private String selfEnterpriseAddress;
+    
+    @ApiModelProperty(value = "自主实习联系人", example = "李经理")
+    @TableField("self_contact_person")
+    private String selfContactPerson;
+    
+    @ApiModelProperty(value = "自主实习联系电话", example = "13800138000")
+    @TableField("self_contact_phone")
+    private String selfContactPhone;
+    
+    @ApiModelProperty(value = "自主实习企业性质", example = "民营企业")
+    @TableField("self_enterprise_nature")
+    private String selfEnterpriseNature;
+    
+    @ApiModelProperty(value = "自主实习岗位名称", example = "软件开发实习生")
+    @TableField("self_post_name")
+    private String selfPostName;
+    
+    @ApiModelProperty(value = "自主实习开始日期", example = "2024-03-01")
+    @TableField("self_start_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate selfStartDate;
+    
+    @ApiModelProperty(value = "自主实习结束日期", example = "2024-06-30")
+    @TableField("self_end_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate selfEndDate;
+    
+    @ApiModelProperty(value = "自主实习说明", example = "希望通过实习提升实践能力")
+    @TableField("self_description")
+    private String selfDescription;
+    
+    @ApiModelProperty(value = "简历内容（富文本）", example = "姓名：张三\n学号：2021001")
+    @TableField("resume_content")
+    private String resumeContent;
+    
+    @ApiModelProperty(value = "简历附件URL（多个用逗号分隔）", example = "/uploads/resume1.pdf,/uploads/resume2.pdf")
+    @TableField("resume_attachment")
+    private String resumeAttachment;
+    
+    @ApiModelProperty(value = "申请理由", example = "希望在该企业实习，提升Java开发能力")
+    @TableField("apply_reason")
+    private String applyReason;
+    
+    @ApiModelProperty(value = "状态：0-待审核，1-已通过，2-已拒绝，3-已录用，4-已拒绝录用", example = "1")
+    @TableField("status")
+    private Integer status;
+    
+    @ApiModelProperty(value = "审核人ID（班主任或学校管理员）", example = "1")
+    @TableField("audit_user_id")
+    private Long auditUserId;
+    
+    @ApiModelProperty(value = "审核时间")
+    @TableField("audit_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime auditTime;
+    
+    @ApiModelProperty(value = "审核意见", example = "审核通过")
+    @TableField("audit_opinion")
+    private String auditOpinion;
+    
+    @ApiModelProperty(value = "企业反馈", example = "该学生表现优秀，同意录用")
+    @TableField("enterprise_feedback")
+    private String enterpriseFeedback;
+    
+    @ApiModelProperty(value = "企业反馈时间")
+    @TableField("enterprise_feedback_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime enterpriseFeedbackTime;
+    
+    @ApiModelProperty(value = "面试时间")
+    @TableField("interview_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime interviewTime;
+    
+    @ApiModelProperty(value = "面试地点", example = "北京市海淀区中关村大街1号")
+    @TableField("interview_location")
+    private String interviewLocation;
+    
+    @ApiModelProperty(value = "面试结果：1-通过，2-不通过", example = "1")
+    @TableField("interview_result")
+    private Integer interviewResult;
+    
+    @ApiModelProperty(value = "面试评价", example = "技术能力较强，沟通能力良好")
+    @TableField("interview_comment")
+    private String interviewComment;
+    
+    @ApiModelProperty(value = "录用时间")
+    @TableField("accept_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime acceptTime;
+    
+    @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
+    @TableField("delete_flag")
+    private Integer deleteFlag;
+    
+    @ApiModelProperty(value = "创建时间")
+    @TableField(value = "create_time", fill = FieldFill.INSERT)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+    
+    @ApiModelProperty(value = "更新时间")
+    @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
+}
+

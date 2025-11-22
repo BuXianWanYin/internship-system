@@ -98,6 +98,110 @@
               <template #title>企业导师管理</template>
             </el-menu-item>
           </el-sub-menu>
+
+          <!-- 实习管理菜单 - 管理员 -->
+          <el-sub-menu index="internship-admin" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'])">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>实习管理</span>
+            </template>
+            <el-menu-item index="/admin/internship/plan" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
+              <el-icon><Document /></el-icon>
+              <template #title>实习计划管理</template>
+            </el-menu-item>
+            <el-menu-item index="/admin/internship/apply/audit" v-if="hasAnyRole(userRoles, ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><DocumentChecked /></el-icon>
+              <template #title>实习申请审核</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 实习管理菜单 - 企业 -->
+          <el-sub-menu index="internship-enterprise" v-if="hasAnyRole(userRoles, ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])">
+            <template #title>
+              <el-icon><Briefcase /></el-icon>
+              <span>实习管理</span>
+            </template>
+            <el-menu-item index="/enterprise/internship/post" v-if="hasAnyRole(userRoles, ['ROLE_ENTERPRISE_ADMIN'])">
+              <el-icon><Briefcase /></el-icon>
+              <template #title>岗位管理</template>
+            </el-menu-item>
+            <el-menu-item index="/enterprise/internship/interview" v-if="hasAnyRole(userRoles, ['ROLE_ENTERPRISE_ADMIN'])">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>面试管理</template>
+            </el-menu-item>
+            <el-menu-item index="/enterprise/internship/attendance" v-if="hasAnyRole(userRoles, ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])">
+              <el-icon><Clock /></el-icon>
+              <template #title>考勤管理</template>
+            </el-menu-item>
+            <el-menu-item index="/teacher/internship/feedback" v-if="hasAnyRole(userRoles, ['ROLE_ENTERPRISE_MENTOR'])">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>问题反馈处理</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 实习管理菜单 - 学生 -->
+          <el-sub-menu index="internship-student" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>实习管理</span>
+            </template>
+            <el-menu-item index="/student/internship/post" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><List /></el-icon>
+              <template #title>岗位列表</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/apply" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><EditPen /></el-icon>
+              <template #title>实习申请</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/interview" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>我的面试</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/log" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><Document /></el-icon>
+              <template #title>实习日志</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/weekly-report" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><Files /></el-icon>
+              <template #title>周报</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/attendance" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><Clock /></el-icon>
+              <template #title>我的考勤</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/achievement" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><Files /></el-icon>
+              <template #title>阶段性成果</template>
+            </el-menu-item>
+            <el-menu-item index="/student/internship/feedback" v-if="hasAnyRole(userRoles, ['ROLE_STUDENT'])">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>问题反馈</template>
+            </el-menu-item>
+          </el-sub-menu>
+
+          <!-- 实习管理菜单 - 教师 -->
+          <el-sub-menu index="internship-teacher" v-if="hasAnyRole(userRoles, ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR'])">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>实习管理</span>
+            </template>
+            <el-menu-item index="/teacher/internship/log" v-if="hasAnyRole(userRoles, ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><Document /></el-icon>
+              <template #title>实习日志批阅</template>
+            </el-menu-item>
+            <el-menu-item index="/teacher/internship/weekly-report" v-if="hasAnyRole(userRoles, ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><Files /></el-icon>
+              <template #title>周报批阅</template>
+            </el-menu-item>
+            <el-menu-item index="/teacher/internship/achievement" v-if="hasAnyRole(userRoles, ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><Files /></el-icon>
+              <template #title>成果审核</template>
+            </el-menu-item>
+            <el-menu-item index="/teacher/internship/feedback" v-if="hasAnyRole(userRoles, ['ROLE_INSTRUCTOR', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_CLASS_TEACHER'])">
+              <el-icon><ChatLineRound /></el-icon>
+              <template #title>问题反馈处理</template>
+            </el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </el-aside>
 
@@ -126,7 +230,14 @@ import {
   Tools,
   Upload,
   DocumentChecked,
-  ArrowDown as ArrowDownIcon
+  ArrowDown as ArrowDownIcon,
+  Document,
+  Briefcase,
+  EditPen,
+  Clock,
+  Files,
+  ChatLineRound,
+  List
 } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 

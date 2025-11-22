@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
 import systemRoutes from './modules/system'
 import userRoutes from './modules/user'
+import internshipRoutes from './modules/internship'
 
 // 基础路由配置
 const baseRoutes = [
@@ -56,7 +57,8 @@ const baseRoutes = [
 const routes = [
   ...baseRoutes,
   ...systemRoutes,
-  ...userRoutes
+  ...userRoutes,
+  ...internshipRoutes
 ]
 
 const router = createRouter({
