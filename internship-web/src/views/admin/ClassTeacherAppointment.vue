@@ -202,6 +202,7 @@ export default {
     // 加载教师信息（通过userId）
     const loadTeacherInfo = async (userIds) => {
       try {
+        // 加载用户信息
         for (const userId of userIds) {
           if (!userInfoMap.value[userId]) {
             const res = await userApi.getUserById(userId)
@@ -210,8 +211,23 @@ export default {
             }
           }
         }
+        
+        // 加载教师信息（通过userId查询teacher_info表）
+        for (const userId of userIds) {
+          if (!teacherMap.value[userId]) {
+            try {
+              const res = await teacherApi.getTeacherByUserId(userId)
+              if (res.code === 200 && res.data) {
+                teacherMap.value[userId] = res.data
+              }
+            } catch (error) {
+              // 如果查询失败，可能是该用户不是教师，忽略错误
+              console.warn(`用户 ${userId} 不是教师或查询失败:`, error)
+            }
+          }
+        }
       } catch (error) {
-        console.error('加载用户信息失败：', error)
+        console.error('加载教师信息失败：', error)
       }
     }
 

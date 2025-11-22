@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { getToken, setToken, removeToken, getUserInfo, setUserInfo, removeUserInfo } from '@/utils/auth'
-import request from '@/utils/request'
+import request, { setLoggingOut } from '@/utils/request'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -55,23 +55,33 @@ export const useAuthStore = defineStore('auth', {
      */
     async logout(skipApiCall = false) {
       try {
-        // 如果Token存在且未失效，调用后端登出接口
+        // 如果Token存在且未失效，先调用后端登出接口（在设置标志之前）
         if (!skipApiCall && this.token) {
           await request.post('/auth/logout')
         }
       } catch (error) {
-        // 如果是401错误（Token失效），静默处理，不打印错误
+        // 如果是401错误（Token失效）或取消的请求，静默处理，不打印错误
         if (error.response && error.response.status === 401) {
           // Token已失效，直接清除本地数据
+        } else if (error.message && error.message.includes('正在退出登录')) {
+          // 请求被取消，静默处理
         } else {
           console.error('登出失败:', error)
         }
       } finally {
+        // 设置退出登录标志，阻止后续请求
+        setLoggingOut(true)
+        
         // 清除本地数据
         this.token = ''
         this.userInfo = null
         removeToken()
         removeUserInfo()
+        
+        // 延迟重置标志，确保所有请求都被取消
+        setTimeout(() => {
+          setLoggingOut(false)
+        }, 1000)
       }
     },
 

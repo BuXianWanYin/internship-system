@@ -50,6 +50,13 @@
             登录
           </el-button>
         </el-form-item>
+        
+        <el-form-item>
+          <div class="register-link">
+            <span>还没有账号？</span>
+            <el-link type="primary" @click="goToRegister">立即注册</el-link>
+          </div>
+        </el-form-item>
       </el-form>
     </div>
   </div>
@@ -104,12 +111,17 @@ export default {
       })
     }
     
+    const goToRegister = () => {
+      router.push('/register')
+    }
+    
     return {
       loginFormRef,
       loginForm,
       loginRules,
       loading,
-      handleLogin
+      handleLogin,
+      goToRegister
     }
   }
 }
@@ -170,6 +182,17 @@ export default {
 
 :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px #409eff inset;
+}
+
+.register-link {
+  width: 100%;
+  text-align: center;
+  font-size: 14px;
+  color: #606266;
+}
+
+.register-link span {
+  margin-right: 8px;
 }
 </style>
 
