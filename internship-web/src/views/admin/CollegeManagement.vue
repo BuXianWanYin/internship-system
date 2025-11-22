@@ -114,8 +114,28 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="院长姓名" prop="deanName">
-          <el-input v-model="formData.deanName" placeholder="请输入院长姓名" />
+        <el-form-item label="院长" prop="deanUserId">
+          <el-select 
+            v-model="formData.deanUserId" 
+            placeholder="请选择院长（需先添加教师）" 
+            style="width: 100%"
+            filterable
+            clearable
+            :disabled="!formData.schoolId"
+          >
+            <el-option
+              v-for="teacher in teacherList"
+              :key="teacher.teacherId"
+              :label="userInfoMap[teacher.userId] ? `${userInfoMap[teacher.userId].realName} (${teacher.teacherNo})` : teacher.teacherNo"
+              :value="teacher.userId"
+            />
+          </el-select>
+          <div v-if="!formData.schoolId" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            请先选择所属学校
+          </div>
+          <div v-if="formData.schoolId && teacherList.length === 0" style="font-size: 12px; color: #f56c6c; margin-top: 4px;">
+            该学校暂无教师，请先添加教师
+          </div>
         </el-form-item>
         <el-form-item label="联系电话" prop="contactPhone">
           <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
@@ -136,11 +156,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { collegeApi } from '@/api/system/college'
 import { schoolApi } from '@/api/system/school'
+import { teacherApi } from '@/api/user/teacher'
+import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -151,6 +173,8 @@ const formRef = ref(null)
 
 const schoolList = ref([])
 const schoolMap = ref({})
+const teacherList = ref([])
+const userInfoMap = ref({})
 
 const searchForm = reactive({
   collegeName: '',
@@ -170,6 +194,7 @@ const formData = reactive({
   collegeName: '',
   collegeCode: '',
   schoolId: null,
+  deanUserId: null,
   deanName: '',
   contactPhone: '',
   status: 1
@@ -226,6 +251,51 @@ const loadSchoolList = async () => {
   }
 }
 
+// 加载教师列表（根据学校ID）
+const loadTeacherList = async (schoolId) => {
+  if (!schoolId) {
+    teacherList.value = []
+    userInfoMap.value = {}
+    return
+  }
+  
+  try {
+    const res = await teacherApi.getTeacherList({ schoolId, status: 1 })
+    if (res.code === 200) {
+      teacherList.value = res.data || []
+      
+      // 批量加载用户信息
+      const userIds = teacherList.value.map(t => t.userId).filter(id => id)
+      if (userIds.length > 0) {
+        for (const userId of userIds) {
+          if (!userInfoMap.value[userId]) {
+            try {
+              const userRes = await userApi.getUserById(userId)
+              if (userRes.code === 200 && userRes.data) {
+                userInfoMap.value[userId] = userRes.data
+              }
+            } catch (error) {
+              console.error(`加载用户 ${userId} 信息失败:`, error)
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载教师列表失败:', error)
+  }
+}
+
+// 监听学校ID变化，加载对应学校的教师列表
+watch(() => formData.schoolId, (newSchoolId) => {
+  if (newSchoolId) {
+    loadTeacherList(newSchoolId)
+  } else {
+    teacherList.value = []
+    formData.deanUserId = null
+  }
+})
+
 const loadSchoolInfo = async (schoolIds) => {
   try {
     for (const schoolId of schoolIds) {
@@ -258,17 +328,24 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑学院'
   Object.assign(formData, {
     collegeId: row.collegeId,
     collegeName: row.collegeName,
     collegeCode: row.collegeCode,
     schoolId: row.schoolId,
+    deanUserId: row.deanUserId || null,
     deanName: row.deanName || '',
     contactPhone: row.contactPhone || '',
     status: row.status
   })
+  
+  // 加载该学校的教师列表
+  if (row.schoolId) {
+    await loadTeacherList(row.schoolId)
+  }
+  
   dialogVisible.value = true
 }
 
@@ -295,11 +372,17 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 准备提交数据（只提交deanUserId，不提交deanName，后端会自动填充）
+        const submitData = {
+          ...formData,
+          deanName: undefined // 不提交deanName，后端会根据deanUserId自动填充
+        }
+        
         let res
         if (formData.collegeId) {
-          res = await collegeApi.updateCollege(formData.collegeId, formData)
+          res = await collegeApi.updateCollege(formData.collegeId, submitData)
         } else {
-          res = await collegeApi.addCollege(formData)
+          res = await collegeApi.addCollege(submitData)
         }
         if (res.code === 200) {
           ElMessage.success(formData.collegeId ? '更新成功' : '添加成功')
@@ -308,6 +391,7 @@ const handleSubmit = async () => {
         }
       } catch (error) {
         console.error('提交失败:', error)
+        ElMessage.error(error.response?.data?.message || '操作失败')
       } finally {
         submitLoading.value = false
       }
@@ -321,10 +405,13 @@ const resetForm = () => {
     collegeName: '',
     collegeCode: '',
     schoolId: null,
+    deanUserId: null,
     deanName: '',
     contactPhone: '',
     status: 1
   })
+  teacherList.value = []
+  userInfoMap.value = {}
   formRef.value?.clearValidate()
 }
 

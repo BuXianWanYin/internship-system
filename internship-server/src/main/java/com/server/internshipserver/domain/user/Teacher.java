@@ -47,7 +47,7 @@ public class Teacher implements Serializable {
     @TableField("title")
     private String title;
     
-    @ApiModelProperty(value = "所属部门", example = "计算机学院")
+    @ApiModelProperty(value = "所属学院", example = "计算机学院")
     @TableField("department")
     private String department;
     

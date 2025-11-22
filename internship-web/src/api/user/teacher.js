@@ -28,6 +28,10 @@ export const teacherApi = {
   // 停用教师（软删除）
   deleteTeacher(teacherId) {
     return request.delete(`/user/teacher/${teacherId}`)
+  },
+  // 根据学校ID查询教师列表（用于下拉选择）
+  getTeacherList(params) {
+    return request.get('/user/teacher/list', { params })
   }
 }
 

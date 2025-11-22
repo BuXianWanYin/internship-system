@@ -153,6 +153,15 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
                .eq(EnterpriseSchoolCooperation::getCooperationStatus, 1) // 只查询进行中的合作
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        // 数据权限过滤：学校管理员只能看到自己学校的合作关系
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null) {
+                wrapper.eq(EnterpriseSchoolCooperation::getSchoolId, currentUserSchoolId);
+            }
+        }
+        
         List<EnterpriseSchoolCooperation> cooperations = this.list(wrapper);
         
         if (cooperations.isEmpty()) {

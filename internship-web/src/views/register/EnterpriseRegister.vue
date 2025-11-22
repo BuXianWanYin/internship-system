@@ -55,8 +55,8 @@
           >
             <el-option label="大型企业（500人以上）" value="大型企业" />
             <el-option label="中型企业（100-500人）" value="中型企业" />
-            <el-option label="小型企业（10-100人）" value="小型企业" />
-            <el-option label="微型企业（10人以下）" value="微型企业" />
+            <el-option label="小型企业（20-100人）" value="小型企业" />
+            <el-option label="微型企业（20人以下）" value="微型企业" />
           </el-select>
         </el-form-item>
 

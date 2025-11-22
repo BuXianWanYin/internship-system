@@ -32,176 +32,30 @@
           router
           class="sidebar-menu"
         >
-          <el-menu-item index="/dashboard">
-            <el-icon><House /></el-icon>
-            <template #title>首页</template>
-          </el-menu-item>
-
-          <el-sub-menu index="system" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
-            <template #title>
-              <el-icon><Setting /></el-icon>
-              <span>系统管理</span>
-            </template>
-            <el-menu-item index="/admin/system/school" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN'])">
-              <el-icon><School /></el-icon>
-              <template #title>学校管理</template>
+          <!-- 动态渲染菜单 -->
+          <template v-for="menuItem in filteredMenus" :key="menuItem.index">
+            <!-- 有子菜单的情况 -->
+            <el-sub-menu v-if="menuItem.children && menuItem.children.length > 0" :index="menuItem.index">
+              <template #title>
+                <el-icon><component :is="menuItem.icon" /></el-icon>
+                <span>{{ menuItem.title }}</span>
+              </template>
+              <el-menu-item
+                v-for="child in menuItem.children"
+                :key="child.index"
+                :index="child.index"
+              >
+                <el-icon><component :is="child.icon" /></el-icon>
+                <template #title>{{ child.title }}</template>
+              </el-menu-item>
+            </el-sub-menu>
+            
+            <!-- 无子菜单的情况 -->
+            <el-menu-item v-else :index="menuItem.index">
+              <el-icon><component :is="menuItem.icon" /></el-icon>
+              <template #title>{{ menuItem.title }}</template>
             </el-menu-item>
-            <el-menu-item index="/admin/system/college" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
-              <el-icon><OfficeBuilding /></el-icon>
-              <template #title>学院管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/system/major" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
-              <el-icon><Reading /></el-icon>
-              <template #title>专业管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/system/class" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><User /></el-icon>
-              <template #title>班级管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/system/semester" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
-              <el-icon><Calendar /></el-icon>
-              <template #title>学期管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/system/config" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
-              <el-icon><Tools /></el-icon>
-              <template #title>系统配置</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/system/class-teacher" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER'])">
-              <el-icon><UserFilled /></el-icon>
-              <template #title>班主任任命</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="user" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN'])">
-            <template #title>
-              <el-icon><UserFilled /></el-icon>
-              <span>用户管理</span>
-            </template>
-            <el-menu-item index="/admin/user" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><User /></el-icon>
-              <template #title>用户管理</template>
-            </el-menu-item>
-        <el-menu-item index="/admin/student" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])">
-          <el-icon><User /></el-icon>
-          <template #title>学生管理</template>
-        </el-menu-item>
-            <el-menu-item index="/admin/teacher" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])">
-              <el-icon><UserFilled /></el-icon>
-              <template #title>教师管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/enterprise" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
-              <el-icon><OfficeBuilding /></el-icon>
-              <template #title>企业管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/enterprise-mentor" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])">
-              <el-icon><User /></el-icon>
-              <template #title>企业导师管理</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <!-- 实习管理菜单 - 管理员 -->
-          <el-sub-menu index="internship-admin" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'])">
-            <template #title>
-              <el-icon><Document /></el-icon>
-              <span>实习管理</span>
-            </template>
-            <el-menu-item index="/admin/internship/plan" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])">
-              <el-icon><Document /></el-icon>
-              <template #title>实习计划管理</template>
-            </el-menu-item>
-            <el-menu-item index="/admin/internship/apply/audit" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><DocumentChecked /></el-icon>
-              <template #title>实习申请审核</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <!-- 实习管理菜单 - 企业 -->
-          <el-sub-menu index="internship-enterprise" v-if="hasAnyRole(['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])">
-            <template #title>
-              <el-icon><Briefcase /></el-icon>
-              <span>实习管理</span>
-            </template>
-            <el-menu-item index="/enterprise/internship/post" v-if="hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])">
-              <el-icon><Briefcase /></el-icon>
-              <template #title>岗位管理</template>
-            </el-menu-item>
-            <el-menu-item index="/enterprise/internship/interview" v-if="hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])">
-              <el-icon><ChatLineRound /></el-icon>
-              <template #title>面试管理</template>
-            </el-menu-item>
-            <el-menu-item index="/enterprise/internship/attendance" v-if="hasAnyRole(['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])">
-              <el-icon><Clock /></el-icon>
-              <template #title>考勤管理</template>
-            </el-menu-item>
-            <el-menu-item index="/teacher/internship/feedback" v-if="hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])">
-              <el-icon><ChatLineRound /></el-icon>
-              <template #title>问题反馈处理</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <!-- 实习管理菜单 - 学生 -->
-          <el-sub-menu index="internship-student" v-if="hasAnyRole(['ROLE_STUDENT'])">
-            <template #title>
-              <el-icon><Document /></el-icon>
-              <span>实习管理</span>
-            </template>
-            <el-menu-item index="/student/internship/post" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><List /></el-icon>
-              <template #title>岗位列表</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/apply" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><EditPen /></el-icon>
-              <template #title>实习申请</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/interview" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><ChatLineRound /></el-icon>
-              <template #title>我的面试</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/log" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><Document /></el-icon>
-              <template #title>实习日志</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/weekly-report" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><Files /></el-icon>
-              <template #title>周报</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/attendance" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><Clock /></el-icon>
-              <template #title>我的考勤</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/achievement" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><Files /></el-icon>
-              <template #title>阶段性成果</template>
-            </el-menu-item>
-            <el-menu-item index="/student/internship/feedback" v-if="hasAnyRole(['ROLE_STUDENT'])">
-              <el-icon><ChatLineRound /></el-icon>
-              <template #title>问题反馈</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <!-- 实习管理菜单 - 教师 -->
-          <el-sub-menu index="internship-teacher" v-if="hasAnyRole(['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR'])">
-            <template #title>
-              <el-icon><Document /></el-icon>
-              <span>实习管理</span>
-            </template>
-            <el-menu-item index="/teacher/internship/log" v-if="hasAnyRole(['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><Document /></el-icon>
-              <template #title>实习日志批阅</template>
-            </el-menu-item>
-            <el-menu-item index="/teacher/internship/weekly-report" v-if="hasAnyRole(['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><Files /></el-icon>
-              <template #title>周报批阅</template>
-            </el-menu-item>
-            <el-menu-item index="/teacher/internship/achievement" v-if="hasAnyRole(['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><Files /></el-icon>
-              <template #title>成果审核</template>
-            </el-menu-item>
-            <el-menu-item index="/teacher/internship/feedback" v-if="hasAnyRole(['ROLE_INSTRUCTOR', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_CLASS_TEACHER'])">
-              <el-icon><ChatLineRound /></el-icon>
-              <template #title>问题反馈处理</template>
-            </el-menu-item>
-          </el-sub-menu>
+          </template>
         </el-menu>
       </el-aside>
 
@@ -214,31 +68,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/modules/auth'
-import { hasAnyRole } from '@/utils/permission'
-import {
-  House,
-  Setting,
-  School,
-  OfficeBuilding,
-  Reading,
-  User,
-  UserFilled,
-  Calendar,
-  Tools,
-  Upload,
-  DocumentChecked,
-  ArrowDown as ArrowDownIcon,
-  Document,
-  Briefcase,
-  EditPen,
-  Clock,
-  Files,
-  ChatLineRound,
-  List
-} from '@element-plus/icons-vue'
+import { filterMenuByRoles } from '@/config/menu.config'
+import { ArrowDown as ArrowDownIcon, User } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
@@ -247,6 +81,12 @@ const authStore = useAuthStore()
 
 const isCollapse = ref(false)
 const userInfo = computed(() => authStore.userInfo)
+
+// 根据用户角色过滤菜单
+const filteredMenus = computed(() => {
+  const roles = authStore.roles || []
+  return filterMenuByRoles(roles)
+})
 
 // 当前激活的菜单
 const activeMenu = computed(() => {

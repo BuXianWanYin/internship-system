@@ -40,6 +40,14 @@ export const userApi = {
     return request.post(`/user/${userId}/assign-role`, null, {
       params: { roleCode }
     })
+  },
+  // 检查是否可以停用用户
+  canDeleteUser(userId) {
+    return request.get(`/user/${userId}/can-delete`)
+  },
+  // 获取用户角色列表
+  getUserRoles(userId) {
+    return request.get(`/user/${userId}/roles`)
   }
 }
 

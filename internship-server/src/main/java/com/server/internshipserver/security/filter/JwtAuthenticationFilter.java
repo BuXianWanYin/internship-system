@@ -1,11 +1,14 @@
 package com.server.internshipserver.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.result.ResultCode;
 import com.server.internshipserver.common.utils.JwtUtil;
 import com.server.internshipserver.common.utils.RedisUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +31,8 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    
     @Autowired
     private JwtUtil jwtUtil;
     
@@ -37,7 +42,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private RedisUtil redisUtil;
     
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+    
+    public JwtAuthenticationFilter() {
+        this.objectMapper = new ObjectMapper();
+        // 注册JavaTimeModule以支持LocalDateTime序列化
+        this.objectMapper.registerModule(new JavaTimeModule());
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -58,7 +69,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 
                 // 检查Token是否在Redis中（用于支持登出功能）
                 String redisKey = Constants.TOKEN_KEY_PREFIX + username;
-                if (!redisUtil.exists(redisKey)) {
+                Boolean exists = redisUtil.exists(redisKey);
+                // 如果Redis连接失败，exists可能返回null，此时允许请求通过（容错处理）
+                if (exists != null && !exists) {
                     // Token已被注销
                     sendErrorResponse(response, ResultCode.TOKEN_INVALID);
                     return;

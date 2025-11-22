@@ -8,13 +8,17 @@ import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.mapper.user.TeacherMapper;
+import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * 教师管理Service实现类
@@ -27,6 +31,9 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
     
     @Override
     public Teacher getTeacherByUserId(Long userId) {
@@ -195,7 +202,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     @Transactional(rollbackFor = Exception.class)
     public Teacher addTeacherWithUser(String teacherNo, String realName, String idCard, String phone,
                                       String email, Long collegeId, Long schoolId, String title,
-                                      String department, String password, Integer status) {
+                                      String department, String roleCode, String password, Integer status) {
         // 参数校验
         if (!StringUtils.hasText(teacherNo)) {
             throw new BusinessException("工号不能为空");
@@ -245,7 +252,19 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         teacher.setCollegeId(collegeId);
         teacher.setSchoolId(schoolId);
         teacher.setTitle(title);
-        teacher.setDepartment(department);
+        
+        // 如果department为空，自动填充为学院名称
+        if (!StringUtils.hasText(department) && collegeId != null) {
+            College college = collegeMapper.selectById(collegeId);
+            if (college != null) {
+                teacher.setDepartment(college.getCollegeName());
+            } else {
+                teacher.setDepartment(department);
+            }
+        } else {
+            teacher.setDepartment(department);
+        }
+        
         if (status == null) {
             teacher.setStatus(1); // 默认启用
         } else {
@@ -256,8 +275,9 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 保存教师
         this.save(teacher);
         
-        // 分配指导教师角色
-        userService.assignRoleToUser(teacher.getUserId(), "ROLE_INSTRUCTOR");
+        // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配指导教师角色
+        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : "ROLE_INSTRUCTOR";
+        userService.assignRoleToUser(teacher.getUserId(), finalRoleCode);
         
         return teacher;
     }
@@ -266,7 +286,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     @Transactional(rollbackFor = Exception.class)
     public Teacher updateTeacherWithUser(Long teacherId, Long userId, String teacherNo, String realName,
                                          String idCard, String phone, String email, Long collegeId,
-                                         Long schoolId, String title, String department, Integer status) {
+                                         Long schoolId, String title, String department, String roleCode, Integer status) {
         if (teacherId == null) {
             throw new BusinessException("教师ID不能为空");
         }
@@ -318,6 +338,11 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         if (collegeId != null) {
             teacher.setCollegeId(collegeId);
+            // 如果修改了学院，自动更新部门为学院名称
+            College college = collegeMapper.selectById(collegeId);
+            if (college != null) {
+                teacher.setDepartment(college.getCollegeName());
+            }
         }
         if (schoolId != null) {
             teacher.setSchoolId(schoolId);
@@ -325,7 +350,13 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         if (StringUtils.hasText(title)) {
             teacher.setTitle(title);
         }
-        if (StringUtils.hasText(department)) {
+        // 如果department为空且collegeId不为空，自动填充为学院名称
+        if (!StringUtils.hasText(department) && collegeId != null) {
+            College college = collegeMapper.selectById(collegeId);
+            if (college != null) {
+                teacher.setDepartment(college.getCollegeName());
+            }
+        } else if (StringUtils.hasText(department)) {
             teacher.setDepartment(department);
         }
         if (status != null) {
@@ -333,7 +364,39 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         this.updateById(teacher);
         
+
+        if (StringUtils.hasText(roleCode)) {
+            userService.assignRoleToUser(userId, roleCode);
+        }
+        
         return this.getById(teacherId);
+    }
+    
+    @Override
+    public List<Teacher> getTeacherListBySchool(Long schoolId, Long collegeId) {
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+               .eq(Teacher::getStatus, 1); // 只查询启用的教师
+        
+        if (schoolId != null) {
+            wrapper.eq(Teacher::getSchoolId, schoolId);
+        }
+        if (collegeId != null) {
+            wrapper.eq(Teacher::getCollegeId, collegeId);
+        }
+        
+        // 数据权限过滤
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+        }
+        
+        wrapper.orderByDesc(Teacher::getCreateTime);
+        return this.list(wrapper);
     }
 }
 

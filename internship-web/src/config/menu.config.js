@@ -1,0 +1,367 @@
+/**
+ * 菜单配置
+ * 根据角色动态生成菜单
+ */
+
+import {
+  House,
+  Setting,
+  School,
+  OfficeBuilding,
+  Reading,
+  User,
+  UserFilled,
+  Calendar,
+  Tools,
+  Upload,
+  DocumentChecked,
+  Document,
+  Briefcase,
+  EditPen,
+  Clock,
+  Files,
+  ChatLineRound,
+  List
+} from '@element-plus/icons-vue'
+
+/**
+ * 菜单项定义
+ */
+export const menuItems = [
+  // 首页 - 所有角色可见
+  {
+    index: '/dashboard',
+    title: '首页',
+    icon: House,
+    roles: ['*'] // * 表示所有角色
+  },
+  
+  // ========== 系统管理 ==========
+  {
+    index: 'system',
+    title: '系统管理',
+    icon: Setting,
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+    children: [
+      {
+        index: '/admin/system/school',
+        title: '学校管理',
+        icon: School,
+        roles: ['ROLE_SYSTEM_ADMIN']
+      },
+      {
+        index: '/admin/system/college',
+        title: '学院管理',
+        icon: OfficeBuilding,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/system/major',
+        title: '专业管理',
+        icon: Reading,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/system/class',
+        title: '班级管理',
+        icon: User,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/admin/system/semester',
+        title: '学期管理',
+        icon: Calendar,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/system/config',
+        title: '系统配置',
+        icon: Tools,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/system/class-teacher',
+        title: '班主任任命',
+        icon: UserFilled,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER']
+      }
+    ]
+  },
+  
+  // ========== 用户管理 ==========
+  {
+    index: 'user',
+    title: '用户管理',
+    icon: UserFilled,
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+    children: [
+      {
+        index: '/admin/user',
+        title: '用户管理',
+        icon: User,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/admin/student',
+        title: '学生管理',
+        icon: User,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/admin/teacher',
+        title: '教师管理',
+        icon: UserFilled,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/enterprise',
+        title: '企业管理',
+        icon: OfficeBuilding,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
+        titleMap: {
+          'ROLE_SYSTEM_ADMIN': '企业管理',
+          'ROLE_SCHOOL_ADMIN': '合作企业管理'
+        }
+      },
+      {
+        index: '/admin/enterprise-mentor',
+        title: '企业导师管理',
+        icon: User,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
+        titleMap: {
+          'ROLE_SYSTEM_ADMIN': '企业导师管理',
+          'ROLE_SCHOOL_ADMIN': '企业导师详情'
+        }
+      }
+    ]
+  },
+  
+  // ========== 企业管理（企业管理员） ==========
+  {
+    index: 'enterprise',
+    title: '企业管理',
+    icon: OfficeBuilding,
+    roles: ['ROLE_ENTERPRISE_ADMIN'],
+    children: [
+      {
+        index: '/admin/enterprise-mentor',
+        title: '企业导师管理',
+        icon: User,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      }
+    ]
+  },
+  
+  // ========== 实习管理（管理员） ==========
+  {
+    index: 'internship-admin',
+    title: '实习管理',
+    icon: Document,
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'],
+    children: [
+      {
+        index: '/admin/internship/plan',
+        title: '实习计划管理',
+        icon: Document,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/internship/apply/audit',
+        title: '实习申请审核',
+        icon: DocumentChecked,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER']
+      }
+    ]
+  },
+  
+  // ========== 实习管理（企业） ==========
+  {
+    index: 'internship-enterprise',
+    title: '实习管理',
+    icon: Briefcase,
+    roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'],
+    children: [
+      {
+        index: '/enterprise/internship/post',
+        title: '岗位管理',
+        icon: Briefcase,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/interview',
+        title: '面试管理',
+        icon: ChatLineRound,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/attendance',
+        title: '考勤管理',
+        icon: Clock,
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
+        index: '/teacher/internship/feedback',
+        title: '问题反馈处理',
+        icon: ChatLineRound,
+        roles: ['ROLE_ENTERPRISE_MENTOR']
+      }
+    ]
+  },
+  
+  // ========== 实习管理（学生） ==========
+  {
+    index: 'internship-student',
+    title: '实习管理',
+    icon: Document,
+    roles: ['ROLE_STUDENT'],
+    children: [
+      {
+        index: '/student/internship/post',
+        title: '岗位列表',
+        icon: List,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/apply',
+        title: '实习申请',
+        icon: EditPen,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/interview',
+        title: '我的面试',
+        icon: ChatLineRound,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/log',
+        title: '实习日志',
+        icon: Document,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/weekly-report',
+        title: '周报',
+        icon: Files,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/attendance',
+        title: '我的考勤',
+        icon: Clock,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/achievement',
+        title: '阶段性成果',
+        icon: Files,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/internship/feedback',
+        title: '问题反馈',
+        icon: ChatLineRound,
+        roles: ['ROLE_STUDENT']
+      }
+    ]
+  },
+  
+  // ========== 实习管理（教师） ==========
+  {
+    index: 'internship-teacher',
+    title: '实习管理',
+    icon: Document,
+    roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR'],
+    children: [
+      {
+        index: '/teacher/internship/log',
+        title: '实习日志批阅',
+        icon: Document,
+        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/teacher/internship/weekly-report',
+        title: '周报批阅',
+        icon: Files,
+        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/teacher/internship/achievement',
+        title: '成果审核',
+        icon: Files,
+        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/teacher/internship/feedback',
+        title: '问题反馈处理',
+        icon: ChatLineRound,
+        roles: ['ROLE_INSTRUCTOR', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_CLASS_TEACHER']
+      }
+    ]
+  }
+]
+
+/**
+ * 检查菜单项是否对当前用户可见
+ * @param {Object} menuItem 菜单项
+ * @param {string[]} userRoles 用户角色列表
+ * @returns {boolean}
+ */
+export function isMenuVisible(menuItem, userRoles) {
+  if (!menuItem.roles || menuItem.roles.length === 0) {
+    return false
+  }
+  
+  // * 表示所有角色可见
+  if (menuItem.roles.includes('*')) {
+    return true
+  }
+  
+  // 检查用户是否有任一角色
+  return menuItem.roles.some(role => userRoles.includes(role))
+}
+
+/**
+ * 根据用户角色过滤菜单
+ * @param {string[]} userRoles 用户角色列表
+ * @returns {Array} 过滤后的菜单项
+ */
+export function filterMenuByRoles(userRoles) {
+  if (!userRoles || userRoles.length === 0) {
+    return []
+  }
+  
+  return menuItems
+    .filter(item => isMenuVisible(item, userRoles))
+    .map(item => {
+      // 如果有子菜单，递归过滤
+      if (item.children && item.children.length > 0) {
+        const filteredChildren = item.children
+          .filter(child => isMenuVisible(child, userRoles))
+          .map(child => {
+            // 处理动态标题（根据角色显示不同标题）
+            if (child.titleMap) {
+              const matchedRole = userRoles.find(role => child.titleMap[role])
+              if (matchedRole) {
+                child.title = child.titleMap[matchedRole]
+              }
+            }
+            return child
+          })
+        
+        // 如果子菜单全部被过滤掉，则隐藏父菜单
+        if (filteredChildren.length === 0) {
+          return null
+        }
+        
+        return {
+          ...item,
+          children: filteredChildren
+        }
+      }
+      
+      return item
+    })
+    .filter(item => item !== null)
+}
+

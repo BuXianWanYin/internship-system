@@ -6,6 +6,8 @@ import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
 import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
 import com.server.internshipserver.service.user.TeacherService;
+
+import java.util.List;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -73,6 +75,7 @@ public class TeacherController {
                 teacherAddDTO.getSchoolId(),
                 teacherAddDTO.getTitle(),
                 teacherAddDTO.getDepartment(),
+                teacherAddDTO.getRoleCode(),
                 teacherAddDTO.getPassword(),
                 teacherAddDTO.getStatus()
         );
@@ -95,6 +98,7 @@ public class TeacherController {
                 teacherUpdateDTO.getSchoolId(),
                 teacherUpdateDTO.getTitle(),
                 teacherUpdateDTO.getDepartment(),
+                teacherUpdateDTO.getRoleCode(),
                 teacherUpdateDTO.getStatus()
         );
         return Result.success("更新成功", result);
@@ -107,6 +111,16 @@ public class TeacherController {
             @ApiParam(value = "教师ID", required = true) @PathVariable Long teacherId) {
         boolean success = teacherService.deleteTeacher(teacherId);
         return success ? Result.success("停用成功") : Result.error("停用失败");
+    }
+    
+    @ApiOperation("根据学校ID查询教师列表（用于下拉选择）")
+    @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    public Result<List<Teacher>> getTeacherList(
+            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId) {
+        List<Teacher> list = teacherService.getTeacherListBySchool(schoolId, collegeId);
+        return Result.success("查询成功", list);
     }
 }
 

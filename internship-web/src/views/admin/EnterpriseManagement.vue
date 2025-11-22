@@ -2,7 +2,7 @@
   <PageLayout title="企业管理">
     <template #actions>
       <el-button 
-        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+        v-if="hasRole('ROLE_SYSTEM_ADMIN')" 
         type="primary" 
         :icon="Plus" 
         @click="handleAdd"
@@ -124,20 +124,29 @@
           <el-button 
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
             link 
-            type="info" 
+            type="primary" 
             size="small" 
             @click="handleManageCooperation(row)"
           >
             管理合作关系
           </el-button>
           <el-button
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="hasRole('ROLE_SYSTEM_ADMIN')"
             link
             type="primary"
             size="small"
             @click="handleAuditBySchool(row)"
           >
             按院校审核
+          </el-button>
+          <el-button
+            v-if="hasRole('ROLE_SCHOOL_ADMIN')"
+            link
+            type="primary"
+            size="small"
+            @click="handleAuditBySchool(row)"
+          >
+            审核
           </el-button>
           <el-button 
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
@@ -243,7 +252,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="企业规模" prop="enterpriseScale">
-              <el-input v-model="formData.enterpriseScale" placeholder="请输入企业规模" />
+              <el-select v-model="formData.enterpriseScale" placeholder="请选择企业规模" style="width: 100%">
+                <el-option label="大型企业（500人以上）" value="大型企业" />
+                <el-option label="中型企业（100-500人）" value="中型企业" />
+                <el-option label="小型企业（20-100人）" value="小型企业" />
+                <el-option label="微型企业（20人以下）" value="微型企业" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -255,6 +269,34 @@
             placeholder="请输入经营范围"
           />
         </el-form-item>
+        <!-- 企业管理员信息（仅添加时显示） -->
+        <template v-if="!isEdit">
+          <el-divider content-position="left">企业管理员信息</el-divider>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="管理员姓名" prop="adminName">
+                <el-input v-model="formData.adminName" placeholder="请输入企业管理员姓名" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="管理员手机号" prop="adminPhone">
+                <el-input v-model="formData.adminPhone" placeholder="请输入企业管理员手机号" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="管理员邮箱" prop="adminEmail">
+                <el-input v-model="formData.adminEmail" placeholder="请输入企业管理员邮箱" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="初始密码" prop="adminPassword">
+                <el-input v-model="formData.adminPassword" type="password" placeholder="请输入企业管理员初始密码" show-password />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
         <el-form-item v-if="!isEdit" label="状态" prop="status">
           <el-radio-group v-model="formData.status">
             <el-radio :label="1">启用</el-radio>
@@ -271,7 +313,7 @@
     <!-- 按院校审核对话框 -->
     <el-dialog
       v-model="auditDialogVisible"
-      title="按院校审核企业注册申请"
+      :title="hasRole('ROLE_SYSTEM_ADMIN') ? '按院校审核企业注册申请' : '审核企业注册申请'"
       width="700px"
       :close-on-click-modal="false"
     >
@@ -487,10 +529,17 @@
           </el-select>
         </el-form-item>
         <el-form-item label="合作类型" prop="cooperationType">
-          <el-input
+          <el-select
             v-model="cooperationFormData.cooperationType"
-            placeholder="请输入合作类型（如：实习基地、校企合作、人才培养等）"
-          />
+            placeholder="请选择合作类型"
+            style="width: 100%"
+          >
+            <el-option label="实习基地" value="实习基地" />
+            <el-option label="校企合作" value="校企合作" />
+            <el-option label="人才培养" value="人才培养" />
+            <el-option label="产学研合作" value="产学研合作" />
+            <el-option label="其他" value="其他" />
+          </el-select>
         </el-form-item>
         <el-form-item label="合作状态" prop="cooperationStatus">
           <el-radio-group v-model="cooperationFormData.cooperationStatus">
@@ -536,11 +585,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
-import { hasAnyRole } from '@/utils/permission'
+import { hasAnyRole, hasRole } from '@/utils/permission'
 import { enterpriseApi } from '@/api/user/enterprise'
 import { enterpriseRegisterSchoolApi } from '@/api/user/enterpriseRegisterSchool'
 import { cooperationApi } from '@/api/cooperation'
@@ -594,7 +643,12 @@ const formData = reactive({
   contactEmail: '',
   enterpriseScale: '',
   businessScope: '',
-  status: 1
+  status: 1,
+  // 企业管理员信息（仅添加时使用）
+  adminName: '',
+  adminPhone: '',
+  adminEmail: '',
+  adminPassword: ''
 })
 
 // 审核表单
@@ -603,21 +657,45 @@ const auditForm = reactive({
   auditOpinion: ''
 })
 
-// 表单验证规则
-const formRules = {
-  enterpriseName: [
-    { required: true, message: '请输入企业名称', trigger: 'blur' }
-  ],
-  enterpriseCode: [
-    { required: true, message: '请输入企业代码', trigger: 'blur' }
-  ],
-  contactEmail: [
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ]
+// 表单验证规则（动态规则，根据isEdit判断）
+const getFormRules = () => {
+  const rules = {
+    enterpriseName: [
+      { required: true, message: '请输入企业名称', trigger: 'blur' }
+    ],
+    enterpriseCode: [
+      { required: true, message: '请输入企业代码', trigger: 'blur' }
+    ],
+    contactEmail: [
+      { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+    ],
+    status: [
+      { required: true, message: '请选择状态', trigger: 'change' }
+    ]
+  }
+  
+  // 仅在添加模式下验证企业管理员信息
+  if (!isEdit.value) {
+    rules.adminName = [
+      { required: true, message: '请输入企业管理员姓名', trigger: 'blur' }
+    ]
+    rules.adminPhone = [
+      { required: true, message: '请输入企业管理员手机号', trigger: 'blur' },
+      { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    ]
+    rules.adminEmail = [
+      { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+    ]
+    rules.adminPassword = [
+      { required: true, message: '请输入企业管理员初始密码', trigger: 'blur' },
+      { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    ]
+  }
+  
+  return rules
 }
+
+const formRules = computed(() => getFormRules())
 
 // 加载数据
 const loadData = async () => {
@@ -710,7 +788,7 @@ const handleView = async (row) => {
     if (res.code === 200) {
       currentEnterprise.value = res.data
       
-      // 加载合作院校信息
+      // 加载合作院校信息（后端根据权限过滤）
       try {
         const schoolRes = await enterpriseApi.getCooperationSchoolsByEnterpriseId(row.enterpriseId)
         if (schoolRes.code === 200) {
@@ -783,7 +861,12 @@ const resetFormData = () => {
     contactEmail: '',
     enterpriseScale: '',
     businessScope: '',
-    status: 1
+    status: 1,
+    // 企业管理员信息
+    adminName: '',
+    adminPhone: '',
+    adminEmail: '',
+    adminPassword: ''
   })
   formRef.value?.clearValidate()
 }
@@ -806,8 +889,29 @@ const handleSubmit = async () => {
           loadData()
         }
       } else {
-        // 添加
-        const res = await enterpriseApi.addEnterprise(formData)
+        // 添加（使用新的DTO格式，包含企业管理员信息）
+        const submitData = {
+          enterprise: {
+            enterpriseName: formData.enterpriseName,
+            enterpriseCode: formData.enterpriseCode,
+            unifiedSocialCreditCode: formData.unifiedSocialCreditCode,
+            legalPerson: formData.legalPerson,
+            registeredCapital: formData.registeredCapital,
+            industry: formData.industry,
+            address: formData.address,
+            contactPerson: formData.contactPerson,
+            contactPhone: formData.contactPhone,
+            contactEmail: formData.contactEmail,
+            enterpriseScale: formData.enterpriseScale,
+            businessScope: formData.businessScope,
+            status: formData.status
+          },
+          adminName: formData.adminName,
+          adminPhone: formData.adminPhone,
+          adminEmail: formData.adminEmail,
+          adminPassword: formData.adminPassword
+        }
+        const res = await enterpriseApi.addEnterprise(submitData)
         if (res.code === 200) {
           ElMessage.success('添加成功')
           dialogVisible.value = false
@@ -948,6 +1052,9 @@ const cooperationFormData = reactive({
 const cooperationFormRules = {
   schoolId: [
     { required: true, message: '请选择合作学校', trigger: 'change' }
+  ],
+  cooperationType: [
+    { required: true, message: '请选择合作类型', trigger: 'change' }
   ],
   cooperationStatus: [
     { required: true, message: '请选择合作状态', trigger: 'change' }

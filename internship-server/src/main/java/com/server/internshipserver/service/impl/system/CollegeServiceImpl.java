@@ -7,7 +7,11 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.service.system.CollegeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +26,12 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private TeacherMapper teacherMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -53,6 +63,14 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         }
         college.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
+        // 如果指定了院长用户ID，填充院长姓名
+        if (college.getDeanUserId() != null) {
+            UserInfo deanUser = userMapper.selectById(college.getDeanUserId());
+            if (deanUser != null) {
+                college.setDeanName(deanUser.getRealName());
+            }
+        }
+        
         // 保存
         this.save(college);
         return college;
@@ -83,6 +101,29 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
             if (codeExistCollege != null) {
                 throw new BusinessException("该学校下学院代码已存在");
             }
+        }
+        
+        // 如果指定了院长用户ID，验证该用户是否为该学校的教师，并填充院长姓名
+        if (college.getDeanUserId() != null) {
+            // 验证该用户是否为该学校的教师
+            Teacher teacher = teacherMapper.selectOne(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getUserId, college.getDeanUserId())
+                            .eq(Teacher::getSchoolId, existCollege.getSchoolId())
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (teacher == null) {
+                throw new BusinessException("指定的院长用户不是该学校的教师");
+            }
+            
+            // 填充院长姓名
+            UserInfo deanUser = userMapper.selectById(college.getDeanUserId());
+            if (deanUser != null) {
+                college.setDeanName(deanUser.getRealName());
+            }
+        } else {
+            // 如果清空了院长用户ID，也清空院长姓名
+            college.setDeanName(null);
         }
         
         // 更新

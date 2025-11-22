@@ -1,7 +1,14 @@
 <template>
   <PageLayout title="岗位管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">发布岗位</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        发布岗位
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -79,9 +86,17 @@
       </el-table-column>
       <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleView(row)"
+          >
+            查看
+          </el-button>
           <el-button
-            v-if="row.status !== 3 && row.status !== 4"
+            v-if="row.status !== 3 && row.status !== 4 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
             type="primary"
             size="small"
@@ -90,7 +105,7 @@
             编辑
           </el-button>
           <el-button
-            v-if="row.status === 1"
+            v-if="row.status === 1 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
             type="warning"
             size="small"
@@ -99,7 +114,7 @@
             发布
           </el-button>
           <el-button
-            v-if="row.status === 3"
+            v-if="row.status === 3 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
             type="info"
             size="small"
@@ -108,7 +123,7 @@
             关闭
           </el-button>
           <el-button
-            v-if="row.status !== 3"
+            v-if="row.status !== 3 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
             type="danger"
             size="small"
@@ -332,6 +347,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { hasAnyRole } from '@/utils/permission'
 import { postApi } from '@/api/internship/post'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'

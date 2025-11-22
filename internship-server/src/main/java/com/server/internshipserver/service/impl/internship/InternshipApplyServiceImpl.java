@@ -198,6 +198,18 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setStatus(0); // 待审核
         apply.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
+        // 自主实习不应该有企业ID和岗位ID，清空这些字段
+        apply.setEnterpriseId(null);
+        apply.setPostId(null);
+        // 自主实习不应该有企业反馈、面试、录用相关字段，清空这些字段
+        apply.setEnterpriseFeedback(null);
+        apply.setEnterpriseFeedbackTime(null);
+        apply.setInterviewTime(null);
+        apply.setInterviewLocation(null);
+        apply.setInterviewResult(null);
+        apply.setInterviewComment(null);
+        apply.setAcceptTime(null);
+        
         // 保存
         this.save(apply);
         return apply;
@@ -269,8 +281,6 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
                         && currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
                     return apply;
                 }
-                // 其他角色通过数据权限过滤
-                // TODO: 实现更细粒度的权限控制
             }
         }
         
@@ -301,23 +311,25 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         
         // 填充企业信息
         if (apply.getEnterpriseId() != null) {
+            // 合作企业申请，从企业表获取企业信息
             Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
             if (enterprise != null) {
                 apply.setEnterpriseName(enterprise.getEnterpriseName());
             }
         } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
-            // 自主实习，使用自主实习企业名称
+            // 自主实习，使用自主实习企业名称（学生申请时填写）
             apply.setEnterpriseName(apply.getSelfEnterpriseName());
         }
         
         // 填充岗位信息
         if (apply.getPostId() != null) {
+            // 合作企业申请，从岗位表获取岗位信息
             InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
             if (post != null) {
                 apply.setPostName(post.getPostName());
             }
         } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
-            // 自主实习，使用自主实习岗位名称
+            // 自主实习，使用自主实习岗位名称（学生申请时填写）
             apply.setPostName(apply.getSelfPostName());
         }
         

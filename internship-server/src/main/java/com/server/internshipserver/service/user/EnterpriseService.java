@@ -42,6 +42,17 @@ public interface EnterpriseService extends IService<Enterprise> {
     Enterprise addEnterprise(Enterprise enterprise);
     
     /**
+     * 添加企业（包含企业管理员账号）
+     * @param enterprise 企业信息
+     * @param adminName 企业管理员姓名
+     * @param adminPhone 企业管理员手机号
+     * @param adminEmail 企业管理员邮箱
+     * @param adminPassword 企业管理员初始密码
+     * @return 添加的企业信息
+     */
+    Enterprise addEnterpriseWithAdmin(Enterprise enterprise, String adminName, String adminPhone, String adminEmail, String adminPassword);
+    
+    /**
      * 更新企业信息
      * @param enterprise 企业信息
      * @return 更新后的企业信息

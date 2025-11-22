@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/auth'
+import { getToken } from '@/utils/auth'
 import { hasAnyRole } from '@/utils/permission'
 import systemRoutes from './modules/system'
 import userRoutes from './modules/user'
@@ -75,19 +76,33 @@ const router = createRouter({
   routes
 })
 
+// 辅助函数：获取token（先从store，再从存储）
+function getTokenFromStore() {
+  const authStore = useAuthStore()
+  let token = authStore.token
+  if (!token) {
+    token = getToken()
+    if (token) {
+      authStore.token = token
+    }
+  }
+  return token
+}
+
 // 全局前置守卫
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-  
   // 设置页面标题
   if (to.meta.title) {
     document.title = `${to.meta.title} - 实习管理系统`
   }
   
+  // 获取token（先从store，再从存储）
+  const token = getTokenFromStore()
+  
   // 检查是否需要认证
   if (to.meta.requiresAuth) {
     // 检查是否已登录
-    if (!authStore.token) {
+    if (!token) {
       next({
         path: '/login',
         query: { redirect: to.fullPath }
@@ -108,7 +123,7 @@ router.beforeEach((to, from, next) => {
   }
   
   // 如果已登录，访问登录页则跳转到首页
-  if (to.path === '/login' && authStore.token) {
+  if (to.path === '/login' && token) {
     next('/dashboard')
     return
   }

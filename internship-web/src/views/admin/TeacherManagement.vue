@@ -1,7 +1,14 @@
 <template>
   <PageLayout title="教师管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">添加教师</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        添加教师
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -108,8 +115,24 @@
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="200" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            link 
+            type="danger" 
+            size="small" 
+            @click="handleDelete(row)"
+          >
+            停用
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -222,8 +245,15 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="所属部门">
-              <el-input v-model="formData.department" placeholder="请输入所属部门" />
+            <el-form-item label="角色" prop="roleCode">
+              <el-select v-model="formData.roleCode" placeholder="请选择角色" style="width: 100%">
+                <el-option
+                  v-for="role in roleList"
+                  :key="role.roleCode"
+                  :label="role.roleName"
+                  :value="role.roleCode"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -249,10 +279,12 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import { collegeApi } from '@/api/system/college'
 import { schoolApi } from '@/api/system/school'
+import { roleApi } from '@/api/user/role'
 
 // 加载状态
 const loading = ref(false)
@@ -282,6 +314,7 @@ const schoolMap = ref({})
 // 学院列表和学校列表（用于下拉选择）
 const collegeList = ref([])
 const schoolList = ref([])
+const roleList = ref([])
 
 // 对话框
 const dialogVisible = ref(false)
@@ -301,7 +334,7 @@ const formData = reactive({
   collegeId: null,
   schoolId: null,
   title: '',
-  department: '',
+  roleCode: '',
   status: 1,
   password: ''
 })
@@ -367,6 +400,20 @@ const loadSchoolList = async () => {
     }
   } catch (error) {
     console.error('加载学校列表失败:', error)
+  }
+}
+
+// 加载角色列表（只加载教师相关角色）
+const loadRoleList = async () => {
+  try {
+    const res = await roleApi.getAllEnabledRoles()
+    if (res.code === 200) {
+      // 只显示教师相关的角色
+      const teacherRoles = ['ROLE_INSTRUCTOR', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      roleList.value = (res.data || []).filter(role => teacherRoles.includes(role.roleCode))
+    }
+  } catch (error) {
+    console.error('加载角色列表失败:', error)
   }
 }
 
@@ -457,6 +504,24 @@ const handleEdit = async (row) => {
   try {
     const res = await teacherApi.getTeacherById(row.teacherId)
     if (res.code === 200) {
+      // 获取用户角色
+      let roleCode = ''
+      if (res.data.userId) {
+        try {
+          const roleRes = await userApi.getUserRoles(res.data.userId)
+          if (roleRes.code === 200 && roleRes.data && roleRes.data.length > 0) {
+            // 获取第一个教师相关角色
+            const teacherRoles = ['ROLE_INSTRUCTOR', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+            const teacherRole = roleRes.data.find(r => teacherRoles.includes(r.roleCode))
+            if (teacherRole) {
+              roleCode = teacherRole.roleCode
+            }
+          }
+        } catch (error) {
+          console.error('获取用户角色失败:', error)
+        }
+      }
+      
       Object.assign(formData, {
         teacherId: res.data.teacherId,
         teacherNo: res.data.teacherNo,
@@ -468,7 +533,7 @@ const handleEdit = async (row) => {
         collegeId: res.data.collegeId,
         schoolId: res.data.schoolId,
         title: res.data.title || '',
-        department: res.data.department || '',
+        roleCode: roleCode,
         status: res.data.status,
         password: ''
       })
@@ -493,7 +558,7 @@ const resetFormData = () => {
     collegeId: null,
     schoolId: null,
     title: '',
-    department: '',
+    roleCode: '',
     status: 1,
     password: ''
   })
@@ -526,7 +591,7 @@ const handleSubmit = async () => {
         collegeId: formData.collegeId,
         schoolId: formData.schoolId,
         title: formData.title || undefined,
-        department: formData.department || undefined,
+        roleCode: formData.roleCode || undefined,
         status: formData.status
       }
       
@@ -580,6 +645,7 @@ const handleDelete = async (row) => {
 onMounted(() => {
   loadCollegeList()
   loadSchoolList()
+  loadRoleList()
   loadData()
 })
 </script>

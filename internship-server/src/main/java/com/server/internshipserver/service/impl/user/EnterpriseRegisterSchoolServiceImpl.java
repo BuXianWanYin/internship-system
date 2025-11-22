@@ -13,6 +13,7 @@ import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,9 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -84,6 +88,18 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         wrapper.eq(EnterpriseRegisterSchool::getEnterpriseId, enterpriseId)
                .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                .orderByDesc(EnterpriseRegisterSchool::getCreateTime);
+        
+        // 数据权限过滤：学校管理员只能看到自己学校的申请
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null) {
+                wrapper.eq(EnterpriseRegisterSchool::getSchoolId, currentUserSchoolId);
+            } else {
+                // 非系统管理员且无法获取学校ID，返回空列表
+                return new ArrayList<>();
+            }
+        }
+        
         return this.list(wrapper);
     }
     

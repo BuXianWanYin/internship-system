@@ -3,7 +3,10 @@ package com.server.internshipserver.controller.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.service.user.UserService;
+
+import java.util.List;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -105,6 +108,24 @@ public class UserController {
             @ApiParam(value = "角色代码", required = true) @RequestParam String roleCode) {
         boolean success = userService.assignRoleToUser(userId, roleCode);
         return success ? Result.success("角色分配成功") : Result.error("角色分配失败");
+    }
+    
+    @ApiOperation("检查是否可以停用用户")
+    @GetMapping("/{userId}/can-delete")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    public Result<Boolean> canDeleteUser(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
+        boolean canDelete = userService.canDeleteUser(userId);
+        return Result.success("查询成功", canDelete);
+    }
+    
+    @ApiOperation("获取用户角色列表")
+    @GetMapping("/{userId}/roles")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    public Result<List<Role>> getUserRoles(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
+        List<Role> roles = userService.getUserRoles(userId);
+        return Result.success("查询成功", roles);
     }
 }
 

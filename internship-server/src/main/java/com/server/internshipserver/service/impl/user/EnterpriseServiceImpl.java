@@ -151,6 +151,87 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public Enterprise addEnterpriseWithAdmin(Enterprise enterprise, String adminName, String adminPhone, String adminEmail, String adminPassword) {
+        // 参数校验
+        if (!StringUtils.hasText(enterprise.getEnterpriseName())) {
+            throw new BusinessException("企业名称不能为空");
+        }
+        if (!StringUtils.hasText(adminName)) {
+            throw new BusinessException("企业管理员姓名不能为空");
+        }
+        if (!StringUtils.hasText(adminPhone)) {
+            throw new BusinessException("企业管理员手机号不能为空");
+        }
+        if (!StringUtils.hasText(adminPassword)) {
+            throw new BusinessException("企业管理员初始密码不能为空");
+        }
+        
+        // 检查企业代码是否已存在
+        if (StringUtils.hasText(enterprise.getEnterpriseCode())) {
+            Enterprise existEnterprise = getEnterpriseByEnterpriseCode(enterprise.getEnterpriseCode());
+            if (existEnterprise != null) {
+                throw new BusinessException("企业代码已存在");
+            }
+        }
+        
+        // 检查统一社会信用代码是否已存在
+        if (StringUtils.hasText(enterprise.getUnifiedSocialCreditCode())) {
+            LambdaQueryWrapper<Enterprise> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Enterprise::getUnifiedSocialCreditCode, enterprise.getUnifiedSocialCreditCode())
+                   .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+            Enterprise existEnterprise = this.getOne(wrapper);
+            if (existEnterprise != null) {
+                throw new BusinessException("统一社会信用代码已存在");
+            }
+        }
+        
+        // 生成用户名（使用手机号或邮箱）
+        String username;
+        if (StringUtils.hasText(adminPhone)) {
+            username = adminPhone;
+        } else if (StringUtils.hasText(adminEmail)) {
+            username = adminEmail.split("@")[0];
+        } else {
+            username = "ENT_ADMIN_" + System.currentTimeMillis();
+        }
+        
+        // 检查用户名是否已存在
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            // 如果用户名已存在，添加时间戳
+            username = username + "_" + System.currentTimeMillis();
+        }
+        
+        // 创建企业管理员用户
+        UserInfo adminUser = new UserInfo();
+        adminUser.setUsername(username);
+        adminUser.setPassword(adminPassword); // UserService会自动加密
+        adminUser.setRealName(adminName);
+        adminUser.setPhone(adminPhone);
+        adminUser.setEmail(adminEmail);
+        adminUser.setStatus(1); // 默认启用
+        adminUser = userService.addUser(adminUser);
+        
+        // 分配企业管理员角色
+        userService.assignRoleToUser(adminUser.getUserId(), "ROLE_ENTERPRISE_ADMIN");
+        
+        // 设置企业信息
+        enterprise.setUserId(adminUser.getUserId());
+        if (enterprise.getAuditStatus() == null) {
+            enterprise.setAuditStatus(1); // 默认已通过
+        }
+        if (enterprise.getStatus() == null) {
+            enterprise.setStatus(1); // 默认启用
+        }
+        enterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        
+        // 保存企业
+        this.save(enterprise);
+        return enterprise;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public Enterprise updateEnterprise(Enterprise enterprise) {
         if (enterprise.getEnterpriseId() == null) {
             throw new BusinessException("企业ID不能为空");

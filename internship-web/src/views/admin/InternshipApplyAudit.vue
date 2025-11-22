@@ -28,8 +28,8 @@
             clearable
             style="width: 150px"
           >
-            <el-option label="合作企业" :value="0" />
-            <el-option label="自主实习" :value="1" />
+            <el-option label="合作企业" :value="1" />
+            <el-option label="自主实习" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -42,7 +42,8 @@
             <el-option label="待审核" :value="0" />
             <el-option label="已通过" :value="1" />
             <el-option label="已拒绝" :value="2" />
-            <el-option label="已取消" :value="3" />
+            <el-option label="已录用" :value="3" />
+            <el-option label="已拒绝录用" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -67,8 +68,8 @@
       <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
       <el-table-column label="申请类型" width="120" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.applyType === 0 ? 'primary' : 'warning'" size="small">
-            {{ row.applyType === 0 ? '合作企业' : '自主实习' }}
+          <el-tag :type="row.applyType === 1 ? 'primary' : 'warning'" size="small">
+            {{ row.applyType === 1 ? '合作企业' : row.applyType === 2 ? '自主实习' : '未知' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -88,7 +89,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.status === 0 && row.applyType === 1"
+            v-if="row.status === 0 && row.applyType === 2"
             link
             type="success"
             size="small"
@@ -97,7 +98,7 @@
             通过
           </el-button>
           <el-button
-            v-if="row.status === 0 && row.applyType === 1"
+            v-if="row.status === 0 && row.applyType === 2"
             link
             type="danger"
             size="small"
@@ -126,14 +127,15 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="申请详情"
-      width="900px"
+      width="1000px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border style="margin-bottom: 20px">
         <el-descriptions-item label="学生姓名">{{ detailData.studentName }}</el-descriptions-item>
         <el-descriptions-item label="学号">{{ detailData.studentNo }}</el-descriptions-item>
         <el-descriptions-item label="申请类型">
-          <el-tag :type="detailData.applyType === 0 ? 'primary' : 'warning'" size="small">
-            {{ detailData.applyType === 0 ? '合作企业' : '自主实习' }}
+          <el-tag :type="detailData.applyType === 1 ? 'primary' : 'warning'" size="small">
+            {{ detailData.applyType === 1 ? '合作企业' : detailData.applyType === 2 ? '自主实习' : '未知' }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
@@ -141,62 +143,116 @@
             {{ getStatusText(detailData.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="企业名称" :span="2">{{ detailData.enterpriseName || '-' }}</el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="统一社会信用代码">
-          {{ detailData.unifiedSocialCreditCode || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="企业性质">
-          {{ detailData.enterpriseNature || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="企业地址" :span="2">
-          {{ detailData.enterpriseAddress || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="联系人">
-          {{ detailData.contactPerson || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="联系电话">
-          {{ detailData.contactPhone || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="联系邮箱">
-          {{ detailData.contactEmail || '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="岗位名称">{{ detailData.postName || '-' }}</el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="实习开始日期">
-          {{ detailData.internshipStartDate ? formatDate(detailData.internshipStartDate) : '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.applyType === 1" label="实习结束日期">
-          {{ detailData.internshipEndDate ? formatDate(detailData.internshipEndDate) : '-' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="申请时间">
-          {{ formatDateTime(detailData.createTime) }}
-        </el-descriptions-item>
-        <el-descriptions-item label="申请理由" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.applyReason || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.resumeContent" label="简历内容" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.resumeContent }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.auditOpinion" label="审核意见" :span="2">
-          <div style="white-space: pre-wrap; color: #606266">{{ detailData.auditOpinion }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.auditTime" label="审核时间">
-          {{ formatDateTime(detailData.auditTime) }}
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.auditorName" label="审核人">
-          {{ detailData.auditorName }}
-        </el-descriptions-item>
       </el-descriptions>
+
+      <!-- 标签页切换 -->
+      <el-tabs v-model="activeTab" type="border-card">
+        <!-- 学生申请信息标签页 -->
+        <el-tab-pane label="学生申请信息" name="student">
+          <el-descriptions :column="2" border>
+            <!-- 合作企业申请的企业信息 -->
+            <template v-if="detailData.applyType === 1">
+              <el-descriptions-item label="企业名称" :span="2">{{ detailData.enterpriseName || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="岗位名称" :span="2">{{ detailData.postName || '-' }}</el-descriptions-item>
+            </template>
+            
+            <!-- 自主实习申请的企业信息（学生填写） -->
+            <template v-if="detailData.applyType === 2">
+              <el-descriptions-item label="企业名称" :span="2">{{ detailData.selfEnterpriseName || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="企业地址" :span="2">{{ detailData.selfEnterpriseAddress || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="联系人">{{ detailData.selfContactPerson || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="联系电话">{{ detailData.selfContactPhone || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="企业性质">{{ detailData.selfEnterpriseNature || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="岗位名称">{{ detailData.selfPostName || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="实习开始日期">
+                {{ detailData.selfStartDate ? formatDate(detailData.selfStartDate) : '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="实习结束日期">
+                {{ detailData.selfEndDate ? formatDate(detailData.selfEndDate) : '-' }}
+              </el-descriptions-item>
+              <el-descriptions-item v-if="detailData.selfDescription" label="实习说明" :span="2">
+                <div style="white-space: pre-wrap">{{ detailData.selfDescription }}</div>
+              </el-descriptions-item>
+            </template>
+            
+            <el-descriptions-item label="申请时间">
+              {{ formatDateTime(detailData.createTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="申请理由" :span="2">
+              <div style="white-space: pre-wrap">{{ detailData.applyReason || '-' }}</div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.resumeContent" label="简历内容" :span="2">
+              <div style="white-space: pre-wrap">{{ detailData.resumeContent }}</div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.resumeAttachment" label="简历附件" :span="2">
+              <div v-for="(url, index) in (detailData.resumeAttachment || '').split(',')" :key="index" v-if="url">
+                <el-link :href="url" target="_blank" type="primary">{{ url.split('/').pop() }}</el-link>
+              </div>
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+
+        <!-- 学校审核信息标签页（仅自主实习） -->
+        <el-tab-pane v-if="detailData.applyType === 2" label="学校审核信息" name="school">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item v-if="detailData.auditOpinion" label="审核意见" :span="2">
+              <div style="white-space: pre-wrap; color: #606266">{{ detailData.auditOpinion }}</div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.auditTime" label="审核时间">
+              {{ formatDateTime(detailData.auditTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.auditorName" label="审核人">
+              {{ detailData.auditorName }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="!detailData.auditOpinion && !detailData.auditTime" label="审核状态" :span="2">
+              <el-tag type="info">待审核</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+
+        <!-- 企业审核信息标签页（仅合作企业） -->
+        <el-tab-pane v-if="detailData.applyType === 1" label="企业审核信息" name="enterprise">
+          <el-descriptions :column="2" border>
+            <el-descriptions-item v-if="detailData.interviewTime" label="面试时间">
+              {{ formatDateTime(detailData.interviewTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.interviewLocation" label="面试地点" :span="2">
+              {{ detailData.interviewLocation }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.interviewResult !== null" label="面试结果">
+              <el-tag :type="detailData.interviewResult === 1 ? 'success' : 'danger'" size="small">
+                {{ detailData.interviewResult === 1 ? '通过' : detailData.interviewResult === 2 ? '不通过' : '待定' }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.interviewComment" label="面试评价" :span="2">
+              <div style="white-space: pre-wrap">{{ detailData.interviewComment }}</div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.enterpriseFeedback" label="企业反馈" :span="2">
+              <div style="white-space: pre-wrap; color: #606266">{{ detailData.enterpriseFeedback }}</div>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.enterpriseFeedbackTime" label="企业反馈时间">
+              {{ formatDateTime(detailData.enterpriseFeedbackTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="detailData.acceptTime" label="录用时间">
+              {{ formatDateTime(detailData.acceptTime) }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="!detailData.interviewTime && !detailData.enterpriseFeedback" label="审核状态" :span="2">
+              <el-tag type="info">待企业审核</el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-tab-pane>
+      </el-tabs>
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.status === 0 && detailData.applyType === 1"
+          v-if="detailData.status === 0 && detailData.applyType === 2"
           type="success"
           @click="handleAuditFromDetail(1)"
         >
           通过
         </el-button>
         <el-button
-          v-if="detailData.status === 0 && detailData.applyType === 1"
+          v-if="detailData.status === 0 && detailData.applyType === 2"
           type="danger"
           @click="handleAuditFromDetail(2)"
         >
@@ -256,6 +312,7 @@ const detailDialogVisible = ref(false)
 const auditDialogVisible = ref(false)
 const auditDialogTitle = ref('审核申请')
 const auditFormRef = ref(null)
+const activeTab = ref('student') // 标签页激活状态
 
 const searchForm = reactive({
   studentName: '',
@@ -357,6 +414,8 @@ const handleView = async (row) => {
     const res = await applyApi.getApplyById(row.applyId)
     if (res.code === 200) {
       detailData.value = res.data
+      // 根据申请类型设置默认激活的标签页
+      activeTab.value = 'student'
       detailDialogVisible.value = true
     }
   } catch (error) {
@@ -430,7 +489,8 @@ const getStatusText = (status) => {
     0: '待审核',
     1: '已通过',
     2: '已拒绝',
-    3: '已取消'
+    3: '已录用',
+    4: '已拒绝录用'
   }
   return statusMap[status] || '未知'
 }
@@ -441,7 +501,8 @@ const getStatusType = (status) => {
     0: 'warning',
     1: 'success',
     2: 'danger',
-    3: 'info'
+    3: 'success',
+    4: 'danger'
   }
   return typeMap[status] || 'info'
 }

@@ -1,8 +1,22 @@
 <template>
   <PageLayout title="用户管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">添加用户</el-button>
-      <el-button type="success" :icon="Upload" @click="handleImport">批量导入</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        添加用户
+      </el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+        type="success" 
+        :icon="Upload" 
+        @click="handleImport"
+      >
+        批量导入
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -142,9 +156,34 @@
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="240" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="warning" size="small" @click="handleResetPassword(row)">重置密码</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            link 
+            type="warning" 
+            size="small" 
+            @click="handleResetPassword(row)"
+          >
+            重置密码
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            link 
+            type="danger" 
+            size="small" 
+            :disabled="!canDeleteMap[row.userId]"
+            @click="handleDelete(row)"
+          >
+            停用
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -250,6 +289,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 import { userApi } from '@/api/user/user'
 import { roleApi } from '@/api/user/role'
 import { schoolApi } from '@/api/system/school'
@@ -278,6 +318,8 @@ const classList = ref([])
 // 表格数据
 const tableData = ref([])
 const loading = ref(false)
+// 用户是否可以停用的映射表
+const canDeleteMap = ref({})
 
 // 分页
 const pagination = reactive({
@@ -379,12 +421,41 @@ const loadData = async () => {
     if (res.code === 200) {
       tableData.value = res.data.records
       pagination.total = res.data.total
+      
+      // 检查每个用户是否可以停用
+      await checkCanDeleteUsers()
     }
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
     loading.value = false
   }
+}
+
+// 检查用户是否可以停用
+const checkCanDeleteUsers = async () => {
+  canDeleteMap.value = {}
+  // 批量检查，使用 Promise.all 并行请求
+  const checkPromises = tableData.value.map(async (user) => {
+    try {
+      const res = await userApi.canDeleteUser(user.userId)
+      return {
+        userId: user.userId,
+        canDelete: res.code === 200 ? res.data : false
+      }
+    } catch (error) {
+      console.error(`检查用户 ${user.userId} 是否可以停用失败:`, error)
+      return {
+        userId: user.userId,
+        canDelete: false
+      }
+    }
+  })
+  
+  const results = await Promise.all(checkPromises)
+  results.forEach(result => {
+    canDeleteMap.value[result.userId] = result.canDelete
+  })
 }
 
 // 搜索
@@ -543,6 +614,12 @@ const handleImport = () => {
 
 // 删除
 const handleDelete = (row) => {
+  // 再次检查是否可以停用（防止状态变化）
+  if (!canDeleteMap.value[row.userId]) {
+    ElMessage.warning('该用户不能停用，系统至少需要保留一个启用的管理员')
+    return
+  }
+  
   ElMessageBox.confirm(
     `确定要停用用户 "${row.username}" 吗？`,
     '提示',
@@ -559,7 +636,11 @@ const handleDelete = (row) => {
         loadData()
       }
     } catch (error) {
-      console.error('停用失败:', error)
+      // 显示后端返回的错误信息
+      const errorMessage = error.response?.data?.message || error.message || '停用失败'
+      ElMessage.error(errorMessage)
+      // 重新检查是否可以停用
+      await checkCanDeleteUsers()
     }
   }).catch(() => {})
 }

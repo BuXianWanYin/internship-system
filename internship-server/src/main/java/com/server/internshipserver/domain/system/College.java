@@ -39,7 +39,11 @@ public class College implements Serializable {
     @TableField("school_id")
     private Long schoolId;
     
-    @ApiModelProperty(value = "院长姓名", example = "刘院长")
+    @ApiModelProperty(value = "院长用户ID", example = "1")
+    @TableField("dean_user_id")
+    private Long deanUserId;
+    
+    @ApiModelProperty(value = "院长姓名（用于显示）", example = "刘院长")
     @TableField("dean_name")
     private String deanName;
     

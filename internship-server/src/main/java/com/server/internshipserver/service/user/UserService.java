@@ -3,6 +3,9 @@ package com.server.internshipserver.service.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Role;
+
+import java.util.List;
 
 /**
  * 用户管理Service接口
@@ -75,5 +78,19 @@ public interface UserService extends IService<UserInfo> {
      * @return 是否成功
      */
     boolean assignRoleToUser(Long userId, String roleCode);
+    
+    /**
+     * 检查是否可以停用用户（用于前端判断是否禁用停用按钮）
+     * @param userId 用户ID
+     * @return 是否可以停用
+     */
+    boolean canDeleteUser(Long userId);
+    
+    /**
+     * 获取用户角色列表
+     * @param userId 用户ID
+     * @return 角色列表
+     */
+    List<Role> getUserRoles(Long userId);
 }
 

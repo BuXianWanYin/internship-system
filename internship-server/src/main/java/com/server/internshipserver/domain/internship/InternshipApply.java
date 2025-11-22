@@ -40,11 +40,11 @@ public class InternshipApply implements Serializable {
     @TableField("apply_type")
     private Integer applyType;
     
-    @ApiModelProperty(value = "企业ID（合作企业时必填）", example = "1")
+    @ApiModelProperty(value = "企业ID（仅合作企业申请使用，apply_type=1时必填）", example = "1")
     @TableField("enterprise_id")
     private Long enterpriseId;
     
-    @ApiModelProperty(value = "岗位ID（合作企业时可选）", example = "1")
+    @ApiModelProperty(value = "岗位ID（仅合作企业申请使用，apply_type=1时可选）", example = "1")
     @TableField("post_id")
     private Long postId;
     
@@ -115,33 +115,33 @@ public class InternshipApply implements Serializable {
     @TableField("audit_opinion")
     private String auditOpinion;
     
-    @ApiModelProperty(value = "企业反馈", example = "该学生表现优秀，同意录用")
+    @ApiModelProperty(value = "企业反馈（仅合作企业申请使用）", example = "该学生表现优秀，同意录用")
     @TableField("enterprise_feedback")
     private String enterpriseFeedback;
     
-    @ApiModelProperty(value = "企业反馈时间")
+    @ApiModelProperty(value = "企业反馈时间（仅合作企业申请使用）")
     @TableField("enterprise_feedback_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime enterpriseFeedbackTime;
     
-    @ApiModelProperty(value = "面试时间")
+    @ApiModelProperty(value = "面试时间（仅合作企业申请使用）")
     @TableField("interview_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime interviewTime;
     
-    @ApiModelProperty(value = "面试地点", example = "北京市海淀区中关村大街1号")
+    @ApiModelProperty(value = "面试地点（仅合作企业申请使用）", example = "北京市海淀区中关村大街1号")
     @TableField("interview_location")
     private String interviewLocation;
     
-    @ApiModelProperty(value = "面试结果：1-通过，2-不通过", example = "1")
+    @ApiModelProperty(value = "面试结果：1-通过，2-不通过（仅合作企业申请使用）", example = "1")
     @TableField("interview_result")
     private Integer interviewResult;
     
-    @ApiModelProperty(value = "面试评价", example = "技术能力较强，沟通能力良好")
+    @ApiModelProperty(value = "面试评价（仅合作企业申请使用）", example = "技术能力较强，沟通能力良好")
     @TableField("interview_comment")
     private String interviewComment;
     
-    @ApiModelProperty(value = "录用时间")
+    @ApiModelProperty(value = "录用时间（仅合作企业申请使用）")
     @TableField("accept_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime acceptTime;

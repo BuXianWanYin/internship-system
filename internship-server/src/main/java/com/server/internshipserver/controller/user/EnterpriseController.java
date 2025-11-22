@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.dto.EnterpriseRegisterDTO;
+import com.server.internshipserver.domain.user.dto.EnterpriseAddDTO;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.service.user.EnterpriseService;
 import java.util.List;
@@ -12,6 +13,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -70,11 +72,30 @@ public class EnterpriseController {
         return Result.success("查询成功", enterprise);
     }
     
-    @ApiOperation("添加企业")
+    @ApiOperation("添加企业（系统管理员）")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
-    public Result<Enterprise> addEnterprise(@RequestBody Enterprise enterprise) {
-        Enterprise result = enterpriseService.addEnterprise(enterprise);
+    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    public Result<Enterprise> addEnterprise(@RequestBody EnterpriseAddDTO addDTO) {
+        if (addDTO == null || addDTO.getEnterprise() == null) {
+            return Result.error("企业信息不能为空");
+        }
+        if (!StringUtils.hasText(addDTO.getAdminName())) {
+            return Result.error("企业管理员姓名不能为空");
+        }
+        if (!StringUtils.hasText(addDTO.getAdminPhone())) {
+            return Result.error("企业管理员手机号不能为空");
+        }
+        if (!StringUtils.hasText(addDTO.getAdminPassword())) {
+            return Result.error("企业管理员初始密码不能为空");
+        }
+        
+        Enterprise result = enterpriseService.addEnterpriseWithAdmin(
+            addDTO.getEnterprise(),
+            addDTO.getAdminName(),
+            addDTO.getAdminPhone(),
+            addDTO.getAdminEmail(),
+            addDTO.getAdminPassword()
+        );
         return Result.success("添加成功", result);
     }
     

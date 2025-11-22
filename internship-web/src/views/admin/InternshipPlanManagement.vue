@@ -1,7 +1,14 @@
 <template>
   <PageLayout title="实习计划管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">创建实习计划</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        创建实习计划
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -140,9 +147,17 @@
       </el-table-column>
       <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleView(row)"
+          >
+            查看
+          </el-button>
           <el-button
-            v-if="row.status === 0"
+            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="primary"
             size="small"
@@ -151,7 +166,7 @@
             编辑
           </el-button>
           <el-button
-            v-if="row.status === 0"
+            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="success"
             size="small"
@@ -160,7 +175,7 @@
             提交审核
           </el-button>
           <el-button
-            v-if="row.status === 1"
+            v-if="row.status === 1 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="success"
             size="small"
@@ -169,7 +184,7 @@
             审核
           </el-button>
           <el-button
-            v-if="row.status === 2"
+            v-if="row.status === 2 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="warning"
             size="small"
@@ -178,7 +193,7 @@
             发布
           </el-button>
           <el-button
-            v-if="row.status !== 4"
+            v-if="row.status !== 4 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="danger"
             size="small"
@@ -247,7 +262,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="实习类型" prop="planType">
-              <el-input v-model="formData.planType" placeholder="如：生产实习、毕业实习" />
+              <el-select v-model="formData.planType" placeholder="请选择实习类型" style="width: 100%">
+                <el-option label="生产实习" value="生产实习" />
+                <el-option label="毕业实习" value="毕业实习" />
+                <el-option label="认知实习" value="认知实习" />
+                <el-option label="专业实习" value="专业实习" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -439,6 +459,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { hasAnyRole } from '@/utils/permission'
 import { planApi } from '@/api/internship/plan'
 import { semesterApi } from '@/api/system/semester'
 import { schoolApi } from '@/api/system/school'

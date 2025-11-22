@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/store/modules/auth'
-import { removeToken, removeUserInfo } from '@/utils/auth'
+import { getToken, removeToken, removeUserInfo } from '@/utils/auth'
 import router from '@/router'
 import { isCanceledRequest } from '@/utils/request-helper'
 
@@ -50,9 +50,21 @@ service.interceptors.request.use(
       // 请求会被取消，错误会在响应拦截器中处理
     }
     
-    // 从store获取token
+    // 优先从存储中读取token（确保获取最新的token，避免store响应式延迟问题）
+    // 存储是同步的，而store可能有响应式更新延迟
+    let token = getToken()
+    
+    // 如果从存储中读取到token，同步到store（保持store和存储的一致性）
     const authStore = useAuthStore()
-    const token = authStore.token
+    if (token) {
+      // 只有当store中的token与存储中的不一致时才更新
+      if (authStore.token !== token) {
+        authStore.token = token
+      }
+    } else {
+      // 如果存储中没有token，尝试从store中获取（兼容性处理）
+      token = authStore.token || ''
+    }
     
     // 如果不是登录相关请求且没有token，取消请求
     if (!isAuthRequest && !token) {

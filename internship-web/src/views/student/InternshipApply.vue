@@ -285,7 +285,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="企业规模" prop="enterpriseScale">
-              <el-input v-model="selfApplyForm.enterpriseScale" placeholder="如：100-500人" />
+              <el-select v-model="selfApplyForm.enterpriseScale" placeholder="请选择企业规模" style="width: 100%">
+                <el-option label="大型企业（500人以上）" value="大型企业" />
+                <el-option label="中型企业（100-500人）" value="中型企业" />
+                <el-option label="小型企业（20-100人）" value="小型企业" />
+                <el-option label="微型企业（20人以下）" value="微型企业" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -650,7 +655,20 @@ const handleSubmitSelfApply = async () => {
     if (valid) {
       selfApplyLoading.value = true
       try {
-        const res = await applyApi.addSelfApply(selfApplyForm)
+        // 映射前端表单字段到后端实体字段
+        const submitData = {
+          selfEnterpriseName: selfApplyForm.enterpriseName,
+          selfEnterpriseAddress: selfApplyForm.enterpriseAddress,
+          selfContactPerson: selfApplyForm.contactPerson,
+          selfContactPhone: selfApplyForm.contactPhone,
+          selfEnterpriseNature: selfApplyForm.industry, // 行业对应企业性质
+          selfPostName: selfApplyForm.internshipPosition,
+          selfStartDate: selfApplyForm.internshipStartDate,
+          selfEndDate: selfApplyForm.internshipEndDate,
+          selfDescription: '', // 如果有实习说明字段，可以添加
+          applyReason: selfApplyForm.applyReason
+        }
+        const res = await applyApi.addSelfApply(submitData)
         if (res.code === 200) {
           ElMessage.success('申请提交成功，等待审核')
           selfApplyDialogVisible.value = false
