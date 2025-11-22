@@ -162,6 +162,31 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
             throw new BusinessException("企业不存在");
         }
         
+        // 数据权限检查：只有系统管理员或企业管理员可以编辑企业信息
+        // 企业管理员只能编辑自己的企业
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            String username = SecurityUtil.getCurrentUsername();
+            if (username != null) {
+                UserInfo currentUser = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, username)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (currentUser != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                    // 企业管理员：只能编辑本企业
+                    if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
+                        if (!existEnterprise.getUserId().equals(currentUser.getUserId())) {
+                            throw new BusinessException("无权编辑该企业信息");
+                        }
+                    } else {
+                        // 其他角色（包括学校管理员）不能编辑企业信息
+                        throw new BusinessException("无权编辑企业信息");
+                    }
+                }
+            }
+        }
+        
         // 如果修改了企业代码，检查新代码是否已存在
         if (StringUtils.hasText(enterprise.getEnterpriseCode()) 
                 && !enterprise.getEnterpriseCode().equals(existEnterprise.getEnterpriseCode())) {
@@ -260,6 +285,35 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         Enterprise enterprise = this.getById(enterpriseId);
         if (enterprise == null || enterprise.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("企业不存在");
+        }
+        
+        // 数据权限检查：非系统管理员需要检查是否有权限查看该企业
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            String username = SecurityUtil.getCurrentUsername();
+            if (username != null) {
+                UserInfo currentUser = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, username)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (currentUser != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                    // 企业管理员：只能查看本企业
+                    if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
+                        if (!enterprise.getUserId().equals(currentUser.getUserId())) {
+                            throw new BusinessException("无权查看该企业信息");
+                        }
+                    } else {
+                        // 学校管理员或班主任：只能查看有合作关系的企业
+                        List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
+                        if (cooperationEnterpriseIds != null) {
+                            if (!cooperationEnterpriseIds.contains(enterpriseId)) {
+                                throw new BusinessException("无权查看该企业信息");
+                            }
+                        }
+                    }
+                }
+            }
         }
         
         return enterprise;

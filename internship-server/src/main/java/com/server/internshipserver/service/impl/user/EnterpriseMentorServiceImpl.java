@@ -58,6 +58,15 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
             throw new BusinessException("初始密码不能为空");
         }
         
+        // 数据权限检查：只有系统管理员或企业管理员可以添加企业导师
+        // 企业管理员只能添加自己企业的导师
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(enterpriseId)) {
+                throw new BusinessException("无权为该企业添加导师");
+            }
+        }
+        
         // 生成用户名（使用手机号或邮箱，如果都没有则使用企业ID+姓名）
         String username;
         if (StringUtils.hasText(phone)) {
@@ -116,7 +125,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public EnterpriseMentor updateEnterpriseMentorWithUser(Long mentorId, Long userId, 
+    public EnterpriseMentor updateEnterpriseMentorWithUser(Long mentorId, Long userId,
                                                             String mentorName, Long enterpriseId,
                                                             String position, String department,
                                                             String phone, String email, Integer status) {
@@ -131,6 +140,21 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         EnterpriseMentor existMentor = this.getById(mentorId);
         if (existMentor == null || existMentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("企业导师不存在");
+        }
+        
+        // 数据权限检查：只有系统管理员或企业管理员可以编辑企业导师
+        // 企业管理员只能编辑自己企业的导师
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(existMentor.getEnterpriseId())) {
+                throw new BusinessException("无权编辑该企业导师");
+            }
+            // 如果修改了企业ID，检查新企业ID是否属于当前用户
+            if (enterpriseId != null && !enterpriseId.equals(existMentor.getEnterpriseId())) {
+                if (!enterpriseId.equals(currentUserEnterpriseId)) {
+                    throw new BusinessException("无权将该导师转移到其他企业");
+                }
+            }
         }
         
         // 更新用户信息
@@ -252,6 +276,15 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         EnterpriseMentor mentor = this.getById(mentorId);
         if (mentor == null || mentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("企业导师不存在");
+        }
+        
+        // 数据权限检查：只有系统管理员或企业管理员可以删除企业导师
+        // 企业管理员只能删除自己企业的导师
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(mentor.getEnterpriseId())) {
+                throw new BusinessException("无权删除该企业导师");
+            }
         }
         
         // 软删除

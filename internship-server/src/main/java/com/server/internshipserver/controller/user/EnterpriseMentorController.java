@@ -26,7 +26,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("分页查询企业导师列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Page<EnterpriseMentor>> getEnterpriseMentorPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -40,7 +40,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("根据ID查询企业导师详情")
     @GetMapping("/{mentorId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> getEnterpriseMentorById(
             @ApiParam(value = "企业导师ID", required = true) @PathVariable Long mentorId) {
         EnterpriseMentor mentor = enterpriseMentorService.getEnterpriseMentorById(mentorId);
@@ -49,7 +49,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("根据用户ID查询企业导师信息")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> getEnterpriseMentorByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         EnterpriseMentor mentor = enterpriseMentorService.getEnterpriseMentorByUserId(userId);
@@ -58,7 +58,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("添加企业导师")
     @PostMapping
-    @PreAuthorize("hasAuthority('user:add')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> addEnterpriseMentor(@RequestBody EnterpriseMentorAddDTO mentorAddDTO) {
         EnterpriseMentor result = enterpriseMentorService.addEnterpriseMentorWithUser(
                 mentorAddDTO.getMentorName(),
@@ -75,7 +75,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("更新企业导师信息")
     @PutMapping
-    @PreAuthorize("hasAuthority('user:edit')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> updateEnterpriseMentor(@RequestBody EnterpriseMentorUpdateDTO mentorUpdateDTO) {
         EnterpriseMentor result = enterpriseMentorService.updateEnterpriseMentorWithUser(
                 mentorUpdateDTO.getMentorId(),
@@ -93,7 +93,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("停用企业导师（软删除）")
     @DeleteMapping("/{mentorId}")
-    @PreAuthorize("hasAuthority('user:delete')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<?> deleteEnterpriseMentor(
             @ApiParam(value = "企业导师ID", required = true) @PathVariable Long mentorId) {
         boolean success = enterpriseMentorService.deleteEnterpriseMentor(mentorId);

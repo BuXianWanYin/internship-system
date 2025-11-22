@@ -100,8 +100,7 @@ router.beforeEach((to, from, next) => {
     
     // 检查角色权限
     if (to.meta.roles && to.meta.roles.length > 0) {
-      const userRoles = authStore.userInfo?.roles || []
-      if (!hasAnyRole(userRoles, to.meta.roles)) {
+      if (!hasAnyRole(to.meta.roles)) {
         next('/403')
         return
       }

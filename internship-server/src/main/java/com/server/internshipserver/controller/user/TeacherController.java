@@ -26,7 +26,7 @@ public class TeacherController {
     
     @ApiOperation("分页查询教师列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Page<Teacher>> getTeacherPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -41,7 +41,7 @@ public class TeacherController {
     
     @ApiOperation("根据ID查询教师详情")
     @GetMapping("/{teacherId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> getTeacherById(
             @ApiParam(value = "教师ID", required = true) @PathVariable Long teacherId) {
         Teacher teacher = teacherService.getTeacherById(teacherId);
@@ -50,7 +50,7 @@ public class TeacherController {
     
     @ApiOperation("根据用户ID查询教师信息")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> getTeacherByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         Teacher teacher = teacherService.getTeacherByUserId(userId);
@@ -59,7 +59,7 @@ public class TeacherController {
     
     @ApiOperation("添加教师")
     @PostMapping
-    @PreAuthorize("hasAuthority('user:add')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> addTeacher(@RequestBody TeacherAddDTO teacherAddDTO) {
         // 如果提供了userId，使用原有方法（兼容已有接口，通过Teacher对象）
         // 这里统一使用新方法，自动创建用户
@@ -81,7 +81,7 @@ public class TeacherController {
     
     @ApiOperation("更新教师信息")
     @PutMapping
-    @PreAuthorize("hasAuthority('user:edit')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> updateTeacher(@RequestBody TeacherUpdateDTO teacherUpdateDTO) {
         Teacher result = teacherService.updateTeacherWithUser(
                 teacherUpdateDTO.getTeacherId(),
@@ -102,7 +102,7 @@ public class TeacherController {
     
     @ApiOperation("停用教师（软删除）")
     @DeleteMapping("/{teacherId}")
-    @PreAuthorize("hasAuthority('user:delete')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> deleteTeacher(
             @ApiParam(value = "教师ID", required = true) @PathVariable Long teacherId) {
         boolean success = teacherService.deleteTeacher(teacherId);

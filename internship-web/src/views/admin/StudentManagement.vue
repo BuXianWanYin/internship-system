@@ -2,7 +2,14 @@
   <PageLayout title="学生管理">
     <template #actions>
       <el-button type="primary" :icon="Plus" @click="handleAdd">添加学生</el-button>
-      <el-button type="success" :icon="Upload" @click="activeTab = 'import'">批量导入</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])" 
+        type="success" 
+        :icon="Upload" 
+        @click="activeTab = 'import'"
+      >
+        批量导入
+      </el-button>
     </template>
 
     <!-- Tab切换 -->
@@ -509,16 +516,22 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
 import { studentApi } from '@/api/user/student'
 import { classApi } from '@/api/system/class'
 import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
+
+// 权限相关
+const authStore = useAuthStore()
+const userRoles = computed(() => authStore.roles || [])
 
 // Tab切换
 const activeTab = ref('list')
@@ -678,6 +691,42 @@ const handleReset = () => {
   classList.value = []
   pagination.current = 1
   loadStudentList()
+}
+
+// 学校变化时，清空下级选项并重新加载学院列表
+const handleSchoolChange = (schoolId) => {
+  searchForm.collegeId = null
+  searchForm.majorId = null
+  searchForm.classId = null
+  majorList.value = []
+  classList.value = []
+  if (schoolId) {
+    loadCollegeList(schoolId)
+  } else {
+    collegeList.value = []
+  }
+}
+
+// 学院变化时，清空下级选项并重新加载专业列表
+const handleCollegeChange = (collegeId) => {
+  searchForm.majorId = null
+  searchForm.classId = null
+  classList.value = []
+  if (collegeId) {
+    loadMajorList(collegeId)
+  } else {
+    majorList.value = []
+  }
+}
+
+// 专业变化时，清空下级选项并重新加载班级列表
+const handleMajorChange = (majorId) => {
+  searchForm.classId = null
+  if (majorId) {
+    loadClassListByMajor(majorId)
+  } else {
+    classList.value = []
+  }
 }
 
 const handleSizeChange = (size) => {

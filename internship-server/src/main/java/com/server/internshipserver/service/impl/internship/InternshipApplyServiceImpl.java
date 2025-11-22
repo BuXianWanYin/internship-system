@@ -11,10 +11,12 @@ import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import com.server.internshipserver.service.internship.InternshipApplyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     
     @Autowired
     private EnterpriseSchoolCooperationService cooperationService;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -269,7 +274,60 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             }
         }
         
+        // 填充关联字段
+        fillApplyRelatedFields(apply);
+        
         return apply;
+    }
+    
+    /**
+     * 填充申请关联字段
+     */
+    private void fillApplyRelatedFields(InternshipApply apply) {
+        // 填充学生信息
+        if (apply.getStudentId() != null) {
+            Student student = studentMapper.selectById(apply.getStudentId());
+            if (student != null) {
+                apply.setStudentNo(student.getStudentNo());
+                // 获取用户信息
+                if (student.getUserId() != null) {
+                    UserInfo user = userMapper.selectById(student.getUserId());
+                    if (user != null) {
+                        apply.setStudentName(user.getRealName());
+                    }
+                }
+            }
+        }
+        
+        // 填充企业信息
+        if (apply.getEnterpriseId() != null) {
+            Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+            if (enterprise != null) {
+                apply.setEnterpriseName(enterprise.getEnterpriseName());
+            }
+        } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+            // 自主实习，使用自主实习企业名称
+            apply.setEnterpriseName(apply.getSelfEnterpriseName());
+        }
+        
+        // 填充岗位信息
+        if (apply.getPostId() != null) {
+            InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+            if (post != null) {
+                apply.setPostName(post.getPostName());
+            }
+        } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+            // 自主实习，使用自主实习岗位名称
+            apply.setPostName(apply.getSelfPostName());
+        }
+        
+        // 填充审核人信息
+        if (apply.getAuditUserId() != null) {
+            UserInfo auditor = userMapper.selectById(apply.getAuditUserId());
+            if (auditor != null) {
+                apply.setAuditorName(auditor.getRealName());
+            }
+        }
     }
     
     @Override
@@ -326,7 +384,16 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 按创建时间倒序
         wrapper.orderByDesc(InternshipApply::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<InternshipApply> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipApply apply : result.getRecords()) {
+                fillApplyRelatedFields(apply);
+            }
+        }
+        
+        return result;
     }
     
     @Override

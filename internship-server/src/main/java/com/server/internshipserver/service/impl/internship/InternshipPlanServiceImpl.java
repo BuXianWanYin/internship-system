@@ -9,8 +9,16 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.system.Semester;
+import com.server.internshipserver.domain.system.School;
+import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.domain.system.Major;
 import com.server.internshipserver.mapper.internship.InternshipPlanMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.system.SemesterMapper;
+import com.server.internshipserver.mapper.system.SchoolMapper;
+import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.system.MajorMapper;
 import com.server.internshipserver.service.internship.InternshipPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,6 +38,18 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private SemesterMapper semesterMapper;
+    
+    @Autowired
+    private SchoolMapper schoolMapper;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
+    
+    @Autowired
+    private MajorMapper majorMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -143,6 +163,9 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             throw new BusinessException("无权查看该实习计划");
         }
         
+        // 填充关联字段
+        fillPlanRelatedFields(plan);
+        
         return plan;
     }
     
@@ -188,7 +211,53 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         // 按创建时间倒序
         wrapper.orderByDesc(InternshipPlan::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<InternshipPlan> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipPlan plan : result.getRecords()) {
+                fillPlanRelatedFields(plan);
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 填充计划关联字段
+     */
+    private void fillPlanRelatedFields(InternshipPlan plan) {
+        // 填充学期信息
+        if (plan.getSemesterId() != null) {
+            Semester semester = semesterMapper.selectById(plan.getSemesterId());
+            if (semester != null) {
+                plan.setSemesterName(semester.getSemesterName());
+            }
+        }
+        
+        // 填充学校信息
+        if (plan.getSchoolId() != null) {
+            School school = schoolMapper.selectById(plan.getSchoolId());
+            if (school != null) {
+                plan.setSchoolName(school.getSchoolName());
+            }
+        }
+        
+        // 填充学院信息
+        if (plan.getCollegeId() != null) {
+            College college = collegeMapper.selectById(plan.getCollegeId());
+            if (college != null) {
+                plan.setCollegeName(college.getCollegeName());
+            }
+        }
+        
+        // 填充专业信息
+        if (plan.getMajorId() != null) {
+            Major major = majorMapper.selectById(plan.getMajorId());
+            if (major != null) {
+                plan.setMajorName(major.getMajorName());
+            }
+        }
     }
     
     @Override

@@ -1,7 +1,14 @@
 <template>
   <PageLayout title="企业管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">添加企业</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        添加企业
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -96,10 +103,35 @@
       </el-table-column>
       <el-table-column label="操作" width="360" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="info" size="small" @click="handleManageCooperation(row)">管理合作关系</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleView(row)"
+          >
+            查看
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+            link 
+            type="info" 
+            size="small" 
+            @click="handleManageCooperation(row)"
+          >
+            管理合作关系
+          </el-button>
           <el-button
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="primary"
             size="small"
@@ -107,7 +139,15 @@
           >
             按院校审核
           </el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+            link 
+            type="danger" 
+            size="small" 
+            @click="handleDelete(row)"
+          >
+            停用
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -500,6 +540,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 import { enterpriseApi } from '@/api/user/enterprise'
 import { enterpriseRegisterSchoolApi } from '@/api/user/enterpriseRegisterSchool'
 import { cooperationApi } from '@/api/cooperation'

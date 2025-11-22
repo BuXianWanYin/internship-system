@@ -6,7 +6,6 @@ import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.dto.EnterpriseRegisterDTO;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.service.user.EnterpriseService;
-import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
 import java.util.List;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -26,9 +25,6 @@ public class EnterpriseController {
     @Autowired
     private EnterpriseService enterpriseService;
     
-    @Autowired
-    private EnterpriseRegisterSchoolService enterpriseRegisterSchoolService;
-    
     @ApiOperation("企业注册")
     @PostMapping("/register")
     public Result<Enterprise> registerEnterprise(@RequestBody EnterpriseRegisterDTO registerDTO) {
@@ -44,7 +40,7 @@ public class EnterpriseController {
     
     @ApiOperation("分页查询企业列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Page<Enterprise>> getEnterprisePage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -58,7 +54,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据ID查询企业详情")
     @GetMapping("/{enterpriseId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Enterprise> getEnterpriseById(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         Enterprise enterprise = enterpriseService.getEnterpriseById(enterpriseId);
@@ -67,7 +63,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据用户ID查询企业信息")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Enterprise> getEnterpriseByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         Enterprise enterprise = enterpriseService.getEnterpriseByUserId(userId);
@@ -76,7 +72,7 @@ public class EnterpriseController {
     
     @ApiOperation("添加企业")
     @PostMapping
-    @PreAuthorize("hasAuthority('user:add')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     public Result<Enterprise> addEnterprise(@RequestBody Enterprise enterprise) {
         Enterprise result = enterpriseService.addEnterprise(enterprise);
         return Result.success("添加成功", result);
@@ -84,7 +80,7 @@ public class EnterpriseController {
     
     @ApiOperation("更新企业信息")
     @PutMapping
-    @PreAuthorize("hasAuthority('user:edit')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Enterprise> updateEnterprise(@RequestBody Enterprise enterprise) {
         Enterprise result = enterpriseService.updateEnterprise(enterprise);
         return Result.success("更新成功", result);
@@ -103,7 +99,7 @@ public class EnterpriseController {
     
     @ApiOperation("停用企业（软删除）")
     @DeleteMapping("/{enterpriseId}")
-    @PreAuthorize("hasAuthority('user:delete')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     public Result<?> deleteEnterprise(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         boolean success = enterpriseService.deleteEnterprise(enterpriseId);
@@ -112,7 +108,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据企业ID查询合作学校列表")
     @GetMapping("/{enterpriseId}/cooperation-schools")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<List<School>> getCooperationSchoolsByEnterpriseId(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         List<School> schools = enterpriseService.getCooperationSchoolsByEnterpriseId(enterpriseId);

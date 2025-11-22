@@ -2,24 +2,46 @@
  * 权限工具函数
  */
 
+import { useAuthStore } from '@/store/modules/auth'
+
+/**
+ * 获取当前用户角色列表
+ * @returns {string[]} 角色列表
+ */
+function getCurrentUserRoles() {
+  try {
+    const authStore = useAuthStore()
+    return authStore.roles || []
+  } catch (error) {
+    // 如果Store未初始化，返回空数组
+    return []
+  }
+}
+
 /**
  * 检查是否有指定角色
+ * @param {string} role 角色代码
+ * @returns {boolean}
  */
-export function hasRole(roles, role) {
-  if (!roles || !Array.isArray(roles)) {
+export function hasRole(role) {
+  if (!role || typeof role !== 'string') {
     return false
   }
+  const roles = getCurrentUserRoles()
   return roles.includes(role)
 }
 
 /**
  * 检查是否有任一角色
+ * @param {string[]} requiredRoles 需要的角色代码数组
+ * @returns {boolean}
  */
-export function hasAnyRole(roles, requiredRoles) {
-  if (!roles || !Array.isArray(roles)) {
+export function hasAnyRole(requiredRoles) {
+  if (!requiredRoles || !Array.isArray(requiredRoles) || requiredRoles.length === 0) {
     return false
   }
-  if (!requiredRoles || !Array.isArray(requiredRoles)) {
+  const roles = getCurrentUserRoles()
+  if (!roles || roles.length === 0) {
     return false
   }
   return requiredRoles.some(role => roles.includes(role))
@@ -27,12 +49,15 @@ export function hasAnyRole(roles, requiredRoles) {
 
 /**
  * 检查是否有所有角色
+ * @param {string[]} requiredRoles 需要的角色代码数组
+ * @returns {boolean}
  */
-export function hasAllRoles(roles, requiredRoles) {
-  if (!roles || !Array.isArray(roles)) {
+export function hasAllRoles(requiredRoles) {
+  if (!requiredRoles || !Array.isArray(requiredRoles) || requiredRoles.length === 0) {
     return false
   }
-  if (!requiredRoles || !Array.isArray(requiredRoles)) {
+  const roles = getCurrentUserRoles()
+  if (!roles || roles.length === 0) {
     return false
   }
   return requiredRoles.every(role => roles.includes(role))

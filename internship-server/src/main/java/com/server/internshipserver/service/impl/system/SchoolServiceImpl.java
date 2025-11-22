@@ -8,6 +8,8 @@ import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.service.system.SchoolService;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -17,6 +19,9 @@ import org.springframework.util.StringUtils;
  */
 @Service
 public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> implements SchoolService {
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -107,6 +112,17 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         }
         if (StringUtils.hasText(schoolCode)) {
             wrapper.eq(School::getSchoolCode, schoolCode);
+        }
+        
+        // 数据权限过滤：学校管理员只能看到自己的学校
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null) {
+                wrapper.eq(School::getSchoolId, currentUserSchoolId);
+            } else {
+                // 如果没有学校ID，返回空结果
+                wrapper.eq(School::getSchoolId, -1L);
+            }
         }
         
         // 按创建时间倒序

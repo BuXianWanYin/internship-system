@@ -31,7 +31,7 @@ public class EnterpriseRegisterSchoolController {
     
     @ApiOperation("根据企业ID查询注册申请院校列表")
     @GetMapping("/enterprise/{enterpriseId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<List<EnterpriseRegisterSchool>> getByEnterpriseId(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         List<EnterpriseRegisterSchool> list = enterpriseRegisterSchoolService.getByEnterpriseId(enterpriseId);

@@ -26,7 +26,7 @@ public class RoleController {
     
     @ApiOperation("查询所有启用的角色列表")
     @GetMapping("/list")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<List<Role>> getAllEnabledRoles() {
         List<Role> roles = roleService.getAllEnabledRoles();
         return Result.success("查询成功", roles);

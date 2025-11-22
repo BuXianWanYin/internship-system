@@ -1,7 +1,14 @@
 <template>
   <PageLayout title="企业导师管理">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">添加企业导师</el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        添加企业导师
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -91,9 +98,33 @@
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="200" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleView(row)"
+          >
+            查看
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+            link 
+            type="primary" 
+            size="small" 
+            @click="handleEdit(row)"
+          >
+            编辑
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])" 
+            link 
+            type="danger" 
+            size="small" 
+            @click="handleDelete(row)"
+          >
+            停用
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -225,6 +256,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 import { enterpriseMentorApi } from '@/api/user/enterpriseMentor'
 import { enterpriseApi } from '@/api/user/enterprise'
 import { userApi } from '@/api/user/user'

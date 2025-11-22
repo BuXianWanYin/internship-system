@@ -24,7 +24,7 @@ public class UserController {
     
     @ApiOperation("分页查询用户列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Page<UserInfo>> getUserPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -43,7 +43,7 @@ public class UserController {
     
     @ApiOperation("根据ID查询用户详情")
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> getUserById(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         UserInfo user = userService.getUserById(userId);
@@ -52,7 +52,7 @@ public class UserController {
     
     @ApiOperation("添加用户")
     @PostMapping
-    @PreAuthorize("hasAuthority('user:add')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<UserInfo> addUser(@RequestBody UserInfo user) {
         UserInfo result = userService.addUser(user);
         return Result.success("添加成功", result);
@@ -60,7 +60,7 @@ public class UserController {
     
     @ApiOperation("更新用户信息")
     @PutMapping
-    @PreAuthorize("hasAuthority('user:edit')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<UserInfo> updateUser(@RequestBody UserInfo user) {
         UserInfo result = userService.updateUser(user);
         return Result.success("更新成功", result);
@@ -68,7 +68,7 @@ public class UserController {
     
     @ApiOperation("停用用户（软删除）")
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAuthority('user:delete')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> deleteUser(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         boolean success = userService.deleteUser(userId);
@@ -77,7 +77,7 @@ public class UserController {
     
     @ApiOperation("重置用户密码")
     @PostMapping("/{userId}/reset-password")
-    @PreAuthorize("hasAuthority('user:resetPassword')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> resetPassword(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
             @ApiParam(value = "新密码", required = true) @RequestParam String newPassword) {
@@ -87,7 +87,7 @@ public class UserController {
     
     @ApiOperation("根据用户名查询用户")
     @GetMapping("/username/{username}")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> getUserByUsername(
             @ApiParam(value = "用户名", required = true) @PathVariable String username) {
         UserInfo user = userService.getUserByUsername(username);
@@ -99,7 +99,7 @@ public class UserController {
     
     @ApiOperation("为用户分配角色")
     @PostMapping("/{userId}/assign-role")
-    @PreAuthorize("hasAuthority('user:edit')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> assignRoleToUser(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
             @ApiParam(value = "角色代码", required = true) @RequestParam String roleCode) {

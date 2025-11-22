@@ -301,13 +301,31 @@ const loadData = async () => {
     const res = await applyApi.getApplyPage({
       current: pagination.current,
       size: pagination.size,
-      studentName: searchForm.studentName || undefined,
-      studentNo: searchForm.studentNo || undefined,
+      studentId: undefined, // 管理员查看所有学生申请
+      enterpriseId: undefined,
+      postId: undefined,
       applyType: searchForm.applyType !== null ? searchForm.applyType : undefined,
       status: searchForm.status !== null ? searchForm.status : undefined
     })
+    
     if (res.code === 200) {
-      tableData.value = res.data.records || []
+      let records = res.data.records || []
+      
+      // 前端过滤学生姓名和学号（因为后端API不支持这些参数，需要在前端过滤）
+      if (searchForm.studentName) {
+        records = records.filter(item => 
+          item.studentName && item.studentName.includes(searchForm.studentName)
+        )
+      }
+      if (searchForm.studentNo) {
+        records = records.filter(item => 
+          item.studentNo && item.studentNo.includes(searchForm.studentNo)
+        )
+      }
+      
+      tableData.value = records
+      // 注意：由于前端过滤，总数可能不准确，但这是临时方案
+      // 理想情况下应该在后端支持按学生姓名和学号查询
       pagination.total = res.data.total || 0
     }
   } catch (error) {

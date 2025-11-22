@@ -117,5 +117,22 @@ public class InternshipPlan implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    // ========== 关联字段（不映射到数据库） ==========
+    @ApiModelProperty(value = "学期名称")
+    @TableField(exist = false)
+    private String semesterName;
+    
+    @ApiModelProperty(value = "所属学校名称")
+    @TableField(exist = false)
+    private String schoolName;
+    
+    @ApiModelProperty(value = "所属学院名称")
+    @TableField(exist = false)
+    private String collegeName;
+    
+    @ApiModelProperty(value = "所属专业名称")
+    @TableField(exist = false)
+    private String majorName;
 }
 

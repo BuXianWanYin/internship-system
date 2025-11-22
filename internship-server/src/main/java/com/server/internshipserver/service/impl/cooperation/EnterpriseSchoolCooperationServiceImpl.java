@@ -9,6 +9,7 @@ import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,9 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
     @Autowired
     private SchoolMapper schoolMapper;
     
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EnterpriseSchoolCooperation addCooperation(EnterpriseSchoolCooperation cooperation) {
@@ -35,6 +39,14 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         }
         if (cooperation.getSchoolId() == null) {
             throw new BusinessException("学校ID不能为空");
+        }
+        
+        // 数据权限检查：学校管理员只能添加自己学校的合作关系
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId == null || !currentUserSchoolId.equals(cooperation.getSchoolId())) {
+                throw new BusinessException("无权为该学校添加合作关系");
+            }
         }
         
         // 检查合作关系是否已存在
@@ -71,6 +83,19 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
             throw new BusinessException("合作关系不存在");
         }
         
+        // 数据权限检查：学校管理员只能编辑自己学校的合作关系
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId == null || !currentUserSchoolId.equals(existCooperation.getSchoolId())) {
+                throw new BusinessException("无权编辑该合作关系");
+            }
+            // 如果修改了学校ID，检查新学校ID是否属于当前用户
+            Long newSchoolId = cooperation.getSchoolId() != null ? cooperation.getSchoolId() : existCooperation.getSchoolId();
+            if (!newSchoolId.equals(currentUserSchoolId)) {
+                throw new BusinessException("无权将该合作关系转移到其他学校");
+            }
+        }
+        
         // 如果修改了企业ID或学校ID，检查新关系是否已存在
         if ((cooperation.getEnterpriseId() != null && !cooperation.getEnterpriseId().equals(existCooperation.getEnterpriseId()))
                 || (cooperation.getSchoolId() != null && !cooperation.getSchoolId().equals(existCooperation.getSchoolId()))) {
@@ -102,6 +127,14 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         EnterpriseSchoolCooperation cooperation = this.getById(id);
         if (cooperation == null || cooperation.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("合作关系不存在");
+        }
+        
+        // 数据权限检查：学校管理员只能删除自己学校的合作关系
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId == null || !currentUserSchoolId.equals(cooperation.getSchoolId())) {
+                throw new BusinessException("无权删除该合作关系");
+            }
         }
         
         // 软删除
@@ -199,8 +232,20 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
-               .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-               .orderByDesc(EnterpriseSchoolCooperation::getCreateTime);
+               .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        // 数据权限过滤：学校管理员只能看到自己学校的合作关系
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null) {
+                wrapper.eq(EnterpriseSchoolCooperation::getSchoolId, currentUserSchoolId);
+            } else {
+                // 如果没有学校ID，返回空列表
+                return Collections.emptyList();
+            }
+        }
+        
+        wrapper.orderByDesc(EnterpriseSchoolCooperation::getCreateTime);
         return this.list(wrapper);
     }
 }

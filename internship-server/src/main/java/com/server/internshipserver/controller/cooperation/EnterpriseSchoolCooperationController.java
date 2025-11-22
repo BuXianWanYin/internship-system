@@ -51,7 +51,7 @@ public class EnterpriseSchoolCooperationController {
     
     @ApiOperation("根据企业ID查询合作学校列表")
     @GetMapping("/enterprise/{enterpriseId}/schools")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<List<School>> getCooperationSchoolsByEnterpriseId(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         List<School> schools = cooperationService.getCooperationSchoolsByEnterpriseId(enterpriseId);
@@ -60,7 +60,7 @@ public class EnterpriseSchoolCooperationController {
     
     @ApiOperation("根据学校ID查询合作企业ID列表")
     @GetMapping("/school/{schoolId}/enterprises")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     public Result<List<Long>> getCooperationEnterpriseIdsBySchoolId(
             @ApiParam(value = "学校ID", required = true) @PathVariable Long schoolId) {
         List<Long> enterpriseIds = cooperationService.getCooperationEnterpriseIdsBySchoolId(schoolId);
@@ -69,7 +69,7 @@ public class EnterpriseSchoolCooperationController {
     
     @ApiOperation("检查企业和学校是否有合作关系")
     @GetMapping("/check")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
     public Result<Boolean> hasCooperation(
             @ApiParam(value = "企业ID", required = true) @RequestParam Long enterpriseId,
             @ApiParam(value = "学校ID", required = true) @RequestParam Long schoolId) {
@@ -79,7 +79,7 @@ public class EnterpriseSchoolCooperationController {
     
     @ApiOperation("根据企业ID查询合作关系列表（包含完整信息）")
     @GetMapping("/enterprise/{enterpriseId}/list")
-    @PreAuthorize("hasAuthority('user:view')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<List<EnterpriseSchoolCooperation>> getCooperationListByEnterpriseId(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         List<EnterpriseSchoolCooperation> cooperations = cooperationService.getCooperationListByEnterpriseId(enterpriseId);

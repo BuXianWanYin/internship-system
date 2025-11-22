@@ -8,7 +8,8 @@ export default [
     component: () => import('@/views/admin/UserManagement.vue'),
     meta: {
       title: '用户管理',
-      requiresAuth: true
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
     }
   },
   {
