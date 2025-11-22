@@ -17,6 +17,15 @@ const baseRoutes = [
     }
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/Register.vue'),
+    meta: {
+      title: '注册',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/',
     redirect: '/dashboard'
   },

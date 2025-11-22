@@ -412,13 +412,15 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("用户名（学号）已存在");
         }
         
-        // 生成初始密码（8位随机数字）
-        String defaultPassword = generateDefaultPassword();
+        // 生成初始密码（如果用户提供了密码则使用，否则生成8位随机数字）
+        String password = StringUtils.hasText(studentImportDTO.getPassword()) 
+                ? studentImportDTO.getPassword() 
+                : generateDefaultPassword();
         
         // 创建用户
         UserInfo user = new UserInfo();
         user.setUsername(username);
-        user.setPassword(defaultPassword); // UserService会自动加密
+        user.setPassword(password); // UserService会自动加密
         user.setRealName(studentImportDTO.getRealName());
         user.setIdCard(studentImportDTO.getIdCard());
         user.setPhone(studentImportDTO.getPhone());

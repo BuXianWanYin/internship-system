@@ -3,8 +3,10 @@ package com.server.internshipserver.controller.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.user.dto.EnterpriseRegisterDTO;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.service.user.EnterpriseService;
+import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
 import java.util.List;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -24,11 +26,20 @@ public class EnterpriseController {
     @Autowired
     private EnterpriseService enterpriseService;
     
+    @Autowired
+    private EnterpriseRegisterSchoolService enterpriseRegisterSchoolService;
+    
     @ApiOperation("企业注册")
     @PostMapping("/register")
-    public Result<Enterprise> registerEnterprise(@RequestBody Enterprise enterprise) {
-        Enterprise result = enterpriseService.registerEnterprise(enterprise);
-        return Result.success("注册成功，等待审核", result);
+    public Result<Enterprise> registerEnterprise(@RequestBody EnterpriseRegisterDTO registerDTO) {
+        if (registerDTO == null || registerDTO.getEnterprise() == null) {
+            return Result.error("企业信息不能为空");
+        }
+        if (registerDTO.getSchoolIds() == null || registerDTO.getSchoolIds().isEmpty()) {
+            return Result.error("至少选择一个意向合作院校");
+        }
+        Enterprise result = enterpriseService.registerEnterprise(registerDTO.getEnterprise(), registerDTO.getSchoolIds());
+        return Result.success("注册成功，等待院校审核", result);
     }
     
     @ApiOperation("分页查询企业列表")

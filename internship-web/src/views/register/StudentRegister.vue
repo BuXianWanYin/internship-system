@@ -3,6 +3,12 @@
     <el-card class="register-card">
       <template #header>
         <div class="card-header">
+          <div class="header-top">
+            <el-link type="primary" @click="goBack" class="back-link">
+              <el-icon><ArrowLeft /></el-icon>
+              返回
+            </el-link>
+          </div>
           <h2>学生注册</h2>
           <p>请填写个人信息并输入班级分享码完成注册</p>
         </div>
@@ -83,7 +89,27 @@
         <el-form-item label="邮箱" prop="email">
           <el-input
             v-model="registerForm.email"
-            placeholder="请输入邮箱（可选）"
+            placeholder="请输入邮箱"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model="registerForm.password"
+            type="password"
+            placeholder="请输入密码（6-20位）"
+            show-password
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入密码"
+            show-password
             clearable
           />
         </el-form-item>
@@ -109,23 +135,6 @@
           >
             提交注册
           </el-button>
-        </el-form-item>
-
-        <el-form-item>
-          <div class="register-tips">
-            <el-alert
-              title="注册说明"
-              type="info"
-              :closable="false"
-            >
-              <template #default>
-                <p>1. 请向班主任获取班级分享码</p>
-                <p>2. 填写完整信息后提交注册申请</p>
-                <p>3. 注册后需要等待班主任审核通过后才能登录</p>
-                <p>4. 初始密码将通过短信或邮件发送（如已填写）</p>
-              </template>
-            </el-alert>
-          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -160,6 +169,8 @@ export default {
       idCard: '',
       phone: '',
       email: '',
+      password: '',
+      confirmPassword: '',
       enrollmentYear: null,
       classId: null
     })
@@ -183,6 +194,23 @@ export default {
       ],
       email: [
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+      ],
+      password: [
+        { required: true, message: '请输入密码', trigger: 'blur' },
+        { min: 6, max: 20, message: '密码长度在6到20个字符', trigger: 'blur' }
+      ],
+      confirmPassword: [
+        { required: true, message: '请再次输入密码', trigger: 'blur' },
+        {
+          validator: (rule, value, callback) => {
+            if (value !== registerForm.password) {
+              callback(new Error('两次输入的密码不一致'))
+            } else {
+              callback()
+            }
+          },
+          trigger: 'blur'
+        }
       ],
       enrollmentYear: [
         { required: true, message: '请选择入学年份', trigger: 'change' }
@@ -238,7 +266,13 @@ export default {
 
         registering.value = true
         try {
-          const res = await studentApi.registerStudent(registerForm, registerForm.shareCode)
+          // 准备提交数据，不包含确认密码字段
+          const submitData = {
+            ...registerForm
+          }
+          delete submitData.confirmPassword
+          
+          const res = await studentApi.registerStudent(submitData, registerForm.shareCode)
           if (res.code === 200) {
             ElMessage.success('注册成功，请等待班主任审核')
             setTimeout(() => {
@@ -255,6 +289,10 @@ export default {
       })
     }
 
+    const goBack = () => {
+      router.push('/register')
+    }
+
     return {
       registerFormRef,
       registerForm,
@@ -265,7 +303,8 @@ export default {
       enrollmentYearDate,
       validateShareCode,
       handleEnrollmentYearChange,
-      handleRegister
+      handleRegister,
+      goBack
     }
   }
 }
@@ -276,23 +315,67 @@ export default {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  align-items: flex-start;
+  background: #f5f7fa;
+  padding: 40px 20px;
 }
 
 .register-card {
   width: 100%;
-  max-width: 600px;
+  max-width: 680px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4e7ed;
+}
+
+.register-card :deep(.el-card__header) {
+  background: #ffffff;
+  padding: 24px 40px 20px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.register-card :deep(.el-card__body) {
+  padding: 40px;
+  background: #ffffff;
 }
 
 .card-header {
   text-align: center;
+  position: relative;
+}
+
+.header-top {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #409eff !important;
+  transition: all 0.3s;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.back-link:hover {
+  color: #66b1ff !important;
+  background: #ecf5ff;
+  transform: translateX(-2px);
+}
+
+.back-link .el-icon {
+  font-size: 16px;
 }
 
 .card-header h2 {
-  margin: 0 0 10px 0;
+  margin: 8px 0 12px 0;
   color: #303133;
+  font-size: 24px;
+  font-weight: 500;
 }
 
 .card-header p {
@@ -301,18 +384,101 @@ export default {
   font-size: 14px;
 }
 
+:deep(.el-form) {
+  margin-top: 8px;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #606266;
+  font-size: 14px;
+  padding-bottom: 8px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  transition: all 0.3s;
+  padding: 12px 16px;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc inset;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #409eff inset;
+}
+
+:deep(.el-input--large) {
+  font-size: 14px;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  padding: 12px 16px;
+}
+
+:deep(.el-date-editor) {
+  width: 100%;
+}
+
+:deep(.el-date-editor .el-input__wrapper) {
+  padding: 12px 16px;
+}
+
+:deep(.el-button--primary) {
+  background-color: #409eff;
+  border-color: #409eff;
+  border-radius: 4px;
+  height: 44px;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+:deep(.el-button--primary:hover) {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+}
+
+:deep(.el-button--primary:active) {
+  background-color: #3a8ee6;
+  border-color: #3a8ee6;
+}
+
+:deep(.el-divider) {
+  margin: 24px 0;
+  border-color: #e4e7ed;
+}
+
 .share-code-info,
 .share-code-error {
   margin-top: 10px;
 }
 
-.register-tips {
-  margin-top: 20px;
+:deep(.el-alert) {
+  border-radius: 8px;
 }
 
-.register-tips p {
-  margin: 5px 0;
-  font-size: 13px;
+@media (max-width: 768px) {
+  .register-container {
+    padding: 20px 16px;
+  }
+  
+  .register-card :deep(.el-card__body) {
+    padding: 24px 20px;
+  }
+  
+  .register-card :deep(.el-card__header) {
+    padding: 24px 20px 20px;
+  }
+  
+  .card-header h2 {
+    font-size: 24px;
+  }
 }
 </style>
 

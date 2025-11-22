@@ -14,6 +14,7 @@ import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.user.EnterpriseService;
 import com.server.internshipserver.service.user.UserService;
+import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,9 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     @Autowired
     private EnterpriseSchoolCooperationService cooperationService;
     
+    @Autowired
+    private EnterpriseRegisterSchoolService enterpriseRegisterSchoolService;
+    
     @Override
     public Enterprise getEnterpriseByUserId(Long userId) {
         if (userId == null) {
@@ -67,10 +71,14 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Enterprise registerEnterprise(Enterprise enterprise) {
+    public Enterprise registerEnterprise(Enterprise enterprise, List<Long> schoolIds) {
         // 参数校验
         if (!StringUtils.hasText(enterprise.getEnterpriseName())) {
             throw new BusinessException("企业名称不能为空");
+        }
+        
+        if (schoolIds == null || schoolIds.isEmpty()) {
+            throw new BusinessException("至少选择一个意向合作院校");
         }
         
         // 检查统一社会信用代码是否已存在
@@ -87,12 +95,16 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         // 设置默认值
         enterprise.setAuditStatus(0); // 待审核
         if (enterprise.getStatus() == null) {
-            enterprise.setStatus(1); // 默认启用
+            enterprise.setStatus(0); // 注册时默认禁用，审核通过后激活
         }
         enterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
-        // 保存
+        // 保存企业信息
         this.save(enterprise);
+        
+        // 保存企业与院校的关联关系
+        enterpriseRegisterSchoolService.saveEnterpriseRegisterSchools(enterprise.getEnterpriseId(), schoolIds);
+        
         return enterprise;
     }
     

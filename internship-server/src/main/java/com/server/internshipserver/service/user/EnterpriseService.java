@@ -29,9 +29,10 @@ public interface EnterpriseService extends IService<Enterprise> {
     /**
      * 企业注册
      * @param enterprise 企业信息
+     * @param schoolIds 意向合作院校ID列表
      * @return 注册的企业信息
      */
-    Enterprise registerEnterprise(Enterprise enterprise);
+    Enterprise registerEnterprise(Enterprise enterprise, List<Long> schoolIds);
     
     /**
      * 添加企业

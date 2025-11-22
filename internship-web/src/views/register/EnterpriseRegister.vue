@@ -3,6 +3,12 @@
     <el-card class="register-card">
       <template #header>
         <div class="card-header">
+          <div class="header-top">
+            <el-link type="primary" @click="goBack" class="back-link">
+              <el-icon><ArrowLeft /></el-icon>
+              返回
+            </el-link>
+          </div>
           <h2>企业注册</h2>
           <p>请填写企业信息完成注册，注册后需要等待学校管理员审核</p>
         </div>
@@ -55,11 +61,23 @@
         </el-form-item>
 
         <el-form-item label="行业类别" prop="industryCategory">
-          <el-input
+          <el-select
             v-model="registerForm.industryCategory"
-            placeholder="请输入行业类别"
+            placeholder="请选择或输入行业类别"
+            filterable
+            allow-create
+            default-first-option
             clearable
-          />
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="category in industryCategories"
+              :key="category"
+              :label="category"
+              :value="category"
+            />
+            <el-option label="其他" value="其他" />
+          </el-select>
         </el-form-item>
 
         <el-form-item label="企业地址" prop="address">
@@ -106,6 +124,25 @@
           />
         </el-form-item>
 
+        <el-form-item label="意向合作院校" prop="schoolIds">
+          <el-select
+            v-model="registerForm.schoolIds"
+            placeholder="请选择意向合作院校（可多选）"
+            multiple
+            filterable
+            clearable
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+          <div class="form-tip">至少选择一个意向合作院校，注册后由对应院校管理员审核</div>
+        </el-form-item>
+
         <el-form-item>
           <el-button
             type="primary"
@@ -116,33 +153,17 @@
             提交注册
           </el-button>
         </el-form-item>
-
-        <el-form-item>
-          <div class="register-tips">
-            <el-alert
-              title="注册说明"
-              type="info"
-              :closable="false"
-            >
-              <template #default>
-                <p>1. 请填写真实的企业信息</p>
-                <p>2. 提交注册后需要等待学校管理员审核</p>
-                <p>3. 审核通过后，系统将发送账号信息到您的邮箱</p>
-                <p>4. 审核结果将通过邮件或短信通知</p>
-              </template>
-            </el-alert>
-          </div>
-        </el-form-item>
       </el-form>
     </el-card>
   </div>
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { enterpriseApi } from '@/api/user/enterprise'
+import { schoolApi } from '@/api/system/school'
 
 export default {
   name: 'EnterpriseRegister',
@@ -150,6 +171,42 @@ export default {
     const router = useRouter()
     const registerFormRef = ref(null)
     const registering = ref(false)
+    const schoolList = ref([])
+
+    // 行业类别列表
+    const industryCategories = [
+      '互联网/电子商务',
+      '计算机软件',
+      '计算机硬件',
+      'IT服务/系统集成',
+      '电子技术/半导体/集成电路',
+      '通信/电信/网络设备',
+      '金融/投资/证券',
+      '银行',
+      '保险',
+      '房地产/建筑/建材',
+      '制造业',
+      '汽车/摩托车',
+      '机械/设备/重工',
+      '化工/能源',
+      '医疗/护理/卫生',
+      '制药/生物工程',
+      '教育/培训/院校',
+      '广告/公关/媒体',
+      '文化/娱乐/体育',
+      '贸易/进出口',
+      '物流/仓储',
+      '餐饮/酒店/旅游',
+      '零售/批发',
+      '快速消费品',
+      '服装/纺织/皮革',
+      '家具/家电/玩具',
+      '农业/林业/渔业',
+      '环保',
+      '政府/公共事业',
+      '非营利组织',
+      '其他'
+    ]
 
     const registerForm = reactive({
       enterpriseName: '',
@@ -161,7 +218,8 @@ export default {
       contactPerson: '',
       contactPhone: '',
       email: '',
-      description: ''
+      description: '',
+      schoolIds: []
     })
 
     // 验证规则
@@ -183,6 +241,10 @@ export default {
       email: [
         { required: true, message: '请输入邮箱', trigger: 'blur' },
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+      ],
+      schoolIds: [
+        { required: true, message: '至少选择一个意向合作院校', trigger: 'change' },
+        { type: 'array', min: 1, message: '至少选择一个意向合作院校', trigger: 'change' }
       ]
     }
 
@@ -197,9 +259,26 @@ export default {
 
         registering.value = true
         try {
-          const res = await enterpriseApi.registerEnterprise(registerForm)
+          // 准备提交数据，按照新的DTO格式
+          const submitData = {
+            enterprise: {
+              enterpriseName: registerForm.enterpriseName,
+              unifiedSocialCreditCode: registerForm.unifiedSocialCreditCode,
+              enterpriseCode: registerForm.enterpriseCode,
+              enterpriseScale: registerForm.enterpriseScale,
+              industry: registerForm.industryCategory,
+              address: registerForm.address,
+              contactPerson: registerForm.contactPerson,
+              contactPhone: registerForm.contactPhone,
+              contactEmail: registerForm.email,
+              businessScope: registerForm.description
+            },
+            schoolIds: registerForm.schoolIds
+          }
+          
+          const res = await enterpriseApi.registerEnterprise(submitData)
           if (res.code === 200) {
-            ElMessage.success('注册成功，请等待学校管理员审核')
+            ElMessage.success('注册成功，请等待院校管理员审核')
             setTimeout(() => {
               router.push('/login')
             }, 2000)
@@ -214,12 +293,36 @@ export default {
       })
     }
 
+    const goBack = () => {
+      router.push('/register')
+    }
+
+    // 加载学校列表
+    const loadSchoolList = async () => {
+      try {
+        const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+        if (res.code === 200) {
+          schoolList.value = res.data.records || []
+        }
+      } catch (error) {
+        console.error('加载学校列表失败:', error)
+        ElMessage.error('加载学校列表失败')
+      }
+    }
+
+    onMounted(() => {
+      loadSchoolList()
+    })
+
     return {
       registerFormRef,
       registerForm,
       registerRules,
       registering,
-      handleRegister
+      industryCategories,
+      schoolList,
+      handleRegister,
+      goBack
     }
   }
 }
@@ -230,23 +333,67 @@ export default {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+  align-items: flex-start;
+  background: #f5f7fa;
+  padding: 40px 20px;
 }
 
 .register-card {
   width: 100%;
-  max-width: 700px;
+  max-width: 800px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e4e7ed;
+}
+
+.register-card :deep(.el-card__header) {
+  background: #ffffff;
+  padding: 24px 40px 20px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.register-card :deep(.el-card__body) {
+  padding: 40px;
+  background: #ffffff;
 }
 
 .card-header {
   text-align: center;
+  position: relative;
+}
+
+.header-top {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #409eff !important;
+  transition: all 0.3s;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.back-link:hover {
+  color: #66b1ff !important;
+  background: #ecf5ff;
+  transform: translateX(-2px);
+}
+
+.back-link .el-icon {
+  font-size: 16px;
 }
 
 .card-header h2 {
-  margin: 0 0 10px 0;
+  margin: 8px 0 12px 0;
   color: #303133;
+  font-size: 24px;
+  font-weight: 500;
 }
 
 .card-header p {
@@ -255,13 +402,101 @@ export default {
   font-size: 14px;
 }
 
-.register-tips {
-  margin-top: 20px;
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
 }
 
-.register-tips p {
-  margin: 5px 0;
-  font-size: 13px;
+:deep(.el-form) {
+  margin-top: 8px;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #606266;
+  font-size: 14px;
+  padding-bottom: 8px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  transition: all 0.3s;
+  padding: 12px 16px;
+}
+
+:deep(.el-input__wrapper:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc inset;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #409eff inset;
+}
+
+:deep(.el-input--large) {
+  font-size: 14px;
+}
+
+:deep(.el-select .el-input__wrapper) {
+  padding: 12px 16px;
+}
+
+:deep(.el-textarea__inner) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+  transition: all 0.3s;
+  padding: 12px 16px;
+}
+
+:deep(.el-textarea__inner:hover) {
+  box-shadow: 0 0 0 1px #c0c4cc inset;
+}
+
+:deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 2px #409eff inset;
+}
+
+:deep(.el-button--primary) {
+  background-color: #409eff;
+  border-color: #409eff;
+  border-radius: 4px;
+  height: 44px;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+:deep(.el-button--primary:hover) {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+}
+
+:deep(.el-button--primary:active) {
+  background-color: #3a8ee6;
+  border-color: #3a8ee6;
+}
+
+@media (max-width: 768px) {
+  .register-container {
+    padding: 20px 16px;
+  }
+  
+  .register-card :deep(.el-card__body) {
+    padding: 24px 20px;
+  }
+  
+  .register-card :deep(.el-card__header) {
+    padding: 24px 20px 20px;
+  }
+  
+  .card-header h2 {
+    font-size: 24px;
+  }
 }
 </style>
 

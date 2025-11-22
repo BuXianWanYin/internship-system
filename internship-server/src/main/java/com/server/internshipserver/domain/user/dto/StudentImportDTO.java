@@ -32,6 +32,9 @@ public class StudentImportDTO {
     @ApiModelProperty(value = "班级ID", required = true)
     private Long classId;
     
+    @ApiModelProperty(value = "密码（注册时可选，不提供则自动生成）")
+    private String password;
+    
     @ApiModelProperty(value = "错误信息（导入失败时使用）")
     private String errorMessage;
     
