@@ -10,14 +10,18 @@ import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.mapper.user.TeacherMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
+import com.server.internshipserver.domain.user.SchoolAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -33,6 +37,12 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     private UserService userService;
     
     @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private SchoolAdminMapper schoolAdminMapper;
+    
+    @Autowired
     private CollegeMapper collegeMapper;
     
     @Override
@@ -44,7 +54,15 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Teacher::getUserId, userId)
                .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        return this.getOne(wrapper);
+        Teacher teacher = this.getOne(wrapper);
+        
+        // 填充角色信息
+        if (teacher != null && teacher.getUserId() != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
+            teacher.setRoles(roleCodes != null ? roleCodes : new ArrayList<>());
+        }
+        
+        return teacher;
     }
     
     @Override
@@ -140,6 +158,12 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             throw new BusinessException("教师不存在");
         }
         
+        // 填充角色信息
+        if (teacher.getUserId() != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
+            teacher.setRoles(roleCodes != null ? roleCodes : new ArrayList<>());
+        }
+        
         return teacher;
     }
     
@@ -198,7 +222,19 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 按创建时间倒序
         wrapper.orderByDesc(Teacher::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<Teacher> result = this.page(page, wrapper);
+        
+        // 填充每个教师的角色信息
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (Teacher teacher : result.getRecords()) {
+                if (teacher.getUserId() != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
+                    teacher.setRoles(roleCodes != null ? roleCodes : new ArrayList<>());
+                }
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -304,6 +340,25 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         userService.assignRoleToUser(teacher.getUserId(), finalRoleCode);
+        
+        // 如果分配的是学校管理员角色，需要创建SchoolAdmin记录
+        if ("ROLE_SCHOOL_ADMIN".equals(finalRoleCode) && schoolId != null) {
+            // 检查是否已经存在SchoolAdmin记录
+            SchoolAdmin existSchoolAdmin = schoolAdminMapper.selectOne(
+                    new LambdaQueryWrapper<SchoolAdmin>()
+                            .eq(SchoolAdmin::getUserId, teacher.getUserId())
+                            .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (existSchoolAdmin == null) {
+                // 创建SchoolAdmin记录
+                SchoolAdmin schoolAdmin = new SchoolAdmin();
+                schoolAdmin.setUserId(teacher.getUserId());
+                schoolAdmin.setSchoolId(schoolId);
+                schoolAdmin.setStatus(status != null ? status : 1);
+                schoolAdmin.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+                schoolAdminMapper.insert(schoolAdmin);
+            }
+        }
         
         return teacher;
     }

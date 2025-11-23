@@ -193,26 +193,29 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 系统管理员：不添加过滤条件
         // 学校管理员：添加 school_id = 当前用户学校ID
         // 学院负责人：添加 college_id = 当前用户学院ID
-        // 班主任：添加 class_id = 当前用户班级ID
+        // 班主任：添加 class_id IN 当前用户管理的班级ID列表（支持多班级）
         // 学生：添加 user_id = 当前用户ID
-        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
         
-        if (currentUserClassId != null) {
-            // 班主任：只能查看本班的学生
-            wrapper.eq(Student::getClassId, currentUserClassId);
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 班主任：只能查看管理的班级的学生（支持多班级）
+            wrapper.in(Student::getClassId, currentUserClassIds);
         } else if (currentUserCollegeId != null) {
             // 学院负责人：只能查看本院的学生
             wrapper.eq(Student::getCollegeId, currentUserCollegeId);
         } else if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的学生
             wrapper.eq(Student::getSchoolId, currentUserSchoolId);
-        } else {
-            // 系统管理员或学生：系统管理员不限制，学生需要单独处理
-            // 如果是学生角色，需要添加 user_id 限制（这里假设学生只能通过其他接口查看个人信息）
-            // 系统管理员可以查看所有数据，不添加限制
+        } else if (currentUserId != null && !dataPermissionUtil.isSystemAdmin()) {
+            // 学生：只能查看自己的信息
+            if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+                wrapper.eq(Student::getUserId, currentUserId);
+            }
         }
+        // 系统管理员不添加限制
         
         // 按创建时间倒序
         wrapper.orderByDesc(Student::getCreateTime);
@@ -506,11 +509,11 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             }
         }
         
-        // 数据权限过滤：班主任只能查看本班的学生
-        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
-        if (currentUserClassId != null) {
-            // 班主任：只能查看本班的学生
-            wrapper.eq(Student::getClassId, currentUserClassId);
+        // 数据权限过滤：班主任只能查看管理的班级的学生（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 班主任：只能查看管理的班级的学生（支持多班级）
+            wrapper.in(Student::getClassId, currentUserClassIds);
         } else {
             // 系统管理员、学校管理员、学院负责人可以查看所有待审核学生
             // 不添加额外的过滤条件
@@ -540,10 +543,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("该学生不是待审核状态");
         }
         
-        // 数据权限检查：班主任只能审核本班的学生
-        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
-        if (currentUserClassId != null && !currentUserClassId.equals(student.getClassId())) {
-            throw new BusinessException("无权限审核该学生");
+        // 数据权限检查：班主任只能审核管理的班级的学生（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            if (!currentUserClassIds.contains(student.getClassId())) {
+                throw new BusinessException("无权限审核该学生");
+            }
         }
         
         // 查询用户信息
@@ -556,6 +561,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             // 审核通过：激活用户账号（status=1）
             user.setStatus(1);
             student.setStatus(1);
+            
+            // 权限检查：检查当前用户是否可以分配学生角色
+            if (!dataPermissionUtil.canAssignRole("ROLE_STUDENT")) {
+                throw new BusinessException("无权限分配学生角色");
+            }
+            
             // 分配学生角色
             userService.assignRoleToUser(user.getUserId(), "ROLE_STUDENT");
         } else {

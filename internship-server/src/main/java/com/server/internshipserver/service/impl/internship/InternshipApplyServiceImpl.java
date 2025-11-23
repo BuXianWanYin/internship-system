@@ -273,12 +273,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             if (user != null) {
                 // 学生只能查看自己的申请
                 if (apply.getUserId().equals(user.getUserId())) {
+                    fillApplyRelatedFields(apply);
                     return apply;
                 }
                 // 企业管理员只能查看自己企业的申请
                 Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
                 if (currentUserEnterpriseId != null && apply.getEnterpriseId() != null
                         && currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    fillApplyRelatedFields(apply);
                     return apply;
                 }
             }
@@ -351,30 +353,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         wrapper.eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生只能查看自己的申请
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student != null) {
-                    wrapper.eq(InternshipApply::getStudentId, student.getStudentId());
-                }
-                // 企业管理员只能查看自己企业的申请
-                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                if (currentUserEnterpriseId != null) {
-                    wrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);
-                }
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (studentId != null) {
@@ -576,6 +555,55 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 软删除
         apply.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(apply);
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipApply> wrapper) {
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            return;
+        }
+        
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (user == null) {
+            return;
+        }
+        
+        // 学生只能查看自己的申请
+        applyStudentFilter(wrapper, user.getUserId());
+        
+        // 企业管理员只能查看自己企业的申请
+        applyEnterpriseFilter(wrapper);
+    }
+    
+    /**
+     * 应用学生过滤条件
+     */
+    private void applyStudentFilter(LambdaQueryWrapper<InternshipApply> wrapper, Long userId) {
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getUserId, userId)
+                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (student != null) {
+            wrapper.eq(InternshipApply::getStudentId, student.getStudentId());
+        }
+    }
+    
+    /**
+     * 应用企业过滤条件
+     */
+    private void applyEnterpriseFilter(LambdaQueryWrapper<InternshipApply> wrapper) {
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null) {
+            wrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);
+        }
     }
 }
 

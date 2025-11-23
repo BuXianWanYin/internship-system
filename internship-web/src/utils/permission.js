@@ -190,18 +190,33 @@ export function canAssignRole(roleCode) {
     return false
   }
   
-  // 学校管理员不能分配系统管理员角色（上面已处理），可以分配其他角色
+  // 学校管理员不能分配系统管理员角色（上面已处理）
+  // 可以分配学校相关角色（ROLE_SCHOOL_ADMIN、ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER、ROLE_INSTRUCTOR、ROLE_STUDENT）
+  // 不能分配企业相关角色
   if (currentRoles.includes(ROLES.SCHOOL_ADMIN)) {
+    // 不能分配企业相关角色
+    if (roleCode === ROLES.ENTERPRISE_ADMIN || roleCode === ROLES.ENTERPRISE_MENTOR) {
+      return false
+    }
+    // 可以分配学校相关角色
     return true
   }
   
   // 学院负责人不能分配系统管理员、学校管理员角色
+  // 只能分配教师相关角色（ROLE_INSTRUCTOR、ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER）和学生角色
   if (currentRoles.includes(ROLES.COLLEGE_LEADER)) {
     if (roleCode === ROLES.SCHOOL_ADMIN) {
       return false
     }
-    // 可以分配教师、学生等角色
-    return true
+    // 可以分配的教师相关角色和学生角色
+    if (roleCode === ROLES.INSTRUCTOR || 
+        roleCode === ROLES.COLLEGE_LEADER || 
+        roleCode === ROLES.CLASS_TEACHER ||
+        roleCode === ROLES.STUDENT) {
+      return true
+    }
+    // 不能分配企业相关角色等其他角色
+    return false
   }
   
   // 班主任不能分配系统管理员、学校管理员、学院负责人角色
@@ -209,8 +224,19 @@ export function canAssignRole(roleCode) {
     if (roleCode === ROLES.SCHOOL_ADMIN || roleCode === ROLES.COLLEGE_LEADER) {
       return false
     }
-    // 可以分配学生角色等
-    return true
+    // 只能分配学生角色
+    if (roleCode === ROLES.STUDENT) {
+      return true
+    }
+    return false
+  }
+  
+  // 企业管理员只能分配企业导师角色
+  if (currentRoles.includes(ROLES.ENTERPRISE_ADMIN)) {
+    if (roleCode === ROLES.ENTERPRISE_MENTOR) {
+      return true
+    }
+    return false
   }
   
   // 其他角色默认不能分配角色

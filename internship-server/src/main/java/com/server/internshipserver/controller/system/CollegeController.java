@@ -43,7 +43,7 @@ public class CollegeController {
     }
     
     @ApiOperation("查询学院详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/{id}")
     public Result<College> getCollegeById(
             @ApiParam(value = "学院ID", required = true) @PathVariable Long id) {
@@ -52,7 +52,7 @@ public class CollegeController {
     }
     
     @ApiOperation("分页查询学院列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/page")
     public Result<Page<College>> getCollegePage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,

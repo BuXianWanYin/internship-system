@@ -7,9 +7,13 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.domain.system.Class;
+import com.server.internshipserver.domain.system.Major;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.system.ClassMapper;
+import com.server.internshipserver.mapper.system.MajorMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.service.system.CollegeService;
@@ -17,6 +21,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 学院管理Service实现类
@@ -32,6 +40,12 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
     
     @Autowired
     private TeacherMapper teacherMapper;
+    
+    @Autowired
+    private ClassMapper classMapper;
+    
+    @Autowired
+    private MajorMapper majorMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -157,12 +171,68 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
             wrapper.like(College::getCollegeName, collegeName);
         }
         
-        // 数据权限过滤：根据学校ID过滤
+        // 数据权限过滤：根据学校ID或班级ID过滤
         // 系统管理员：不添加过滤条件
         // 学校管理员：添加 school_id = 当前用户学校ID
+        // 学院负责人：添加 college_id = 当前用户学院ID
+        // 班主任：添加 college_id IN 当前用户管理的班级所在学院ID列表（通过班级->专业->学院关联，支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
-        if (currentUserSchoolId != null) {
-            // 如果当前用户有学校ID限制，使用当前用户的学校ID
+        
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 班主任：只能查看管理的班级所在学院（支持多班级）
+            // 先查询所有管理的班级信息
+            List<Class> classList = classMapper.selectList(
+                    new LambdaQueryWrapper<Class>()
+                            .in(Class::getClassId, currentUserClassIds)
+                            .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (classList != null && !classList.isEmpty()) {
+                // 获取所有班级的专业ID列表
+                List<Long> majorIds = classList.stream()
+                        .map(Class::getMajorId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+                if (!majorIds.isEmpty()) {
+                    // 查询所有专业所属的学院ID列表
+                    List<Major> majors = majorMapper.selectList(
+                            new LambdaQueryWrapper<Major>()
+                                    .in(Major::getMajorId, majorIds)
+                                    .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(Major::getCollegeId)
+                    );
+                    if (majors != null && !majors.isEmpty()) {
+                        List<Long> collegeIds = majors.stream()
+                                .map(Major::getCollegeId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .collect(Collectors.toList());
+                        if (!collegeIds.isEmpty()) {
+                            // 过滤学院
+                            wrapper.in(College::getCollegeId, collegeIds);
+                        } else {
+                            // 如果没有学院，返回空结果
+                            wrapper.eq(College::getCollegeId, -1L);
+                        }
+                    } else {
+                        // 如果没有专业或学院，返回空结果
+                        wrapper.eq(College::getCollegeId, -1L);
+                    }
+                } else {
+                    // 如果没有专业，返回空结果
+                    wrapper.eq(College::getCollegeId, -1L);
+                }
+            } else {
+                // 如果没有班级，返回空结果
+                wrapper.eq(College::getCollegeId, -1L);
+            }
+        } else if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院
+            wrapper.eq(College::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校
             wrapper.eq(College::getSchoolId, currentUserSchoolId);
         } else if (schoolId != null) {
             // 系统管理员可以指定学校ID查询

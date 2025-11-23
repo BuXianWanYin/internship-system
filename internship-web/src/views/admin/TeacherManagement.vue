@@ -409,8 +409,12 @@ const loadRoleList = async () => {
   try {
     const res = await roleApi.getAllEnabledRoles()
     if (res.code === 200) {
-      // 只显示教师相关的角色
+      // 基础教师相关角色
       const teacherRoles = ['ROLE_INSTRUCTOR', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      // 学校管理员和系统管理员可以分配学校管理员角色
+      if (hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])) {
+        teacherRoles.push('ROLE_SCHOOL_ADMIN')
+      }
       roleList.value = (res.data || []).filter(role => teacherRoles.includes(role.roleCode))
     }
   } catch (error) {
@@ -428,12 +432,17 @@ const canEditTeacher = (row) => {
   if (!row || !row.userId) {
     return false
   }
-  // 获取用户的角色
-  const userInfo = userInfoMap.value[row.userId]
-  if (!userInfo || !userInfo.roles) {
-    return false
+  // 优先使用教师数据中的角色信息，如果没有则从用户信息中获取
+  let roles = row.roles
+  if (!roles || roles.length === 0) {
+    const userInfo = userInfoMap.value[row.userId]
+    if (userInfo && userInfo.roles) {
+      roles = userInfo.roles
+    } else {
+      return false
+    }
   }
-  return canEditUser(userInfo.roles)
+  return canEditUser(roles)
 }
 
 // 加载数据
@@ -473,6 +482,7 @@ const loadUserInfos = async (userIds) => {
     results.forEach((res, index) => {
       if (res.code === 200 && res.data) {
         userInfoMap.value[userIds[index]] = res.data
+        // 角色信息已经包含在返回的数据中，不需要额外请求
       }
     })
   } catch (error) {

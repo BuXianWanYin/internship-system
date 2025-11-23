@@ -155,135 +155,137 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             wrapper.like(Class::getClassName, className);
         }
         
-        // 筛选条件：学校ID（如果指定了schoolId，需要通过专业和学院关联）
-        if (schoolId != null) {
-            // 先查询该学校下的学院ID列表
-            List<College> colleges = collegeMapper.selectList(
-                    new LambdaQueryWrapper<College>()
-                            .eq(College::getSchoolId, schoolId)
-                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(College::getCollegeId)
-            );
-            if (colleges != null && !colleges.isEmpty()) {
-                List<Long> collegeIds = colleges.stream()
-                        .map(College::getCollegeId)
-                        .collect(Collectors.toList());
-                // 再查询这些学院的专业ID列表
-                List<Major> majors = majorService.list(
-                        new LambdaQueryWrapper<Major>()
-                                .in(Major::getCollegeId, collegeIds)
-                                .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Major::getMajorId)
-                );
-                if (majors != null && !majors.isEmpty()) {
-                    List<Long> majorIds = majors.stream()
-                            .map(Major::getMajorId)
-                            .collect(Collectors.toList());
-                    wrapper.in(Class::getMajorId, majorIds);
-                } else {
-                    // 如果该学校没有专业，返回空结果
-                    wrapper.eq(Class::getClassId, -1L);
-                }
-            } else {
-                // 如果该学校没有学院，返回空结果
-                wrapper.eq(Class::getClassId, -1L);
-            }
-        }
+        // 筛选条件：学校ID、学院ID、专业ID
+        applyOrgFilter(wrapper, schoolId, collegeId, majorId);
         
-        // 筛选条件：学院ID（如果指定了collegeId，需要通过专业关联）
-        if (collegeId != null) {
-            // 先查询该学院下的专业ID列表
-            List<Major> majors = majorService.list(
-                    new LambdaQueryWrapper<Major>()
-                            .eq(Major::getCollegeId, collegeId)
-                            .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Major::getMajorId)
-            );
-            if (majors != null && !majors.isEmpty()) {
-                List<Long> majorIds = majors.stream()
-                        .map(Major::getMajorId)
-                        .collect(Collectors.toList());
-                wrapper.in(Class::getMajorId, majorIds);
-            } else {
-                // 如果该学院没有专业，返回空结果
-                wrapper.eq(Class::getClassId, -1L);
-            }
-        }
-        
-        // 筛选条件：专业ID
-        if (majorId != null) {
-            wrapper.eq(Class::getMajorId, majorId);
-        }
-        
-        // 数据权限过滤：根据专业ID或班级ID过滤
-        // 系统管理员：不添加过滤条件
-        // 学校管理员：添加 school_id = 当前用户学校ID（通过专业和学院关联）
-        // 学院负责人：添加 college_id = 当前用户学院ID（通过专业关联）
-        // 班主任：添加 class_id = 当前用户班级ID
-        Long currentUserClassId = dataPermissionUtil.getCurrentUserClassId();
-        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
-        
-        if (currentUserClassId != null) {
-            // 班主任：只能查看本班的班级信息
-            wrapper.eq(Class::getClassId, currentUserClassId);
-        } else if (currentUserCollegeId != null) {
-            // 学院负责人：只能查看本院的班级（通过专业关联）
-            // 先查询本院的专业ID列表，然后使用in方法
-            List<Major> majors = majorService.list(
-                    new LambdaQueryWrapper<Major>()
-                            .eq(Major::getCollegeId, currentUserCollegeId)
-                            .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Major::getMajorId)
-            );
-            if (majors != null && !majors.isEmpty()) {
-                List<Long> majorIds = majors.stream()
-                        .map(Major::getMajorId)
-                        .collect(Collectors.toList());
-                wrapper.in(Class::getMajorId, majorIds);
-            } else {
-                // 如果没有专业，返回空结果
-                wrapper.eq(Class::getClassId, -1L);
-            }
-        } else if (currentUserSchoolId != null) {
-            // 学校管理员：只能查看本校的班级（通过专业和学院关联）
-            // 先查询本校的学院ID列表
-            List<College> colleges = collegeMapper.selectList(
-                    new LambdaQueryWrapper<College>()
-                            .eq(College::getSchoolId, currentUserSchoolId)
-                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(College::getCollegeId)
-            );
-            if (colleges != null && !colleges.isEmpty()) {
-                List<Long> collegeIds = colleges.stream()
-                        .map(College::getCollegeId)
-                        .collect(Collectors.toList());
-                // 再查询这些学院的专业ID列表
-                List<Major> majors = majorService.list(
-                        new LambdaQueryWrapper<Major>()
-                                .in(Major::getCollegeId, collegeIds)
-                                .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Major::getMajorId)
-                );
-                if (majors != null && !majors.isEmpty()) {
-                    List<Long> majorIds = majors.stream()
-                            .map(Major::getMajorId)
-                            .collect(Collectors.toList());
-                    wrapper.in(Class::getMajorId, majorIds);
-                } else {
-                    // 如果没有专业，返回空结果
-                    wrapper.eq(Class::getClassId, -1L);
-                }
-            } else {
-                // 如果没有学院，返回空结果
-                wrapper.eq(Class::getClassId, -1L);
-            }
-        }
+        // 数据权限过滤
+        applyDataPermissionFilter(wrapper);
         
         // 按创建时间倒序
         wrapper.orderByDesc(Class::getCreateTime);
         
         return this.page(page, wrapper);
+    }
+    
+    /**
+     * 应用组织筛选条件（学校、学院、专业）
+     */
+    private void applyOrgFilter(LambdaQueryWrapper<Class> wrapper, Long schoolId, Long collegeId, Long majorId) {
+        // 筛选条件：专业ID（优先级最高）
+        if (majorId != null) {
+            wrapper.eq(Class::getMajorId, majorId);
+            return;
+        }
+        
+        // 筛选条件：学院ID（通过专业关联）
+        if (collegeId != null) {
+            List<Long> majorIds = getMajorIdsByCollegeId(collegeId);
+            if (majorIds != null && !majorIds.isEmpty()) {
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                wrapper.eq(Class::getClassId, -1L); // 返回空结果
+            }
+            return;
+        }
+        
+        // 筛选条件：学校ID（通过专业和学院关联）
+        if (schoolId != null) {
+            List<Long> majorIds = getMajorIdsBySchoolId(schoolId);
+            if (majorIds != null && !majorIds.isEmpty()) {
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                wrapper.eq(Class::getClassId, -1L); // 返回空结果
+            }
+        }
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<Class> wrapper) {
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        // 班主任：只能查看管理的班级信息（支持多班级）
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            wrapper.in(Class::getClassId, currentUserClassIds);
+            return;
+        }
+        
+        // 学院负责人：只能查看本院的班级（通过专业关联）
+        if (currentUserCollegeId != null) {
+            List<Long> majorIds = getMajorIdsByCollegeId(currentUserCollegeId);
+            if (majorIds != null && !majorIds.isEmpty()) {
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                wrapper.eq(Class::getClassId, -1L); // 返回空结果
+            }
+            return;
+        }
+        
+        // 学校管理员：只能查看本校的班级（通过专业和学院关联）
+        if (currentUserSchoolId != null) {
+            List<Long> majorIds = getMajorIdsBySchoolId(currentUserSchoolId);
+            if (majorIds != null && !majorIds.isEmpty()) {
+                wrapper.in(Class::getMajorId, majorIds);
+            } else {
+                wrapper.eq(Class::getClassId, -1L); // 返回空结果
+            }
+        }
+    }
+    
+    /**
+     * 根据学院ID获取专业ID列表
+     */
+    private List<Long> getMajorIdsByCollegeId(Long collegeId) {
+        List<Major> majors = majorService.list(
+                new LambdaQueryWrapper<Major>()
+                        .eq(Major::getCollegeId, collegeId)
+                        .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(Major::getMajorId)
+        );
+        if (majors == null || majors.isEmpty()) {
+            return null;
+        }
+        return majors.stream()
+                .map(Major::getMajorId)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * 根据学校ID获取专业ID列表
+     */
+    private List<Long> getMajorIdsBySchoolId(Long schoolId) {
+        // 先查询该学校下的学院ID列表
+        List<College> colleges = collegeMapper.selectList(
+                new LambdaQueryWrapper<College>()
+                        .eq(College::getSchoolId, schoolId)
+                        .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(College::getCollegeId)
+        );
+        if (colleges == null || colleges.isEmpty()) {
+            return null;
+        }
+        
+        List<Long> collegeIds = colleges.stream()
+                .map(College::getCollegeId)
+                .collect(Collectors.toList());
+        
+        // 再查询这些学院的专业ID列表
+        List<Major> majors = majorService.list(
+                new LambdaQueryWrapper<Major>()
+                        .in(Major::getCollegeId, collegeIds)
+                        .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(Major::getMajorId)
+        );
+        if (majors == null || majors.isEmpty()) {
+            return null;
+        }
+        
+        return majors.stream()
+                .map(Major::getMajorId)
+                .collect(Collectors.toList());
     }
     
     @Override

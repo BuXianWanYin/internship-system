@@ -436,30 +436,13 @@ const loadData = async () => {
   }
 }
 
-// 加载用户角色信息
+// 加载用户角色信息（现在角色信息已经包含在返回的数据中，此方法保留用于兼容）
 const loadUserRoles = async () => {
-  // 批量加载，使用 Promise.all 并行请求
-  const rolePromises = tableData.value.map(async (user) => {
-    try {
-      const res = await userApi.getUserRoles(user.userId)
-      return {
-        userId: user.userId,
-        roles: res.code === 200 && res.data ? res.data.map(r => r.roleCode) : []
-      }
-    } catch (error) {
-      console.error(`加载用户 ${user.userId} 角色失败:`, error)
-      return {
-        userId: user.userId,
-        roles: []
-      }
-    }
-  })
-  
-  const results = await Promise.all(rolePromises)
-  results.forEach(result => {
-    const user = tableData.value.find(u => u.userId === result.userId)
-    if (user) {
-      user.roles = result.roles
+  // 角色信息已经包含在用户数据中，不需要额外请求
+  // 如果某些用户的角色信息缺失，可以在这里补充
+  tableData.value.forEach(user => {
+    if (!user.roles) {
+      user.roles = []
     }
   })
 }

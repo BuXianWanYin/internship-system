@@ -117,6 +117,11 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         // 保存企业导师
         this.save(mentor);
         
+        // 权限检查：检查当前用户是否可以分配企业导师角色
+        if (!dataPermissionUtil.canAssignRole("ROLE_ENTERPRISE_MENTOR")) {
+            throw new BusinessException("无权限分配企业导师角色");
+        }
+        
         // 分配企业导师角色
         userService.assignRoleToUser(mentor.getUserId(), "ROLE_ENTERPRISE_MENTOR");
         

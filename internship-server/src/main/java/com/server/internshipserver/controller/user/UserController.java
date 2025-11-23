@@ -112,7 +112,7 @@ public class UserController {
     
     @ApiOperation("检查是否可以停用用户")
     @GetMapping("/{userId}/can-delete")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Boolean> canDeleteUser(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         boolean canDelete = userService.canDeleteUser(userId);
