@@ -120,9 +120,16 @@ public class ClassController {
     @PostMapping("/{classId}/appoint-teacher")
     public Result<?> appointClassTeacher(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long classId,
-            @ApiParam(value = "教师ID", required = true) @RequestParam Long teacherId) {
-        boolean success = classService.appointClassTeacher(classId, teacherId);
-        return success ? Result.success("任命班主任成功") : Result.error("任命班主任失败");
+            @ApiParam(value = "教师ID", required = true) @RequestParam(required = true) Long teacherId) {
+        if (teacherId == null) {
+            return Result.error("教师ID不能为空");
+        }
+        try {
+            boolean success = classService.appointClassTeacher(classId, teacherId);
+            return success ? Result.success("任命班主任成功") : Result.error("任命班主任失败");
+        } catch (Exception e) {
+            throw e;
+        }
     }
     
     @ApiOperation("取消班主任任命")

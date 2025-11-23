@@ -120,6 +120,7 @@
             link 
             type="primary" 
             size="small" 
+            :disabled="!canEditTeacher(row)"
             @click="handleEdit(row)"
           >
             编辑
@@ -248,7 +249,7 @@
             <el-form-item label="角色" prop="roleCode">
               <el-select v-model="formData.roleCode" placeholder="请选择角色" style="width: 100%">
                 <el-option
-                  v-for="role in roleList"
+                  v-for="role in filteredRoleList"
                   :key="role.roleCode"
                   :label="role.roleName"
                   :value="role.roleCode"
@@ -279,7 +280,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
-import { hasAnyRole } from '@/utils/permission'
+import { hasAnyRole, canEditUser, canAssignRole } from '@/utils/permission'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import { collegeApi } from '@/api/system/college'
@@ -415,6 +416,24 @@ const loadRoleList = async () => {
   } catch (error) {
     console.error('加载角色列表失败:', error)
   }
+}
+
+// 过滤后的角色列表（根据当前用户权限）
+const filteredRoleList = computed(() => {
+  return roleList.value.filter(role => canAssignRole(role.roleCode))
+})
+
+// 检查是否可以编辑该教师
+const canEditTeacher = (row) => {
+  if (!row || !row.userId) {
+    return false
+  }
+  // 获取用户的角色
+  const userInfo = userInfoMap.value[row.userId]
+  if (!userInfo || !userInfo.roles) {
+    return false
+  }
+  return canEditUser(userInfo.roles)
 }
 
 // 加载数据

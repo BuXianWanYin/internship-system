@@ -161,6 +161,7 @@
             link 
             type="primary" 
             size="small" 
+            :disabled="!canEditUser(row.roles || [])"
             @click="handleEdit(row)"
           >
             编辑
@@ -289,7 +290,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
-import { hasAnyRole } from '@/utils/permission'
+import { hasAnyRole, canEditUser } from '@/utils/permission'
 import { userApi } from '@/api/user/user'
 import { roleApi } from '@/api/user/role'
 import { schoolApi } from '@/api/system/school'
@@ -422,6 +423,9 @@ const loadData = async () => {
       tableData.value = res.data.records
       pagination.total = res.data.total
       
+      // 为每个用户加载角色信息
+      await loadUserRoles()
+      
       // 检查每个用户是否可以停用
       await checkCanDeleteUsers()
     }
@@ -430,6 +434,34 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 加载用户角色信息
+const loadUserRoles = async () => {
+  // 批量加载，使用 Promise.all 并行请求
+  const rolePromises = tableData.value.map(async (user) => {
+    try {
+      const res = await userApi.getUserRoles(user.userId)
+      return {
+        userId: user.userId,
+        roles: res.code === 200 && res.data ? res.data.map(r => r.roleCode) : []
+      }
+    } catch (error) {
+      console.error(`加载用户 ${user.userId} 角色失败:`, error)
+      return {
+        userId: user.userId,
+        roles: []
+      }
+    }
+  })
+  
+  const results = await Promise.all(rolePromises)
+  results.forEach(result => {
+    const user = tableData.value.find(u => u.userId === result.userId)
+    if (user) {
+      user.roles = result.roles
+    }
+  })
 }
 
 // 检查用户是否可以停用

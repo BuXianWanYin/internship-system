@@ -19,6 +19,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addResourceLocations("classpath:/META-INF/resources/webjars/");
         registry.addResourceHandler("/swagger-resources/**")
                 .addResourceLocations("classpath:/META-INF/resources/swagger-resources/");
+        
+        // 文件上传资源访问
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:./uploads/");
     }
 }
 

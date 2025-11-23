@@ -96,6 +96,14 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
             throw new BusinessException("学校不存在");
         }
         
+        // 数据权限检查：非系统管理员只能查看自己学校的学校信息
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null && !currentUserSchoolId.equals(schoolId)) {
+                throw new BusinessException("无权查看该学校信息");
+            }
+        }
+        
         return school;
     }
     

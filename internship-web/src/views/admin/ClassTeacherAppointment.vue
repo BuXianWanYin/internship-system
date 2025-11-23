@@ -34,8 +34,8 @@
         <template #default="{ row }">
           <div v-if="row.classTeacherId && teacherMap[row.classTeacherId]">
             <div>{{ teacherMap[row.classTeacherId].teacherNo }}</div>
-            <div v-if="userInfoMap[row.classTeacherId]" style="font-size: 12px; color: #909399;">
-              {{ userInfoMap[row.classTeacherId].realName }}
+            <div v-if="teacherMap[row.classTeacherId].userId && userInfoMap[teacherMap[row.classTeacherId].userId]" style="font-size: 12px; color: #909399;">
+              {{ userInfoMap[teacherMap[row.classTeacherId].userId].realName }}
             </div>
           </div>
           <el-tag v-else type="info" size="small">未任命</el-tag>
@@ -105,7 +105,7 @@
           </el-select>
           <div v-if="selectedTeacher" style="margin-top: 10px; padding: 10px; background: #f5f7fa; border-radius: 4px;">
             <div>工号：{{ selectedTeacher.teacherNo }}</div>
-            <div v-if="userInfoMap[selectedTeacher.userId]">
+            <div v-if="selectedTeacher.userId && userInfoMap[selectedTeacher.userId]">
               姓名：{{ userInfoMap[selectedTeacher.userId].realName }}
             </div>
             <div v-if="selectedTeacher.title">职称：{{ selectedTeacher.title }}</div>
@@ -182,12 +182,12 @@ export default {
           tableData.value = res.data.records || []
           pagination.total = res.data.total || 0
 
-          // 加载班主任信息
-          const teacherUserIds = tableData.value
+          // 加载班主任信息（classTeacherId存储的是teacherId）
+          const teacherIds = tableData.value
             .filter(item => item.classTeacherId)
             .map(item => item.classTeacherId)
-          if (teacherUserIds.length > 0) {
-            await loadTeacherInfo(teacherUserIds)
+          if (teacherIds.length > 0) {
+            await loadTeacherInfo(teacherIds)
           }
         } else {
           ElMessage.error(res.message || '加载失败')
@@ -199,30 +199,30 @@ export default {
       }
     }
 
-    // 加载教师信息（通过userId）
-    const loadTeacherInfo = async (userIds) => {
+    // 加载教师信息（通过teacherId）
+    const loadTeacherInfo = async (teacherIds) => {
       try {
-        // 加载用户信息
-        for (const userId of userIds) {
-          if (!userInfoMap.value[userId]) {
-            const res = await userApi.getUserById(userId)
-            if (res.code === 200 && res.data) {
-              userInfoMap.value[userId] = res.data
-            }
-          }
-        }
-        
-        // 加载教师信息（通过userId查询teacher_info表）
-        for (const userId of userIds) {
-          if (!teacherMap.value[userId]) {
+        // 加载教师信息（通过teacherId查询）
+        for (const teacherId of teacherIds) {
+          if (!teacherMap.value[teacherId]) {
             try {
-              const res = await teacherApi.getTeacherByUserId(userId)
+              const res = await teacherApi.getTeacherById(teacherId)
               if (res.code === 200 && res.data) {
-                teacherMap.value[userId] = res.data
+                teacherMap.value[teacherId] = res.data
+                // 同时加载用户信息
+                if (res.data.userId && !userInfoMap.value[res.data.userId]) {
+                  try {
+                    const userRes = await userApi.getUserById(res.data.userId)
+                    if (userRes.code === 200 && userRes.data) {
+                      userInfoMap.value[res.data.userId] = userRes.data
+                    }
+                  } catch (error) {
+                    console.warn(`用户 ${res.data.userId} 查询失败:`, error)
+                  }
+                }
               }
             } catch (error) {
-              // 如果查询失败，可能是该用户不是教师，忽略错误
-              console.warn(`用户 ${userId} 不是教师或查询失败:`, error)
+              console.warn(`教师 ${teacherId} 查询失败:`, error)
             }
           }
         }
@@ -238,13 +238,17 @@ export default {
         if (res.code === 200) {
           teacherList.value = res.data.records || []
           
-          // 加载教师对应的用户信息
-          const userIds = [...new Set(teacherList.value.map(t => t.userId))]
-          await loadTeacherInfo(userIds)
+          // 加载教师信息（通过teacherId）
+          const teacherIds = [...new Set(teacherList.value.map(t => t.teacherId))]
+          await loadTeacherInfo(teacherIds)
           
-          // 构建teacherMap（以userId为key）
+          // 构建teacherMap（以teacherId为key）
+          // loadTeacherInfo已经将教师信息存储到teacherMap中了
+          // 这里只需要确保所有教师都在teacherMap中
           teacherList.value.forEach(teacher => {
-            teacherMap.value[teacher.userId] = teacher
+            if (!teacherMap.value[teacher.teacherId]) {
+              teacherMap.value[teacher.teacherId] = teacher
+            }
           })
         }
       } catch (error) {

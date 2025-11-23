@@ -169,44 +169,72 @@
           </el-col>
         </el-row>
         <el-form-item label="工作摘要" prop="workSummary">
-          <el-input
+          <RichTextEditor
             v-model="formData.workSummary"
-            type="textarea"
-            :rows="3"
             placeholder="请简要描述本周工作内容"
+            :height="'150px'"
           />
         </el-form-item>
         <el-form-item label="工作内容" prop="workContent">
-          <el-input
+          <RichTextEditor
             v-model="formData.workContent"
-            type="textarea"
-            :rows="8"
             placeholder="请详细描述本周的工作内容、完成的任务、参与的项目等"
+            :height="'250px'"
           />
         </el-form-item>
         <el-form-item label="工作收获" prop="workHarvest">
-          <el-input
+          <RichTextEditor
             v-model="formData.workHarvest"
-            type="textarea"
-            :rows="6"
             placeholder="请描述本周的工作收获、学到的知识、技能提升等"
+            :height="'200px'"
           />
         </el-form-item>
         <el-form-item label="遇到的问题" prop="problems">
-          <el-input
+          <RichTextEditor
             v-model="formData.problems"
-            type="textarea"
-            :rows="4"
             placeholder="请描述本周遇到的问题及解决方案（可选）"
+            :height="'150px'"
           />
         </el-form-item>
         <el-form-item label="下周计划" prop="nextWeekPlan">
-          <el-input
+          <RichTextEditor
             v-model="formData.nextWeekPlan"
-            type="textarea"
-            :rows="4"
             placeholder="请描述下周的工作计划（可选）"
+            :height="'150px'"
           />
+        </el-form-item>
+        <el-form-item label="附件">
+          <el-upload
+            ref="uploadRef"
+            v-model:file-list="fileList"
+            :action="''"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :before-upload="beforeUpload"
+            multiple
+            :limit="5"
+          >
+            <el-button type="primary">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传Word文档、PDF、图片等，单个文件不超过10MB，最多上传5个文件
+              </div>
+            </template>
+          </el-upload>
+          <div v-if="attachmentUrls.length > 0" class="attachment-list">
+            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
+              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="removeAttachment(index)"
+              >
+                删除
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -242,19 +270,26 @@
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
         <el-descriptions-item label="工作摘要" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workSummary || '-' }}</div>
+          <div v-html="detailData.workSummary || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
         </el-descriptions-item>
         <el-descriptions-item label="工作内容" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workContent || '-' }}</div>
+          <div v-html="detailData.workContent || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
         </el-descriptions-item>
         <el-descriptions-item label="工作收获" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workHarvest || '-' }}</div>
+          <div v-html="detailData.workHarvest || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.problems" label="遇到的问题" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.problems }}</div>
+          <div v-html="detailData.problems" style="max-width: 100%; word-wrap: break-word;"></div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.nextWeekPlan" label="下周计划" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.nextWeekPlan }}</div>
+          <div v-html="detailData.nextWeekPlan" style="max-width: 100%; word-wrap: break-word;"></div>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="detailData.attachmentUrls" label="附件" :span="2">
+          <div class="attachment-list">
+            <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
+            </div>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.reviewComment" label="批阅意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
@@ -276,8 +311,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { weeklyReportApi } from '@/api/internship/weeklyReport'
 import { applyApi } from '@/api/internship/apply'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import RichTextEditor from '@/components/common/RichTextEditor.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -300,6 +337,9 @@ const pagination = reactive({
 const tableData = ref([])
 const detailData = ref({})
 const currentApply = ref(null)
+const uploadRef = ref(null)
+const fileList = ref([])
+const attachmentUrls = ref([])
 
 const formData = reactive({
   reportId: null,
@@ -312,7 +352,8 @@ const formData = reactive({
   workContent: '',
   workHarvest: '',
   problems: '',
-  nextWeekPlan: ''
+  nextWeekPlan: '',
+  attachmentUrls: ''
 })
 
 const formRules = {
@@ -406,8 +447,16 @@ const handleEdit = async (row) => {
         workContent: res.data.workContent || '',
         workHarvest: res.data.workHarvest || '',
         problems: res.data.problems || '',
-        nextWeekPlan: res.data.nextWeekPlan || ''
+        nextWeekPlan: res.data.nextWeekPlan || '',
+        attachmentUrls: res.data.attachmentUrls || ''
       })
+      // 加载附件列表
+      if (res.data.attachmentUrls) {
+        attachmentUrls.value = res.data.attachmentUrls.split(',').filter(u => u)
+      } else {
+        attachmentUrls.value = []
+      }
+      fileList.value = []
       dialogVisible.value = true
     }
   } catch (error) {
@@ -449,6 +498,73 @@ const handleDelete = async (row) => {
   }
 }
 
+// 文件上传前验证
+const beforeUpload = (file) => {
+  const isValidType = ['doc', 'docx', 'pdf', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'xls', 'xlsx', 'zip', 'rar'].some(
+    ext => file.name.toLowerCase().endsWith('.' + ext)
+  )
+  const isLt10M = file.size / 1024 / 1024 < 10
+
+  if (!isValidType) {
+    ElMessage.error('不支持的文件类型！支持：Word、PDF、图片、Excel、压缩文件')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过 10MB!')
+    return false
+  }
+  return false // 阻止自动上传
+}
+
+// 文件变化
+const handleFileChange = (file, fileList) => {
+  // 文件已添加到列表，稍后统一上传
+}
+
+// 移除文件
+const handleFileRemove = (file, fileList) => {
+  // 文件已从列表移除
+}
+
+// 上传附件
+const uploadAttachments = async () => {
+  if (fileList.value.length === 0) {
+    return attachmentUrls.value.join(',')
+  }
+  
+  const files = fileList.value.map(item => item.raw).filter(Boolean)
+  if (files.length === 0) {
+    return attachmentUrls.value.join(',')
+  }
+  
+  try {
+    const res = await fileApi.uploadFiles(files)
+    if (res.code === 200 && res.data) {
+      // 合并新上传的文件和已有附件
+      const newUrls = [...attachmentUrls.value, ...res.data]
+      return newUrls.join(',')
+    }
+  } catch (error) {
+    console.error('附件上传失败:', error)
+    ElMessage.error('附件上传失败: ' + (error.response?.data?.message || error.message))
+    throw error
+  }
+  
+  return attachmentUrls.value.join(',')
+}
+
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 移除附件
+const removeAttachment = (index) => {
+  attachmentUrls.value.splice(index, 1)
+}
+
 // 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -456,10 +572,20 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 先上传附件
+        let attachmentUrlsStr = ''
+        try {
+          attachmentUrlsStr = await uploadAttachments()
+        } catch (error) {
+          // 附件上传失败，不阻止提交
+          console.error('附件上传失败，继续提交:', error)
+        }
+        
         const data = {
           ...formData,
           problems: formData.problems || undefined,
-          nextWeekPlan: formData.nextWeekPlan || undefined
+          nextWeekPlan: formData.nextWeekPlan || undefined,
+          attachmentUrls: attachmentUrlsStr || undefined
         }
         if (formData.reportId) {
           data.reportId = formData.reportId
@@ -500,8 +626,11 @@ const resetForm = () => {
     workContent: '',
     workHarvest: '',
     problems: '',
-    nextWeekPlan: ''
+    nextWeekPlan: '',
+    attachmentUrls: ''
   })
+  fileList.value = []
+  attachmentUrls.value = []
   if (formRef.value) {
     formRef.value.clearValidate()
   }
@@ -537,6 +666,20 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.attachment-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
 

@@ -99,3 +99,120 @@ export const ROLES = {
   ENTERPRISE_MENTOR: 'ROLE_ENTERPRISE_MENTOR',
   STUDENT: 'ROLE_STUDENT'
 }
+
+/**
+ * 检查当前用户是否可以编辑指定用户
+ * 权限规则：
+ * 1. 系统管理员可以编辑所有用户
+ * 2. 学校管理员不能编辑系统管理员，可以编辑其他所有用户
+ * 3. 学院负责人不能编辑系统管理员、学校管理员，可以编辑教师、学生等
+ * 4. 班主任不能编辑系统管理员、学校管理员、学院负责人，可以编辑学生等
+ * 
+ * @param {string[]} targetUserRoles 目标用户的角色列表
+ * @returns {boolean} true-可以编辑，false-不能编辑
+ */
+export function canEditUser(targetUserRoles) {
+  if (!targetUserRoles || !Array.isArray(targetUserRoles) || targetUserRoles.length === 0) {
+    return false
+  }
+  
+  const currentRoles = getCurrentUserRoles()
+  if (!currentRoles || currentRoles.length === 0) {
+    return false
+  }
+  
+  // 系统管理员可以编辑所有用户
+  if (currentRoles.includes(ROLES.SYSTEM_ADMIN)) {
+    return true
+  }
+  
+  // 任何人都不能编辑系统管理员
+  if (targetUserRoles.includes(ROLES.SYSTEM_ADMIN)) {
+    return false
+  }
+  
+  // 学校管理员不能编辑系统管理员（上面已处理），可以编辑其他所有用户
+  if (currentRoles.includes(ROLES.SCHOOL_ADMIN)) {
+    return true
+  }
+  
+  // 学院负责人不能编辑系统管理员、学校管理员
+  if (currentRoles.includes(ROLES.COLLEGE_LEADER)) {
+    if (targetUserRoles.includes(ROLES.SCHOOL_ADMIN)) {
+      return false
+    }
+    // 可以编辑教师、学生等
+    return true
+  }
+  
+  // 班主任不能编辑系统管理员、学校管理员、学院负责人
+  if (currentRoles.includes(ROLES.CLASS_TEACHER)) {
+    if (targetUserRoles.includes(ROLES.SCHOOL_ADMIN) || 
+        targetUserRoles.includes(ROLES.COLLEGE_LEADER)) {
+      return false
+    }
+    // 可以编辑学生等
+    return true
+  }
+  
+  // 其他角色默认不能编辑其他用户
+  return false
+}
+
+/**
+ * 检查当前用户是否可以分配指定角色
+ * 权限规则：
+ * 1. 系统管理员可以分配所有角色
+ * 2. 学校管理员不能分配系统管理员角色，可以分配其他角色
+ * 3. 学院负责人不能分配系统管理员、学校管理员角色，可以分配教师、学生等角色
+ * 4. 班主任不能分配系统管理员、学校管理员、学院负责人角色，可以分配学生角色
+ * 
+ * @param {string} roleCode 角色代码
+ * @returns {boolean} true-可以分配，false-不能分配
+ */
+export function canAssignRole(roleCode) {
+  if (!roleCode || typeof roleCode !== 'string') {
+    return false
+  }
+  
+  const currentRoles = getCurrentUserRoles()
+  if (!currentRoles || currentRoles.length === 0) {
+    return false
+  }
+  
+  // 系统管理员可以分配所有角色
+  if (currentRoles.includes(ROLES.SYSTEM_ADMIN)) {
+    return true
+  }
+  
+  // 任何人都不能分配系统管理员角色
+  if (roleCode === ROLES.SYSTEM_ADMIN) {
+    return false
+  }
+  
+  // 学校管理员不能分配系统管理员角色（上面已处理），可以分配其他角色
+  if (currentRoles.includes(ROLES.SCHOOL_ADMIN)) {
+    return true
+  }
+  
+  // 学院负责人不能分配系统管理员、学校管理员角色
+  if (currentRoles.includes(ROLES.COLLEGE_LEADER)) {
+    if (roleCode === ROLES.SCHOOL_ADMIN) {
+      return false
+    }
+    // 可以分配教师、学生等角色
+    return true
+  }
+  
+  // 班主任不能分配系统管理员、学校管理员、学院负责人角色
+  if (currentRoles.includes(ROLES.CLASS_TEACHER)) {
+    if (roleCode === ROLES.SCHOOL_ADMIN || roleCode === ROLES.COLLEGE_LEADER) {
+      return false
+    }
+    // 可以分配学生角色等
+    return true
+  }
+  
+  // 其他角色默认不能分配角色
+  return false
+}

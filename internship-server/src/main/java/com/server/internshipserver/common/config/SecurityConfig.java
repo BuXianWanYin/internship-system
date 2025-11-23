@@ -65,7 +65,8 @@ public class SecurityConfig {
                     "/v3/api-docs/**", 
                     "/swagger-resources/**",
                     "/webjars/**",
-                    "/doc.html"
+                    "/doc.html",
+                    "/uploads/**"  // 允许访问上传的文件
                 ).permitAll()
                 // 其他请求需要认证
                 .anyRequest().authenticated()

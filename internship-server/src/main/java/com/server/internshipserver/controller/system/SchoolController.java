@@ -42,7 +42,7 @@ public class SchoolController {
     }
     
     @ApiOperation("查询学校详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/{id}")
     public Result<School> getSchoolById(
             @ApiParam(value = "学校ID", required = true) @PathVariable Long id) {
@@ -51,7 +51,7 @@ public class SchoolController {
     }
     
     @ApiOperation("分页查询学校列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/page")
     public Result<Page<School>> getSchoolPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,

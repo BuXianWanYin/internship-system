@@ -20,6 +20,8 @@ import com.server.internshipserver.mapper.user.UserRoleMapper;
 import com.server.internshipserver.service.user.PermissionService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.service.user.RoleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implements UserService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
@@ -122,6 +126,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         UserInfo existUser = this.getById(user.getUserId());
         if (existUser == null || existUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("用户不存在");
+        }
+        
+        // 权限检查：检查当前用户是否可以编辑目标用户
+        if (!dataPermissionUtil.canEditUser(user.getUserId())) {
+            throw new BusinessException("无权限编辑该用户信息");
         }
         
         // 如果修改了用户名，检查新用户名是否已存在
@@ -779,9 +788,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         boolean success = userRoleMapper.insert(userRole) > 0;
         
-        // 角色分配成功后，清除用户权限缓存
+        // 角色分配成功后，清除用户权限缓存（如果Redis连接失败，不影响主流程）
         if (success) {
-            permissionService.clearUserPermissionCache(userId);
+            try {
+                permissionService.clearUserPermissionCache(userId);
+            } catch (Exception e) {
+                // Redis连接失败不影响角色分配，只记录日志
+                logger.warn("清除用户权限缓存失败，userId: {}, error: {}", userId, e.getMessage());
+            }
         }
         
         return success;

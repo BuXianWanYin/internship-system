@@ -471,7 +471,10 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         if (currentUserCollegeId != null) {
             // 获取班级所属的专业
             Major major = majorService.getById(classInfo.getMajorId());
-            if (major == null || !currentUserCollegeId.equals(major.getCollegeId())) {
+            if (major == null) {
+                throw new BusinessException("专业不存在");
+            }
+            if (!currentUserCollegeId.equals(major.getCollegeId())) {
                 throw new BusinessException("无权限任命该班级的班主任");
             }
         }
@@ -487,8 +490,8 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             throw new BusinessException("该教师不属于本学院");
         }
         
-        // 设置班主任（使用userId，因为class_teacher_id存储的是user_id）
-        classInfo.setClassTeacherId(teacher.getUserId());
+        // 设置班主任（使用teacherId，因为class_teacher_id存储的是teacher_id）
+        classInfo.setClassTeacherId(teacherId);
         
         // 更新班级信息
         this.updateById(classInfo);

@@ -110,6 +110,11 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             throw new BusinessException("教师不存在");
         }
         
+        // 权限检查：检查当前用户是否可以编辑该教师对应的用户
+        if (!dataPermissionUtil.canEditUser(existTeacher.getUserId())) {
+            throw new BusinessException("无权限编辑该教师信息");
+        }
+        
         // 如果修改了工号，检查新工号是否已存在
         if (StringUtils.hasText(teacher.getTeacherNo()) 
                 && !teacher.getTeacherNo().equals(existTeacher.getTeacherNo())) {
@@ -145,35 +150,50 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 只查询未删除的数据
         wrapper.eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
-        // 条件查询
-        if (StringUtils.hasText(teacherNo)) {
-            wrapper.like(Teacher::getTeacherNo, teacherNo);
-        }
-        if (collegeId != null) {
-            wrapper.eq(Teacher::getCollegeId, collegeId);
-        }
-        if (schoolId != null) {
-            wrapper.eq(Teacher::getSchoolId, schoolId);
-        }
-        if (status != null) {
-            wrapper.eq(Teacher::getStatus, status);
-        }
-        
-        // 数据权限过滤：根据用户角色自动添加查询条件
+        // 数据权限过滤：根据用户角色自动添加查询条件（先应用数据权限，再应用前端条件）
         // 系统管理员：不添加过滤条件
         // 学校管理员：添加 school_id = 当前用户学校ID
-        // 学院负责人：添加 college_id = 当前用户学院ID
+        // 学院负责人：添加 college_id = 当前用户学院ID（包括院长自己）
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         
         if (currentUserCollegeId != null) {
-            // 学院负责人：只能查看本院的教师
-            wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+            // 学院负责人：只能查看本院的教师（包括院长自己）
+            // 如果前端传入了collegeId参数，需要验证是否与当前用户的collegeId一致
+            if (collegeId != null && !collegeId.equals(currentUserCollegeId)) {
+                // 如果传入的collegeId与当前用户的collegeId不一致，返回空结果
+                wrapper.eq(Teacher::getCollegeId, -1L);
+            } else {
+                // 如果没有传入collegeId参数，或者传入的collegeId与当前用户的collegeId一致，则查询本学院的所有教师
+                wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+            }
         } else if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的教师
-            wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+            // 如果前端传入了schoolId参数，需要验证是否与当前用户的schoolId一致
+            if (schoolId != null && !schoolId.equals(currentUserSchoolId)) {
+                // 如果传入的schoolId与当前用户的schoolId不一致，返回空结果
+                wrapper.eq(Teacher::getSchoolId, -1L);
+            } else {
+                // 如果没有传入schoolId参数，或者传入的schoolId与当前用户的schoolId一致，则查询本校的所有教师
+                wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+            }
+        } else {
+            // 系统管理员：可以查看所有教师，应用前端传入的条件
+            if (collegeId != null) {
+                wrapper.eq(Teacher::getCollegeId, collegeId);
+            }
+            if (schoolId != null) {
+                wrapper.eq(Teacher::getSchoolId, schoolId);
+            }
         }
-        // 系统管理员不添加限制
+        
+        // 其他条件查询（在数据权限过滤之后）
+        if (StringUtils.hasText(teacherNo)) {
+            wrapper.like(Teacher::getTeacherNo, teacherNo);
+        }
+        if (status != null) {
+            wrapper.eq(Teacher::getStatus, status);
+        }
         
         // 按创建时间倒序
         wrapper.orderByDesc(Teacher::getCreateTime);
@@ -277,6 +297,12 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         
         // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配指导教师角色
         String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : "ROLE_INSTRUCTOR";
+        
+        // 权限检查：检查当前用户是否可以分配该角色
+        if (!dataPermissionUtil.canAssignRole(finalRoleCode)) {
+            throw new BusinessException("无权限分配该角色：" + finalRoleCode);
+        }
+        
         userService.assignRoleToUser(teacher.getUserId(), finalRoleCode);
         
         return teacher;
@@ -298,6 +324,11 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         Teacher existTeacher = this.getById(teacherId);
         if (existTeacher == null || existTeacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("教师不存在");
+        }
+        
+        // 权限检查：检查当前用户是否可以编辑该教师对应的用户
+        if (!dataPermissionUtil.canEditUser(existTeacher.getUserId())) {
+            throw new BusinessException("无权限编辑该教师信息");
         }
         
         // 如果修改了工号，检查新工号是否已存在

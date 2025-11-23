@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -228,15 +229,24 @@ public class DataPermissionUtil {
         // 根据用户角色获取班级ID
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 班主任：从Class表的class_teacher_id获取
+        // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是teacher_id）
         if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
-            Class classInfo = classMapper.selectOne(
-                    new LambdaQueryWrapper<Class>()
-                            .eq(Class::getClassTeacherId, user.getUserId())
-                            .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            // 先通过user_id查询teacher_id
+            Teacher teacher = teacherMapper.selectOne(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getUserId, user.getUserId())
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
-            if (classInfo != null) {
-                return classInfo.getClassId();
+            if (teacher != null) {
+                // 再通过teacher_id查询班级
+                Class classInfo = classMapper.selectOne(
+                        new LambdaQueryWrapper<Class>()
+                                .eq(Class::getClassTeacherId, teacher.getTeacherId())
+                                .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (classInfo != null) {
+                    return classInfo.getClassId();
+                }
             }
         }
         
@@ -398,6 +408,160 @@ public class DataPermissionUtil {
         }
         
         return null;
+    }
+    
+    /**
+     * 检查当前用户是否可以编辑指定用户
+     * 权限规则：
+     * 1. 系统管理员可以编辑所有用户
+     * 2. 学校管理员不能编辑系统管理员，可以编辑其他所有用户
+     * 3. 学院负责人不能编辑系统管理员、学校管理员，可以编辑教师、学生等
+     * 4. 班主任不能编辑系统管理员、学校管理员、学院负责人，可以编辑学生等
+     * 
+     * @param targetUserId 目标用户ID
+     * @return true-可以编辑，false-不能编辑
+     */
+    public boolean canEditUser(Long targetUserId) {
+        if (targetUserId == null) {
+            return false;
+        }
+        
+        // 系统管理员可以编辑所有用户
+        if (isSystemAdmin()) {
+            return true;
+        }
+        
+        // 获取目标用户的角色
+        List<String> targetUserRoles = userMapper.selectRoleCodesByUserId(targetUserId);
+        if (targetUserRoles == null || targetUserRoles.isEmpty()) {
+            return false;
+        }
+        
+        // 获取当前用户的角色
+        String currentUsername = SecurityUtil.getCurrentUsername();
+        if (currentUsername == null) {
+            return false;
+        }
+        
+        UserInfo currentUser = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, currentUsername)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (currentUser == null) {
+            return false;
+        }
+        
+        List<String> currentUserRoles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+        if (currentUserRoles == null || currentUserRoles.isEmpty()) {
+            return false;
+        }
+        
+        // 任何人都不能编辑系统管理员
+        if (targetUserRoles.contains("ROLE_SYSTEM_ADMIN")) {
+            return false;
+        }
+        
+        // 学校管理员不能编辑系统管理员（上面已处理），可以编辑其他所有用户
+        if (currentUserRoles.contains("ROLE_SCHOOL_ADMIN")) {
+            return true;
+        }
+        
+        // 学院负责人不能编辑系统管理员、学校管理员
+        if (currentUserRoles.contains("ROLE_COLLEGE_LEADER")) {
+            if (targetUserRoles.contains("ROLE_SCHOOL_ADMIN")) {
+                return false;
+            }
+            // 可以编辑教师、学生等
+            return true;
+        }
+        
+        // 班主任不能编辑系统管理员、学校管理员、学院负责人
+        if (currentUserRoles.contains("ROLE_CLASS_TEACHER")) {
+            if (targetUserRoles.contains("ROLE_SCHOOL_ADMIN") || 
+                targetUserRoles.contains("ROLE_COLLEGE_LEADER")) {
+                return false;
+            }
+            // 可以编辑学生等
+            return true;
+        }
+        
+        // 其他角色默认不能编辑其他用户
+        return false;
+    }
+    
+    /**
+     * 检查当前用户是否可以分配指定角色
+     * 权限规则：
+     * 1. 系统管理员可以分配所有角色
+     * 2. 学校管理员不能分配系统管理员角色，可以分配其他角色
+     * 3. 学院负责人不能分配系统管理员、学校管理员角色，可以分配教师、学生等角色
+     * 4. 班主任不能分配系统管理员、学校管理员、学院负责人角色，可以分配学生角色
+     * 
+     * @param roleCode 角色代码
+     * @return true-可以分配，false-不能分配
+     */
+    public boolean canAssignRole(String roleCode) {
+        if (!StringUtils.hasText(roleCode)) {
+            return false;
+        }
+        
+        // 系统管理员可以分配所有角色
+        if (isSystemAdmin()) {
+            return true;
+        }
+        
+        // 获取当前用户的角色
+        String currentUsername = SecurityUtil.getCurrentUsername();
+        if (currentUsername == null) {
+            return false;
+        }
+        
+        UserInfo currentUser = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, currentUsername)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (currentUser == null) {
+            return false;
+        }
+        
+        List<String> currentUserRoles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+        if (currentUserRoles == null || currentUserRoles.isEmpty()) {
+            return false;
+        }
+        
+        // 任何人都不能分配系统管理员角色
+        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+            return false;
+        }
+        
+        // 学校管理员不能分配系统管理员角色（上面已处理），可以分配其他角色
+        if (currentUserRoles.contains("ROLE_SCHOOL_ADMIN")) {
+            return true;
+        }
+        
+        // 学院负责人不能分配系统管理员、学校管理员角色
+        if (currentUserRoles.contains("ROLE_COLLEGE_LEADER")) {
+            if ("ROLE_SCHOOL_ADMIN".equals(roleCode)) {
+                return false;
+            }
+            // 可以分配教师、学生等角色
+            return true;
+        }
+        
+        // 班主任不能分配系统管理员、学校管理员、学院负责人角色
+        if (currentUserRoles.contains("ROLE_CLASS_TEACHER")) {
+            if ("ROLE_SCHOOL_ADMIN".equals(roleCode) || 
+                "ROLE_COLLEGE_LEADER".equals(roleCode)) {
+                return false;
+            }
+            // 可以分配学生角色等
+            return true;
+        }
+        
+        // 其他角色默认不能分配角色
+        return false;
     }
 }
 
