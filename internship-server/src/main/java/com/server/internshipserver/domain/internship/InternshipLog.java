@@ -104,5 +104,18 @@ public class InternshipLog implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    // 非数据库字段：用于前端显示
+    @ApiModelProperty(value = "学生姓名")
+    @TableField(exist = false)
+    private String studentName;
+    
+    @ApiModelProperty(value = "学号")
+    @TableField(exist = false)
+    private String studentNo;
+    
+    @ApiModelProperty(value = "企业名称")
+    @TableField(exist = false)
+    private String enterpriseName;
 }
 

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -37,6 +38,9 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -173,27 +177,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         wrapper.eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生只能查看自己的周报
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student != null) {
-                    wrapper.eq(InternshipWeeklyReport::getStudentId, student.getStudentId());
-                }
-                // 指导教师可以查看分配的学生的周报
-                // TODO: 实现指导教师数据权限过滤
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (studentId != null) {
@@ -212,7 +196,16 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         // 按周次倒序
         wrapper.orderByDesc(InternshipWeeklyReport::getWeekNumber);
         
-        return this.page(page, wrapper);
+        Page<InternshipWeeklyReport> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipWeeklyReport report : result.getRecords()) {
+                fillReportRelatedFields(report);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -282,6 +275,87 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         // 软删除
         report.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(report);
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipWeeklyReport> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 学生只能查看自己的周报
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, currentUserId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (student != null) {
+                wrapper.eq(InternshipWeeklyReport::getStudentId, student.getStudentId());
+            }
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的周报
+        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            java.util.List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, currentUserClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                java.util.List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(java.util.stream.Collectors.toList());
+                wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
+            } else {
+                wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
+            }
+        }
+    }
+    
+    /**
+     * 填充周报关联字段
+     */
+    private void fillReportRelatedFields(InternshipWeeklyReport report) {
+        // 填充学生信息
+        if (report.getStudentId() != null) {
+            Student student = studentMapper.selectById(report.getStudentId());
+            if (student != null) {
+                report.setStudentNo(student.getStudentNo());
+                if (student.getUserId() != null) {
+                    UserInfo user = userMapper.selectById(student.getUserId());
+                    if (user != null) {
+                        report.setStudentName(user.getRealName());
+                    }
+                }
+            }
+        }
+        
+        // 填充企业信息和日期信息
+        if (report.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(report.getApplyId());
+            if (apply != null) {
+                if (apply.getEnterpriseId() != null) {
+                    report.setEnterpriseName(apply.getEnterpriseName());
+                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    report.setEnterpriseName(apply.getSelfEnterpriseName());
+                }
+                // 设置开始和结束日期（从申请中获取）
+                if (apply.getStartDate() != null) {
+                    report.setStartDate(apply.getStartDate());
+                }
+                if (apply.getEndDate() != null) {
+                    report.setEndDate(apply.getEndDate());
+                }
+            }
+        }
     }
 }
 

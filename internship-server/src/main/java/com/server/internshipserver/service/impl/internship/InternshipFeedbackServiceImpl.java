@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipFeedback;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -36,6 +37,9 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -159,27 +163,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         wrapper.eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生只能查看自己的反馈
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student != null) {
-                    wrapper.eq(InternshipFeedback::getStudentId, student.getStudentId());
-                }
-                // 指导教师和企业导师可以查看相关学生的反馈
-                // TODO: 实现更精确的数据权限过滤
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (studentId != null) {
@@ -198,7 +182,16 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         // 按创建时间倒序
         wrapper.orderByDesc(InternshipFeedback::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<InternshipFeedback> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipFeedback feedback : result.getRecords()) {
+                fillFeedbackRelatedFields(feedback);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -311,6 +304,70 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         // 软删除
         feedback.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(feedback);
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 学生只能查看自己的反馈
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, currentUserId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (student != null) {
+                wrapper.eq(InternshipFeedback::getStudentId, student.getStudentId());
+            }
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的反馈
+        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            java.util.List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, currentUserClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                java.util.List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(java.util.stream.Collectors.toList());
+                wrapper.in(InternshipFeedback::getStudentId, studentIds);
+            } else {
+                wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
+            }
+        }
+        // 指导教师和企业导师可以查看相关学生的反馈
+        // TODO: 实现更精确的数据权限过滤
+    }
+    
+    /**
+     * 填充反馈关联字段
+     */
+    private void fillFeedbackRelatedFields(InternshipFeedback feedback) {
+        // 填充学生信息
+        if (feedback.getStudentId() != null) {
+            Student student = studentMapper.selectById(feedback.getStudentId());
+            if (student != null) {
+                feedback.setStudentNo(student.getStudentNo());
+                if (student.getUserId() != null) {
+                    UserInfo user = userMapper.selectById(student.getUserId());
+                    if (user != null) {
+                        feedback.setStudentName(user.getRealName());
+                    }
+                }
+            }
+        }
     }
 }
 

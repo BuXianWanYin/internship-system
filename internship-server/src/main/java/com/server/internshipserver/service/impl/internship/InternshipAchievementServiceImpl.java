@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipAchievement;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -36,6 +37,9 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -162,27 +166,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         wrapper.eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生只能查看自己的成果
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student != null) {
-                    wrapper.eq(InternshipAchievement::getStudentId, student.getStudentId());
-                }
-                // 指导教师可以查看分配的学生的成果
-                // TODO: 实现指导教师数据权限过滤
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (studentId != null) {
@@ -201,7 +185,16 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         // 按提交日期倒序
         wrapper.orderByDesc(InternshipAchievement::getSubmitDate);
         
-        return this.page(page, wrapper);
+        Page<InternshipAchievement> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipAchievement achievement : result.getRecords()) {
+                fillAchievementRelatedFields(achievement);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -273,6 +266,83 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         // 软删除
         achievement.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(achievement);
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 学生只能查看自己的成果
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, currentUserId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (student != null) {
+                wrapper.eq(InternshipAchievement::getStudentId, student.getStudentId());
+            }
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的成果
+        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            java.util.List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, currentUserClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                java.util.List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(java.util.stream.Collectors.toList());
+                wrapper.in(InternshipAchievement::getStudentId, studentIds);
+            } else {
+                wrapper.eq(InternshipAchievement::getAchievementId, -1L);
+            }
+        }
+    }
+    
+    /**
+     * 填充成果关联字段
+     */
+    private void fillAchievementRelatedFields(InternshipAchievement achievement) {
+        // 填充学生信息
+        if (achievement.getStudentId() != null) {
+            Student student = studentMapper.selectById(achievement.getStudentId());
+            if (student != null) {
+                achievement.setStudentNo(student.getStudentNo());
+                if (student.getUserId() != null) {
+                    UserInfo user = userMapper.selectById(student.getUserId());
+                    if (user != null) {
+                        achievement.setStudentName(user.getRealName());
+                    }
+                }
+            }
+        }
+        
+        // 填充企业信息
+        if (achievement.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(achievement.getApplyId());
+            if (apply != null) {
+                if (apply.getEnterpriseId() != null) {
+                    achievement.setEnterpriseName(apply.getEnterpriseName());
+                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    achievement.setEnterpriseName(apply.getSelfEnterpriseName());
+                }
+            }
+        }
+        
+        // 设置成果标题（用于显示）
+        achievement.setAchievementTitle(achievement.getAchievementName());
     }
 }
 

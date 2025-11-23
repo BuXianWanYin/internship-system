@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipLog;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -38,6 +39,9 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -161,27 +165,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         wrapper.eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生只能查看自己的日志
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student != null) {
-                    wrapper.eq(InternshipLog::getStudentId, student.getStudentId());
-                }
-                // 指导教师可以查看分配的学生的日志
-                // TODO: 实现指导教师数据权限过滤
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (studentId != null) {
@@ -200,7 +184,16 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         // 按日志日期倒序
         wrapper.orderByDesc(InternshipLog::getLogDate);
         
-        return this.page(page, wrapper);
+        Page<InternshipLog> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipLog log : result.getRecords()) {
+                fillLogRelatedFields(log);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -270,6 +263,86 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         // 软删除
         log.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(log);
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 学生只能查看自己的日志
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, currentUserId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (student != null) {
+                wrapper.eq(InternshipLog::getStudentId, student.getStudentId());
+            }
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的日志
+        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            java.util.List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, currentUserClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                java.util.List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(java.util.stream.Collectors.toList());
+                wrapper.in(InternshipLog::getStudentId, studentIds);
+            } else {
+                // 如果没有学生，返回空结果
+                wrapper.eq(InternshipLog::getLogId, -1L);
+            }
+        }
+        // 指导教师可以查看分配的学生的日志
+        // TODO: 实现指导教师数据权限过滤
+    }
+    
+    /**
+     * 填充日志关联字段
+     */
+    private void fillLogRelatedFields(InternshipLog log) {
+        // 填充学生信息
+        if (log.getStudentId() != null) {
+            Student student = studentMapper.selectById(log.getStudentId());
+            if (student != null) {
+                log.setStudentNo(student.getStudentNo());
+                // 通过userId获取学生姓名
+                if (student.getUserId() != null) {
+                    UserInfo user = userMapper.selectById(student.getUserId());
+                    if (user != null) {
+                        log.setStudentName(user.getRealName());
+                    }
+                }
+            }
+        }
+        
+        // 填充企业信息
+        if (log.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(log.getApplyId());
+            if (apply != null) {
+                if (apply.getEnterpriseId() != null) {
+                    // 合作企业申请，从企业表获取企业信息
+                    log.setEnterpriseName(apply.getEnterpriseName());
+                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习，使用自主实习企业名称
+                    log.setEnterpriseName(apply.getSelfEnterpriseName());
+                }
+            }
+        }
     }
 }
 
