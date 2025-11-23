@@ -10,8 +10,10 @@ import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
+import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
@@ -49,6 +51,9 @@ public class DataPermissionUtil {
     
     @Autowired
     private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private EnterpriseMentorMapper enterpriseMentorMapper;
     
     @Autowired
     private EnterpriseSchoolCooperationMapper cooperationMapper;
@@ -449,9 +454,8 @@ public class DataPermissionUtil {
         // 根据用户角色获取企业ID
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 企业管理员、企业导师：从Enterprise表获取
-        if (roleCodes != null && (roleCodes.contains("ROLE_ENTERPRISE_ADMIN") 
-                || roleCodes.contains("ROLE_ENTERPRISE_MENTOR"))) {
+        // 企业管理员：从Enterprise表获取
+        if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
             Enterprise enterprise = enterpriseMapper.selectOne(
                     new LambdaQueryWrapper<Enterprise>()
                             .eq(Enterprise::getUserId, user.getUserId())
@@ -459,6 +463,61 @@ public class DataPermissionUtil {
             );
             if (enterprise != null) {
                 return enterprise.getEnterpriseId();
+            }
+        }
+        
+        // 企业导师：从EnterpriseMentor表获取
+        if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_MENTOR")) {
+            EnterpriseMentor mentor = enterpriseMentorMapper.selectOne(
+                    new LambdaQueryWrapper<EnterpriseMentor>()
+                            .eq(EnterpriseMentor::getUserId, user.getUserId())
+                            .eq(EnterpriseMentor::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (mentor != null) {
+                return mentor.getEnterpriseId();
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取当前用户的教师ID（用于指导教师）
+     * @return 教师ID，如果无法获取则返回null
+     */
+    public Long getCurrentUserTeacherId() {
+        if (isSystemAdmin()) {
+            return null; // 系统管理员不限制
+        }
+        
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            return null;
+        }
+        
+        // 查询用户信息
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        
+        if (user == null) {
+            return null;
+        }
+        
+        // 根据用户角色获取教师ID
+        List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+        
+        // 指导教师：从Teacher表获取
+        if (roleCodes != null && roleCodes.contains("ROLE_INSTRUCTOR")) {
+            Teacher teacher = teacherMapper.selectOne(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getUserId, user.getUserId())
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (teacher != null) {
+                return teacher.getTeacherId();
             }
         }
         

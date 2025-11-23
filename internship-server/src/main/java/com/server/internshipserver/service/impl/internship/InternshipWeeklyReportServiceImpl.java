@@ -65,11 +65,19 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         if (report.getReportDate() == null) {
             throw new BusinessException("周报日期不能为空");
         }
+        // 如果没有提供标题，根据周次和日期自动生成
         if (!StringUtils.hasText(report.getReportTitle())) {
-            throw new BusinessException("周报标题不能为空");
+            if (report.getWeekNumber() != null) {
+                report.setReportTitle("第" + report.getWeekNumber() + "周实习周报");
+            } else if (report.getReportDate() != null) {
+                report.setReportTitle(report.getReportDate() + " 实习周报");
+            } else {
+                report.setReportTitle("实习周报");
+            }
         }
-        if (!StringUtils.hasText(report.getWorkSummary())) {
-            throw new BusinessException("本周工作总结不能为空");
+        // 支持新的单字段格式（workContent）或旧的格式（workSummary）
+        if (!StringUtils.hasText(report.getWorkContent()) && !StringUtils.hasText(report.getWorkSummary())) {
+            throw new BusinessException("周报内容不能为空");
         }
         
         // 验证申请是否存在
@@ -157,6 +165,18 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         // 只有未批阅的周报才能修改
         if (existReport.getReviewStatus() != null && existReport.getReviewStatus() == 1) {
             throw new BusinessException("已批阅的周报不允许修改");
+        }
+        
+        // 如果没有提供标题，根据周次和日期自动生成
+        if (!StringUtils.hasText(report.getReportTitle())) {
+            if (report.getWeekNumber() != null) {
+                report.setReportTitle("第" + report.getWeekNumber() + "周实习周报");
+            } else if (report.getReportDate() != null) {
+                report.setReportTitle(report.getReportDate() + " 实习周报");
+            } else {
+                // 如果都没有，使用原有标题
+                report.setReportTitle(existReport.getReportTitle());
+            }
         }
         
         // 更新

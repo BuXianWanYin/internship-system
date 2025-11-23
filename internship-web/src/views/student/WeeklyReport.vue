@@ -54,8 +54,12 @@
           {{ formatDate(row.weekEndDate) }}
         </template>
       </el-table-column>
-      <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="workSummary" label="工作摘要" min-width="300" show-overflow-tooltip />
+       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+       <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
+         <template #default="{ row }">
+           <div class="table-content-preview">{{ getContentPreview(row.workContent || row.reportContent) }}</div>
+         </template>
+       </el-table-column>
       <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="row.reviewStatus === 1 ? 'success' : 'warning'" size="small">
@@ -168,39 +172,11 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="工作摘要" prop="workSummary">
-          <RichTextEditor
-            v-model="formData.workSummary"
-            placeholder="请简要描述本周工作内容"
-            :height="'150px'"
-          />
-        </el-form-item>
-        <el-form-item label="工作内容" prop="workContent">
+        <el-form-item label="周报内容" prop="workContent">
           <RichTextEditor
             v-model="formData.workContent"
-            placeholder="请详细描述本周的工作内容、完成的任务、参与的项目等"
-            :height="'250px'"
-          />
-        </el-form-item>
-        <el-form-item label="工作收获" prop="workHarvest">
-          <RichTextEditor
-            v-model="formData.workHarvest"
-            placeholder="请描述本周的工作收获、学到的知识、技能提升等"
-            :height="'200px'"
-          />
-        </el-form-item>
-        <el-form-item label="遇到的问题" prop="problems">
-          <RichTextEditor
-            v-model="formData.problems"
-            placeholder="请描述本周遇到的问题及解决方案（可选）"
-            :height="'150px'"
-          />
-        </el-form-item>
-        <el-form-item label="下周计划" prop="nextWeekPlan">
-          <RichTextEditor
-            v-model="formData.nextWeekPlan"
-            placeholder="请描述下周的工作计划（可选）"
-            :height="'150px'"
+            placeholder="请编写本周的实习周报，包括工作内容、工作收获、遇到的问题、下周计划等。支持富文本格式、插入图片等。"
+            :height="'500px'"
           />
         </el-form-item>
         <el-form-item label="附件">
@@ -222,19 +198,19 @@
               </div>
             </template>
           </el-upload>
-          <div v-if="attachmentUrls.length > 0" class="attachment-list">
-            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
-              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
-              <el-button
-                link
-                type="danger"
-                size="small"
-                @click="removeAttachment(index)"
-              >
-                删除
-              </el-button>
-            </div>
-          </div>
+           <div v-if="attachmentUrls.length > 0" class="attachment-list">
+             <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
+               <el-link type="primary" @click="handleDownloadFile(url)">{{ getFileName(url) }}</el-link>
+               <el-button
+                 link
+                 type="danger"
+                 size="small"
+                 @click="removeAttachment(index)"
+               >
+                 删除
+               </el-button>
+             </div>
+           </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -249,7 +225,8 @@
       title="周报详情"
       width="900px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border class="detail-info">
         <el-descriptions-item label="周次">{{ detailData.weekNumber }}</el-descriptions-item>
         <el-descriptions-item label="企业名称">{{ detailData.enterpriseName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="开始日期">
@@ -269,28 +246,31 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="工作摘要" :span="2">
-          <div v-html="detailData.workSummary || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作内容" :span="2">
-          <div v-html="detailData.workContent || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作收获" :span="2">
-          <div v-html="detailData.workHarvest || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.problems" label="遇到的问题" :span="2">
-          <div v-html="detailData.problems" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.nextWeekPlan" label="下周计划" :span="2">
-          <div v-html="detailData.nextWeekPlan" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.attachmentUrls" label="附件" :span="2">
-          <div class="attachment-list">
-            <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
-              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
-            </div>
+      </el-descriptions>
+
+      <!-- 周报内容 -->
+      <div class="content-section">
+        <div class="content-title">周报内容</div>
+        <div 
+          v-html="getMergedReportContent(detailData)" 
+          class="rich-content report-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.attachmentUrls" class="content-section">
+        <div class="content-title">附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
           </div>
-        </el-descriptions-item>
+        </div>
+      </div>
+
+      <!-- 批阅信息 -->
+      <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
         <el-descriptions-item v-if="detailData.reviewComment" label="批阅意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
         </el-descriptions-item>
@@ -308,7 +288,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Document } from '@element-plus/icons-vue'
 import { weeklyReportApi } from '@/api/internship/weeklyReport'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
@@ -348,11 +328,8 @@ const formData = reactive({
   weekNumber: null,
   weekStartDate: '',
   weekEndDate: '',
-  workSummary: '',
+  reportTitle: '',
   workContent: '',
-  workHarvest: '',
-  problems: '',
-  nextWeekPlan: '',
   attachmentUrls: ''
 })
 
@@ -360,9 +337,7 @@ const formRules = {
   weekNumber: [{ required: true, message: '请输入周次', trigger: 'blur' }],
   weekStartDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
   weekEndDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }],
-  workSummary: [{ required: true, message: '请输入工作摘要', trigger: 'blur' }],
-  workContent: [{ required: true, message: '请输入工作内容', trigger: 'blur' }],
-  workHarvest: [{ required: true, message: '请输入工作收获', trigger: 'blur' }]
+  workContent: [{ required: true, message: '请输入周报内容', trigger: 'blur' }]
 }
 
 // 加载数据
@@ -436,6 +411,18 @@ const handleEdit = async (row) => {
   try {
     const res = await weeklyReportApi.getReportById(row.reportId)
     if (res.code === 200) {
+      // 合并多个字段为一个富文本内容
+      let mergedContent = ''
+      if (res.data.workSummary) mergedContent += '<h3>工作摘要</h3>' + res.data.workSummary
+      if (res.data.workContent) mergedContent += '<h3>工作内容</h3>' + res.data.workContent
+      if (res.data.workHarvest) mergedContent += '<h3>工作收获</h3>' + res.data.workHarvest
+      if (res.data.problems) mergedContent += '<h3>遇到的问题</h3>' + res.data.problems
+      if (res.data.nextWeekPlan) mergedContent += '<h3>下周计划</h3>' + res.data.nextWeekPlan
+      // 如果没有合并内容，使用workContent作为主字段
+      if (!mergedContent && res.data.workContent) {
+        mergedContent = res.data.workContent
+      }
+      
       Object.assign(formData, {
         reportId: res.data.reportId,
         applyId: res.data.applyId,
@@ -443,11 +430,8 @@ const handleEdit = async (row) => {
         weekNumber: res.data.weekNumber,
         weekStartDate: res.data.weekStartDate,
         weekEndDate: res.data.weekEndDate,
-        workSummary: res.data.workSummary || '',
-        workContent: res.data.workContent || '',
-        workHarvest: res.data.workHarvest || '',
-        problems: res.data.problems || '',
-        nextWeekPlan: res.data.nextWeekPlan || '',
+        reportTitle: res.data.reportTitle || '',
+        workContent: mergedContent,
         attachmentUrls: res.data.attachmentUrls || ''
       })
       // 加载附件列表
@@ -560,6 +544,20 @@ const getFileName = (url) => {
   return parts[parts.length - 1] || url
 }
 
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 移除附件
 const removeAttachment = (index) => {
   attachmentUrls.value.splice(index, 1)
@@ -581,10 +579,17 @@ const handleSubmit = async () => {
           console.error('附件上传失败，继续提交:', error)
         }
         
+        // 如果没有提供标题，根据周次自动生成
+        let reportTitle = formData.reportTitle
+        if (!reportTitle && formData.weekNumber) {
+          reportTitle = `第${formData.weekNumber}周实习周报`
+        } else if (!reportTitle && formData.weekStartDate) {
+          reportTitle = formData.weekStartDate + ' 实习周报'
+        }
+        
         const data = {
           ...formData,
-          problems: formData.problems || undefined,
-          nextWeekPlan: formData.nextWeekPlan || undefined,
+          reportTitle: reportTitle || '实习周报',
           attachmentUrls: attachmentUrlsStr || undefined
         }
         if (formData.reportId) {
@@ -613,6 +618,40 @@ const handleSubmit = async () => {
   })
 }
 
+ // 获取内容预览（用于表格显示，去除HTML标签，只显示纯文本）
+ const getContentPreview = (htmlContent) => {
+   if (!htmlContent) return '-'
+   // 创建一个临时div来解析HTML
+   const tempDiv = document.createElement('div')
+   tempDiv.innerHTML = htmlContent
+   // 获取纯文本内容
+   let text = tempDiv.textContent || tempDiv.innerText || ''
+   // 去除多余的空白字符
+   text = text.replace(/\s+/g, ' ').trim()
+   // 限制长度，最多显示100个字符
+   if (text.length > 100) {
+     text = text.substring(0, 100) + '...'
+   }
+   return text
+ }
+
+ // 合并周报内容用于显示
+ const getMergedReportContent = (data) => {
+  if (!data) return '-'
+  // 如果workContent存在且包含多个h3标签，说明是新格式，直接返回
+  if (data.workContent && data.workContent.includes('<h3>')) {
+    return data.workContent
+  }
+  // 否则合并旧格式的多个字段
+  let content = ''
+  if (data.workSummary) content += '<h3>工作摘要</h3>' + data.workSummary
+  if (data.workContent) content += '<h3>工作内容</h3>' + data.workContent
+  if (data.workHarvest) content += '<h3>工作收获</h3>' + data.workHarvest
+  if (data.problems) content += '<h3>遇到的问题</h3>' + data.problems
+  if (data.nextWeekPlan) content += '<h3>下周计划</h3>' + data.nextWeekPlan
+  return content || '-'
+}
+
 // 重置表单
 const resetForm = () => {
   Object.assign(formData, {
@@ -622,11 +661,8 @@ const resetForm = () => {
     weekNumber: null,
     weekStartDate: '',
     weekEndDate: '',
-    workSummary: '',
+    reportTitle: '',
     workContent: '',
-    workHarvest: '',
-    problems: '',
-    nextWeekPlan: '',
     attachmentUrls: ''
   })
   fileList.value = []
@@ -680,6 +716,110 @@ onMounted(() => {
   padding: 8px;
   background: #f5f7fa;
   border-radius: 4px;
+}
+
+.detail-info {
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.report-content :deep(h3) {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.report-content :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.report-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.report-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.report-content :deep(ul),
+.report-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.report-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.report-content :deep(blockquote) {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-left: 4px solid #409eff;
+  border-radius: 4px;
+}
+
+.report-content :deep(code) {
+  padding: 2px 6px;
+  background: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.report-content :deep(pre) {
+  margin: 12px 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.report-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.table-content-preview {
+  color: #606266;
+  line-height: 1.5;
 }
 </style>
 

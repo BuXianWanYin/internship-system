@@ -50,8 +50,12 @@
           {{ formatDate(row.logDate) }}
         </template>
       </el-table-column>
-      <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="workContent" label="工作内容" min-width="300" show-overflow-tooltip />
+       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+       <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
+         <template #default="{ row }">
+           <div class="table-content-preview">{{ getContentPreview(row.workContent || row.logContent) }}</div>
+         </template>
+       </el-table-column>
       <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="row.reviewStatus === 1 ? 'success' : 'warning'" size="small">
@@ -136,25 +140,11 @@
         <el-form-item label="企业名称">
           <el-input :value="formData.enterpriseName" disabled />
         </el-form-item>
-        <el-form-item label="工作内容" prop="workContent">
+        <el-form-item label="日志内容" prop="workContent">
           <RichTextEditor
             v-model="formData.workContent"
-            placeholder="请详细描述当天的工作内容、遇到的问题、学到的知识等"
-            :height="'250px'"
-          />
-        </el-form-item>
-        <el-form-item label="工作收获" prop="workHarvest">
-          <RichTextEditor
-            v-model="formData.workHarvest"
-            placeholder="请描述本次工作的收获和体会"
-            :height="'200px'"
-          />
-        </el-form-item>
-        <el-form-item label="遇到的问题" prop="problems">
-          <RichTextEditor
-            v-model="formData.problems"
-            placeholder="请描述工作中遇到的问题（可选）"
-            :height="'150px'"
+            placeholder="请编写当天的实习日志，包括工作内容、工作收获、遇到的问题等。支持富文本格式、插入图片等。"
+            :height="'500px'"
           />
         </el-form-item>
         <el-form-item label="附件">
@@ -176,19 +166,19 @@
               </div>
             </template>
           </el-upload>
-          <div v-if="attachmentUrls.length > 0" class="attachment-list">
-            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
-              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
-              <el-button
-                link
-                type="danger"
-                size="small"
-                @click="removeAttachment(index)"
-              >
-                删除
-              </el-button>
-            </div>
-          </div>
+           <div v-if="attachmentUrls.length > 0" class="attachment-list">
+             <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
+               <el-link type="primary" @click="handleDownloadFile(url)">{{ getFileName(url) }}</el-link>
+               <el-button
+                 link
+                 type="danger"
+                 size="small"
+                 @click="removeAttachment(index)"
+               >
+                 删除
+               </el-button>
+             </div>
+           </div>
         </el-form-item>
         <el-form-item label="工作时长（小时）" prop="workHours">
           <el-input-number
@@ -211,9 +201,10 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="日志详情"
-      width="800px"
+      width="900px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border class="detail-info">
         <el-descriptions-item label="日志日期">
           {{ formatDate(detailData.logDate) }}
         </el-descriptions-item>
@@ -232,22 +223,31 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="工作内容" :span="2">
-          <div v-html="detailData.workContent || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作收获" :span="2">
-          <div v-html="detailData.workHarvest || '-'" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.problems" label="遇到的问题" :span="2">
-          <div v-html="detailData.problems" style="max-width: 100%; word-wrap: break-word;"></div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.attachmentUrls" label="附件" :span="2">
-          <div class="attachment-list">
-            <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
-              <el-link :href="url" target="_blank" type="primary">{{ getFileName(url) }}</el-link>
-            </div>
+      </el-descriptions>
+
+      <!-- 日志内容 -->
+      <div class="content-section">
+        <div class="content-title">日志内容</div>
+        <div 
+          v-html="getMergedLogContent(detailData)" 
+          class="rich-content log-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.attachmentUrls" class="content-section">
+        <div class="content-title">附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
           </div>
-        </el-descriptions-item>
+        </div>
+      </div>
+
+      <!-- 批阅信息 -->
+      <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
         <el-descriptions-item v-if="detailData.reviewComment" label="批阅意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
         </el-descriptions-item>
@@ -265,7 +265,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Document } from '@element-plus/icons-vue'
 import { logApi } from '@/api/internship/log'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
@@ -303,17 +303,15 @@ const formData = reactive({
   applyId: null,
   enterpriseName: '',
   logDate: '',
+  logTitle: '',
   workContent: '',
-  workHarvest: '',
-  problems: '',
   workHours: 8,
   attachmentUrls: ''
 })
 
 const formRules = {
   logDate: [{ required: true, message: '请选择日志日期', trigger: 'change' }],
-  workContent: [{ required: true, message: '请输入工作内容', trigger: 'blur' }],
-  workHarvest: [{ required: true, message: '请输入工作收获', trigger: 'blur' }],
+  workContent: [{ required: true, message: '请输入日志内容', trigger: 'blur' }],
   workHours: [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
 }
 
@@ -388,14 +386,27 @@ const handleEdit = async (row) => {
   try {
     const res = await logApi.getLogById(row.logId)
     if (res.code === 200) {
+      // 合并多个字段为一个富文本内容
+      let mergedContent = ''
+      if (res.data.workContent) mergedContent += '<h3>工作内容</h3>' + res.data.workContent
+      if (res.data.workHarvest) mergedContent += '<h3>工作收获</h3>' + res.data.workHarvest
+      if (res.data.problems) mergedContent += '<h3>遇到的问题</h3>' + res.data.problems
+      // 如果没有合并内容，使用logContent作为主字段
+      if (!mergedContent && res.data.logContent) {
+        mergedContent = res.data.logContent
+      }
+      // 如果还是没有，使用workContent
+      if (!mergedContent && res.data.workContent) {
+        mergedContent = res.data.workContent
+      }
+      
       Object.assign(formData, {
         logId: res.data.logId,
         applyId: res.data.applyId,
         enterpriseName: res.data.enterpriseName || '',
         logDate: res.data.logDate,
-        workContent: res.data.workContent || '',
-        workHarvest: res.data.workHarvest || '',
-        problems: res.data.problems || '',
+        logTitle: res.data.logTitle || '',
+        workContent: mergedContent,
         workHours: res.data.workHours || 8,
         attachmentUrls: res.data.attachmentUrls || ''
       })
@@ -509,6 +520,20 @@ const getFileName = (url) => {
   return parts[parts.length - 1] || url
 }
 
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 移除附件
 const removeAttachment = (index) => {
   attachmentUrls.value.splice(index, 1)
@@ -530,9 +555,15 @@ const handleSubmit = async () => {
           console.error('附件上传失败，继续提交:', error)
         }
         
+        // 如果没有提供标题，根据日志日期自动生成
+        let logTitle = formData.logTitle
+        if (!logTitle && formData.logDate) {
+          logTitle = formData.logDate + ' 实习日志'
+        }
+        
         const data = {
           ...formData,
-          problems: formData.problems || undefined,
+          logTitle: logTitle,
           attachmentUrls: attachmentUrlsStr || undefined
         }
         if (formData.logId) {
@@ -561,6 +592,42 @@ const handleSubmit = async () => {
   })
 }
 
+ // 获取内容预览（用于表格显示，去除HTML标签，只显示纯文本）
+ const getContentPreview = (htmlContent) => {
+   if (!htmlContent) return '-'
+   // 创建一个临时div来解析HTML
+   const tempDiv = document.createElement('div')
+   tempDiv.innerHTML = htmlContent
+   // 获取纯文本内容
+   let text = tempDiv.textContent || tempDiv.innerText || ''
+   // 去除多余的空白字符
+   text = text.replace(/\s+/g, ' ').trim()
+   // 限制长度，最多显示100个字符
+   if (text.length > 100) {
+     text = text.substring(0, 100) + '...'
+   }
+   return text
+ }
+
+ // 合并日志内容用于显示
+ const getMergedLogContent = (data) => {
+  if (!data) return '-'
+  // 如果workContent存在且包含多个h3标签，说明是新格式，直接返回
+  if (data.workContent && data.workContent.includes('<h3>')) {
+    return data.workContent
+  }
+  // 否则合并旧格式的多个字段
+  let content = ''
+  if (data.workContent) content += '<h3>工作内容</h3>' + data.workContent
+  if (data.workHarvest) content += '<h3>工作收获</h3>' + data.workHarvest
+  if (data.problems) content += '<h3>遇到的问题</h3>' + data.problems
+  // 如果都没有，尝试使用logContent
+  if (!content && data.logContent) {
+    content = data.logContent
+  }
+  return content || '-'
+}
+
 // 重置表单
 const resetForm = () => {
   Object.assign(formData, {
@@ -568,9 +635,8 @@ const resetForm = () => {
     applyId: currentApply.value?.applyId || null,
     enterpriseName: currentApply.value?.enterpriseName || '',
     logDate: '',
+    logTitle: '',
     workContent: '',
-    workHarvest: '',
-    problems: '',
     workHours: 8,
     attachmentUrls: ''
   })
@@ -630,6 +696,110 @@ onMounted(() => {
   padding: 8px;
   background: #f5f7fa;
   border-radius: 4px;
+}
+
+.detail-info {
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.log-content :deep(h3) {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.log-content :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.log-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.log-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.log-content :deep(ul),
+.log-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.log-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.log-content :deep(blockquote) {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-left: 4px solid #409eff;
+  border-radius: 4px;
+}
+
+.log-content :deep(code) {
+  padding: 2px 6px;
+  background: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.log-content :deep(pre) {
+  margin: 12px 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.log-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.table-content-preview {
+  color: #606266;
+  line-height: 1.5;
 }
 </style>
 

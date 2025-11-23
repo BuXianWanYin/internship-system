@@ -355,8 +355,60 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                 wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
             }
         }
-        // 指导教师和企业导师可以查看相关学生的反馈
-        // TODO: 实现更精确的数据权限过滤
+        // 指导教师：可以查看分配的学生的反馈（通过日志/周报/成果中的instructor_id关联）
+        if (dataPermissionUtil.hasRole("ROLE_INSTRUCTOR")) {
+            Long currentUserTeacherId = dataPermissionUtil.getCurrentUserTeacherId();
+            if (currentUserTeacherId != null) {
+                // 通过实习申请关联，查找该教师指导的学生的反馈
+                // 先查找该教师指导的学生的申请（通过日志/周报/成果中的instructor_id反推）
+                // 由于反馈表没有instructor_id，需要通过apply_id关联到学生，再通过学生的日志/周报/成果中的instructor_id判断
+                // 简化方案：指导教师可以查看同学院学生的反馈
+                Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+                if (currentUserCollegeId != null) {
+                    // 查找该学院的所有学生
+                    java.util.List<Student> students = studentMapper.selectList(
+                            new LambdaQueryWrapper<Student>()
+                                    .eq(Student::getCollegeId, currentUserCollegeId)
+                                    .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(Student::getStudentId)
+                    );
+                    if (students != null && !students.isEmpty()) {
+                        java.util.List<Long> studentIds = students.stream()
+                                .map(Student::getStudentId)
+                                .collect(java.util.stream.Collectors.toList());
+                        wrapper.in(InternshipFeedback::getStudentId, studentIds);
+                    } else {
+                        wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
+                    }
+                }
+            }
+            return;
+        }
+        
+        // 企业导师：可以查看本企业实习学生的反馈
+        if (dataPermissionUtil.hasRole("ROLE_ENTERPRISE_MENTOR")) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId != null) {
+                // 查找该企业的所有实习申请
+                java.util.List<InternshipApply> applies = internshipApplyMapper.selectList(
+                        new LambdaQueryWrapper<InternshipApply>()
+                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
+                                .eq(InternshipApply::getStatus, 1) // 已通过的申请
+                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(InternshipApply::getStudentId)
+                );
+                if (applies != null && !applies.isEmpty()) {
+                    java.util.List<Long> studentIds = applies.stream()
+                            .map(InternshipApply::getStudentId)
+                            .distinct()
+                            .collect(java.util.stream.Collectors.toList());
+                    wrapper.in(InternshipFeedback::getStudentId, studentIds);
+                } else {
+                    wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
+                }
+            }
+            return;
+        }
     }
     
     /**

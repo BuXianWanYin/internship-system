@@ -9,8 +9,16 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
 import java.io.File;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -196,6 +204,82 @@ public class FileController {
     private String generateFileName(String extension) {
         String uuid = UUID.randomUUID().toString().replace("-", "");
         return uuid + "." + extension;
+    }
+    
+    @ApiOperation("下载文件")
+    @GetMapping("/download")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    public ResponseEntity<Resource> downloadFile(
+            @ApiParam(value = "文件路径", required = true) @RequestParam("path") String filePath) {
+        try {
+            // 移除开头的斜杠，防止路径遍历攻击
+            String cleanPath = filePath.replaceAll("^\\.\\./", "").replaceAll("^/", "");
+            
+            // 构建完整文件路径
+            // 如果路径已经包含 uploads 前缀，直接使用；否则拼接 uploadPath
+            Path fullPath;
+            if (cleanPath.startsWith("uploads/") || cleanPath.startsWith("uploads\\")) {
+                // 路径已经包含 uploads，直接使用（相对于项目根目录）
+                fullPath = Paths.get(cleanPath);
+            } else {
+                // 路径不包含 uploads，拼接 uploadPath
+                fullPath = Paths.get(uploadPath, cleanPath);
+            }
+            
+            // 转换为绝对路径（相对于项目根目录）
+            File file = fullPath.toFile();
+            if (!file.isAbsolute()) {
+                // 如果不是绝对路径，相对于项目根目录
+                String projectRoot = System.getProperty("user.dir");
+                file = new File(projectRoot, fullPath.toString());
+            }
+            
+            // 检查文件是否存在
+            if (!file.exists() || !file.isFile()) {
+                // 记录日志以便调试
+                System.err.println("文件不存在: " + file.getAbsolutePath());
+                System.err.println("原始路径: " + filePath);
+                System.err.println("清理后路径: " + cleanPath);
+                System.err.println("uploadPath: " + uploadPath);
+                System.err.println("项目根目录: " + System.getProperty("user.dir"));
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 检查文件是否在上传目录内（防止路径遍历攻击）
+            Path uploadPathAbsolute = Paths.get(System.getProperty("user.dir"), uploadPath).normalize();
+            Path filePathNormalized = file.toPath().normalize();
+            if (!filePathNormalized.startsWith(uploadPathAbsolute)) {
+                System.err.println("路径安全检查失败: 文件不在上传目录内");
+                System.err.println("文件路径: " + filePathNormalized);
+                System.err.println("上传目录: " + uploadPathAbsolute);
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // 读取文件
+            Resource resource = new FileSystemResource(file);
+            
+            // 获取文件名
+            String filename = file.getName();
+            
+            // 设置响应头
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, 
+                    "attachment; filename*=UTF-8''" + URLEncoder.encode(filename, StandardCharsets.UTF_8.toString()));
+            
+            // 根据文件扩展名设置Content-Type
+            String contentType = Files.probeContentType(fullPath);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+            headers.setContentType(MediaType.parseMediaType(contentType));
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(resource);
+                    
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
 
