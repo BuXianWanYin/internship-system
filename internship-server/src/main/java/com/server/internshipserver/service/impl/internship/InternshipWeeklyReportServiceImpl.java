@@ -9,12 +9,16 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipWeeklyReportMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.internship.InternshipWeeklyReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +45,12 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private InternshipPostMapper internshipPostMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -164,6 +174,9 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         if (report == null || report.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("周报不存在");
         }
+        
+        // 填充关联字段
+        fillReportRelatedFields(report);
         
         return report;
     }
@@ -343,19 +356,39 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             InternshipApply apply = internshipApplyMapper.selectById(report.getApplyId());
             if (apply != null) {
                 if (apply.getEnterpriseId() != null) {
-                    report.setEnterpriseName(apply.getEnterpriseName());
+                    // 合作企业申请，从企业表获取企业信息
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        report.setEnterpriseName(enterprise.getEnterpriseName());
+                    }
+                    // 从岗位表获取开始和结束日期
+                    if (apply.getPostId() != null) {
+                        InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+                        if (post != null) {
+                            if (post.getInternshipStartDate() != null) {
+                                report.setStartDate(post.getInternshipStartDate());
+                            }
+                            if (post.getInternshipEndDate() != null) {
+                                report.setEndDate(post.getInternshipEndDate());
+                            }
+                        }
+                    }
                 } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习，使用自主实习企业名称和日期
                     report.setEnterpriseName(apply.getSelfEnterpriseName());
-                }
-                // 设置开始和结束日期（从申请中获取）
-                if (apply.getStartDate() != null) {
-                    report.setStartDate(apply.getStartDate());
-                }
-                if (apply.getEndDate() != null) {
-                    report.setEndDate(apply.getEndDate());
+                    if (apply.getSelfStartDate() != null) {
+                        report.setStartDate(apply.getSelfStartDate());
+                    }
+                    if (apply.getSelfEndDate() != null) {
+                        report.setEndDate(apply.getSelfEndDate());
+                    }
                 }
             }
         }
+        
+        // 设置周开始和结束日期（用于前端显示）
+        report.setWeekStartDate(report.getStartDate());
+        report.setWeekEndDate(report.getEndDate());
     }
 }
 

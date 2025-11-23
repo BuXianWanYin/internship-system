@@ -11,10 +11,12 @@ import com.server.internshipserver.domain.internship.InternshipLog;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipLogMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.internship.InternshipLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,9 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -152,6 +157,9 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         if (log == null || log.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("日志不存在");
         }
+        
+        // 填充关联字段
+        fillLogRelatedFields(log);
         
         return log;
     }
@@ -336,13 +344,19 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             if (apply != null) {
                 if (apply.getEnterpriseId() != null) {
                     // 合作企业申请，从企业表获取企业信息
-                    log.setEnterpriseName(apply.getEnterpriseName());
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        log.setEnterpriseName(enterprise.getEnterpriseName());
+                    }
                 } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
                     // 自主实习，使用自主实习企业名称
                     log.setEnterpriseName(apply.getSelfEnterpriseName());
                 }
             }
         }
+        
+        // 设置工作内容（用于前端显示）
+        log.setWorkContent(log.getLogContent());
     }
 }
 

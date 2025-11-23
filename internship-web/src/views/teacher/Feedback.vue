@@ -56,6 +56,7 @@
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column prop="studentName" label="学生姓名" min-width="120" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />
+      <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
       <el-table-column prop="feedbackTitle" label="反馈标题" min-width="200" show-overflow-tooltip />
       <el-table-column prop="feedbackType" label="反馈类型" width="120" align="center">
         <template #default="{ row }">
@@ -363,10 +364,10 @@ const getFeedbackStatusText = (status) => {
 // 获取反馈状态类型
 const getFeedbackStatusType = (status) => {
   const typeMap = {
-    0: 'warning',
-    1: 'info',
-    2: 'success',
-    3: 'info'
+    0: 'warning',  // 待处理 - 橙色
+    1: 'primary',  // 处理中 - 蓝色
+    2: 'success',  // 已解决 - 绿色
+    3: 'info'      // 已关闭 - 灰色
   }
   return typeMap[status] || 'info'
 }

@@ -14,10 +14,13 @@
             clearable
             style="width: 150px"
           >
-            <el-option label="项目成果" :value="1" />
-            <el-option label="技术文档" :value="2" />
-            <el-option label="作品展示" :value="3" />
-            <el-option label="其他" :value="4" />
+            <el-option label="项目文档" value="项目文档" />
+            <el-option label="项目成果" value="项目成果" />
+            <el-option label="工作成果" value="工作成果" />
+            <el-option label="技术文档" value="技术文档" />
+            <el-option label="学习笔记" value="学习笔记" />
+            <el-option label="作品展示" value="作品展示" />
+            <el-option label="其他" value="其他" />
           </el-select>
         </el-form-item>
         <el-form-item label="审核状态">
@@ -132,10 +135,13 @@
                 placeholder="请选择类型"
                 style="width: 100%"
               >
-                <el-option label="项目成果" :value="1" />
-                <el-option label="技术文档" :value="2" />
-                <el-option label="作品展示" :value="3" />
-                <el-option label="其他" :value="4" />
+                <el-option label="项目文档" value="项目文档" />
+                <el-option label="项目成果" value="项目成果" />
+                <el-option label="工作成果" value="工作成果" />
+                <el-option label="技术文档" value="技术文档" />
+                <el-option label="学习笔记" value="学习笔记" />
+                <el-option label="作品展示" value="作品展示" />
+                <el-option label="其他" value="其他" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -239,7 +245,7 @@ const dialogTitle = ref('提交成果')
 const formRef = ref(null)
 
 const searchForm = reactive({
-  achievementType: null,
+  achievementType: '',
   reviewStatus: null
 })
 
@@ -258,7 +264,7 @@ const formData = reactive({
   applyId: null,
   enterpriseName: '',
   achievementTitle: '',
-  achievementType: null,
+  achievementType: '',
   achievementDescription: '',
   achievementAttachment: '',
   achievementLink: ''
@@ -277,7 +283,7 @@ const loadData = async () => {
     const res = await achievementApi.getAchievementPage({
       current: pagination.current,
       size: pagination.size,
-      achievementType: searchForm.achievementType !== null ? searchForm.achievementType : undefined,
+      achievementType: searchForm.achievementType || undefined,
       reviewStatus: searchForm.reviewStatus !== null ? searchForm.reviewStatus : undefined
     })
     if (res.code === 200) {
@@ -318,7 +324,7 @@ const handleSearch = () => {
 
 // 重置
 const handleReset = () => {
-  searchForm.achievementType = null
+  searchForm.achievementType = ''
   searchForm.reviewStatus = null
   handleSearch()
 }
@@ -437,7 +443,7 @@ const resetForm = () => {
     applyId: currentApply.value?.applyId || null,
     enterpriseName: currentApply.value?.enterpriseName || '',
     achievementTitle: '',
-    achievementType: null,
+    achievementType: '',
     achievementDescription: '',
     achievementAttachment: '',
     achievementLink: ''
@@ -456,15 +462,9 @@ const handlePageChange = () => {
   loadData()
 }
 
-// 获取成果类型文本
+// 获取成果类型文本（直接返回字符串，如果为空则返回'-'）
 const getAchievementTypeText = (type) => {
-  const typeMap = {
-    1: '项目成果',
-    2: '技术文档',
-    3: '作品展示',
-    4: '其他'
-  }
-  return typeMap[type] || '-'
+  return type || '-'
 }
 
 // 获取审核状态文本

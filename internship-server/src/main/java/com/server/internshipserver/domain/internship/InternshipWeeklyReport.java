@@ -135,5 +135,15 @@ public class InternshipWeeklyReport implements Serializable {
     @TableField(exist = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate endDate;
+    
+    @ApiModelProperty(value = "周开始日期（用于前端显示，等同于startDate）")
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate weekStartDate;
+    
+    @ApiModelProperty(value = "周结束日期（用于前端显示，等同于endDate）")
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate weekEndDate;
 }
 

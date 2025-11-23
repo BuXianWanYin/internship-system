@@ -117,5 +117,9 @@ public class InternshipLog implements Serializable {
     @ApiModelProperty(value = "企业名称")
     @TableField(exist = false)
     private String enterpriseName;
+    
+    @ApiModelProperty(value = "工作内容（用于前端显示，等同于logContent）")
+    @TableField(exist = false)
+    private String workContent;
 }
 

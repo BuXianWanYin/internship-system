@@ -11,10 +11,12 @@ import com.server.internshipserver.domain.internship.InternshipFeedback;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipFeedbackMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.internship.InternshipFeedbackService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,9 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -150,6 +155,9 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("反馈不存在");
         }
+        
+        // 填充关联字段
+        fillFeedbackRelatedFields(feedback);
         
         return feedback;
     }
@@ -365,6 +373,23 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                     if (user != null) {
                         feedback.setStudentName(user.getRealName());
                     }
+                }
+            }
+        }
+        
+        // 填充企业信息
+        if (feedback.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(feedback.getApplyId());
+            if (apply != null) {
+                if (apply.getEnterpriseId() != null) {
+                    // 合作企业申请，从企业表获取企业信息
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        feedback.setEnterpriseName(enterprise.getEnterpriseName());
+                    }
+                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习，使用自主实习企业名称
+                    feedback.setEnterpriseName(apply.getSelfEnterpriseName());
                 }
             }
         }

@@ -11,10 +11,12 @@ import com.server.internshipserver.domain.internship.InternshipAchievement;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipAchievementMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.internship.InternshipAchievementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,9 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -153,6 +158,9 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         if (achievement == null || achievement.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("成果不存在");
         }
+        
+        // 填充关联字段
+        fillAchievementRelatedFields(achievement);
         
         return achievement;
     }
@@ -334,8 +342,13 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             InternshipApply apply = internshipApplyMapper.selectById(achievement.getApplyId());
             if (apply != null) {
                 if (apply.getEnterpriseId() != null) {
-                    achievement.setEnterpriseName(apply.getEnterpriseName());
+                    // 合作企业申请，从企业表获取企业信息
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        achievement.setEnterpriseName(enterprise.getEnterpriseName());
+                    }
                 } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习，使用自主实习企业名称
                     achievement.setEnterpriseName(apply.getSelfEnterpriseName());
                 }
             }
