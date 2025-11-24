@@ -55,7 +55,7 @@
         </template>
       </el-table-column>
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-       <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
+       <el-table-column label="周报内容" min-width="300" show-overflow-tooltip>
          <template #default="{ row }">
            <div class="table-content-preview">{{ getContentPreview(row.workContent || row.reportContent) }}</div>
          </template>
@@ -411,17 +411,8 @@ const handleEdit = async (row) => {
   try {
     const res = await weeklyReportApi.getReportById(row.reportId)
     if (res.code === 200) {
-      // 合并多个字段为一个富文本内容
-      let mergedContent = ''
-      if (res.data.workSummary) mergedContent += '<h3>工作摘要</h3>' + res.data.workSummary
-      if (res.data.workContent) mergedContent += '<h3>工作内容</h3>' + res.data.workContent
-      if (res.data.workHarvest) mergedContent += '<h3>工作收获</h3>' + res.data.workHarvest
-      if (res.data.problems) mergedContent += '<h3>遇到的问题</h3>' + res.data.problems
-      if (res.data.nextWeekPlan) mergedContent += '<h3>下周计划</h3>' + res.data.nextWeekPlan
-      // 如果没有合并内容，使用workContent作为主字段
-      if (!mergedContent && res.data.workContent) {
-        mergedContent = res.data.workContent
-      }
+      // 直接使用workContent
+      const content = res.data.workContent || ''
       
       Object.assign(formData, {
         reportId: res.data.reportId,
@@ -431,7 +422,7 @@ const handleEdit = async (row) => {
         weekStartDate: res.data.weekStartDate,
         weekEndDate: res.data.weekEndDate,
         reportTitle: res.data.reportTitle || '',
-        workContent: mergedContent,
+        workContent: content,
         attachmentUrls: res.data.attachmentUrls || ''
       })
       // 加载附件列表
@@ -638,18 +629,8 @@ const handleSubmit = async () => {
  // 合并周报内容用于显示
  const getMergedReportContent = (data) => {
   if (!data) return '-'
-  // 如果workContent存在且包含多个h3标签，说明是新格式，直接返回
-  if (data.workContent && data.workContent.includes('<h3>')) {
-    return data.workContent
-  }
-  // 否则合并旧格式的多个字段
-  let content = ''
-  if (data.workSummary) content += '<h3>工作摘要</h3>' + data.workSummary
-  if (data.workContent) content += '<h3>工作内容</h3>' + data.workContent
-  if (data.workHarvest) content += '<h3>工作收获</h3>' + data.workHarvest
-  if (data.problems) content += '<h3>遇到的问题</h3>' + data.problems
-  if (data.nextWeekPlan) content += '<h3>下周计划</h3>' + data.nextWeekPlan
-  return content || '-'
+  // 直接使用workContent
+  return data.workContent || '-'
 }
 
 // 重置表单

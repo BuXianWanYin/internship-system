@@ -66,7 +66,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="workContent" label="工作内容" min-width="300" show-overflow-tooltip />
+      <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
+        <template #default="{ row }">
+          <div class="table-content-preview">{{ getContentPreview(row.logContent) }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="workHours" label="工作时长" width="100" align="center">
         <template #default="{ row }">
           {{ row.workHours ? `${row.workHours}小时` : '-' }}
@@ -125,9 +129,10 @@
     <el-dialog
       v-model="detailDialogVisible"
       title="日志详情"
-      width="800px"
+      width="900px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border class="detail-info">
         <el-descriptions-item label="学生姓名">{{ detailData.studentName }}</el-descriptions-item>
         <el-descriptions-item label="学号">{{ detailData.studentNo }}</el-descriptions-item>
         <el-descriptions-item label="日志日期">
@@ -148,15 +153,31 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="工作内容" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workContent || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作收获" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workHarvest || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.problems" label="遇到的问题" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.problems }}</div>
-        </el-descriptions-item>
+      </el-descriptions>
+
+      <!-- 日志内容 -->
+      <div class="content-section">
+        <div class="content-title">日志内容</div>
+        <div 
+          v-html="getMergedLogContent(detailData)" 
+          class="rich-content log-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.attachmentUrls" class="content-section">
+        <div class="content-title">附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批阅信息 -->
+      <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
         <el-descriptions-item v-if="detailData.reviewComment" label="批阅意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
         </el-descriptions-item>
@@ -229,8 +250,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Document } from '@element-plus/icons-vue'
 import { logApi } from '@/api/internship/log'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -380,6 +402,51 @@ const handlePageChange = () => {
   loadData()
 }
 
+// 获取内容预览（用于表格显示，去除HTML标签，只显示纯文本）
+const getContentPreview = (htmlContent) => {
+  if (!htmlContent) return '-'
+  // 创建一个临时div来解析HTML
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = htmlContent
+  // 获取纯文本内容
+  let text = tempDiv.textContent || tempDiv.innerText || ''
+  // 去除多余的空白字符
+  text = text.replace(/\s+/g, ' ').trim()
+  // 限制长度，最多显示100个字符
+  if (text.length > 100) {
+    text = text.substring(0, 100) + '...'
+  }
+  return text
+}
+
+// 合并日志内容用于显示
+const getMergedLogContent = (data) => {
+  if (!data) return '-'
+  // 直接使用logContent
+  return data.logContent || '-'
+}
+
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadData()
@@ -401,6 +468,124 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.detail-info {
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.log-content :deep(h3) {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.log-content :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.log-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.log-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.log-content :deep(ul),
+.log-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.log-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.log-content :deep(blockquote) {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-left: 4px solid #409eff;
+  border-radius: 4px;
+}
+
+.log-content :deep(code) {
+  padding: 2px 6px;
+  background: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.log-content :deep(pre) {
+  margin: 12px 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.log-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.table-content-preview {
+  color: #606266;
+  line-height: 1.5;
+}
+
+.attachment-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
 

@@ -53,7 +53,7 @@
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
        <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
          <template #default="{ row }">
-           <div class="table-content-preview">{{ getContentPreview(row.workContent || row.logContent) }}</div>
+           <div class="table-content-preview">{{ getContentPreview(row.logContent) }}</div>
          </template>
        </el-table-column>
       <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
@@ -140,9 +140,9 @@
         <el-form-item label="企业名称">
           <el-input :value="formData.enterpriseName" disabled />
         </el-form-item>
-        <el-form-item label="日志内容" prop="workContent">
+        <el-form-item label="日志内容" prop="logContent">
           <RichTextEditor
-            v-model="formData.workContent"
+            v-model="formData.logContent"
             placeholder="请编写当天的实习日志，包括工作内容、工作收获、遇到的问题等。支持富文本格式、插入图片等。"
             :height="'500px'"
           />
@@ -311,7 +311,7 @@ const formData = reactive({
 
 const formRules = {
   logDate: [{ required: true, message: '请选择日志日期', trigger: 'change' }],
-  workContent: [{ required: true, message: '请输入日志内容', trigger: 'blur' }],
+  logContent: [{ required: true, message: '请输入日志内容', trigger: 'blur' }],
   workHours: [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
 }
 
@@ -386,19 +386,8 @@ const handleEdit = async (row) => {
   try {
     const res = await logApi.getLogById(row.logId)
     if (res.code === 200) {
-      // 合并多个字段为一个富文本内容
-      let mergedContent = ''
-      if (res.data.workContent) mergedContent += '<h3>工作内容</h3>' + res.data.workContent
-      if (res.data.workHarvest) mergedContent += '<h3>工作收获</h3>' + res.data.workHarvest
-      if (res.data.problems) mergedContent += '<h3>遇到的问题</h3>' + res.data.problems
-      // 如果没有合并内容，使用logContent作为主字段
-      if (!mergedContent && res.data.logContent) {
-        mergedContent = res.data.logContent
-      }
-      // 如果还是没有，使用workContent
-      if (!mergedContent && res.data.workContent) {
-        mergedContent = res.data.workContent
-      }
+      // 直接使用logContent
+      const content = res.data.logContent || ''
       
       Object.assign(formData, {
         logId: res.data.logId,
@@ -406,7 +395,7 @@ const handleEdit = async (row) => {
         enterpriseName: res.data.enterpriseName || '',
         logDate: res.data.logDate,
         logTitle: res.data.logTitle || '',
-        workContent: mergedContent,
+        logContent: content,
         workHours: res.data.workHours || 8,
         attachmentUrls: res.data.attachmentUrls || ''
       })
@@ -612,20 +601,8 @@ const handleSubmit = async () => {
  // 合并日志内容用于显示
  const getMergedLogContent = (data) => {
   if (!data) return '-'
-  // 如果workContent存在且包含多个h3标签，说明是新格式，直接返回
-  if (data.workContent && data.workContent.includes('<h3>')) {
-    return data.workContent
-  }
-  // 否则合并旧格式的多个字段
-  let content = ''
-  if (data.workContent) content += '<h3>工作内容</h3>' + data.workContent
-  if (data.workHarvest) content += '<h3>工作收获</h3>' + data.workHarvest
-  if (data.problems) content += '<h3>遇到的问题</h3>' + data.problems
-  // 如果都没有，尝试使用logContent
-  if (!content && data.logContent) {
-    content = data.logContent
-  }
-  return content || '-'
+  // 直接使用logContent
+  return data.logContent || '-'
 }
 
 // 重置表单
@@ -636,7 +613,7 @@ const resetForm = () => {
     enterpriseName: currentApply.value?.enterpriseName || '',
     logDate: '',
     logTitle: '',
-    workContent: '',
+    logContent: '',
     workHours: 8,
     attachmentUrls: ''
   })

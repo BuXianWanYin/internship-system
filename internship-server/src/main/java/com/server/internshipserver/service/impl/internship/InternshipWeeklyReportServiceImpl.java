@@ -75,8 +75,8 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
                 report.setReportTitle("实习周报");
             }
         }
-        // 支持新的单字段格式（workContent）或旧的格式（workSummary）
-        if (!StringUtils.hasText(report.getWorkContent()) && !StringUtils.hasText(report.getWorkSummary())) {
+        // 验证周报内容不能为空
+        if (!StringUtils.hasText(report.getWorkContent())) {
             throw new BusinessException("周报内容不能为空");
         }
         

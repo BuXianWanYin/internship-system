@@ -54,25 +54,9 @@ public class InternshipWeeklyReport implements Serializable {
     @TableField("report_title")
     private String reportTitle;
     
-    @ApiModelProperty(value = "本周工作总结（富文本）", required = true, example = "本周主要完成了...")
-    @TableField("work_summary")
-    private String workSummary;
-    
-    @ApiModelProperty(value = "工作内容（富文本）", example = "1. 学习了Java基础\n2. 参与了项目开发")
+    @ApiModelProperty(value = "工作内容（富文本）", required = true, example = "1. 学习了Java基础\n2. 参与了项目开发")
     @TableField("work_content")
     private String workContent;
-    
-    @ApiModelProperty(value = "工作成果（富文本）", example = "完成了用户登录模块的开发")
-    @TableField("achievements")
-    private String achievements;
-    
-    @ApiModelProperty(value = "问题与反思（富文本）", example = "对Spring框架理解不够深入，需要继续学习")
-    @TableField("problems_reflections")
-    private String problemsReflections;
-    
-    @ApiModelProperty(value = "下周计划（富文本）", example = "1. 深入学习Spring框架\n2. 完成订单模块开发")
-    @TableField("next_week_plan")
-    private String nextWeekPlan;
     
     @ApiModelProperty(value = "附件URL（多个用逗号分隔）", example = "/uploads/report1.pdf")
     @TableField("attachment_urls")

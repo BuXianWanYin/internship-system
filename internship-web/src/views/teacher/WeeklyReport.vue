@@ -71,7 +71,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="workSummary" label="工作摘要" min-width="300" show-overflow-tooltip />
+      <el-table-column label="周报内容" min-width="300" show-overflow-tooltip>
+        <template #default="{ row }">
+          <div class="table-content-preview">{{ getContentPreview(row.workContent || row.reportContent) }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="row.reviewStatus === 1 ? 'success' : 'warning'" size="small">
@@ -127,7 +131,8 @@
       title="周报详情"
       width="900px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border class="detail-info">
         <el-descriptions-item label="学生姓名">{{ detailData.studentName }}</el-descriptions-item>
         <el-descriptions-item label="学号">{{ detailData.studentNo }}</el-descriptions-item>
         <el-descriptions-item label="周次">{{ detailData.weekNumber }}</el-descriptions-item>
@@ -149,21 +154,31 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="工作摘要" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workSummary || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作内容" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workContent || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item label="工作收获" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.workHarvest || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.problems" label="遇到的问题" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.problems }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.nextWeekPlan" label="下周计划" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.nextWeekPlan }}</div>
-        </el-descriptions-item>
+      </el-descriptions>
+
+      <!-- 周报内容 -->
+      <div class="content-section">
+        <div class="content-title">周报内容</div>
+        <div 
+          v-html="getMergedReportContent(detailData)" 
+          class="rich-content report-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.attachmentUrls" class="content-section">
+        <div class="content-title">附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批阅信息 -->
+      <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
         <el-descriptions-item v-if="detailData.reviewComment" label="批阅意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
         </el-descriptions-item>
@@ -236,8 +251,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Document } from '@element-plus/icons-vue'
 import { weeklyReportApi } from '@/api/internship/weeklyReport'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -387,6 +403,33 @@ const handlePageChange = () => {
   loadData()
 }
 
+// 合并周报内容用于显示
+const getMergedReportContent = (data) => {
+  if (!data) return '-'
+  return data.workContent || '-'
+}
+
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadData()
@@ -408,6 +451,119 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.detail-info {
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.report-content :deep(h3) {
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.report-content :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.report-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.report-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.report-content :deep(ul),
+.report-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.report-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.report-content :deep(blockquote) {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-left: 4px solid #409eff;
+  border-radius: 4px;
+}
+
+.report-content :deep(code) {
+  padding: 2px 6px;
+  background: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.report-content :deep(pre) {
+  margin: 12px 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.report-content :deep(pre code) {
+  background: transparent;
+  padding: 0;
+}
+
+.attachment-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
 

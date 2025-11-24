@@ -62,14 +62,6 @@ public class InternshipLog implements Serializable {
     @TableField("work_hours")
     private BigDecimal workHours;
     
-    @ApiModelProperty(value = "工作总结", example = "完成了项目需求分析")
-    @TableField("work_summary")
-    private String workSummary;
-    
-    @ApiModelProperty(value = "遇到的问题", example = "对Spring框架理解不够深入")
-    @TableField("problems_encountered")
-    private String problemsEncountered;
-    
     @ApiModelProperty(value = "指导教师ID", example = "1")
     @TableField("instructor_id")
     private Long instructorId;
@@ -117,9 +109,5 @@ public class InternshipLog implements Serializable {
     @ApiModelProperty(value = "企业名称")
     @TableField(exist = false)
     private String enterpriseName;
-    
-    @ApiModelProperty(value = "工作内容（用于前端显示，等同于logContent）")
-    @TableField(exist = false)
-    private String workContent;
 }
 

@@ -130,7 +130,8 @@
       title="成果详情"
       width="900px"
     >
-      <el-descriptions :column="2" border>
+      <!-- 基本信息 -->
+      <el-descriptions :column="2" border class="detail-info">
         <el-descriptions-item label="学生姓名">{{ detailData.studentName }}</el-descriptions-item>
         <el-descriptions-item label="学号">{{ detailData.studentNo }}</el-descriptions-item>
         <el-descriptions-item label="成果标题">{{ detailData.achievementTitle }}</el-descriptions-item>
@@ -146,19 +147,39 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="成果描述" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.achievementDescription || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.achievementAttachment" label="成果附件" :span="2">
-          <el-link :href="detailData.achievementAttachment" target="_blank" type="primary">
-            {{ detailData.achievementAttachment }}
-          </el-link>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.achievementLink" label="成果展示链接" :span="2">
-          <el-link :href="detailData.achievementLink" target="_blank" type="primary">
-            {{ detailData.achievementLink }}
-          </el-link>
-        </el-descriptions-item>
+      </el-descriptions>
+
+      <!-- 成果描述 -->
+      <div class="content-section">
+        <div class="content-title">成果描述</div>
+        <div 
+          v-html="detailData.achievementDescription || '-'" 
+          class="rich-content achievement-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.achievementAttachment" class="content-section">
+        <div class="content-title">成果附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.achievementAttachment || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成果展示链接 -->
+      <div v-if="detailData.achievementLink" class="content-section">
+        <div class="content-title">成果展示链接</div>
+        <el-link :href="detailData.achievementLink" target="_blank" type="primary">
+          {{ detailData.achievementLink }}
+        </el-link>
+      </div>
+
+      <!-- 审核信息 -->
+      <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
         <el-descriptions-item v-if="detailData.reviewComment" label="审核意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
         </el-descriptions-item>
@@ -228,8 +249,9 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Document } from '@element-plus/icons-vue'
 import { achievementApi } from '@/api/internship/achievement'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -414,6 +436,27 @@ const getReviewStatusType = (status) => {
   return typeMap[status] || 'info'
 }
 
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadData()
@@ -435,6 +478,76 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.detail-info {
+  margin-bottom: 20px;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.achievement-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.achievement-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.achievement-content :deep(ul),
+.achievement-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.achievement-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.attachment-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
 }
 </style>
 

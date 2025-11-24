@@ -58,15 +58,12 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         if (log.getLogDate() == null) {
             throw new BusinessException("日志日期不能为空");
         }
-        // 如果没有提供标题，根据日志日期自动生成
+        // 标题据日志日期自动生成
         if (!StringUtils.hasText(log.getLogTitle())) {
             log.setLogTitle(log.getLogDate() + " 实习日志");
         }
-        // 支持新的单字段格式（workContent）或旧的格式（logContent）
-        // workContent是前端传递的字段，需要映射到logContent
-        if (StringUtils.hasText(log.getWorkContent())) {
-            log.setLogContent(log.getWorkContent());
-        }
+
+        // 验证日志内容不能为空
         if (!StringUtils.hasText(log.getLogContent())) {
             throw new BusinessException("日志内容不能为空");
         }
@@ -146,11 +143,6 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         // 只有未批阅的日志才能修改
         if (existLog.getReviewStatus() != null && existLog.getReviewStatus() == 1) {
             throw new BusinessException("已批阅的日志不允许修改");
-        }
-        
-        // 如果前端传递了workContent，需要映射到logContent
-        if (StringUtils.hasText(log.getWorkContent())) {
-            log.setLogContent(log.getWorkContent());
         }
         
         // 如果没有提供标题，根据日志日期自动生成
@@ -440,9 +432,6 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
                 }
             }
         }
-        
-        // 设置工作内容（用于前端显示）
-        log.setWorkContent(log.getLogContent());
     }
 }
 
