@@ -73,10 +73,10 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" width="100" align="center">
+      <el-table-column prop="status" label="状态" width="150" align="center">
         <template #default="{ row }">
-          <el-tag :type="getStatusType(row.status)" size="small">
-            {{ getStatusText(row.status) }}
+          <el-tag :type="getStatusType(row.status, row.statusText)" size="small">
+            {{ row.statusText || getStatusText(row.status) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -89,7 +89,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.status === 0 && row.applyType === 2"
+            v-if="row.status === 0"
             link
             type="success"
             size="small"
@@ -98,7 +98,7 @@
             通过
           </el-button>
           <el-button
-            v-if="row.status === 0 && row.applyType === 2"
+            v-if="row.status === 0"
             link
             type="danger"
             size="small"
@@ -139,8 +139,8 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(detailData.status)" size="small">
-            {{ getStatusText(detailData.status) }}
+            <el-tag :type="getStatusType(detailData.status, detailData.statusText)" size="small">
+            {{ detailData.statusText || getStatusText(detailData.status) }}
           </el-tag>
         </el-descriptions-item>
       </el-descriptions>
@@ -276,14 +276,14 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.status === 0 && detailData.applyType === 2"
+          v-if="detailData.status === 0"
           type="success"
           @click="handleAuditFromDetail(1)"
         >
           通过
         </el-button>
         <el-button
-          v-if="detailData.status === 0 && detailData.applyType === 2"
+          v-if="detailData.status === 0"
           type="danger"
           @click="handleAuditFromDetail(2)"
         >
@@ -527,23 +527,34 @@ const getStatusText = (status) => {
   return statusMap[status] || '未知'
 }
 
-// 获取状态类型
-const getStatusType = (status) => {
+// 获取状态类型（根据状态文本动态判断颜色）
+const getStatusType = (status, statusText) => {
+  // 如果有状态文本，优先根据状态文本判断
+  if (statusText) {
+    if (statusText.includes('等待') || statusText.includes('待')) {
+      return 'warning' // 黄色 - 等待状态
+    }
+    if (statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
+      return 'success' // 绿色 - 成功/通过状态
+    }
+    if (statusText.includes('拒绝') || statusText.includes('未通过') || statusText.includes('已取消')) {
+      return 'danger' // 红色 - 拒绝/失败状态
+    }
+    if (statusText.includes('已完成') || statusText.includes('待定') || statusText.includes('处理')) {
+      return 'info' // 灰色 - 信息状态
+    }
+  }
+  
+  // 如果没有状态文本，根据基础状态值判断
   const typeMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger',
-    3: 'success',
-    4: 'danger'
+    0: 'warning', // 待审核 - 黄色
+    1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
+    2: 'danger',  // 已拒绝 - 红色
+    3: 'success', // 已录用 - 绿色
+    4: 'danger'   // 已拒绝录用 - 红色
   }
   return typeMap[status] || 'info'
 }
-
-// 初始化
-onMounted(() => {
-  loadData()
-})
-</script>
 
 // 获取简历文件名
 const getResumeFileName = (url) => {
@@ -565,6 +576,12 @@ const handleDownloadResume = async (filePath) => {
     ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
   }
 }
+
+// 初始化
+onMounted(() => {
+  loadData()
+})
+</script>
 
 <style scoped>
 .search-bar {

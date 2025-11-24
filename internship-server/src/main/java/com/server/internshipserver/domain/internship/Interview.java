@@ -116,5 +116,30 @@ public class Interview implements Serializable {
     @ApiModelProperty(value = "岗位名称")
     @TableField(exist = false)
     private String postName;
+    
+    @ApiModelProperty(value = "学生姓名")
+    @TableField(exist = false)
+    private String studentName;
+    
+    @ApiModelProperty(value = "学号")
+    @TableField(exist = false)
+    private String studentNo;
+    
+    // ========== 前端字段映射（不映射到数据库） ==========
+    @ApiModelProperty(value = "视频链接（前端字段，映射到interviewLink）")
+    @TableField(exist = false)
+    private String videoLink;
+    
+    @ApiModelProperty(value = "面试说明（前端字段，映射到interviewContent）")
+    @TableField(exist = false)
+    private String interviewDescription;
+    
+    @ApiModelProperty(value = "联系人（前端字段，映射到interviewer）")
+    @TableField(exist = false)
+    private String contactPerson;
+    
+    @ApiModelProperty(value = "联系电话（前端字段，映射到interviewPhone）")
+    @TableField(exist = false)
+    private String contactPhone;
 }
 

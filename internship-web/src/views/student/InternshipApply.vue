@@ -104,10 +104,10 @@
                 <el-table-column type="index" label="序号" width="60" align="center" />
                 <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
                 <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="status" label="状态" width="100" align="center">
+                <el-table-column prop="status" label="状态" width="150" align="center">
                   <template #default="{ row }">
-                    <el-tag :type="getApplyStatusType(row.status)" size="small">
-                      {{ getApplyStatusText(row.status) }}
+                    <el-tag :type="getApplyStatusType(row.status, row.statusText)" size="small">
+                      {{ row.statusText || getApplyStatusText(row.status) }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -175,12 +175,12 @@
             <el-table-column prop="enterpriseAddress" label="企业地址" min-width="200" show-overflow-tooltip />
             <el-table-column prop="contactPerson" label="联系人" min-width="120" />
             <el-table-column prop="contactPhone" label="联系电话" min-width="120" />
-            <el-table-column prop="status" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag :type="getApplyStatusType(row.status)" size="small">
-                  {{ getApplyStatusText(row.status) }}
-                </el-tag>
-              </template>
+            <el-table-column prop="status" label="状态" width="150" align="center">
+                <template #default="{ row }">
+                    <el-tag :type="getApplyStatusType(row.status, row.statusText)" size="small">
+                      {{ row.statusText || getApplyStatusText(row.status) }}
+                    </el-tag>
+                </template>
             </el-table-column>
             <el-table-column prop="createTime" label="申请时间" width="180">
               <template #default="{ row }">
@@ -455,8 +455,8 @@
           {{ applyDetailData.internshipEndDate ? formatDate(applyDetailData.internshipEndDate) : '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getApplyStatusType(applyDetailData.status)" size="small">
-            {{ getApplyStatusText(applyDetailData.status) }}
+          <el-tag :type="getApplyStatusType(applyDetailData.status, applyDetailData.statusText)" size="small">
+            {{ applyDetailData.statusText || getApplyStatusText(applyDetailData.status) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
@@ -519,8 +519,8 @@
         <el-descriptions-item label="岗位名称">{{ cooperationApplyDetailData.postName }}</el-descriptions-item>
         <el-descriptions-item label="企业名称">{{ cooperationApplyDetailData.enterpriseName }}</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getApplyStatusType(cooperationApplyDetailData.status)" size="small">
-            {{ getApplyStatusText(cooperationApplyDetailData.status) }}
+          <el-tag :type="getApplyStatusType(cooperationApplyDetailData.status, cooperationApplyDetailData.statusText)" size="small">
+            {{ cooperationApplyDetailData.statusText || getApplyStatusText(cooperationApplyDetailData.status) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
@@ -994,7 +994,9 @@ const handleCancelCooperationApply = async (row) => {
     const res = await applyApi.cancelApply(row.applyId)
     if (res.code === 200) {
       ElMessage.success('取消成功')
-      loadCooperationApplyData()
+      // 重置分页到第一页并刷新列表
+      cooperationApplyPagination.current = 1
+      await loadCooperationApplyData()
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -1013,7 +1015,9 @@ const handleCancelApply = async (row) => {
     const res = await applyApi.cancelApply(row.applyId)
     if (res.code === 200) {
       ElMessage.success('取消成功')
-      loadApplyData()
+      // 重置分页到第一页并刷新列表
+      applyPagination.current = 1
+      await loadApplyData()
     }
   } catch (error) {
     if (error !== 'cancel') {
@@ -1117,13 +1121,32 @@ const getApplyStatusText = (status) => {
   return statusMap[status] || '未知'
 }
 
-// 获取申请状态类型
-const getApplyStatusType = (status) => {
+// 获取申请状态类型（根据状态文本动态判断颜色）
+const getApplyStatusType = (status, statusText) => {
+  // 如果有状态文本，优先根据状态文本判断
+  if (statusText) {
+    if (statusText.includes('等待') || statusText.includes('待')) {
+      return 'warning' // 黄色 - 等待状态
+    }
+    if (statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
+      return 'success' // 绿色 - 成功/通过状态
+    }
+    if (statusText.includes('拒绝') || statusText.includes('未通过') || statusText.includes('已取消')) {
+      return 'danger' // 红色 - 拒绝/失败状态
+    }
+    if (statusText.includes('已完成') || statusText.includes('待定')) {
+      return 'info' // 灰色 - 信息状态
+    }
+  }
+  
+  // 如果没有状态文本，根据基础状态值判断
   const typeMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger',
-    3: 'info'
+    0: 'warning', // 待审核 - 黄色
+    1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
+    2: 'danger',  // 已拒绝 - 红色
+    3: 'success', // 已录用 - 绿色
+    4: 'danger',  // 已拒绝录用 - 红色
+    5: 'info'     // 已取消 - 灰色
   }
   return typeMap[status] || 'info'
 }

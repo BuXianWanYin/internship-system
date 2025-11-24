@@ -229,19 +229,54 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         wrapper.eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 企业管理员或企业导师只能查看本企业的考勤
-                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                if (currentUserEnterpriseId != null) {
-                    // 通过applyId关联查询，过滤企业ID
-                    // TODO: 实现更精确的数据权限过滤
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            // 系统管理员可以查看所有考勤，不添加过滤条件
+        } else {
+            String username = SecurityUtil.getCurrentUsername();
+            if (username != null) {
+                UserInfo user = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, username)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (user != null) {
+                    // 学生只能查看自己的考勤
+                    if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+                        Student student = studentMapper.selectOne(
+                                new LambdaQueryWrapper<Student>()
+                                        .eq(Student::getUserId, user.getUserId())
+                                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        );
+                        if (student != null) {
+                            wrapper.eq(Attendance::getStudentId, student.getStudentId());
+                        } else {
+                            // 如果没有学生信息，返回空结果
+                            wrapper.eq(Attendance::getAttendanceId, -1L);
+                        }
+                    } else {
+                        // 企业管理员或企业导师只能查看本企业的考勤
+                        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                        if (currentUserEnterpriseId != null) {
+                            // 通过applyId关联查询，过滤企业ID
+                            // 查询本企业的所有申请ID
+                            java.util.List<InternshipApply> applies = internshipApplyMapper.selectList(
+                                    new LambdaQueryWrapper<InternshipApply>()
+                                            .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
+                                            .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                            .select(InternshipApply::getApplyId)
+                            );
+                            if (applies != null && !applies.isEmpty()) {
+                                java.util.List<Long> applyIds = applies.stream()
+                                        .map(InternshipApply::getApplyId)
+                                        .collect(java.util.stream.Collectors.toList());
+                                wrapper.in(Attendance::getApplyId, applyIds);
+                            } else {
+                                // 如果没有申请，返回空结果
+                                wrapper.eq(Attendance::getAttendanceId, -1L);
+                            }
+                        }
+                    }
                 }
             }
         }

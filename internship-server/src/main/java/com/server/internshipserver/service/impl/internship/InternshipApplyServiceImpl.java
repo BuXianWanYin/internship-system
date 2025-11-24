@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
@@ -27,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -269,6 +272,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("申请不存在");
         }
         
+        // 填充关联字段
+        fillApplyRelatedFields(apply);
+        
         // 数据权限过滤
         String username = SecurityUtil.getCurrentUsername();
         if (username != null) {
@@ -278,23 +284,56 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
                             .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
             if (user != null) {
-                // 学生只能查看自己的申请
-                if (apply.getUserId().equals(user.getUserId())) {
-                    fillApplyRelatedFields(apply);
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+                
+                // 系统管理员和学校管理员可以查看所有申请
+                if (roleCodes != null && (roleCodes.contains("ROLE_SYSTEM_ADMIN") || roleCodes.contains("ROLE_SCHOOL_ADMIN"))) {
+                    // 构建状态流转历史和下一步操作提示
+                    buildStatusHistory(apply);
+                    buildNextActionTip(apply);
                     return apply;
                 }
+                
+                // 学生只能查看自己的申请
+                if (apply.getUserId().equals(user.getUserId())) {
+                    // 构建状态流转历史和下一步操作提示
+                    buildStatusHistory(apply);
+                    buildNextActionTip(apply);
+                    return apply;
+                }
+                
                 // 企业管理员只能查看自己企业的申请
                 Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
                 if (currentUserEnterpriseId != null && apply.getEnterpriseId() != null
                         && currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-                    fillApplyRelatedFields(apply);
+                    // 构建状态流转历史和下一步操作提示
+                    buildStatusHistory(apply);
+                    buildNextActionTip(apply);
                     return apply;
                 }
+                
+                // 班主任和学院负责人可以查看自己管理的学生的申请
+                if (roleCodes != null && (roleCodes.contains("ROLE_CLASS_TEACHER") || roleCodes.contains("ROLE_COLLEGE_LEADER"))) {
+                    // 检查申请的学生是否属于当前用户管理的班级
+                    if (apply.getStudentId() != null) {
+                        Student student = studentMapper.selectById(apply.getStudentId());
+                        if (student != null && student.getClassId() != null) {
+                            List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                            if (managedClassIds != null && !managedClassIds.isEmpty() 
+                                    && managedClassIds.contains(student.getClassId())) {
+                                // 构建状态流转历史和下一步操作提示
+                                buildStatusHistory(apply);
+                                buildNextActionTip(apply);
+                                return apply;
+                            }
+                        }
+                    }
+                }
+                
+                // 如果没有匹配的权限，抛出异常
+                throw new BusinessException("无权查看该申请");
             }
         }
-        
-        // 填充关联字段
-        fillApplyRelatedFields(apply);
         
         // 构建状态流转历史和下一步操作提示
         buildStatusHistory(apply);
@@ -359,6 +398,111 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
                 apply.setAuditorName(auditor.getRealName());
             }
         }
+        
+        // 填充面试信息和状态文本
+        fillInterviewInfoAndStatusText(apply);
+    }
+    
+    /**
+     * 填充面试信息和生成状态文本
+     */
+    private void fillInterviewInfoAndStatusText(InternshipApply apply) {
+        // 查询面试记录（仅合作企业申请）
+        if (apply.getApplyType() != null && apply.getApplyType() == 1) {
+            List<Interview> interviews = interviewMapper.selectList(
+                new LambdaQueryWrapper<Interview>()
+                    .eq(Interview::getApplyId, apply.getApplyId())
+                    .eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                    .orderByDesc(Interview::getCreateTime)
+            );
+            
+            if (interviews != null && !interviews.isEmpty()) {
+                apply.setHasInterview(true);
+                apply.setLatestInterview(interviews.get(0));
+            } else {
+                apply.setHasInterview(false);
+                apply.setLatestInterview(null);
+            }
+        } else {
+            apply.setHasInterview(false);
+            apply.setLatestInterview(null);
+        }
+        
+        // 生成状态文本
+        apply.setStatusText(buildStatusText(apply));
+    }
+    
+    /**
+     * 构建状态文本（根据申请状态和面试状态动态生成）
+     */
+    private String buildStatusText(InternshipApply apply) {
+        if (apply.getStatus() == null) {
+            return "状态异常";
+        }
+        
+        // 自主实习申请
+        if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+            switch (apply.getStatus()) {
+                case 0:
+                    return "等待学校审核";
+                case 1:
+                    return "学校审核通过";
+                case 2:
+                    return "学校审核拒绝";
+                case 5:
+                    return "已取消";
+                default:
+                    return "未知状态";
+            }
+        }
+        
+        // 合作企业申请
+        if (apply.getApplyType() != null && apply.getApplyType() == 1) {
+            switch (apply.getStatus()) {
+                case 0:
+                    return "等待学校审核";
+                case 1:
+                    // 学校审核通过，需要根据面试情况判断
+                    if (apply.getHasInterview() != null && apply.getHasInterview() && apply.getLatestInterview() != null) {
+                        Interview interview = apply.getLatestInterview();
+                        if (interview.getStudentConfirm() == null || interview.getStudentConfirm() == 0) {
+                            return "等待学生确认面试";
+                        } else if (interview.getStudentConfirm() == 1) {
+                            if (interview.getStatus() == null || interview.getStatus() == 1) {
+                                return "面试已确认，等待面试";
+                            } else if (interview.getStatus() == 2) {
+                                // 面试已完成
+                                if (interview.getInterviewResult() == null) {
+                                    return "面试已完成，等待结果";
+                                } else if (interview.getInterviewResult() == 1) {
+                                    return "面试通过，等待企业决定";
+                                } else if (interview.getInterviewResult() == 2) {
+                                    return "面试未通过";
+                                } else {
+                                    return "面试待定";
+                                }
+                            } else if (interview.getStatus() == 3) {
+                                return "面试已取消";
+                            }
+                        } else if (interview.getStudentConfirm() == 2) {
+                            return "学生已拒绝面试";
+                        }
+                    }
+                    return "等待企业处理";
+                case 2:
+                    return "学校审核拒绝";
+                case 3:
+                    return "已录用";
+                case 4:
+                    return "已拒绝录用";
+                case 5:
+                    return "已取消";
+                default:
+                    return "未知状态";
+            }
+        }
+        
+        return "未知状态";
     }
     
     /**
@@ -542,34 +686,30 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             if (apply.getStatus() == 0) {
                 apply.setNextActionTip("等待学校审核，请耐心等待");
             } else if (apply.getStatus() == 1) {
-                // 检查是否有面试记录
-                List<Interview> interviews = interviewMapper.selectList(
-                    new LambdaQueryWrapper<Interview>()
-                        .eq(Interview::getApplyId, apply.getApplyId())
-                        .eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        .orderByDesc(Interview::getCreateTime)
-                        .last("LIMIT 1")
-                );
-                
-                if (interviews == null || interviews.isEmpty()) {
-                    apply.setNextActionTip("等待企业处理，企业可以安排面试或直接录用/拒绝");
-                } else {
-                    Interview latestInterview = interviews.get(0);
-                    if (latestInterview.getStudentConfirm() == 0) {
+                // 使用已填充的面试信息（避免重复查询）
+                if (apply.getHasInterview() != null && apply.getHasInterview() && apply.getLatestInterview() != null) {
+                    Interview latestInterview = apply.getLatestInterview();
+                    if (latestInterview.getStudentConfirm() == null || latestInterview.getStudentConfirm() == 0) {
                         apply.setNextActionTip("企业已安排面试，请前往\"我的面试\"页面确认是否参加");
                     } else if (latestInterview.getStudentConfirm() == 1 && latestInterview.getStatus() == 1) {
                         apply.setNextActionTip("面试已确认，请按时参加面试");
                     } else if (latestInterview.getStatus() == 2) {
-                        if (latestInterview.getInterviewResult() == 1) {
+                        if (latestInterview.getInterviewResult() == null) {
+                            apply.setNextActionTip("面试已完成，等待企业反馈结果");
+                        } else if (latestInterview.getInterviewResult() == 1) {
                             apply.setNextActionTip("面试已通过，等待企业决定是否录用");
                         } else if (latestInterview.getInterviewResult() == 2) {
                             apply.setNextActionTip("面试未通过，如有疑问请联系企业");
                         } else {
-                            apply.setNextActionTip("面试已完成，等待企业反馈结果");
+                            apply.setNextActionTip("面试待定，等待企业决定");
                         }
                     } else if (latestInterview.getStudentConfirm() == 2) {
                         apply.setNextActionTip("已拒绝面试，申请流程已结束");
+                    } else if (latestInterview.getStatus() == 3) {
+                        apply.setNextActionTip("面试已取消，等待企业重新安排");
                     }
+                } else {
+                    apply.setNextActionTip("等待企业处理，企业可以安排面试或直接录用/拒绝");
                 }
             } else if (apply.getStatus() == 3) {
                 apply.setNextActionTip("已录用，恭喜！请与企业联系确认实习安排");
@@ -639,10 +779,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("申请不存在");
         }
         
-        // 只有自主实习的待审核状态才能审核
-        if (apply.getApplyType() == null || apply.getApplyType() != 2) {
-            throw new BusinessException("只能审核自主实习申请");
-        }
+        // 只有待审核状态的申请才能审核（支持合作企业和自主实习）
         if (apply.getStatus() == null || apply.getStatus() != 0) {
             throw new BusinessException("只有待审核状态的申请才能审核");
         }
@@ -693,6 +830,11 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 只有合作企业的申请才能进行筛选操作
         if (apply.getApplyType() == null || apply.getApplyType() != 1) {
             throw new BusinessException("只能对合作企业申请进行筛选操作");
+        }
+        
+        // 只有学校审核通过的申请（status=1）才能进行企业筛选操作
+        if (apply.getStatus() == null || apply.getStatus() != 1) {
+            throw new BusinessException("只能处理学校审核通过的申请");
         }
         
         // 根据操作类型更新状态
@@ -759,9 +901,29 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("只有待审核状态的申请才能取消");
         }
         
-        // 软删除
-        apply.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(apply);
+        // 软删除 - 使用 LambdaUpdateWrapper 确保字段被更新
+        boolean result = this.update(new LambdaUpdateWrapper<InternshipApply>()
+                .eq(InternshipApply::getApplyId, applyId)
+                .set(InternshipApply::getDeleteFlag, DeleteFlag.DELETED.getCode()));
+        if (!result) {
+            throw new BusinessException("取消申请失败，请重试");
+        }
+        
+        // 更新岗位的已申请人数
+        if (apply.getPostId() != null) {
+            InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+            if (post != null) {
+                // 重新计算已申请人数（只统计未删除且状态为待审核、已通过、已录用的申请）
+                Long appliedCount = this.count(new LambdaQueryWrapper<InternshipApply>()
+                        .eq(InternshipApply::getPostId, apply.getPostId())
+                        .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .in(InternshipApply::getStatus, 0, 1, 3));
+                post.setAppliedCount(appliedCount.intValue());
+                internshipPostMapper.updateById(post);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -798,6 +960,11 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
      * 应用数据权限过滤
      */
     private void applyDataPermissionFilter(LambdaQueryWrapper<InternshipApply> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
         String username = SecurityUtil.getCurrentUsername();
         if (username == null) {
             return;
@@ -813,10 +980,33 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         }
         
         // 学生只能查看自己的申请
-        applyStudentFilter(wrapper, user.getUserId());
+        if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            applyStudentFilter(wrapper, user.getUserId());
+            return;
+        }
         
         // 企业管理员只能查看自己企业的申请
-        applyEnterpriseFilter(wrapper);
+        if (dataPermissionUtil.hasRole("ROLE_ENTERPRISE_ADMIN")) {
+            applyEnterpriseFilter(wrapper);
+            return;
+        }
+        
+        // 学校管理员可以查看所有申请（不添加过滤条件）
+        if (dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+            return;
+        }
+        
+        // 学院负责人可以查看本学院所有学生的申请
+        if (dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+            applyCollegeFilter(wrapper);
+            return;
+        }
+        
+        // 班主任可以查看自己管理的班级的所有学生的申请
+        if (dataPermissionUtil.hasRole("ROLE_CLASS_TEACHER")) {
+            applyClassTeacherFilter(wrapper);
+            return;
+        }
     }
     
     /**
@@ -840,6 +1030,59 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         if (currentUserEnterpriseId != null) {
             wrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);
+        }
+    }
+    
+    /**
+     * 应用学院过滤条件（学院负责人可以查看本学院所有学生的申请）
+     */
+    private void applyCollegeFilter(LambdaQueryWrapper<InternshipApply> wrapper) {
+        Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (collegeId != null) {
+            // 查询该学院下的所有学生ID
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getCollegeId, collegeId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipApply::getStudentId, studentIds);
+            } else {
+                // 如果没有学生，返回空结果
+                wrapper.eq(InternshipApply::getApplyId, -1L);
+            }
+        }
+    }
+    
+    /**
+     * 应用班主任过滤条件（班主任可以查看自己管理的班级的所有学生的申请）
+     */
+    private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipApply> wrapper) {
+        List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (managedClassIds != null && !managedClassIds.isEmpty()) {
+            // 查询这些班级下的所有学生ID
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, managedClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipApply::getStudentId, studentIds);
+            } else {
+                // 如果没有学生，返回空结果
+                wrapper.eq(InternshipApply::getApplyId, -1L);
+            }
+        } else {
+            // 如果没有管理的班级，返回空结果
+            wrapper.eq(InternshipApply::getApplyId, -1L);
         }
     }
 }

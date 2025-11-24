@@ -312,6 +312,78 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             return;
         }
         
+        // 学校管理员：只能查看本学校学生的日志
+        if (dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+            Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (schoolId != null) {
+                // 查询本学校的所有学生
+                java.util.List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
+                                .eq(Student::getSchoolId, schoolId)
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
+                if (students != null && !students.isEmpty()) {
+                    java.util.List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(java.util.stream.Collectors.toList());
+                    wrapper.in(InternshipLog::getStudentId, studentIds);
+                } else {
+                    // 如果没有学生，返回空结果
+                    wrapper.eq(InternshipLog::getLogId, -1L);
+                }
+            }
+            return;
+        }
+        
+        // 学院负责人：只能查看本学院学生的日志
+        if (dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+            Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+            if (collegeId != null) {
+                // 查询本学院的所有学生
+                java.util.List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
+                                .eq(Student::getCollegeId, collegeId)
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
+                if (students != null && !students.isEmpty()) {
+                    java.util.List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(java.util.stream.Collectors.toList());
+                    wrapper.in(InternshipLog::getStudentId, studentIds);
+                } else {
+                    // 如果没有学生，返回空结果
+                    wrapper.eq(InternshipLog::getLogId, -1L);
+                }
+            }
+            return;
+        }
+        
+        // 指导教师：可以查看本学院所有学生的日志
+        if (dataPermissionUtil.hasRole("ROLE_INSTRUCTOR")) {
+            Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+            if (collegeId != null) {
+                // 查询本学院的所有学生
+                java.util.List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
+                                .eq(Student::getCollegeId, collegeId)
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
+                if (students != null && !students.isEmpty()) {
+                    java.util.List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(java.util.stream.Collectors.toList());
+                    wrapper.in(InternshipLog::getStudentId, studentIds);
+                } else {
+                    // 如果没有学生，返回空结果
+                    wrapper.eq(InternshipLog::getLogId, -1L);
+                }
+            }
+            return;
+        }
+        
         // 班主任：只能查看管理的班级的学生的日志
         java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
@@ -331,8 +403,6 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
                 wrapper.eq(InternshipLog::getLogId, -1L);
             }
         }
-        // 指导教师可以查看分配的学生的日志
-        // TODO: 实现指导教师数据权限过滤
     }
     
     /**

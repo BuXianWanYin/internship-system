@@ -328,6 +328,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { interviewApi } from '@/api/internship/interview'
@@ -454,7 +455,17 @@ const handleReset = () => {
 const handleAdd = async () => {
   await loadApplyList()
   dialogTitle.value = '安排面试'
+  // 如果表单中已经有applyId（从路由参数填充的），保留它
+  const savedApplyId = formData.applyId
+  const savedStudentName = formData.studentName
+  const savedPostName = formData.postName
   resetForm()
+  // 恢复从路由参数填充的值
+  if (savedApplyId) {
+    formData.applyId = savedApplyId
+    formData.studentName = savedStudentName
+    formData.postName = savedPostName
+  }
   dialogVisible.value = true
 }
 
@@ -468,10 +479,10 @@ const handleEdit = async (row) => {
       Object.assign(formData, {
         interviewId: res.data.interviewId,
         applyId: res.data.applyId,
-        studentName: res.data.studentName,
-        postName: res.data.postName,
+        studentName: res.data.studentName || '',
+        postName: res.data.postName || '',
         interviewTime: res.data.interviewTime,
-        interviewLocation: res.data.interviewLocation,
+        interviewLocation: res.data.interviewLocation || '',
         interviewType: res.data.interviewType || 1,
         videoLink: res.data.videoLink || '',
         interviewDescription: res.data.interviewDescription || '',
@@ -663,9 +674,43 @@ const getInterviewTypeText = (type) => {
   return typeMap[type] || '-'
 }
 
+const route = useRoute()
+
 // 初始化
 onMounted(() => {
   loadData()
+  loadApplyList()
+  
+  // 如果从申请管理页面跳转过来，自动填充表单并打开对话框
+  if (route.query.applyId) {
+    const applyId = parseInt(route.query.applyId)
+    const studentId = route.query.studentId ? parseInt(route.query.studentId) : null
+    const studentName = route.query.studentName || ''
+    const postId = route.query.postId ? parseInt(route.query.postId) : null
+    const postName = route.query.postName || ''
+    
+    // 填充表单
+    formData.applyId = applyId
+    formData.studentName = studentName
+    formData.postName = postName
+    
+    // 打开添加对话框
+    handleAdd()
+    
+    // 清除路由参数（避免刷新时重复打开）
+    if (window.history && window.history.replaceState) {
+      const newQuery = { ...route.query }
+      delete newQuery.applyId
+      delete newQuery.studentId
+      delete newQuery.studentName
+      delete newQuery.postId
+      delete newQuery.postName
+      window.history.replaceState({}, '', {
+        path: route.path,
+        query: newQuery
+      })
+    }
+  }
 })
 </script>
 

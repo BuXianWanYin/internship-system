@@ -12,11 +12,13 @@ import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.mapper.internship.InterviewMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.service.internship.InterviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -46,18 +48,15 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
     @Autowired
     private InternshipPostMapper internshipPostMapper;
     
+    @Autowired
+    private StudentMapper studentMapper;
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Interview addInterview(Interview interview) {
         // 参数校验
         if (interview.getApplyId() == null) {
             throw new BusinessException("申请ID不能为空");
-        }
-        if (interview.getEnterpriseId() == null) {
-            throw new BusinessException("企业ID不能为空");
-        }
-        if (interview.getStudentId() == null) {
-            throw new BusinessException("学生ID不能为空");
         }
         if (interview.getInterviewTime() == null) {
             throw new BusinessException("面试时间不能为空");
@@ -72,6 +71,22 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
             throw new BusinessException("申请不存在");
         }
         
+        // 如果enterpriseId或studentId为空，从申请中自动获取
+        if (interview.getEnterpriseId() == null) {
+            interview.setEnterpriseId(apply.getEnterpriseId());
+        }
+        if (interview.getStudentId() == null) {
+            interview.setStudentId(apply.getStudentId());
+        }
+        
+        // 再次校验
+        if (interview.getEnterpriseId() == null) {
+            throw new BusinessException("企业ID不能为空");
+        }
+        if (interview.getStudentId() == null) {
+            throw new BusinessException("学生ID不能为空");
+        }
+        
         // 数据权限：企业管理员只能为自己企业的申请安排面试
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(interview.getEnterpriseId())) {
@@ -79,6 +94,24 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         }
         if (!apply.getEnterpriseId().equals(interview.getEnterpriseId())) {
             throw new BusinessException("申请与企业不匹配");
+        }
+        
+        // 处理前端字段映射
+        // videoLink -> interviewLink
+        if (StringUtils.hasText(interview.getVideoLink()) && !StringUtils.hasText(interview.getInterviewLink())) {
+            interview.setInterviewLink(interview.getVideoLink());
+        }
+        // interviewDescription -> interviewContent
+        if (StringUtils.hasText(interview.getInterviewDescription()) && !StringUtils.hasText(interview.getInterviewContent())) {
+            interview.setInterviewContent(interview.getInterviewDescription());
+        }
+        // contactPerson -> interviewer
+        if (StringUtils.hasText(interview.getContactPerson()) && !StringUtils.hasText(interview.getInterviewer())) {
+            interview.setInterviewer(interview.getContactPerson());
+        }
+        // contactPhone -> interviewPhone（仅当面试类型为电话面试时）
+        if (interview.getInterviewType() == 3 && StringUtils.hasText(interview.getContactPhone()) && !StringUtils.hasText(interview.getInterviewPhone())) {
+            interview.setInterviewPhone(interview.getContactPhone());
         }
         
         // 根据面试类型验证必填字段
@@ -130,9 +163,29 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
             throw new BusinessException("已确认或已完成的面试不允许修改");
         }
         
+        // 处理前端字段映射
+        // videoLink -> interviewLink
+        if (StringUtils.hasText(interview.getVideoLink())) {
+            interview.setInterviewLink(interview.getVideoLink());
+        }
+        // interviewDescription -> interviewContent
+        if (StringUtils.hasText(interview.getInterviewDescription())) {
+            interview.setInterviewContent(interview.getInterviewDescription());
+        }
+        // contactPerson -> interviewer
+        if (StringUtils.hasText(interview.getContactPerson())) {
+            interview.setInterviewer(interview.getContactPerson());
+        }
+        // contactPhone -> interviewPhone（仅当面试类型为电话面试时）
+        if (interview.getInterviewType() != null && interview.getInterviewType() == 3 && StringUtils.hasText(interview.getContactPhone())) {
+            interview.setInterviewPhone(interview.getContactPhone());
+        }
+        
         // 更新
         this.updateById(interview);
-        return this.getById(interview.getInterviewId());
+        Interview updated = this.getById(interview.getInterviewId());
+        fillInterviewRelatedFields(updated);
+        return updated;
     }
     
     @Override
@@ -161,21 +214,39 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         wrapper.eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 企业管理员只能查看自己企业的面试
-                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                if (currentUserEnterpriseId != null) {
-                    wrapper.eq(Interview::getEnterpriseId, currentUserEnterpriseId);
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            // 系统管理员可以查看所有面试，不添加过滤条件
+        } else {
+            String username = SecurityUtil.getCurrentUsername();
+            if (username != null) {
+                UserInfo user = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, username)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (user != null) {
+                    // 学生只能查看自己的面试
+                    if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+                        Student student = studentMapper.selectOne(
+                                new LambdaQueryWrapper<Student>()
+                                        .eq(Student::getUserId, user.getUserId())
+                                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        );
+                        if (student != null) {
+                            wrapper.eq(Interview::getStudentId, student.getStudentId());
+                        } else {
+                            // 如果没有学生信息，返回空结果
+                            wrapper.eq(Interview::getInterviewId, -1L);
+                        }
+                    } else {
+                        // 企业管理员只能查看自己企业的面试
+                        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                        if (currentUserEnterpriseId != null) {
+                            wrapper.eq(Interview::getEnterpriseId, currentUserEnterpriseId);
+                        }
+                    }
                 }
-                // 学生只能查看自己的面试
-                // TODO: 通过studentId关联查询
             }
         }
         
@@ -234,7 +305,22 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
             if (user == null) {
                 throw new BusinessException("用户不存在");
             }
-            // TODO: 验证学生身份和面试的学生ID匹配
+            // 验证学生身份和面试的学生ID匹配
+            if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+                Student student = studentMapper.selectOne(
+                        new LambdaQueryWrapper<Student>()
+                                .eq(Student::getUserId, user.getUserId())
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (student == null) {
+                    throw new BusinessException("学生信息不存在");
+                }
+                if (!student.getStudentId().equals(interview.getStudentId())) {
+                    throw new BusinessException("无权确认该面试，只能确认自己的面试");
+                }
+            } else {
+                throw new BusinessException("只有学生可以确认面试");
+            }
         }
         
         // 只有待确认状态才能确认
@@ -335,15 +421,50 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
             }
         }
         
-        // 填充岗位名称（从申请中获取）
+        // 填充岗位名称和学生信息（从申请中获取）
         if (interview.getApplyId() != null) {
             InternshipApply apply = internshipApplyMapper.selectById(interview.getApplyId());
-            if (apply != null && apply.getPostId() != null) {
-                InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
-                if (post != null) {
-                    interview.setPostName(post.getPostName());
+            if (apply != null) {
+                if (apply.getPostId() != null) {
+                    InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+                    if (post != null) {
+                        interview.setPostName(post.getPostName());
+                    }
+                }
+                // 填充学生信息
+                if (apply.getStudentId() != null) {
+                    Student student = studentMapper.selectById(apply.getStudentId());
+                    if (student != null) {
+                        interview.setStudentNo(student.getStudentNo());
+                        // 通过userId获取学生姓名
+                        if (student.getUserId() != null) {
+                            UserInfo user = userMapper.selectById(student.getUserId());
+                            if (user != null) {
+                                interview.setStudentName(user.getRealName());
+                            }
+                        }
+                    }
                 }
             }
+        }
+        
+        // 将数据库字段映射到前端字段（用于前端显示和编辑）
+        // interviewLink -> videoLink
+        if (StringUtils.hasText(interview.getInterviewLink()) && !StringUtils.hasText(interview.getVideoLink())) {
+            interview.setVideoLink(interview.getInterviewLink());
+        }
+        // interviewContent -> interviewDescription
+        if (StringUtils.hasText(interview.getInterviewContent()) && !StringUtils.hasText(interview.getInterviewDescription())) {
+            interview.setInterviewDescription(interview.getInterviewContent());
+        }
+        // interviewer -> contactPerson
+        if (StringUtils.hasText(interview.getInterviewer()) && !StringUtils.hasText(interview.getContactPerson())) {
+            interview.setContactPerson(interview.getInterviewer());
+        }
+        // interviewPhone -> contactPhone（仅当面试类型为电话面试时）
+        if (interview.getInterviewType() != null && interview.getInterviewType() == 3 
+                && StringUtils.hasText(interview.getInterviewPhone()) && !StringUtils.hasText(interview.getContactPhone())) {
+            interview.setContactPhone(interview.getInterviewPhone());
         }
     }
 }

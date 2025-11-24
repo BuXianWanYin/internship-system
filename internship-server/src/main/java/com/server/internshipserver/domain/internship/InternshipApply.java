@@ -198,6 +198,18 @@ public class InternshipApply implements Serializable {
     @TableField(exist = false)
     private String nextActionTip;
     
+    @ApiModelProperty(value = "状态文本（用于前端显示，根据状态和面试情况动态生成）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "是否有面试记录")
+    @TableField(exist = false)
+    private Boolean hasInterview;
+    
+    @ApiModelProperty(value = "最新面试记录")
+    @TableField(exist = false)
+    private Interview latestInterview;
+    
     /**
      * 状态流转历史项
      */

@@ -63,10 +63,10 @@
       <el-table-column prop="studentName" label="学生姓名" min-width="120" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />
       <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="100" align="center">
+      <el-table-column prop="status" label="状态" width="150" align="center">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status)" size="small">
-            {{ getStatusText(row.status) }}
+            {{ row.statusText || getStatusText(row.status) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -75,11 +75,20 @@
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.status === 0 || row.status === 1"
+            v-if="row.status === 1 && (!row.hasInterview || !row.latestInterview || row.latestInterview.status === 2)"
+            link
+            type="warning"
+            size="small"
+            @click="handleArrangeInterview(row)"
+          >
+            安排面试
+          </el-button>
+          <el-button
+            v-if="row.status === 1"
             link
             type="success"
             size="small"
@@ -88,7 +97,7 @@
             录用
           </el-button>
           <el-button
-            v-if="row.status === 0 || row.status === 1"
+            v-if="row.status === 1"
             link
             type="danger"
             size="small"
@@ -132,7 +141,7 @@
             </el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="getStatusType(detailData.status)" size="small">
-                {{ getStatusText(detailData.status) }}
+                {{ detailData.statusText || getStatusText(detailData.status) }}
               </el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="申请理由" :span="2">
@@ -212,14 +221,21 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.status === 0 || detailData.status === 1"
+          v-if="detailData.status === 1 && (!detailData.hasInterview || !detailData.latestInterview || detailData.latestInterview.status === 2)"
+          type="warning"
+          @click="handleArrangeInterviewFromDetail"
+        >
+          安排面试
+        </el-button>
+        <el-button
+          v-if="detailData.status === 1"
           type="success"
           @click="handleFilterFromDetail(3)"
         >
           录用
         </el-button>
         <el-button
-          v-if="detailData.status === 0 || detailData.status === 1"
+          v-if="detailData.status === 1"
           type="danger"
           @click="handleFilterFromDetail(4)"
         >
@@ -266,12 +282,15 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Document } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+
+const router = useRouter()
 
 const loading = ref(false)
 const filterLoading = ref(false)
@@ -420,6 +439,37 @@ const handleFilterFromDetail = (action) => {
   filterDialogTitle.value = action === 3 ? '录用申请' : '拒绝申请'
   detailDialogVisible.value = false
   filterDialogVisible.value = true
+}
+
+// 安排面试（从列表）
+const handleArrangeInterview = (row) => {
+  // 跳转到面试管理页面，并传递申请ID作为查询参数
+  router.push({
+    path: '/enterprise/internship/interview',
+    query: {
+      applyId: row.applyId,
+      studentId: row.studentId,
+      studentName: row.studentName,
+      postId: row.postId,
+      postName: row.postName
+    }
+  })
+}
+
+// 安排面试（从详情对话框）
+const handleArrangeInterviewFromDetail = () => {
+  // 跳转到面试管理页面，并传递申请ID作为查询参数
+  router.push({
+    path: '/enterprise/internship/interview',
+    query: {
+      applyId: detailData.value.applyId,
+      studentId: detailData.value.studentId,
+      studentName: detailData.value.studentName,
+      postId: detailData.value.postId,
+      postName: detailData.value.postName
+    }
+  })
+  detailDialogVisible.value = false
 }
 
 // 提交筛选操作

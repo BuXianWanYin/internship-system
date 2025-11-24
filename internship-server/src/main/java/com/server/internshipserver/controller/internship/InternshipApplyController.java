@@ -47,7 +47,7 @@ public class InternshipApplyController {
     }
     
     @ApiOperation("分页查询实习申请列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
     @GetMapping("/page")
     public Result<Page<InternshipApply>> getApplyPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -63,7 +63,7 @@ public class InternshipApplyController {
     }
     
     @ApiOperation("查询实习申请详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
     @GetMapping("/{applyId}")
     public Result<InternshipApply> getApplyById(
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId) {
@@ -71,8 +71,8 @@ public class InternshipApplyController {
         return Result.success(apply);
     }
     
-    @ApiOperation("审核实习申请（自主实习）")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @ApiOperation("审核实习申请（合作企业和自主实习）")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @PostMapping("/{applyId}/audit")
     public Result<?> auditApply(
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
