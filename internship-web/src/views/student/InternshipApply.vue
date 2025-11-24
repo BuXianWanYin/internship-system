@@ -6,89 +6,89 @@
         <el-tabs v-model="cooperationSubTab" @tab-change="handleCooperationSubTabChange">
           <!-- 岗位列表 -->
           <el-tab-pane label="岗位列表" name="postList">
-            <div class="apply-section">
-              <el-alert
-                type="info"
-                :closable="false"
-                show-icon
-                style="margin-bottom: 20px"
-              >
-                <template #default>
-                  <div>您可以选择与学校有合作关系的企业发布的岗位进行申请</div>
-                </template>
-              </el-alert>
+        <div class="apply-section">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 20px"
+          >
+            <template #default>
+              <div>您可以选择与学校有合作关系的企业发布的岗位进行申请</div>
+            </template>
+          </el-alert>
 
-              <!-- 搜索栏 -->
-              <div class="search-bar">
-                <el-form :inline="true" :model="searchForm" class="search-form">
-                  <el-form-item label="岗位名称">
-                    <el-input
-                      v-model="searchForm.postName"
-                      placeholder="请输入岗位名称"
-                      clearable
-                      style="width: 200px"
-                      @keyup.enter="handleSearch"
-                    />
-                  </el-form-item>
-                  <el-form-item label="企业名称">
-                    <el-input
-                      v-model="searchForm.enterpriseName"
-                      placeholder="请输入企业名称"
-                      clearable
-                      style="width: 200px"
-                      @keyup.enter="handleSearch"
-                    />
-                  </el-form-item>
-                  <el-form-item>
-                    <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
-                    <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-                  </el-form-item>
-                </el-form>
-              </div>
-
-              <!-- 岗位列表 -->
-              <el-table
-                v-loading="loading"
-                :data="postTableData"
-                stripe
-                style="width: 100%"
-                :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
-              >
-                <el-table-column prop="postName" label="岗位名称" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="workLocation" label="工作地点" min-width="150" />
-                <el-table-column prop="recruitCount" label="招聘人数" width="100" align="center" />
-                <el-table-column prop="appliedCount" label="已申请" width="100" align="center" />
-                <el-table-column label="薪资范围" width="150" align="center">
-                  <template #default="{ row }">
-                    <span v-if="row.salaryMin && row.salaryMax">
-                      {{ row.salaryMin }}-{{ row.salaryMax }}元/{{ row.salaryType || '月' }}
-                    </span>
-                    <span v-else-if="row.salaryType === '面议'">面议</span>
-                    <span v-else style="color: #909399">未设置</span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="200" fixed="right" align="center">
-                  <template #default="{ row }">
-                    <el-button link type="primary" size="small" @click="handleViewPost(row)">查看详情</el-button>
-                    <el-button link type="success" size="small" @click="handleApplyPost(row)">申请</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-
-              <!-- 分页 -->
-              <div class="pagination-container">
-                <el-pagination
-                  v-model:current-page="postPagination.current"
-                  v-model:page-size="postPagination.size"
-                  :total="postPagination.total"
-                  :page-sizes="[10, 20, 50, 100]"
-                  layout="total, sizes, prev, pager, next, jumper"
-                  @size-change="handlePostSizeChange"
-                  @current-change="handlePostPageChange"
+          <!-- 搜索栏 -->
+          <div class="search-bar">
+            <el-form :inline="true" :model="searchForm" class="search-form">
+              <el-form-item label="岗位名称">
+                <el-input
+                  v-model="searchForm.postName"
+                  placeholder="请输入岗位名称"
+                  clearable
+                  style="width: 200px"
+                  @keyup.enter="handleSearch"
                 />
-              </div>
-            </div>
+              </el-form-item>
+              <el-form-item label="企业名称">
+                <el-input
+                  v-model="searchForm.enterpriseName"
+                  placeholder="请输入企业名称"
+                  clearable
+                  style="width: 200px"
+                  @keyup.enter="handleSearch"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+                <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- 岗位列表 -->
+          <el-table
+            v-loading="loading"
+            :data="postTableData"
+            stripe
+            style="width: 100%"
+            :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+          >
+            <el-table-column prop="postName" label="岗位名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="workLocation" label="工作地点" min-width="150" />
+            <el-table-column prop="recruitCount" label="招聘人数" width="100" align="center" />
+            <el-table-column prop="appliedCount" label="已申请" width="100" align="center" />
+            <el-table-column label="薪资范围" width="150" align="center">
+              <template #default="{ row }">
+                <span v-if="row.salaryMin && row.salaryMax">
+                  {{ row.salaryMin }}-{{ row.salaryMax }}元/{{ row.salaryType || '月' }}
+                </span>
+                <span v-else-if="row.salaryType === '面议'">面议</span>
+                <span v-else style="color: #909399">未设置</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" fixed="right" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="handleViewPost(row)">查看详情</el-button>
+                <el-button link type="success" size="small" @click="handleApplyPost(row)">申请</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- 分页 -->
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="postPagination.current"
+              v-model:page-size="postPagination.size"
+              :total="postPagination.total"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handlePostSizeChange"
+              @current-change="handlePostPageChange"
+            />
+          </div>
+        </div>
           </el-tab-pane>
 
           <!-- 我的申请 -->
@@ -186,11 +186,11 @@
             <el-table-column prop="contactPerson" label="联系人" min-width="120" />
             <el-table-column prop="contactPhone" label="联系电话" min-width="120" />
             <el-table-column prop="status" label="状态" width="150" align="center">
-                <template #default="{ row }">
+              <template #default="{ row }">
                     <el-tag :type="getApplyStatusType(row.status, row.statusText)" size="small">
                       {{ row.statusText || getApplyStatusText(row.status) }}
-                    </el-tag>
-                </template>
+                </el-tag>
+              </template>
             </el-table-column>
             <el-table-column prop="createTime" label="申请时间" width="180">
               <template #default="{ row }">
@@ -780,7 +780,7 @@ const handleReset = () => {
 const handleTabChange = (tabName) => {
   if (tabName === 'cooperation') {
     if (cooperationSubTab.value === 'postList') {
-      loadPostData()
+    loadPostData()
     } else if (cooperationSubTab.value === 'myApply') {
       loadCooperationApplyData()
     }

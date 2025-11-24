@@ -173,6 +173,12 @@
               <span v-else style="color: #909399">加载中...</span>
             </template>
           </el-table-column>
+          <el-table-column label="实习企业" min-width="150">
+            <template #default="{ row }">
+              <span v-if="row.currentEnterpriseName">{{ row.currentEnterpriseName }}</span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="status" label="状态" width="80" align="center">
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">

@@ -355,6 +355,8 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             Student student = studentMapper.selectById(apply.getStudentId());
             if (student != null) {
                 apply.setStudentNo(student.getStudentNo());
+                // 设置学生实习状态
+                apply.setStudentInternshipStatus(student.getInternshipStatus());
                 // 获取用户信息
                 if (student.getUserId() != null) {
                     UserInfo user = userMapper.selectById(student.getUserId());
@@ -814,6 +816,59 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             }
         }
         
+        // 如果是自主实习且审核通过，需要创建企业并绑定
+        if (auditStatus == 1 && apply.getApplyType() != null && apply.getApplyType() == 2) {
+            // 检查是否已经绑定了企业ID
+            if (apply.getEnterpriseId() == null) {
+                // 根据企业名称查找是否已存在该企业
+                Enterprise existingEnterprise = enterpriseMapper.selectOne(
+                        new LambdaQueryWrapper<Enterprise>()
+                                .eq(Enterprise::getEnterpriseName, apply.getSelfEnterpriseName())
+                                .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .last("LIMIT 1")
+                );
+                
+                Long enterpriseId;
+                if (existingEnterprise != null) {
+                    // 使用已存在的企业
+                    enterpriseId = existingEnterprise.getEnterpriseId();
+                } else {
+                    // 创建新的企业记录
+                    Enterprise newEnterprise = new Enterprise();
+                    newEnterprise.setEnterpriseName(apply.getSelfEnterpriseName());
+                    // 设置企业地址
+                    if (StringUtils.hasText(apply.getSelfEnterpriseAddress())) {
+                        newEnterprise.setAddress(apply.getSelfEnterpriseAddress());
+                    }
+                    // 设置联系人信息
+                    if (StringUtils.hasText(apply.getSelfContactPerson())) {
+                        newEnterprise.setContactPerson(apply.getSelfContactPerson());
+                    }
+                    if (StringUtils.hasText(apply.getSelfContactPhone())) {
+                        newEnterprise.setContactPhone(apply.getSelfContactPhone());
+                    }
+                    // 自主实习企业默认审核通过，状态启用
+                    newEnterprise.setAuditStatus(1); // 已审核通过
+                    newEnterprise.setStatus(1); // 启用
+                    newEnterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+                    // 生成企业代码（使用自主实习企业名称的拼音首字母或时间戳）
+                    String enterpriseCode = "SELF_" + System.currentTimeMillis();
+                    newEnterprise.setEnterpriseCode(enterpriseCode);
+                    
+                    enterpriseMapper.insert(newEnterprise);
+                    enterpriseId = newEnterprise.getEnterpriseId();
+                }
+                
+                // 绑定企业ID到申请记录
+                apply.setEnterpriseId(enterpriseId);
+                
+                // 对于自主实习，审核通过后直接设置为已录用状态（status=3）
+                // 因为自主实习不需要企业面试流程
+                apply.setStatus(3); // 已录用
+                apply.setAcceptTime(LocalDateTime.now());
+            }
+        }
+        
         return this.updateById(apply);
     }
     
@@ -1111,6 +1166,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 只查询已录用的申请（status = 3）
         wrapper.eq(InternshipApply::getStatus, 3);
         
+        // 只查询学生已确认上岗的申请（student_confirm_status = 1）
+        wrapper.eq(InternshipApply::getStudentConfirmStatus, 1);
+        
         // 数据权限：企业管理员只能查看本企业的学生
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         if (currentUserEnterpriseId != null) {
@@ -1255,11 +1313,12 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         
         // 更新学生：current_apply_id = applyId, current_enterprise_id = enterpriseId, internship_status = 1
         student.setCurrentApplyId(applyId);
+        // 绑定企业ID（自主实习在审核通过时已创建企业并绑定企业ID）
         if (apply.getEnterpriseId() != null) {
             student.setCurrentEnterpriseId(apply.getEnterpriseId());
         } else {
-            // 自主实习，没有企业ID
-            student.setCurrentEnterpriseId(null);
+            // 如果企业ID为空，说明审核时没有正确创建企业，抛出异常
+            throw new BusinessException("申请的企业信息不完整，无法确认上岗，请联系管理员");
         }
         student.setInternshipStatus(1); // 实习中
         studentMapper.updateById(student);
@@ -1336,22 +1395,36 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("该申请没有待审核的解绑申请");
         }
         
-        // 验证申请的学生属于当前用户管理的班级
+        // 验证申请的学生属于当前用户管理的班级或企业
         // 学校管理员可以审核所有学生的解绑申请
         if (!dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
-            if (apply.getStudentId() != null) {
-                Student student = studentMapper.selectById(apply.getStudentId());
-                if (student != null && student.getClassId() != null) {
-                    List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
-                    if (managedClassIds == null || managedClassIds.isEmpty() || !managedClassIds.contains(student.getClassId())) {
-                        // 如果不是班主任，检查是否是学院负责人
-                        if (!dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
-                            throw new BusinessException("无权审核该学生的解绑申请");
-                        }
-                        // 学院负责人需要验证学生是否属于本学院
-                        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-                        if (currentUserCollegeId == null || !currentUserCollegeId.equals(student.getCollegeId())) {
-                            throw new BusinessException("无权审核该学生的解绑申请");
+            // 检查是否是企业管理员或企业导师
+            boolean isEnterpriseUser = dataPermissionUtil.hasRole("ROLE_ENTERPRISE_ADMIN") 
+                    || dataPermissionUtil.hasRole("ROLE_ENTERPRISE_MENTOR");
+            
+            if (isEnterpriseUser) {
+                // 企业管理员或企业导师只能审核本企业的学生的解绑申请
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null 
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权审核该学生的解绑申请");
+                }
+            } else {
+                // 学校端角色（班主任、学院负责人）的权限检查
+                if (apply.getStudentId() != null) {
+                    Student student = studentMapper.selectById(apply.getStudentId());
+                    if (student != null && student.getClassId() != null) {
+                        List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                        if (managedClassIds == null || managedClassIds.isEmpty() || !managedClassIds.contains(student.getClassId())) {
+                            // 如果不是班主任，检查是否是学院负责人
+                            if (!dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+                                throw new BusinessException("无权审核该学生的解绑申请");
+                            }
+                            // 学院负责人需要验证学生是否属于本学院
+                            Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+                            if (currentUserCollegeId == null || !currentUserCollegeId.equals(student.getCollegeId())) {
+                                throw new BusinessException("无权审核该学生的解绑申请");
+                            }
                         }
                     }
                 }

@@ -237,6 +237,10 @@ public class InternshipApply implements Serializable {
     @TableField(exist = false)
     private String mentorName;
     
+    @ApiModelProperty(value = "学生实习状态：0-未实习，1-实习中，2-已离职，3-已结束（用于前端显示）")
+    @TableField(exist = false)
+    private Integer studentInternshipStatus;
+    
     // ========== 状态流转相关字段（不映射到数据库） ==========
     @ApiModelProperty(value = "状态流转历史")
     @TableField(exist = false)

@@ -264,6 +264,12 @@ export const menuItems = [
         roles: ['ROLE_STUDENT']
       },
       {
+        index: '/student/internship/my',
+        title: '我的实习',
+        icon: Briefcase,
+        roles: ['ROLE_STUDENT']
+      },
+      {
         index: '/student/internship/log',
         title: '实习日志',
         icon: Document,
@@ -301,7 +307,7 @@ export const menuItems = [
     index: 'internship-teacher',
     title: '实习管理',
     icon: Document,
-    roles: ['ROLE_INSTRUCTOR', 'ROLE_ENTERPRISE_MENTOR'],
+    roles: ['ROLE_INSTRUCTOR'],
     children: [
       {
         index: '/teacher/internship/log',
@@ -361,7 +367,8 @@ export function filterMenuByRoles(userRoles) {
     return []
   }
   
-  return menuItems
+  // 先过滤并处理菜单项
+  const filteredItems = menuItems
     .filter(item => isMenuVisible(item, userRoles))
     .map(item => {
       // 如果有子菜单，递归过滤
@@ -393,5 +400,38 @@ export function filterMenuByRoles(userRoles) {
       return item
     })
     .filter(item => item !== null)
+  
+  // 合并相同标题的菜单项（避免显示重复的"实习管理"等）
+  const mergedItems = []
+  const titleIndexMap = new Map()
+  
+  for (const item of filteredItems) {
+    if (titleIndexMap.has(item.title)) {
+      // 如果已存在相同标题的菜单项，合并子菜单
+      const existingIndex = titleIndexMap.get(item.title)
+      const existingItem = mergedItems[existingIndex]
+      
+      if (item.children && item.children.length > 0) {
+        if (!existingItem.children) {
+          existingItem.children = []
+        }
+        
+        // 合并子菜单（去重，基于 index）
+        const existingChildrenIndexes = new Set(
+          existingItem.children.map(child => child.index)
+        )
+        const newChildren = item.children.filter(
+          child => !existingChildrenIndexes.has(child.index)
+        )
+        existingItem.children.push(...newChildren)
+      }
+    } else {
+      // 新菜单项，直接添加
+      titleIndexMap.set(item.title, mergedItems.length)
+      mergedItems.push({ ...item })
+    }
+  }
+  
+  return mergedItems
 }
 

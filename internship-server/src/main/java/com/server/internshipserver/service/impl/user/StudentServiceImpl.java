@@ -14,6 +14,8 @@ import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.service.system.ClassService;
 import com.server.internshipserver.service.system.CollegeService;
 import com.server.internshipserver.service.system.MajorService;
@@ -47,6 +49,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     
     @Autowired
     private CollegeService collegeService;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
@@ -220,7 +225,21 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 按创建时间倒序
         wrapper.orderByDesc(Student::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<Student> result = this.page(page, wrapper);
+        
+        // 填充企业信息（如果有当前实习企业）
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (Student student : result.getRecords()) {
+                if (student.getCurrentEnterpriseId() != null) {
+                    Enterprise enterprise = enterpriseMapper.selectById(student.getCurrentEnterpriseId());
+                    if (enterprise != null) {
+                        student.setCurrentEnterpriseName(enterprise.getEnterpriseName());
+                    }
+                }
+            }
+        }
+        
+        return result;
     }
     
     @Override

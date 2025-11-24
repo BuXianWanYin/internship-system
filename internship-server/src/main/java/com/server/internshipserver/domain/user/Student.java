@@ -88,5 +88,10 @@ public class Student implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    // ========== 关联字段（不映射到数据库） ==========
+    @ApiModelProperty(value = "当前实习企业名称（用于前端显示）")
+    @TableField(exist = false)
+    private String currentEnterpriseName;
 }
 

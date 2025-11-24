@@ -16,9 +16,25 @@
         <template #header>
           <div class="card-header">
             <span class="card-title">当前实习信息</span>
-            <el-tag :type="getInternshipStatusType(currentInternship.internshipStatus)" size="large">
-              {{ getInternshipStatusText(currentInternship.internshipStatus) }}
-            </el-tag>
+            <div style="display: flex; align-items: center; gap: 10px">
+              <el-tag :type="getInternshipStatusType(currentInternship.studentInternshipStatus)" size="large">
+                {{ getInternshipStatusText(currentInternship.studentInternshipStatus) }}
+              </el-tag>
+              <el-tag 
+                v-if="currentInternship.studentConfirmStatus === 1" 
+                type="success" 
+                size="small"
+              >
+                已确认上岗
+              </el-tag>
+              <el-tag 
+                v-else-if="currentInternship.studentConfirmStatus === 0" 
+                type="warning" 
+                size="small"
+              >
+                待确认上岗
+              </el-tag>
+            </div>
           </div>
         </template>
         
@@ -37,6 +53,11 @@
           </el-descriptions-item>
           <el-descriptions-item label="实习结束日期">
             {{ formatDate(currentInternship.internshipEndDate) || formatDate(currentInternship.selfEndDate) || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="学生确认状态">
+            <el-tag :type="currentInternship.studentConfirmStatus === 1 ? 'success' : 'warning'" size="small">
+              {{ currentInternship.studentConfirmStatus === 1 ? '已确认上岗' : '待确认上岗' }}
+            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="确认上岗时间">
             {{ formatDateTime(currentInternship.studentConfirmTime) || '-' }}
@@ -196,6 +217,10 @@ const getInternshipStatusText = (status) => {
 
 // 获取实习状态类型
 const getInternshipStatusType = (status) => {
+  // 处理 null 或 undefined，默认为 info（未实习）
+  if (status === null || status === undefined) {
+    return 'info'
+  }
   const typeMap = {
     0: 'info',
     1: 'success',

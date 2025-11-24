@@ -10,6 +10,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -58,7 +59,7 @@ public class AttendanceController {
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
             @ApiParam(value = "学生ID", required = false) @RequestParam(required = false) Long studentId,
             @ApiParam(value = "申请ID", required = false) @RequestParam(required = false) Long applyId,
-            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) LocalDate attendanceDate,
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate,
             @ApiParam(value = "考勤类型", required = false) @RequestParam(required = false) Integer attendanceType,
             @ApiParam(value = "确认状态", required = false) @RequestParam(required = false) Integer confirmStatus) {
         Page<Attendance> page = new Page<>(current, size);
@@ -82,8 +83,8 @@ public class AttendanceController {
             @ApiParam(value = "考勤ID", required = true) @PathVariable Long attendanceId,
             @ApiParam(value = "确认状态（1-已确认，2-已拒绝）", required = true) @RequestParam Integer confirmStatus,
             @ApiParam(value = "确认意见", required = false) @RequestParam(required = false) String confirmComment,
-            @ApiParam(value = "签到时间（可选，用于编辑）", required = false) @RequestParam(required = false) java.time.LocalDateTime checkInTime,
-            @ApiParam(value = "签退时间（可选，用于编辑）", required = false) @RequestParam(required = false) java.time.LocalDateTime checkOutTime) {
+            @ApiParam(value = "签到时间（可选，用于编辑）", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") java.time.LocalDateTime checkInTime,
+            @ApiParam(value = "签退时间（可选，用于编辑）", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") java.time.LocalDateTime checkOutTime) {
         attendanceService.confirmAttendance(attendanceId, confirmStatus, confirmComment, checkInTime, checkOutTime);
         return Result.success("确认成功");
     }
@@ -103,8 +104,8 @@ public class AttendanceController {
     public Result<AttendanceStatistics> getAttendanceStatistics(
             @ApiParam(value = "学生ID", required = false) @RequestParam(required = false) Long studentId,
             @ApiParam(value = "申请ID", required = false) @RequestParam(required = false) Long applyId,
-            @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) LocalDate startDate,
-            @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) LocalDate endDate) {
+            @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
         AttendanceStatistics statistics = attendanceService.getAttendanceStatistics(studentId, applyId, startDate, endDate);
         return Result.success(statistics);
     }
@@ -113,7 +114,7 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/check-in")
     public Result<Attendance> studentCheckIn(
-            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) LocalDate attendanceDate) {
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate) {
         Attendance attendance = attendanceService.studentCheckIn(attendanceDate);
         return Result.success("签到成功", attendance);
     }
@@ -122,7 +123,7 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/check-out")
     public Result<Attendance> studentCheckOut(
-            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) LocalDate attendanceDate) {
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate) {
         Attendance attendance = attendanceService.studentCheckOut(attendanceDate);
         return Result.success("签退成功", attendance);
     }
@@ -131,7 +132,7 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/apply-leave")
     public Result<Attendance> studentApplyLeave(
-            @ApiParam(value = "考勤日期", required = true) @RequestParam LocalDate attendanceDate,
+            @ApiParam(value = "考勤日期", required = true) @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate,
             @ApiParam(value = "请假类型", required = true) @RequestParam String leaveType,
             @ApiParam(value = "请假原因", required = true) @RequestParam String leaveReason) {
         Attendance attendance = attendanceService.studentApplyLeave(attendanceDate, leaveType, leaveReason);
@@ -142,7 +143,7 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/select-rest")
     public Result<Attendance> studentSelectRest(
-            @ApiParam(value = "考勤日期", required = true) @RequestParam LocalDate attendanceDate) {
+            @ApiParam(value = "考勤日期", required = true) @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate) {
         Attendance attendance = attendanceService.studentSelectRest(attendanceDate);
         return Result.success("休息申请提交成功", attendance);
     }

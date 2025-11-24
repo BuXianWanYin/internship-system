@@ -63,6 +63,27 @@
       <el-table-column prop="studentName" label="学生姓名" min-width="120" />
       <el-table-column prop="studentNo" label="学号" min-width="120" />
       <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
+      <el-table-column label="简历附件" width="120" align="center">
+        <template #default="{ row }">
+          <div v-if="row.resumeAttachment && row.resumeAttachment.trim()">
+            <el-tooltip
+              :content="`共 ${(row.resumeAttachment || '').split(',').filter(u => u.trim()).length} 个附件`"
+              placement="top"
+            >
+              <el-button
+                link
+                type="primary"
+                size="small"
+                :icon="Document"
+                @click="handleViewResume(row)"
+              >
+                查看附件
+              </el-button>
+            </el-tooltip>
+          </div>
+          <span v-else style="color: #909399">无</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="150" align="center">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status)" size="small">
@@ -584,6 +605,29 @@ const handleDownloadResume = async (filePath) => {
   } catch (error) {
     console.error('下载文件失败:', error)
     ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 查看简历附件（从列表）
+const handleViewResume = async (row) => {
+  // 如果详情数据已加载且是当前行，直接显示详情对话框
+  if (detailData.value.applyId === row.applyId && detailData.value.resumeAttachment) {
+    activeTab.value = 'student'
+    detailDialogVisible.value = true
+    return
+  }
+  
+  // 否则加载详情
+  try {
+    const res = await applyApi.getApplyById(row.applyId)
+    if (res.code === 200) {
+      detailData.value = res.data
+      activeTab.value = 'student'
+      detailDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('查询详情失败:', error)
+    ElMessage.error('查询详情失败')
   }
 }
 

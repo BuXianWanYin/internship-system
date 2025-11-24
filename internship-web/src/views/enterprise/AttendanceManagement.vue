@@ -192,7 +192,7 @@
       <el-form
         ref="formRef"
         :model="formData"
-        :rules="formRules"
+        :rules="getFormRules()"
         label-width="120px"
       >
         <el-form-item label="学生">
@@ -224,7 +224,21 @@
             value-format="YYYY-MM-DD"
           />
         </el-form-item>
-        <el-form-item label="签到时间" prop="checkInTime">
+        <el-form-item label="考勤类型" prop="attendanceType">
+          <el-radio-group v-model="formData.attendanceType">
+            <el-radio :label="1">正常</el-radio>
+            <el-radio :label="2">迟到</el-radio>
+            <el-radio :label="3">早退</el-radio>
+            <el-radio :label="4">请假</el-radio>
+            <el-radio :label="5">缺勤</el-radio>
+            <el-radio :label="6">休息</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item 
+          v-if="formData.attendanceType !== 4 && formData.attendanceType !== 6" 
+          label="签到时间" 
+          prop="checkInTime"
+        >
           <el-date-picker
             v-model="formData.checkInTime"
             type="datetime"
@@ -233,7 +247,11 @@
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
-        <el-form-item label="签退时间" prop="checkOutTime">
+        <el-form-item 
+          v-if="formData.attendanceType !== 4 && formData.attendanceType !== 6" 
+          label="签退时间" 
+          prop="checkOutTime"
+        >
           <el-date-picker
             v-model="formData.checkOutTime"
             type="datetime"
@@ -242,16 +260,11 @@
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
-        <el-form-item label="考勤类型" prop="attendanceType">
-          <el-radio-group v-model="formData.attendanceType">
-            <el-radio :label="1">正常</el-radio>
-            <el-radio :label="2">迟到</el-radio>
-            <el-radio :label="3">早退</el-radio>
-            <el-radio :label="4">请假</el-radio>
-            <el-radio :label="5">缺勤</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="工作时长（小时）" prop="workHours">
+        <el-form-item 
+          v-if="formData.attendanceType !== 4 && formData.attendanceType !== 6" 
+          label="工作时长（小时）" 
+          prop="workHours"
+        >
           <el-input-number
             v-model="formData.workHours"
             :min="0"
@@ -286,7 +299,7 @@
       <el-form
         ref="confirmFormRef"
         :model="confirmForm"
-        :rules="confirmFormRules"
+        :rules="getConfirmFormRules()"
         label-width="120px"
       >
         <el-form-item label="学生姓名">
@@ -298,7 +311,16 @@
         <el-form-item label="考勤日期">
           <el-input :value="formatDate(confirmForm.attendanceDate)" disabled />
         </el-form-item>
-        <el-form-item label="签到时间" prop="checkInTime">
+        <el-form-item label="考勤类型">
+          <el-tag :type="getAttendanceTypeTagType(confirmForm.attendanceType)" size="small">
+            {{ getAttendanceTypeText(confirmForm.attendanceType) }}
+          </el-tag>
+        </el-form-item>
+        <el-form-item 
+          v-if="confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6" 
+          label="签到时间" 
+          prop="checkInTime"
+        >
           <el-date-picker
             v-model="confirmForm.checkInTime"
             type="datetime"
@@ -307,7 +329,11 @@
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
-        <el-form-item label="签退时间" prop="checkOutTime">
+        <el-form-item 
+          v-if="confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6" 
+          label="签退时间" 
+          prop="checkOutTime"
+        >
           <el-date-picker
             v-model="confirmForm.checkOutTime"
             type="datetime"
@@ -390,7 +416,7 @@
       <el-form
         ref="batchFormRef"
         :model="batchForm"
-        :rules="batchFormRules"
+        :rules="getBatchFormRules()"
         label-width="120px"
       >
         <el-form-item label="考勤日期" prop="attendanceDate">
@@ -424,9 +450,14 @@
             <el-radio :label="3">早退</el-radio>
             <el-radio :label="4">请假</el-radio>
             <el-radio :label="5">缺勤</el-radio>
+            <el-radio :label="6">休息</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="工作时长（小时）" prop="workHours">
+        <el-form-item 
+          v-if="batchForm.attendanceType !== 4 && batchForm.attendanceType !== 6" 
+          label="工作时长（小时）" 
+          prop="workHours"
+        >
           <el-input-number
             v-model="batchForm.workHours"
             :min="0"
@@ -512,32 +543,54 @@ const confirmForm = reactive({
   studentName: '',
   studentNo: '',
   attendanceDate: '',
+  attendanceType: null,
   checkInTime: '',
   checkOutTime: '',
   confirmStatus: 1,
   confirmComment: ''
 })
 
-const confirmFormRules = {
-  checkInTime: [{ required: true, message: '请选择签到时间', trigger: 'change' }],
-  checkOutTime: [{ required: true, message: '请选择签退时间', trigger: 'change' }],
-  confirmStatus: [{ required: true, message: '请选择确认状态', trigger: 'change' }]
+// 动态验证规则：根据考勤类型决定是否需要签到签退时间
+const getConfirmFormRules = () => {
+  const rules = {
+    confirmStatus: [{ required: true, message: '请选择确认状态', trigger: 'change' }]
+  }
+  // 请假(4)和休息(6)不需要签到签退时间
+  if (confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6) {
+    rules.checkInTime = [{ required: true, message: '请选择签到时间', trigger: 'change' }]
+    rules.checkOutTime = [{ required: true, message: '请选择签退时间', trigger: 'change' }]
+  }
+  return rules
 }
 
-const formRules = {
-  studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
-  attendanceDate: [{ required: true, message: '请选择考勤日期', trigger: 'change' }],
-  checkInTime: [{ required: true, message: '请选择签到时间', trigger: 'change' }],
-  checkOutTime: [{ required: true, message: '请选择签退时间', trigger: 'change' }],
-  attendanceType: [{ required: true, message: '请选择考勤类型', trigger: 'change' }],
-  workHours: [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
+// 动态验证规则：根据考勤类型决定是否需要签到签退时间和工作时长
+const getFormRules = () => {
+  const rules = {
+    studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
+    attendanceDate: [{ required: true, message: '请选择考勤日期', trigger: 'change' }],
+    attendanceType: [{ required: true, message: '请选择考勤类型', trigger: 'change' }]
+  }
+  // 请假(4)和休息(6)不需要签到签退时间和工作时长
+  if (formData.attendanceType !== 4 && formData.attendanceType !== 6) {
+    rules.checkInTime = [{ required: true, message: '请选择签到时间', trigger: 'change' }]
+    rules.checkOutTime = [{ required: true, message: '请选择签退时间', trigger: 'change' }]
+    rules.workHours = [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
+  }
+  return rules
 }
 
-const batchFormRules = {
-  attendanceDate: [{ required: true, message: '请选择考勤日期', trigger: 'change' }],
-  studentIds: [{ required: true, message: '请选择学生', trigger: 'change' }],
-  attendanceType: [{ required: true, message: '请选择考勤类型', trigger: 'change' }],
-  workHours: [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
+// 动态验证规则：根据考勤类型决定是否需要工作时长
+const getBatchFormRules = () => {
+  const rules = {
+    attendanceDate: [{ required: true, message: '请选择考勤日期', trigger: 'change' }],
+    studentIds: [{ required: true, message: '请选择学生', trigger: 'change' }],
+    attendanceType: [{ required: true, message: '请选择考勤类型', trigger: 'change' }]
+  }
+  // 请假(4)和休息(6)不需要工作时长
+  if (batchForm.attendanceType !== 4 && batchForm.attendanceType !== 6) {
+    rules.workHours = [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
+  }
+  return rules
 }
 
 // 加载数据
@@ -697,6 +750,7 @@ const handleConfirm = async (row) => {
         studentName: res.data.studentName || '',
         studentNo: res.data.studentNo || '',
         attendanceDate: res.data.attendanceDate,
+        attendanceType: res.data.attendanceType,
         checkInTime: res.data.checkInTime || '',
         checkOutTime: res.data.checkOutTime || '',
         confirmStatus: 1,
@@ -717,12 +771,20 @@ const handleSubmitConfirm = async () => {
     if (valid) {
       confirmLoading.value = true
       try {
+        // 请假和休息类型不需要传递签到签退时间
+        const checkInTime = (confirmForm.attendanceType === 4 || confirmForm.attendanceType === 6) 
+          ? undefined 
+          : (confirmForm.checkInTime || undefined)
+        const checkOutTime = (confirmForm.attendanceType === 4 || confirmForm.attendanceType === 6) 
+          ? undefined 
+          : (confirmForm.checkOutTime || undefined)
+        
         const res = await attendanceApi.confirmAttendance(
           confirmForm.attendanceId,
           confirmForm.confirmStatus,
           confirmForm.confirmComment || undefined,
-          confirmForm.checkInTime || undefined,
-          confirmForm.checkOutTime || undefined
+          checkInTime,
+          checkOutTime
         )
         if (res.code === 200) {
           ElMessage.success('确认成功')
@@ -783,6 +845,12 @@ const handleSubmit = async () => {
           ...formData,
           remark: formData.remark || undefined
         }
+        // 请假(4)和休息(6)不需要签到签退时间和工作时长
+        if (formData.attendanceType === 4 || formData.attendanceType === 6) {
+          data.checkInTime = undefined
+          data.checkOutTime = undefined
+          data.workHours = undefined
+        }
         if (formData.attendanceId) {
           data.attendanceId = formData.attendanceId
           const res = await attendanceApi.updateAttendance(data)
@@ -830,13 +898,17 @@ const handleSubmitBatch = async () => {
             })
             if (res.code === 200 && res.data.records && res.data.records.length > 0) {
               const latestApply = res.data.records[0]
-              attendanceList.push({
+              const attendanceItem = {
                 studentId,
                 applyId: latestApply.applyId,
                 attendanceDate: batchForm.attendanceDate,
-                attendanceType: batchForm.attendanceType,
-                workHours: batchForm.workHours
-              })
+                attendanceType: batchForm.attendanceType
+              }
+              // 请假(4)和休息(6)不需要工作时长
+              if (batchForm.attendanceType !== 4 && batchForm.attendanceType !== 6) {
+                attendanceItem.workHours = batchForm.workHours
+              }
+              attendanceList.push(attendanceItem)
             } else {
               ElMessage.warning(`学生ID ${studentId} 没有已通过的实习申请，已跳过`)
             }

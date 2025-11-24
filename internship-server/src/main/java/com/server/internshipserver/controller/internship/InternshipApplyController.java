@@ -154,8 +154,8 @@ public class InternshipApplyController {
         return Result.success("离职申请提交成功，等待审核");
     }
     
-    @ApiOperation("审核解绑申请（班主任/学院负责人/学校管理员）")
-    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_COLLEGE_LEADER', 'ROLE_SCHOOL_ADMIN')")
+    @ApiOperation("审核解绑申请（班主任/学院负责人/学校管理员/企业管理员/企业导师）")
+    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_COLLEGE_LEADER', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{applyId}/audit-unbind")
     public Result<?> auditUnbind(
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
