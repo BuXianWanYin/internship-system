@@ -86,10 +86,6 @@ public class InternshipApply implements Serializable {
     @TableField("self_description")
     private String selfDescription;
     
-    @ApiModelProperty(value = "简历内容（富文本）", example = "姓名：张三\n学号：2021001")
-    @TableField("resume_content")
-    private String resumeContent;
-    
     @ApiModelProperty(value = "简历附件URL（多个用逗号分隔）", example = "/uploads/resume1.pdf,/uploads/resume2.pdf")
     @TableField("resume_attachment")
     private String resumeAttachment;

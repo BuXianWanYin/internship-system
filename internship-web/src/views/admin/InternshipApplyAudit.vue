@@ -181,9 +181,6 @@
             <el-descriptions-item label="申请理由" :span="2">
               <div style="white-space: pre-wrap">{{ detailData.applyReason || '-' }}</div>
             </el-descriptions-item>
-            <el-descriptions-item v-if="detailData.resumeContent" label="简历内容" :span="2">
-              <div style="white-space: pre-wrap">{{ detailData.resumeContent }}</div>
-            </el-descriptions-item>
             <el-descriptions-item v-if="detailData.resumeAttachment" label="简历附件" :span="2">
               <div class="attachment-list">
                 <div v-for="(url, index) in (detailData.resumeAttachment || '').split(',').filter(u => u)" :key="index" class="attachment-item" style="display: flex; align-items: center; margin-bottom: 8px">

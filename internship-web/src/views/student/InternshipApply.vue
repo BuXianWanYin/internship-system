@@ -282,15 +282,7 @@
         <el-form-item label="申请企业">
           <el-input :value="applyPostForm.enterpriseName" disabled />
         </el-form-item>
-        <el-form-item label="简历内容" prop="resumeContent">
-          <el-input
-            v-model="applyPostForm.resumeContent"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入简历内容（个人基本信息、教育背景、技能特长、实习经历等）"
-          />
-        </el-form-item>
-        <el-form-item label="简历附件">
+        <el-form-item label="简历附件" prop="resumeAttachment">
           <el-upload
             ref="resumeUploadRef"
             v-model:file-list="resumeFileList"
@@ -470,9 +462,6 @@
         <el-descriptions-item label="申请时间">
           {{ formatDateTime(applyDetailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="简历内容" :span="2">
-          <div style="white-space: pre-wrap">{{ applyDetailData.resumeContent || '-' }}</div>
-        </el-descriptions-item>
         <el-descriptions-item v-if="applyDetailData.resumeAttachment" label="简历附件" :span="2">
           <div class="attachment-list">
             <div v-for="(url, index) in (applyDetailData.resumeAttachment || '').split(',').filter(u => u)" :key="index" class="attachment-item" style="display: flex; align-items: center; margin-bottom: 8px">
@@ -536,9 +525,6 @@
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
           {{ formatDateTime(cooperationApplyDetailData.createTime) }}
-        </el-descriptions-item>
-        <el-descriptions-item label="简历内容" :span="2">
-          <div style="white-space: pre-wrap">{{ cooperationApplyDetailData.resumeContent || '-' }}</div>
         </el-descriptions-item>
         <el-descriptions-item v-if="cooperationApplyDetailData.resumeAttachment" label="简历附件" :span="2">
           <div class="attachment-list">
@@ -650,7 +636,6 @@ const applyPostForm = reactive({
   postId: null,
   enterpriseName: '',
   postName: '',
-  resumeContent: '',
   applyReason: ''
 })
 
@@ -675,7 +660,18 @@ const selfApplyForm = reactive({
 })
 
 const applyPostFormRules = {
-  resumeContent: [{ required: true, message: '请输入简历内容', trigger: 'blur' }],
+  resumeAttachment: [
+    { 
+      validator: (rule, value, callback) => {
+        if (resumeAttachmentUrls.value.length === 0 && resumeFileList.value.length === 0) {
+          callback(new Error('请上传简历附件'))
+        } else {
+          callback()
+        }
+      }, 
+      trigger: 'change' 
+    }
+  ],
   applyReason: [{ required: true, message: '请输入申请理由', trigger: 'blur' }]
 }
 
@@ -825,7 +821,6 @@ const handleApplyFromPostDetail = () => {
   applyPostForm.postId = postDetailData.value.postId
   applyPostForm.enterpriseName = postDetailData.value.enterpriseName || ''
   applyPostForm.postName = postDetailData.value.postName
-  applyPostForm.resumeContent = ''
   applyPostForm.applyReason = ''
   resumeFileList.value = []
   resumeAttachmentUrls.value = []
@@ -935,7 +930,7 @@ const handleSubmitPostApply = async () => {
           enterpriseId: applyPostForm.enterpriseId,
           postId: applyPostForm.postId,
           resumeContent: applyPostForm.resumeContent,
-          resumeAttachment: resumeAttachmentUrlsStr || undefined,
+          resumeAttachment: resumeAttachmentUrlsStr,
           applyReason: applyPostForm.applyReason
         })
         if (res.code === 200) {

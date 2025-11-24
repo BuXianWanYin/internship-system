@@ -137,13 +137,33 @@
         <el-form-item label="申请企业">
           <el-input :value="applyForm.enterpriseName" disabled />
         </el-form-item>
-        <el-form-item label="简历内容" prop="resumeContent">
-          <el-input
-            v-model="applyForm.resumeContent"
-            type="textarea"
-            :rows="6"
-            placeholder="请输入简历内容（个人基本信息、教育背景、技能特长、实习经历等）"
-          />
+        <el-form-item label="简历附件" prop="resumeAttachment">
+          <el-upload
+            ref="resumeUploadRef"
+            v-model:file-list="resumeFileList"
+            :auto-upload="false"
+            :limit="5"
+            :on-change="handleResumeFileChange"
+            :on-remove="handleResumeFileRemove"
+            :before-upload="beforeResumeUpload"
+            accept=".doc,.docx,.pdf"
+            multiple
+          >
+            <el-button type="primary" :icon="Upload">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传Word文档（.doc, .docx）和PDF文件（.pdf），最多5个文件，单个文件不超过10MB
+              </div>
+            </template>
+          </el-upload>
+          <div v-if="resumeAttachmentUrls.length > 0" class="attachment-list" style="margin-top: 10px">
+            <div v-for="(url, index) in resumeAttachmentUrls" :key="index" class="attachment-item" style="display: flex; align-items: center; margin-bottom: 8px">
+              <el-icon style="margin-right: 8px"><Document /></el-icon>
+              <span style="flex: 1; margin-right: 8px">{{ getResumeFileName(url) }}</span>
+              <el-button link type="primary" size="small" @click="handleDownloadResume(url)">下载</el-button>
+              <el-button link type="danger" size="small" @click="removeResumeAttachment(index)">删除</el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="申请理由" prop="applyReason">
           <el-input
@@ -165,9 +185,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Upload, Document } from '@element-plus/icons-vue'
 import { postApi } from '@/api/internship/post'
 import { applyApi } from '@/api/internship/apply'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -197,12 +218,26 @@ const applyForm = reactive({
   postId: null,
   enterpriseName: '',
   postName: '',
-  resumeContent: '',
   applyReason: ''
 })
 
+const resumeUploadRef = ref(null)
+const resumeFileList = ref([])
+const resumeAttachmentUrls = ref([])
+
 const applyFormRules = {
-  resumeContent: [{ required: true, message: '请输入简历内容', trigger: 'blur' }],
+  resumeAttachment: [
+    { 
+      validator: (rule, value, callback) => {
+        if (resumeAttachmentUrls.value.length === 0 && resumeFileList.value.length === 0) {
+          callback(new Error('请上传简历附件'))
+        } else {
+          callback()
+        }
+      }, 
+      trigger: 'change' 
+    }
+  ],
   applyReason: [{ required: true, message: '请输入申请理由', trigger: 'blur' }]
 }
 
@@ -263,8 +298,9 @@ const handleApply = (row) => {
   applyForm.postId = row.postId
   applyForm.enterpriseName = row.enterpriseName || ''
   applyForm.postName = row.postName
-  applyForm.resumeContent = ''
   applyForm.applyReason = ''
+  resumeFileList.value = []
+  resumeAttachmentUrls.value = []
   applyDialogVisible.value = true
 }
 
@@ -275,9 +311,92 @@ const handleApplyFromDetail = () => {
   applyForm.postId = detailData.value.postId
   applyForm.enterpriseName = detailData.value.enterpriseName || ''
   applyForm.postName = detailData.value.postName
-  applyForm.resumeContent = ''
   applyForm.applyReason = ''
+  resumeFileList.value = []
+  resumeAttachmentUrls.value = []
   applyDialogVisible.value = true
+}
+
+// 简历文件上传前验证
+const beforeResumeUpload = (file) => {
+  const fileExtension = file.name.split('.').pop().toLowerCase()
+  const allowedExtensions = ['pdf', 'doc', 'docx']
+  
+  if (!allowedExtensions.includes(fileExtension)) {
+    ElMessage.error('只支持上传Word文档（.doc, .docx）和PDF文件（.pdf）')
+    return false
+  }
+  
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  
+  return true
+}
+
+// 简历文件变化
+const handleResumeFileChange = (file, fileList) => {
+  // 文件已添加到列表，稍后统一上传
+}
+
+// 简历文件移除
+const handleResumeFileRemove = (file, fileList) => {
+  // 文件已从列表移除
+}
+
+// 上传简历附件
+const uploadResumeAttachments = async () => {
+  if (resumeFileList.value.length === 0) {
+    return resumeAttachmentUrls.value.join(',')
+  }
+  
+  const files = resumeFileList.value.map(item => item.raw).filter(Boolean)
+  if (files.length === 0) {
+    return resumeAttachmentUrls.value.join(',')
+  }
+  
+  try {
+    const res = await fileApi.uploadFiles(files)
+    if (res.code === 200 && res.data) {
+      // 合并新上传的文件和已有附件
+      const newUrls = [...resumeAttachmentUrls.value, ...res.data]
+      return newUrls.join(',')
+    }
+  } catch (error) {
+    console.error('简历附件上传失败:', error)
+    ElMessage.error('简历附件上传失败: ' + (error.response?.data?.message || error.message))
+    throw error
+  }
+  
+  return resumeAttachmentUrls.value.join(',')
+}
+
+// 获取简历文件名
+const getResumeFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 下载简历文件
+const handleDownloadResume = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 移除简历附件
+const removeResumeAttachment = (index) => {
+  resumeAttachmentUrls.value.splice(index, 1)
 }
 
 // 提交申请
@@ -287,15 +406,26 @@ const handleSubmitApply = async () => {
     if (valid) {
       applyLoading.value = true
       try {
+        // 先上传简历附件
+        let resumeAttachmentUrlsStr = ''
+        try {
+          resumeAttachmentUrlsStr = await uploadResumeAttachments()
+        } catch (error) {
+          applyLoading.value = false
+          return
+        }
+        
         const res = await applyApi.addCooperationApply({
           enterpriseId: applyForm.enterpriseId,
           postId: applyForm.postId,
-          resumeContent: applyForm.resumeContent,
+          resumeAttachment: resumeAttachmentUrlsStr,
           applyReason: applyForm.applyReason
         })
         if (res.code === 200) {
           ElMessage.success('申请提交成功')
           applyDialogVisible.value = false
+          resumeFileList.value = []
+          resumeAttachmentUrls.value = []
         }
       } catch (error) {
         console.error('提交申请失败:', error)
