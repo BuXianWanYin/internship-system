@@ -51,9 +51,25 @@ public class UserInfo implements Serializable {
     @TableField("email")
     private String email;
     
+    @ApiModelProperty(value = "性别", example = "男")
+    @TableField("gender")
+    private String gender;
+    
+    @ApiModelProperty(value = "昵称", example = "昵称")
+    @TableField("nickname")
+    private String nickname;
+    
     @ApiModelProperty(value = "头像URL", example = "/avatar/default.jpg")
     @TableField("avatar")
     private String avatar;
+    
+    @ApiModelProperty(value = "地址", example = "北京市朝阳区")
+    @TableField("address")
+    private String address;
+    
+    @ApiModelProperty(value = "个人介绍", example = "个人介绍")
+    @TableField("introduction")
+    private String introduction;
     
     @ApiModelProperty(value = "状态：1-启用，0-禁用", example = "1")
     @TableField("status")

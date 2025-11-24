@@ -1,15 +1,18 @@
 <template>
   <div class="profile-container">
-    <el-row :gutter="20">
+    <el-row :gutter="24">
       <!-- 左侧：用户信息卡片 -->
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card class="profile-card" shadow="hover">
           <div class="profile-header">
+            <!-- Banner区域 -->
             <div class="banner">
               <div class="banner-content">
                 <h3>高校实习管理系统</h3>
               </div>
             </div>
+            
+            <!-- 头像区域 -->
             <div class="avatar-section">
               <el-upload
                 class="avatar-uploader"
@@ -18,7 +21,6 @@
                 :show-file-list="false"
                 :on-success="handleAvatarSuccess"
                 :before-upload="beforeAvatarUpload"
-                :disabled="!isEditingProfile"
               >
                 <el-avatar
                   v-if="profileForm.avatar"
@@ -32,18 +34,29 @@
                   :icon="User"
                   class="profile-avatar"
                 />
-                <div v-if="isEditingProfile" class="avatar-edit-overlay">
+                <div class="avatar-edit-overlay">
                   <el-icon><Camera /></el-icon>
                 </div>
               </el-upload>
             </div>
+            
+            <!-- 用户信息区域 -->
             <div class="user-info-section">
               <h3 class="user-name">{{ profileForm.realName || profileForm.username || '用户' }}</h3>
-              <p class="user-desc">{{ profileForm.email || '暂无邮箱' }}</p>
+              <p class="user-desc">{{ getUserRoleDesc() }}</p>
+              
               <div class="user-details">
                 <div class="detail-item">
                   <el-icon><Message /></el-icon>
                   <span>{{ profileForm.email || '暂无邮箱' }}</span>
+                </div>
+                <div class="detail-item">
+                  <el-icon><User /></el-icon>
+                  <span>{{ profileForm.realName || '暂无姓名' }}</span>
+                </div>
+                <div class="detail-item">
+                  <el-icon><Location /></el-icon>
+                  <span>{{ profileForm.address || '暂无地址' }}</span>
                 </div>
                 <div class="detail-item">
                   <el-icon><Phone /></el-icon>
@@ -56,18 +69,12 @@
       </el-col>
 
       <!-- 右侧：设置内容 -->
-      <el-col :span="18">
-        <el-card shadow="hover">
+      <el-col :span="16">
+        <!-- 基本设置 -->
+        <el-card class="setting-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>个人设置</span>
-            </div>
-          </template>
-
-          <!-- 基本设置 -->
-          <div class="setting-section">
-            <div class="section-header">
-              <h3>基本设置</h3>
+              <span class="card-title">基本设置</span>
               <el-button
                 v-if="!isEditingProfile"
                 type="primary"
@@ -83,34 +90,80 @@
                 </el-button>
               </div>
             </div>
+          </template>
 
-            <el-form
-              ref="profileFormRef"
-              :model="profileForm"
-              :rules="profileRules"
-              label-width="100px"
-              :disabled="!isEditingProfile"
-            >
-              <el-form-item label="用户名">
-                <el-input v-model="profileForm.username" disabled />
-              </el-form-item>
-              <el-form-item label="姓名" prop="realName">
-                <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
-              </el-form-item>
-              <el-form-item label="邮箱" prop="email">
-                <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
-              </el-form-item>
-              <el-form-item label="手机" prop="phone">
-                <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
-              </el-form-item>
-            </el-form>
-          </div>
+          <el-form
+            ref="profileFormRef"
+            :model="profileForm"
+            :rules="profileRules"
+            label-width="100px"
+            :disabled="!isEditingProfile"
+            class="profile-form"
+          >
+            <el-form-item label="姓名" prop="realName">
+              <el-input 
+                v-model="profileForm.realName" 
+                placeholder="请输入姓名"
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="性别" prop="gender">
+              <el-select 
+                v-model="profileForm.gender" 
+                placeholder="请选择性别"
+                class="form-input"
+              >
+                <el-option label="男" value="男" />
+                <el-option label="女" value="女" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="昵称" prop="nickname">
+              <el-input 
+                v-model="profileForm.nickname" 
+                placeholder="请输入昵称"
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="邮箱" prop="email">
+              <el-input 
+                v-model="profileForm.email" 
+                placeholder="请输入邮箱"
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="手机" prop="phone">
+              <el-input 
+                v-model="profileForm.phone" 
+                placeholder="请输入手机号"
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="地址" prop="address">
+              <el-input 
+                v-model="profileForm.address" 
+                type="textarea"
+                :rows="2"
+                placeholder="请输入地址"
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="个人介绍" prop="introduction">
+              <el-input 
+                v-model="profileForm.introduction" 
+                type="textarea"
+                :rows="4"
+                placeholder="请输入个人介绍"
+                class="form-input"
+              />
+            </el-form-item>
+          </el-form>
+        </el-card>
 
-          <!-- 更改密码 -->
-          <el-divider />
-          <div class="setting-section">
-            <div class="section-header">
-              <h3>更改密码</h3>
+        <!-- 更改密码 -->
+        <el-card class="setting-card" shadow="hover" style="margin-top: 20px;">
+          <template #header>
+            <div class="card-header">
+              <span class="card-title">更改密码</span>
               <el-button
                 v-if="!isEditingPassword"
                 type="primary"
@@ -126,40 +179,44 @@
                 </el-button>
               </div>
             </div>
+          </template>
 
-            <el-form
-              ref="passwordFormRef"
-              :model="passwordForm"
-              :rules="passwordRules"
-              label-width="100px"
-              :disabled="!isEditingPassword"
-            >
-              <el-form-item label="当前密码" prop="oldPassword">
-                <el-input
-                  v-model="passwordForm.oldPassword"
-                  type="password"
-                  placeholder="请输入当前密码"
-                  show-password
-                />
-              </el-form-item>
-              <el-form-item label="新密码" prop="newPassword">
-                <el-input
-                  v-model="passwordForm.newPassword"
-                  type="password"
-                  placeholder="请输入新密码（6-20个字符）"
-                  show-password
-                />
-              </el-form-item>
-              <el-form-item label="确认新密码" prop="confirmPassword">
-                <el-input
-                  v-model="passwordForm.confirmPassword"
-                  type="password"
-                  placeholder="请再次输入新密码"
-                  show-password
-                />
-              </el-form-item>
-            </el-form>
-          </div>
+          <el-form
+            ref="passwordFormRef"
+            :model="passwordForm"
+            :rules="passwordRules"
+            label-width="100px"
+            :disabled="!isEditingPassword"
+            class="profile-form"
+          >
+            <el-form-item label="当前密码" prop="oldPassword">
+              <el-input
+                v-model="passwordForm.oldPassword"
+                type="password"
+                placeholder="请输入当前密码"
+                show-password
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="新密码" prop="newPassword">
+              <el-input
+                v-model="passwordForm.newPassword"
+                type="password"
+                placeholder="请输入新密码（6-20个字符）"
+                show-password
+                class="form-input"
+              />
+            </el-form-item>
+            <el-form-item label="确认新密码" prop="confirmPassword">
+              <el-input
+                v-model="passwordForm.confirmPassword"
+                type="password"
+                placeholder="请再次输入新密码"
+                show-password
+                class="form-input"
+              />
+            </el-form-item>
+          </el-form>
         </el-card>
       </el-col>
     </el-row>
@@ -169,10 +226,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { User, Edit, Camera, Message, Phone } from '@element-plus/icons-vue'
+import { User, Edit, Camera, Message, Phone, Location } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import { userApi } from '@/api/user/user'
-import request from '@/utils/request'
 
 const authStore = useAuthStore()
 
@@ -193,7 +249,11 @@ const profileForm = reactive({
   realName: '',
   email: '',
   phone: '',
-  avatar: ''
+  avatar: '',
+  gender: '',
+  nickname: '',
+  address: '',
+  introduction: ''
 })
 
 const originalProfile = ref({})
@@ -254,6 +314,25 @@ const avatarUrl = computed(() => {
   return ''
 })
 
+// 获取用户角色描述
+const getUserRoleDesc = () => {
+  const roles = authStore.userInfo?.roles || []
+  if (roles.length > 0) {
+    const roleNames = {
+      'ROLE_SYSTEM_ADMIN': '系统管理员',
+      'ROLE_SCHOOL_ADMIN': '学校管理员',
+      'ROLE_COLLEGE_LEADER': '学院负责人',
+      'ROLE_CLASS_TEACHER': '班主任',
+      'ROLE_INSTRUCTOR': '指导教师',
+      'ROLE_STUDENT': '学生',
+      'ROLE_ENTERPRISE_ADMIN': '企业管理员',
+      'ROLE_ENTERPRISE_MENTOR': '企业导师'
+    }
+    return roleNames[roles[0]] || '用户'
+  }
+  return '用户'
+}
+
 // 加载用户信息
 const loadUserInfo = async () => {
   try {
@@ -265,7 +344,11 @@ const loadUserInfo = async () => {
         realName: res.data.realName || '',
         email: res.data.email || '',
         phone: res.data.phone || '',
-        avatar: res.data.avatar || ''
+        avatar: res.data.avatar || '',
+        gender: res.data.gender || '',
+        nickname: res.data.nickname || '',
+        address: res.data.address || '',
+        introduction: res.data.introduction || ''
       })
       originalProfile.value = { ...profileForm }
     }
@@ -298,7 +381,11 @@ const saveProfile = async () => {
       realName: profileForm.realName,
       email: profileForm.email,
       phone: profileForm.phone,
-      avatar: profileForm.avatar
+      avatar: profileForm.avatar,
+      gender: profileForm.gender,
+      nickname: profileForm.nickname,
+      address: profileForm.address,
+      introduction: profileForm.introduction
     })
     
     if (res.code === 200) {
@@ -326,10 +413,28 @@ const saveProfile = async () => {
 }
 
 // 头像上传成功
-const handleAvatarSuccess = (response) => {
+const handleAvatarSuccess = async (response) => {
   if (response.code === 200 && response.data) {
-    profileForm.avatar = response.data.url || response.data
+    const avatarUrl = response.data.url || response.data
+    profileForm.avatar = avatarUrl
     ElMessage.success('头像上传成功')
+    
+    // 自动保存头像
+    try {
+      const res = await userApi.updateCurrentUserProfile({
+        avatar: avatarUrl
+      })
+      if (res.code === 200) {
+        // 更新 store 中的用户信息
+        authStore.updateUserInfo({
+          ...authStore.userInfo,
+          avatar: avatarUrl
+        })
+        originalProfile.value.avatar = avatarUrl
+      }
+    } catch (error) {
+      ElMessage.warning('头像已上传，但保存失败，请稍后重试')
+    }
   } else {
     ElMessage.error('头像上传失败')
   }
@@ -428,7 +533,7 @@ onMounted(() => {
 
 .banner {
   height: 120px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
   border-radius: 8px 8px 0 0;
   margin: -20px -20px 0 -20px;
   display: flex;
@@ -452,6 +557,7 @@ onMounted(() => {
 
 .avatar-uploader {
   position: relative;
+  cursor: pointer;
 }
 
 .profile-avatar {
@@ -473,6 +579,12 @@ onMounted(() => {
   color: #fff;
   cursor: pointer;
   border: 2px solid #fff;
+  transition: all 0.3s;
+}
+
+.avatar-edit-overlay:hover {
+  background: #66b1ff;
+  transform: scale(1.1);
 }
 
 .user-info-section {
@@ -480,7 +592,7 @@ onMounted(() => {
 }
 
 .user-name {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
   color: #303133;
   margin: 0 0 8px 0;
@@ -489,7 +601,7 @@ onMounted(() => {
 .user-desc {
   font-size: 14px;
   color: #909399;
-  margin: 0 0 16px 0;
+  margin: 0 0 20px 0;
 }
 
 .user-details {
@@ -500,7 +612,7 @@ onMounted(() => {
 .detail-item {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   font-size: 14px;
   color: #606266;
 }
@@ -508,41 +620,48 @@ onMounted(() => {
 .detail-item .el-icon {
   margin-right: 8px;
   color: #909399;
+  font-size: 16px;
+}
+
+.setting-card {
+  margin-bottom: 0;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 16px;
-  font-weight: 500;
 }
 
-.setting-section {
-  margin-bottom: 30px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-header h3 {
-  margin: 0;
+.card-title {
   font-size: 16px;
   font-weight: 500;
   color: #303133;
+}
+
+.profile-form {
+  max-width: 800px;
 }
 
 :deep(.el-form-item) {
   margin-bottom: 22px;
 }
 
-:deep(.el-input),
-:deep(.el-textarea) {
-  max-width: 500px;
+.form-input {
+  width: 100%;
+  max-width: 600px;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 4px;
+}
+
+:deep(.el-textarea__inner) {
+  border-radius: 4px;
+}
+
+:deep(.el-select) {
+  width: 100%;
+  max-width: 600px;
 }
 </style>
-

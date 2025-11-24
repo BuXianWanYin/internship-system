@@ -1054,7 +1054,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         // 获取当前用户
         UserInfo currentUser = getCurrentUser();
         
-        // 只允许更新以下字段：realName, phone, email, avatar
+        // 只允许更新以下字段：realName, phone, email, avatar, gender, nickname, address, introduction
         if (StringUtils.hasText(user.getRealName())) {
             currentUser.setRealName(user.getRealName());
         }
@@ -1066,6 +1066,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         }
         if (user.getAvatar() != null) {
             currentUser.setAvatar(user.getAvatar());
+        }
+        if (user.getGender() != null) {
+            currentUser.setGender(user.getGender());
+        }
+        if (user.getNickname() != null) {
+            currentUser.setNickname(user.getNickname());
+        }
+        if (user.getAddress() != null) {
+            currentUser.setAddress(user.getAddress());
+        }
+        if (user.getIntroduction() != null) {
+            currentUser.setIntroduction(user.getIntroduction());
         }
         
         // 更新用户信息
