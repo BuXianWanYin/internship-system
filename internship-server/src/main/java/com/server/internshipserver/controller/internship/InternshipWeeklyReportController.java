@@ -41,7 +41,7 @@ public class InternshipWeeklyReportController {
     }
     
     @ApiOperation("分页查询周报列表")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @GetMapping("/page")
     public Result<Page<InternshipWeeklyReport>> getReportPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -56,7 +56,7 @@ public class InternshipWeeklyReportController {
     }
     
     @ApiOperation("查询周报详情")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @GetMapping("/{reportId}")
     public Result<InternshipWeeklyReport> getReportById(
             @ApiParam(value = "周报ID", required = true) @PathVariable Long reportId) {
@@ -65,7 +65,7 @@ public class InternshipWeeklyReportController {
     }
     
     @ApiOperation("批阅周报")
-    @PreAuthorize("hasAnyRole('ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @PostMapping("/{reportId}/review")
     public Result<?> reviewReport(
             @ApiParam(value = "周报ID", required = true) @PathVariable Long reportId,

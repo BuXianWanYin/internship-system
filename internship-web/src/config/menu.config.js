@@ -175,19 +175,19 @@ export const menuItems = [
         index: '/teacher/internship/log',
         title: '实习日志批阅',
         icon: Document,
-        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/weekly-report',
         title: '周报批阅',
         icon: Files,
-        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/achievement',
         title: '成果审核',
         icon: Files,
-        roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
       }
     ]
   },
@@ -295,7 +295,7 @@ export const menuItems = [
     index: 'internship-teacher',
     title: '实习管理',
     icon: Document,
-    roles: ['ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_SCHOOL_ADMIN'],
+    roles: ['ROLE_INSTRUCTOR', 'ROLE_ENTERPRISE_MENTOR'],
     children: [
       {
         index: '/teacher/internship/log',
