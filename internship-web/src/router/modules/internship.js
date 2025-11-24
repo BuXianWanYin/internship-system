@@ -63,6 +63,16 @@ export default [
     }
   },
   {
+    path: '/enterprise/internship/student',
+    name: 'EnterpriseStudentManagement',
+    component: () => import('@/views/enterprise/StudentManagement.vue'),
+    meta: {
+      title: '实习学生管理',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_ADMIN']
+    }
+  },
+  {
     path: '/enterprise/internship/interview',
     name: 'EnterpriseInterviewManagement',
     component: () => import('@/views/enterprise/InterviewManagement.vue'),

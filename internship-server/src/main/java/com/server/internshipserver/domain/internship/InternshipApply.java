@@ -142,6 +142,10 @@ public class InternshipApply implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime acceptTime;
     
+    @ApiModelProperty(value = "企业导师ID", example = "1")
+    @TableField("mentor_id")
+    private Long mentorId;
+    
     @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
     @TableField("delete_flag")
     private Integer deleteFlag;
@@ -188,6 +192,10 @@ public class InternshipApply implements Serializable {
     @ApiModelProperty(value = "联系电话（用于前端显示）")
     @TableField(exist = false)
     private String contactPhone;
+    
+    @ApiModelProperty(value = "企业导师姓名（用于前端显示）")
+    @TableField(exist = false)
+    private String mentorName;
     
     // ========== 状态流转相关字段（不映射到数据库） ==========
     @ApiModelProperty(value = "状态流转历史")

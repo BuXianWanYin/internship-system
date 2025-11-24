@@ -20,6 +20,8 @@ import com.server.internshipserver.mapper.internship.InterviewMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
+import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import com.server.internshipserver.service.internship.InternshipApplyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +61,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     
     @Autowired
     private InterviewMapper interviewMapper;
+    
+    @Autowired
+    private EnterpriseMentorMapper enterpriseMentorMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -396,6 +401,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             UserInfo auditor = userMapper.selectById(apply.getAuditUserId());
             if (auditor != null) {
                 apply.setAuditorName(auditor.getRealName());
+            }
+        }
+        
+        // 填充企业导师信息
+        if (apply.getMentorId() != null) {
+            EnterpriseMentor mentor = enterpriseMentorMapper.selectById(apply.getMentorId());
+            if (mentor != null) {
+                apply.setMentorName(mentor.getMentorName());
             }
         }
         
@@ -1084,6 +1097,103 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             // 如果没有管理的班级，返回空结果
             wrapper.eq(InternshipApply::getApplyId, -1L);
         }
+    }
+    
+    @Override
+    public Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId) {
+        LambdaQueryWrapper<InternshipApply> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        wrapper.eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        // 只查询合作企业申请
+        wrapper.eq(InternshipApply::getApplyType, 1);
+        
+        // 只查询已录用的申请（status = 3）
+        wrapper.eq(InternshipApply::getStatus, 3);
+        
+        // 数据权限：企业管理员只能查看本企业的学生
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null) {
+            wrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);
+        } else {
+            // 如果没有企业ID，返回空结果
+            wrapper.eq(InternshipApply::getApplyId, -1L);
+        }
+        
+        // 条件查询
+        if (postId != null) {
+            wrapper.eq(InternshipApply::getPostId, postId);
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(InternshipApply::getCreateTime);
+        
+        Page<InternshipApply> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipApply apply : result.getRecords()) {
+                fillApplyRelatedFields(apply);
+                
+                // 如果学生姓名或学号条件存在，进行过滤
+                if (StringUtils.hasText(studentName) || StringUtils.hasText(studentNo)) {
+                    boolean match = true;
+                    if (StringUtils.hasText(studentName) && 
+                        (apply.getStudentName() == null || !apply.getStudentName().contains(studentName))) {
+                        match = false;
+                    }
+                    if (StringUtils.hasText(studentNo) && 
+                        (apply.getStudentNo() == null || !apply.getStudentNo().contains(studentNo))) {
+                        match = false;
+                    }
+                    if (!match) {
+                        result.getRecords().remove(apply);
+                    }
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean assignMentor(Long applyId, Long mentorId) {
+        // 参数校验
+        if (applyId == null) {
+            throw new BusinessException("申请ID不能为空");
+        }
+        if (mentorId == null) {
+            throw new BusinessException("企业导师ID不能为空");
+        }
+        
+        // 检查申请是否存在
+        InternshipApply apply = this.getById(applyId);
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("申请不存在");
+        }
+        
+        // 数据权限：企业管理员只能分配本企业的导师
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+            throw new BusinessException("无权操作该申请");
+        }
+        
+        // 检查企业导师是否存在且属于该企业
+        EnterpriseMentor mentor = enterpriseMentorMapper.selectById(mentorId);
+        if (mentor == null || mentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("企业导师不存在");
+        }
+        if (!mentor.getEnterpriseId().equals(apply.getEnterpriseId())) {
+            throw new BusinessException("企业导师不属于该企业");
+        }
+        
+        // 更新申请的企业导师ID
+        apply.setMentorId(mentorId);
+        this.updateById(apply);
+        
+        return true;
     }
 }
 

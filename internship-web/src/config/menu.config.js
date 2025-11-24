@@ -212,6 +212,12 @@ export const menuItems = [
         roles: ['ROLE_ENTERPRISE_ADMIN']
       },
       {
+        index: '/enterprise/internship/student',
+        title: '实习学生管理',
+        icon: User,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
         index: '/enterprise/internship/interview',
         title: '面试管理',
         icon: ChatLineRound,

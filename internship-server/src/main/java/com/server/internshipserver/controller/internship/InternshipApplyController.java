@@ -110,5 +110,29 @@ public class InternshipApplyController {
         internshipApplyService.deleteApply(applyId);
         return Result.success("删除成功");
     }
+    
+    @ApiOperation("查询企业实习学生列表（仅显示已录用的学生）")
+    @PreAuthorize("hasRole('ROLE_ENTERPRISE_ADMIN')")
+    @GetMapping("/enterprise/students")
+    public Result<Page<InternshipApply>> getEnterpriseStudents(
+            @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
+            @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
+            @ApiParam(value = "学生姓名", required = false) @RequestParam(required = false) String studentName,
+            @ApiParam(value = "学号", required = false) @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "岗位ID", required = false) @RequestParam(required = false) Long postId) {
+        Page<InternshipApply> page = new Page<>(current, size);
+        Page<InternshipApply> result = internshipApplyService.getEnterpriseStudents(page, studentName, studentNo, postId);
+        return Result.success(result);
+    }
+    
+    @ApiOperation("给学生分配企业导师")
+    @PreAuthorize("hasRole('ROLE_ENTERPRISE_ADMIN')")
+    @PostMapping("/{applyId}/assign-mentor")
+    public Result<?> assignMentor(
+            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
+            @ApiParam(value = "企业导师ID", required = true) @RequestParam Long mentorId) {
+        internshipApplyService.assignMentor(applyId, mentorId);
+        return Result.success("分配成功");
+    }
 }
 

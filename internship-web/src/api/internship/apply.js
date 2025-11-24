@@ -44,6 +44,16 @@ export const applyApi = {
   // 删除申请
   deleteApply(applyId) {
     return request.delete(`/internship/apply/${applyId}`)
+  },
+  // 查询企业实习学生列表（仅显示已录用的学生）
+  getEnterpriseStudents(params) {
+    return request.get('/internship/apply/enterprise/students', { params })
+  },
+  // 给学生分配企业导师
+  assignMentor(applyId, mentorId) {
+    return request.post(`/internship/apply/${applyId}/assign-mentor`, null, {
+      params: { mentorId }
+    })
   }
 }
 
