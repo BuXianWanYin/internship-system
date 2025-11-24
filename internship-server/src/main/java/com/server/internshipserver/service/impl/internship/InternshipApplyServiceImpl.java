@@ -317,10 +317,16 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
             if (enterprise != null) {
                 apply.setEnterpriseName(enterprise.getEnterpriseName());
+                apply.setEnterpriseAddress(enterprise.getAddress());
+                apply.setContactPerson(enterprise.getContactPerson());
+                apply.setContactPhone(enterprise.getContactPhone());
             }
         } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
-            // 自主实习，使用自主实习企业名称（学生申请时填写）
+            // 自主实习，使用自主实习企业信息（学生申请时填写）
             apply.setEnterpriseName(apply.getSelfEnterpriseName());
+            apply.setEnterpriseAddress(apply.getSelfEnterpriseAddress());
+            apply.setContactPerson(apply.getSelfContactPerson());
+            apply.setContactPhone(apply.getSelfContactPhone());
         }
         
         // 填充岗位信息

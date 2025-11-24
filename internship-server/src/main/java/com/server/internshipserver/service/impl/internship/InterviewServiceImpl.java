@@ -9,9 +9,13 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.Interview;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.InternshipPost;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.internship.InterviewMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.mapper.internship.InternshipPostMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.internship.InterviewService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +39,12 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private InternshipPostMapper internshipPostMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -136,6 +146,9 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
             throw new BusinessException("面试不存在");
         }
         
+        // 填充关联字段
+        fillInterviewRelatedFields(interview);
+        
         return interview;
     }
     
@@ -183,7 +196,16 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         // 按面试时间倒序
         wrapper.orderByDesc(Interview::getInterviewTime);
         
-        return this.page(page, wrapper);
+        Page<Interview> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (Interview interview : result.getRecords()) {
+                fillInterviewRelatedFields(interview);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -295,6 +317,34 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         // 更新状态为已取消
         interview.setStatus(3);
         return this.updateById(interview);
+    }
+    
+    /**
+     * 填充面试关联字段
+     */
+    private void fillInterviewRelatedFields(Interview interview) {
+        if (interview == null) {
+            return;
+        }
+        
+        // 填充企业名称
+        if (interview.getEnterpriseId() != null) {
+            Enterprise enterprise = enterpriseMapper.selectById(interview.getEnterpriseId());
+            if (enterprise != null) {
+                interview.setEnterpriseName(enterprise.getEnterpriseName());
+            }
+        }
+        
+        // 填充岗位名称（从申请中获取）
+        if (interview.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(interview.getApplyId());
+            if (apply != null && apply.getPostId() != null) {
+                InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+                if (post != null) {
+                    interview.setPostName(post.getPostName());
+                }
+            }
+        }
     }
 }
 

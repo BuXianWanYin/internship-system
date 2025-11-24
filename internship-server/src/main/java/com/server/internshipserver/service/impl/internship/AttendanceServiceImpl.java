@@ -11,9 +11,11 @@ import com.server.internshipserver.domain.internship.Attendance;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.dto.AttendanceStatistics;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.mapper.internship.AttendanceMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.service.internship.AttendanceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,9 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private StudentMapper studentMapper;
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
@@ -177,7 +182,42 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             throw new BusinessException("考勤不存在");
         }
         
+        // 填充关联字段
+        fillAttendanceRelatedFields(attendance);
+        
         return attendance;
+    }
+    
+    /**
+     * 填充考勤关联字段（学生姓名、学号）
+     */
+    private void fillAttendanceRelatedFields(Attendance attendance) {
+        if (attendance == null || attendance.getStudentId() == null) {
+            return;
+        }
+        
+        // 查询学生信息
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getStudentId, attendance.getStudentId())
+                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        
+        if (student != null) {
+            attendance.setStudentNo(student.getStudentNo());
+            
+            // 查询用户信息获取学生姓名
+            if (student.getUserId() != null) {
+                UserInfo user = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUserId, student.getUserId())
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (user != null) {
+                    attendance.setStudentName(user.getRealName());
+                }
+            }
+        }
     }
     
     @Override
@@ -226,7 +266,16 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         // 按考勤日期倒序
         wrapper.orderByDesc(Attendance::getAttendanceDate);
         
-        return this.page(page, wrapper);
+        Page<Attendance> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (Attendance attendance : result.getRecords()) {
+                fillAttendanceRelatedFields(attendance);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -723,6 +772,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         // 获取当前学生ID
         Long studentId = dataPermissionUtil.getCurrentStudentId();
         if (studentId == null) {
+            // 如果不是学生，返回null（不抛异常，允许其他角色调用但返回空）
             return null;
         }
         
@@ -735,6 +785,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                    .last("LIMIT 1");
         InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
         if (apply == null) {
+            // 没有已通过的申请，返回null
             return null;
         }
         
@@ -745,7 +796,14 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                .eq(Attendance::getAttendanceDate, today)
                .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
-        return this.getOne(wrapper);
+        Attendance attendance = this.getOne(wrapper);
+        
+        // 如果找到考勤记录，填充关联字段
+        if (attendance != null) {
+            fillAttendanceRelatedFields(attendance);
+        }
+        
+        return attendance;
     }
 }
 

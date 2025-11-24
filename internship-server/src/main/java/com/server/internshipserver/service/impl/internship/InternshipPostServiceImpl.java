@@ -9,9 +9,11 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.internship.InternshipPostService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,9 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -138,6 +143,9 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             throw new BusinessException("岗位不存在");
         }
         
+        // 填充关联字段
+        fillPostRelatedFields(post);
+        
         return post;
     }
     
@@ -184,7 +192,16 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         // 按创建时间倒序
         wrapper.orderByDesc(InternshipPost::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<InternshipPost> result = this.page(page, wrapper);
+        
+        // 填充关联字段
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            for (InternshipPost post : result.getRecords()) {
+                fillPostRelatedFields(post);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -339,6 +356,23 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
                .orderByDesc(InternshipApply::getCreateTime);
         
         return internshipApplyMapper.selectList(wrapper);
+    }
+    
+    /**
+     * 填充岗位关联字段
+     */
+    private void fillPostRelatedFields(InternshipPost post) {
+        if (post == null) {
+            return;
+        }
+        
+        // 填充企业名称
+        if (post.getEnterpriseId() != null) {
+            Enterprise enterprise = enterpriseMapper.selectById(post.getEnterpriseId());
+            if (enterprise != null) {
+                post.setEnterpriseName(enterprise.getEnterpriseName());
+            }
+        }
     }
 }
 

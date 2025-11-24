@@ -46,7 +46,7 @@ public class UserController {
     
     @ApiOperation("根据ID查询用户详情")
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<UserInfo> getUserById(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         UserInfo user = userService.getUserById(userId);

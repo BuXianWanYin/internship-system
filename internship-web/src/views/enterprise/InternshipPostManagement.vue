@@ -164,12 +164,12 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="岗位名称" prop="postName">
-              <el-input v-model="formData.postName" placeholder="请输入岗位名称" />
+              <el-input v-model="formData.postName" placeholder="请输入岗位名称" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="岗位编号" prop="postCode">
-              <el-input v-model="formData.postCode" placeholder="请输入岗位编号" />
+              <el-input v-model="formData.postCode" placeholder="请输入岗位编号" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -192,12 +192,12 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="工作地点" prop="workLocation">
-              <el-input v-model="formData.workLocation" placeholder="请输入工作地点" />
+              <el-input v-model="formData.workLocation" placeholder="请输入工作地点" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="详细地址" prop="workAddress">
-              <el-input v-model="formData.workAddress" placeholder="请输入详细地址" />
+              <el-input v-model="formData.workAddress" placeholder="请输入详细地址" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -267,22 +267,22 @@
           </el-col>
         </el-row>
         <el-form-item label="工作时间" prop="workHours">
-          <el-input v-model="formData.workHours" placeholder="如：周一至周五 9:00-18:00" />
+          <el-input v-model="formData.workHours" placeholder="如：周一至周五 9:00-18:00" style="width: 100%" />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="联系人" prop="contactPerson">
-              <el-input v-model="formData.contactPerson" placeholder="请输入联系人" />
+              <el-input v-model="formData.contactPerson" placeholder="请输入联系人" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="联系电话" prop="contactPhone">
-              <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
+              <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="联系邮箱" prop="contactEmail">
-              <el-input v-model="formData.contactEmail" placeholder="请输入联系邮箱" />
+              <el-input v-model="formData.contactEmail" placeholder="请输入联系邮箱" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>

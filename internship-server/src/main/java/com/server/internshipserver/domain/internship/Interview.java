@@ -107,5 +107,14 @@ public class Interview implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    // ========== 关联字段（不映射到数据库） ==========
+    @ApiModelProperty(value = "企业名称")
+    @TableField(exist = false)
+    private String enterpriseName;
+    
+    @ApiModelProperty(value = "岗位名称")
+    @TableField(exist = false)
+    private String postName;
 }
 

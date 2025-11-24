@@ -180,5 +180,17 @@ public class InternshipApply implements Serializable {
     @ApiModelProperty(value = "审核人姓名")
     @TableField(exist = false)
     private String auditorName;
+    
+    @ApiModelProperty(value = "企业地址（用于前端显示）")
+    @TableField(exist = false)
+    private String enterpriseAddress;
+    
+    @ApiModelProperty(value = "联系人（用于前端显示）")
+    @TableField(exist = false)
+    private String contactPerson;
+    
+    @ApiModelProperty(value = "联系电话（用于前端显示）")
+    @TableField(exist = false)
+    private String contactPhone;
 }
 

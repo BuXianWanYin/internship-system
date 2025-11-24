@@ -53,6 +53,16 @@ export default [
     }
   },
   {
+    path: '/enterprise/internship/apply',
+    name: 'EnterpriseApplicationManagement',
+    component: () => import('@/views/enterprise/ApplicationManagement.vue'),
+    meta: {
+      title: '申请管理',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_ADMIN']
+    }
+  },
+  {
     path: '/enterprise/internship/interview',
     name: 'EnterpriseInterviewManagement',
     component: () => import('@/views/enterprise/InterviewManagement.vue'),

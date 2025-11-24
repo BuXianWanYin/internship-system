@@ -50,7 +50,7 @@
           {{ formatDate(row.logDate) }}
         </template>
       </el-table-column>
-       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+      <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
        <el-table-column label="工作内容" min-width="300" show-overflow-tooltip>
          <template #default="{ row }">
            <div class="table-content-preview">{{ getContentPreview(row.workContent || row.logContent) }}</div>
@@ -166,19 +166,19 @@
               </div>
             </template>
           </el-upload>
-           <div v-if="attachmentUrls.length > 0" class="attachment-list">
-             <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
+          <div v-if="attachmentUrls.length > 0" class="attachment-list">
+            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
                <el-link type="primary" @click="handleDownloadFile(url)">{{ getFileName(url) }}</el-link>
-               <el-button
-                 link
-                 type="danger"
-                 size="small"
-                 @click="removeAttachment(index)"
-               >
-                 删除
-               </el-button>
-             </div>
-           </div>
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="removeAttachment(index)"
+              >
+                删除
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="工作时长（小时）" prop="workHours">
           <el-input-number
@@ -237,14 +237,14 @@
       <!-- 附件 -->
       <div v-if="detailData.attachmentUrls" class="content-section">
         <div class="content-title">附件</div>
-        <div class="attachment-list">
-          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+          <div class="attachment-list">
+            <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
             <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
               {{ getFileName(url) }}
             </el-link>
           </div>
-        </div>
-      </div>
+            </div>
+          </div>
 
       <!-- 批阅信息 -->
       <el-descriptions v-if="detailData.reviewComment || detailData.reviewTime || detailData.reviewerName" :column="2" border class="detail-info">
