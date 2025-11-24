@@ -1034,5 +1034,76 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         // 其他角色：无权限
         return false;
     }
+    
+    @Override
+    public UserInfo getCurrentUser() {
+        String username = com.server.internshipserver.common.utils.SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            throw new BusinessException("未登录或登录已过期");
+        }
+        UserInfo user = getUserByUsername(username);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        return user;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserInfo updateCurrentUserProfile(UserInfo user) {
+        // 获取当前用户
+        UserInfo currentUser = getCurrentUser();
+        
+        // 只允许更新以下字段：realName, phone, email, avatar
+        if (StringUtils.hasText(user.getRealName())) {
+            currentUser.setRealName(user.getRealName());
+        }
+        if (StringUtils.hasText(user.getPhone())) {
+            currentUser.setPhone(user.getPhone());
+        }
+        if (StringUtils.hasText(user.getEmail())) {
+            currentUser.setEmail(user.getEmail());
+        }
+        if (user.getAvatar() != null) {
+            currentUser.setAvatar(user.getAvatar());
+        }
+        
+        // 更新用户信息
+        this.updateById(currentUser);
+        
+        return currentUser;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean changePassword(String oldPassword, String newPassword) {
+        // 参数校验
+        if (!StringUtils.hasText(oldPassword)) {
+            throw new BusinessException("旧密码不能为空");
+        }
+        if (!StringUtils.hasText(newPassword)) {
+            throw new BusinessException("新密码不能为空");
+        }
+        if (newPassword.length() < 6 || newPassword.length() > 20) {
+            throw new BusinessException("新密码长度必须在6-20个字符之间");
+        }
+        
+        // 获取当前用户
+        UserInfo currentUser = getCurrentUser();
+        
+        // 验证旧密码
+        if (!passwordEncoder.matches(oldPassword, currentUser.getPassword())) {
+            throw new BusinessException("旧密码错误");
+        }
+        
+        // 加密新密码
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        currentUser.setPassword(encodedPassword);
+        
+        // 更新密码
+        this.updateById(currentUser);
+        
+        return true;
+    }
 }
 

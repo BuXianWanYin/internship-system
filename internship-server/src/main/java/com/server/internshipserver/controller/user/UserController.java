@@ -127,5 +127,28 @@ public class UserController {
         List<Role> roles = userService.getUserRoles(userId);
         return Result.success("查询成功", roles);
     }
+    
+    @ApiOperation("获取当前登录用户信息")
+    @GetMapping("/current")
+    public Result<UserInfo> getCurrentUser() {
+        UserInfo user = userService.getCurrentUser();
+        return Result.success("查询成功", user);
+    }
+    
+    @ApiOperation("更新当前用户个人信息")
+    @PutMapping("/current/profile")
+    public Result<UserInfo> updateCurrentUserProfile(@RequestBody UserInfo user) {
+        UserInfo result = userService.updateCurrentUserProfile(user);
+        return Result.success("更新成功", result);
+    }
+    
+    @ApiOperation("修改当前用户密码")
+    @PostMapping("/current/change-password")
+    public Result<?> changePassword(
+            @ApiParam(value = "旧密码", required = true) @RequestParam String oldPassword,
+            @ApiParam(value = "新密码", required = true) @RequestParam String newPassword) {
+        boolean success = userService.changePassword(oldPassword, newPassword);
+        return success ? Result.success("密码修改成功") : Result.error("密码修改失败");
+    }
 }
 

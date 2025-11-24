@@ -30,7 +30,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 /**
  * 学生管理Service实现类
@@ -56,7 +55,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
     
-    private final Random random = new Random();
     
     @Override
     public Student getStudentByUserId(Long userId) {
@@ -349,13 +347,15 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                     continue;
                 }
                 
-                // 生成初始密码（8位随机数字）
-                String defaultPassword = generateDefaultPassword();
+                // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码123456）
+                String password = StringUtils.hasText(dto.getPassword()) 
+                        ? dto.getPassword() 
+                        : "123456";
                 
                 // 创建用户
                 UserInfo user = new UserInfo();
                 user.setUsername(username);
-                user.setPassword(defaultPassword); // UserService会自动加密
+                user.setPassword(password); // UserService会自动加密
                 user.setRealName(dto.getRealName());
                 user.setIdCard(dto.getIdCard());
                 user.setPhone(dto.getPhone());
@@ -434,10 +434,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("用户名（学号）已存在");
         }
         
-        // 生成初始密码（如果用户提供了密码则使用，否则生成8位随机数字）
+        // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码123456）
         String password = StringUtils.hasText(studentImportDTO.getPassword()) 
                 ? studentImportDTO.getPassword() 
-                : generateDefaultPassword();
+                : "123456";
         
         // 创建用户
         UserInfo user = new UserInfo();
@@ -482,16 +482,6 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         return student;
     }
     
-    /**
-     * 生成默认密码（8位随机数字）
-     */
-    private String generateDefaultPassword() {
-        StringBuilder password = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
-            password.append(random.nextInt(10));
-        }
-        return password.toString();
-    }
     
     @Override
     public Page<Student> getPendingApprovalStudentPage(Page<Student> page, String studentNo, String realName) {

@@ -6,15 +6,27 @@
         <h1 class="logo">高校实习管理系统</h1>
       </div>
       <div class="header-right">
-        <el-dropdown @command="handleCommand">
+        <el-dropdown @command="handleCommand" trigger="click" placement="bottom-end">
           <span class="user-info">
-            <el-icon><User /></el-icon>
-            <span>{{ userInfo?.username || '用户' }}</span>
+            <el-avatar
+              :size="32"
+              :src="userAvatar"
+              :icon="User"
+              class="user-avatar"
+            />
+            <div class="user-text">
+              <div class="user-name">{{ userInfo?.realName || userInfo?.username || '用户' }}</div>
+              <div class="user-username">{{ userInfo?.username || '' }}</div>
+            </div>
             <el-icon class="el-icon--right"><ArrowDownIcon /></el-icon>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item command="profile">
+                <el-icon><User /></el-icon>
+                个人中心
+              </el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -82,6 +94,18 @@ const authStore = useAuthStore()
 const isCollapse = ref(false)
 const userInfo = computed(() => authStore.userInfo)
 
+// 用户头像
+const userAvatar = computed(() => {
+  if (userInfo.value?.avatar) {
+    // 如果是完整URL，直接返回；否则拼接基础路径
+    if (userInfo.value.avatar.startsWith('http://') || userInfo.value.avatar.startsWith('https://')) {
+      return userInfo.value.avatar
+    }
+    return `${import.meta.env.VITE_API_BASE_URL || ''}${userInfo.value.avatar}`
+  }
+  return '' // 返回空字符串，使用默认头像
+})
+
 // 根据用户角色过滤菜单
 const filteredMenus = computed(() => {
   const roles = authStore.roles || []
@@ -96,7 +120,9 @@ const activeMenu = computed(() => {
 
 // 处理下拉菜单命令
 const handleCommand = (command) => {
-  if (command === 'logout') {
+  if (command === 'profile') {
+    router.push('/profile')
+  } else if (command === 'logout') {
     ElMessageBox.confirm('确定要退出登录吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
@@ -151,10 +177,42 @@ const handleCommand = (command) => {
   cursor: pointer;
   color: #606266;
   font-size: 14px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
 }
 
-.user-info .el-icon {
-  margin-right: 5px;
+.user-info:hover {
+  background-color: #f5f7fa;
+}
+
+.user-avatar {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.user-text {
+  display: flex;
+  flex-direction: column;
+  margin-right: 8px;
+  line-height: 1.4;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.user-username {
+  font-size: 12px;
+  color: #909399;
+}
+
+.user-info .el-icon--right {
+  margin-left: 0;
+  font-size: 12px;
+  color: #909399;
 }
 
 .main-container {

@@ -60,10 +60,14 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Setting, School, OfficeBuilding, Reading, User, UserFilled, Calendar, Tools, Upload, DocumentChecked } from '@element-plus/icons-vue'
+import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const systemModules = [
   {
@@ -110,26 +114,34 @@ const systemModules = [
   }
 ]
 
-const userModules = [
-  {
-    title: '用户管理',
-    desc: '管理系统用户信息',
-    path: '/admin/user',
-    icon: 'UserFilled'
-  },
-  {
-    title: '学生批量导入',
-    desc: 'Excel批量导入学生信息',
-    path: '/admin/student/import',
-    icon: 'Upload'
-  },
-  {
-    title: '学生注册审核',
-    desc: '审核学生注册申请',
-    path: '/admin/student/approval',
-    icon: 'DocumentChecked'
+const userModules = computed(() => {
+  const modules = [
+    {
+      title: '用户管理',
+      desc: '管理系统用户信息',
+      path: '/admin/user',
+      icon: 'UserFilled'
+    },
+    {
+      title: '学生注册审核',
+      desc: '审核学生注册申请',
+      path: '/admin/student/approval',
+      icon: 'DocumentChecked'
+    }
+  ]
+  
+  // 只有班主任才显示学生批量导入
+  if (hasAnyRole(['ROLE_CLASS_TEACHER'])) {
+    modules.splice(1, 0, {
+      title: '学生批量导入',
+      desc: 'Excel批量导入学生信息',
+      path: '/admin/student/import',
+      icon: 'Upload'
+    })
   }
-]
+  
+  return modules
+})
 
 const systemExtraModules = [
   {

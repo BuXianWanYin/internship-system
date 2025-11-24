@@ -48,6 +48,20 @@ export const userApi = {
   // 获取用户角色列表
   getUserRoles(userId) {
     return request.get(`/user/${userId}/roles`)
+  },
+  // 获取当前登录用户信息
+  getCurrentUser() {
+    return request.get('/user/current')
+  },
+  // 更新当前用户个人信息
+  updateCurrentUserProfile(data) {
+    return request.put('/user/current/profile', data)
+  },
+  // 修改当前用户密码
+  changePassword(oldPassword, newPassword) {
+    return request.post('/user/current/change-password', null, {
+      params: { oldPassword, newPassword }
+    })
   }
 }
 

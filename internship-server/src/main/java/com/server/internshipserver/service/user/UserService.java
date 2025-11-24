@@ -92,5 +92,26 @@ public interface UserService extends IService<UserInfo> {
      * @return 角色列表
      */
     List<Role> getUserRoles(Long userId);
+    
+    /**
+     * 获取当前登录用户信息
+     * @return 用户信息
+     */
+    UserInfo getCurrentUser();
+    
+    /**
+     * 更新当前用户个人信息
+     * @param user 用户信息（只更新允许的字段：realName, phone, email, avatar）
+     * @return 更新后的用户信息
+     */
+    UserInfo updateCurrentUserProfile(UserInfo user);
+    
+    /**
+     * 修改当前用户密码
+     * @param oldPassword 旧密码（明文）
+     * @param newPassword 新密码（明文）
+     * @return 是否成功
+     */
+    boolean changePassword(String oldPassword, String newPassword);
 }
 

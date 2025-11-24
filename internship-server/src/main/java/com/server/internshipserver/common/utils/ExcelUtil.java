@@ -47,7 +47,7 @@ public class ExcelUtil {
                 dto.setRowNum(rowNum + 1); // Excel行号从1开始
                 
                 // 读取各列数据
-                // 列顺序：学号、姓名、身份证号、手机号、邮箱、入学年份、班级ID
+                // 列顺序：学号、姓名、身份证号、手机号、邮箱、入学年份、班级ID、密码（可选）
                 try {
                     dto.setStudentNo(getCellValue(row.getCell(0)));
                     dto.setRealName(getCellValue(row.getCell(1)));
@@ -73,6 +73,12 @@ public class ExcelUtil {
                         } catch (NumberFormatException e) {
                             dto.setErrorMessage("班级ID格式错误");
                         }
+                    }
+                    
+                    // 密码（可选，第8列，索引7）
+                    String password = getCellValue(row.getCell(7));
+                    if (password != null && !password.trim().isEmpty()) {
+                        dto.setPassword(password.trim());
                     }
                     
                     // 如果学号或姓名为空，跳过该行
@@ -151,7 +157,8 @@ public class ExcelUtil {
         
         // 创建表头行
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"学号", "姓名", "身份证号", "手机号", "邮箱", "入学年份", "班级ID"};
+        // 列顺序：学号、姓名、身份证号、手机号、邮箱、入学年份、班级ID、密码（可选）
+        String[] headers = {"学号*", "姓名*", "身份证号", "手机号", "邮箱", "入学年份*", "班级ID*", "初始密码（可选，不填则自动生成8位随机数字）"};
         
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
@@ -160,9 +167,14 @@ public class ExcelUtil {
         }
         
         // 设置列宽
-        for (int i = 0; i < headers.length; i++) {
-            sheet.setColumnWidth(i, 4000);
-        }
+        sheet.setColumnWidth(0, 4000); // 学号
+        sheet.setColumnWidth(1, 3000); // 姓名
+        sheet.setColumnWidth(2, 5000); // 身份证号
+        sheet.setColumnWidth(3, 4000); // 手机号
+        sheet.setColumnWidth(4, 5000); // 邮箱
+        sheet.setColumnWidth(5, 3000); // 入学年份
+        sheet.setColumnWidth(6, 3000); // 班级ID
+        sheet.setColumnWidth(7, 6000); // 密码
         
         // 添加示例数据行
         Row exampleRow = sheet.createRow(1);
@@ -173,6 +185,7 @@ public class ExcelUtil {
         exampleRow.createCell(4).setCellValue("zhangsan@example.com");
         exampleRow.createCell(5).setCellValue("2021");
         exampleRow.createCell(6).setCellValue("1");
+        exampleRow.createCell(7).setCellValue("123456"); // 示例密码，可选
         
         // 设置响应头
         String fileName = URLEncoder.encode("学生导入模板.xlsx", StandardCharsets.UTF_8.toString());

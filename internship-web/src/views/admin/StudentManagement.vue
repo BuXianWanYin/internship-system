@@ -3,10 +3,18 @@
     <template #actions>
       <el-button type="primary" :icon="Plus" @click="handleAdd">添加学生</el-button>
       <el-button 
-        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'])" 
+        v-if="hasAnyRole(['ROLE_CLASS_TEACHER'])" 
+        type="info" 
+        :icon="Download" 
+        @click="handleDownloadTemplate"
+      >
+        下载模板
+      </el-button>
+      <el-button 
+        v-if="hasAnyRole(['ROLE_CLASS_TEACHER'])" 
         type="success" 
         :icon="Upload" 
-        @click="activeTab = 'import'"
+        @click="handleOpenImportDialog"
       >
         批量导入
       </el-button>
@@ -291,91 +299,6 @@
         </div>
       </el-tab-pane>
 
-      <!-- Tab 3: 批量导入 -->
-      <el-tab-pane label="批量导入" name="import">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>学生批量导入</span>
-              <el-button type="primary" @click="downloadTemplate">
-                <el-icon><Download /></el-icon>
-                下载模板
-              </el-button>
-            </div>
-          </template>
-
-          <el-steps :active="importStep" finish-status="success" align-center>
-            <el-step title="下载模板" description="下载Excel导入模板" />
-            <el-step title="填写数据" description="按照模板格式填写学生信息" />
-            <el-step title="上传文件" description="上传填写好的Excel文件" />
-            <el-step title="导入结果" description="查看导入结果" />
-          </el-steps>
-
-          <div class="upload-section" v-if="importStep >= 2">
-            <el-upload
-              ref="uploadRef"
-              :auto-upload="false"
-              :on-change="handleFileChange"
-              :on-remove="handleFileRemove"
-              :limit="1"
-              accept=".xlsx,.xls"
-              drag
-            >
-              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-              <div class="el-upload__text">
-                将文件拖到此处，或<em>点击上传</em>
-              </div>
-              <template #tip>
-                <div class="el-upload__tip">
-                  只能上传Excel文件（.xlsx或.xls），且不超过10MB
-                </div>
-              </template>
-            </el-upload>
-
-            <div class="class-select" v-if="showClassSelect">
-              <el-select
-                v-model="selectedClassId"
-                placeholder="请选择班级（如果Excel中未指定班级ID）"
-                clearable
-                style="width: 100%; margin-top: 20px;"
-              >
-                <el-option
-                  v-for="classItem in classList"
-                  :key="classItem.classId"
-                  :label="classItem.className"
-                  :value="classItem.classId"
-                />
-              </el-select>
-            </div>
-
-            <div class="upload-actions" v-if="fileList.length > 0">
-              <el-button type="primary" :loading="uploading" @click="handleUpload">
-                开始导入
-              </el-button>
-              <el-button @click="handleImportReset">重置</el-button>
-            </div>
-          </div>
-
-          <div class="result-section" v-if="importStep === 3 && importResult">
-            <el-alert
-              :title="`导入完成：成功 ${importResult.successCount} 条，失败 ${importResult.failCount} 条`"
-              :type="importResult.failCount === 0 ? 'success' : 'warning'"
-              :closable="false"
-              show-icon
-            />
-
-            <div v-if="importResult.failList && importResult.failList.length > 0" class="fail-list">
-              <h3>失败详情：</h3>
-              <el-table :data="importResult.failList" border style="width: 100%; margin-top: 20px;">
-                <el-table-column prop="rowNum" label="行号" width="80" />
-                <el-table-column prop="studentNo" label="学号" width="120" />
-                <el-table-column prop="realName" label="姓名" width="100" />
-                <el-table-column prop="errorMessage" label="错误信息" />
-              </el-table>
-            </div>
-          </div>
-        </el-card>
-      </el-tab-pane>
     </el-tabs>
 
     <!-- 添加/编辑对话框 -->
@@ -518,6 +441,113 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量导入对话框 -->
+    <el-dialog
+      v-model="importDialogVisible"
+      title="批量导入学生"
+      width="700px"
+      :close-on-click-modal="false"
+      @close="handleImportDialogClose"
+    >
+      <div v-if="!importResult">
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 20px"
+        >
+          <template #title>
+            <div>
+              <div>请先下载模板，按照模板格式填写学生信息后上传。</div>
+              <div style="margin-top: 8px; font-size: 12px; color: #909399;">
+                模板列说明：学号*、姓名*、身份证号、手机号、邮箱、入学年份*、班级ID*、初始密码（可选，不填则自动生成8位随机数字）
+              </div>
+            </div>
+          </template>
+        </el-alert>
+        
+        <el-upload
+          ref="uploadRef"
+          :auto-upload="false"
+          :on-change="handleFileChange"
+          :on-remove="handleFileRemove"
+          :limit="1"
+          accept=".xlsx,.xls"
+          drag
+        >
+          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+          <div class="el-upload__text">
+            将文件拖到此处，或<em>点击上传</em>
+          </div>
+          <template #tip>
+            <div class="el-upload__tip">
+              只能上传Excel文件（.xlsx或.xls），且不超过10MB
+            </div>
+          </template>
+        </el-upload>
+
+        <div class="class-select" style="margin-top: 20px;">
+          <el-form-item label="默认班级（可选）">
+            <el-select
+              v-model="selectedClassId"
+              placeholder="如果Excel中未指定班级ID，将使用此默认班级"
+              clearable
+              style="width: 100%;"
+            >
+              <el-option
+                v-for="classItem in classList"
+                :key="classItem.classId"
+                :label="classItem.className"
+                :value="classItem.classId"
+              />
+            </el-select>
+          </el-form-item>
+        </div>
+      </div>
+
+      <div v-else>
+        <el-alert
+          :title="`导入完成：成功 ${importResult.successCount} 条，失败 ${importResult.failCount} 条`"
+          :type="importResult.failCount === 0 ? 'success' : 'warning'"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 20px"
+        />
+
+        <div v-if="importResult.failList && importResult.failList.length > 0">
+          <h4 style="margin-bottom: 10px;">失败详情：</h4>
+          <el-table :data="importResult.failList" border max-height="300">
+            <el-table-column prop="rowNum" label="行号" width="80" align="center" />
+            <el-table-column prop="studentNo" label="学号" width="120" />
+            <el-table-column prop="realName" label="姓名" width="100" />
+            <el-table-column prop="errorMessage" label="错误信息" min-width="200" />
+          </el-table>
+        </div>
+      </div>
+
+      <template #footer>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <el-button
+            v-if="!importResult"
+            type="info"
+            :icon="Download"
+            @click="handleDownloadTemplate"
+          >
+            下载模板
+          </el-button>
+          <div style="flex: 1"></div>
+          <el-button @click="handleImportDialogClose">关闭</el-button>
+          <el-button
+            v-if="!importResult && fileList.length > 0"
+            type="primary"
+            :loading="uploading"
+            @click="handleUpload"
+          >
+            开始导入
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </PageLayout>
 </template>
 
@@ -590,11 +620,10 @@ const approveForm = reactive({
 })
 
 // ========== 批量导入相关 ==========
-const importStep = ref(0)
+const importDialogVisible = ref(false)
 const uploadRef = ref(null)
 const fileList = ref([])
 const selectedClassId = ref(null)
-const showClassSelect = ref(false)
 const uploading = ref(false)
 const importResult = ref(null)
 
@@ -638,8 +667,6 @@ const handleTabChange = (tabName) => {
     loadStudentList()
   } else if (tabName === 'approval') {
     loadApprovalList()
-  } else if (tabName === 'import') {
-    loadClassList()
   }
 }
 
@@ -1038,7 +1065,15 @@ const handleConfirmApprove = async () => {
 }
 
 // ========== 批量导入功能 ==========
-const downloadTemplate = async () => {
+const handleOpenImportDialog = () => {
+  importDialogVisible.value = true
+  // 确保班级列表已加载
+  if (classList.value.length === 0) {
+    loadClassList()
+  }
+}
+
+const handleDownloadTemplate = async () => {
   try {
     const response = await studentApi.downloadImportTemplate()
     const blob = new Blob([response], {
@@ -1054,7 +1089,6 @@ const downloadTemplate = async () => {
     window.URL.revokeObjectURL(url)
 
     ElMessage.success('模板下载成功')
-    importStep.value = 1
   } catch (error) {
     ElMessage.error('模板下载失败：' + (error.message || '未知错误'))
   }
@@ -1062,13 +1096,10 @@ const downloadTemplate = async () => {
 
 const handleFileChange = (file) => {
   fileList.value = [file]
-  showClassSelect.value = true
-  importStep.value = 2
 }
 
 const handleFileRemove = () => {
   fileList.value = []
-  showClassSelect.value = false
   selectedClassId.value = null
 }
 
@@ -1095,11 +1126,12 @@ const handleUpload = async () => {
     const res = await studentApi.importStudents(file, selectedClassId.value)
     if (res.code === 200) {
       importResult.value = res.data
-      importStep.value = 3
       ElMessage.success(res.message || '导入完成')
-      // 导入成功后刷新学生列表
+      // 导入成功后刷新学生列表和待审核列表
       if (activeTab.value === 'list') {
         loadStudentList()
+      } else if (activeTab.value === 'approval') {
+        loadApprovalList()
       }
     } else {
       ElMessage.error(res.message || '导入失败')
@@ -1111,12 +1143,11 @@ const handleUpload = async () => {
   }
 }
 
-const handleImportReset = () => {
+const handleImportDialogClose = () => {
+  // 重置导入相关状态
   fileList.value = []
   selectedClassId.value = null
-  showClassSelect.value = false
   importResult.value = null
-  importStep.value = 0
   if (uploadRef.value) {
     uploadRef.value.clearFiles()
   }

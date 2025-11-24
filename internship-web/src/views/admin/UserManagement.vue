@@ -9,14 +9,6 @@
       >
         添加用户
       </el-button>
-      <el-button 
-        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
-        type="success" 
-        :icon="Upload" 
-        @click="handleImport"
-      >
-        批量导入
-      </el-button>
     </template>
 
     <!-- 搜索栏 -->
