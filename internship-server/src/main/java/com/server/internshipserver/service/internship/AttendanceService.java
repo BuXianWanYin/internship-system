@@ -58,9 +58,12 @@ public interface AttendanceService extends IService<Attendance> {
      * @param attendanceId 考勤ID
      * @param confirmStatus 确认状态（1-已确认，2-已拒绝）
      * @param confirmComment 确认意见
+     * @param checkInTime 签到时间（可选，用于编辑）
+     * @param checkOutTime 签退时间（可选，用于编辑）
      * @return 是否成功
      */
-    boolean confirmAttendance(Long attendanceId, Integer confirmStatus, String confirmComment);
+    boolean confirmAttendance(Long attendanceId, Integer confirmStatus, String confirmComment, 
+                             java.time.LocalDateTime checkInTime, java.time.LocalDateTime checkOutTime);
     
     /**
      * 删除考勤（软删除）

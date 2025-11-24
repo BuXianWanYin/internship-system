@@ -107,7 +107,7 @@
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column label="操作" width="250" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
           <el-button
@@ -118,6 +118,15 @@
             @click="handleEdit(row)"
           >
             编辑
+          </el-button>
+          <el-button
+            v-if="row.confirmStatus === 0"
+            link
+            type="success"
+            size="small"
+            @click="handleConfirm(row)"
+          >
+            确认
           </el-button>
         </template>
       </el-table-column>
@@ -227,6 +236,67 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 确认考勤对话框 -->
+    <el-dialog
+      v-model="confirmDialogVisible"
+      title="确认考勤"
+      width="700px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="confirmFormRef"
+        :model="confirmForm"
+        :rules="confirmFormRules"
+        label-width="120px"
+      >
+        <el-form-item label="学生姓名">
+          <el-input :value="confirmForm.studentName" disabled />
+        </el-form-item>
+        <el-form-item label="学号">
+          <el-input :value="confirmForm.studentNo" disabled />
+        </el-form-item>
+        <el-form-item label="考勤日期">
+          <el-input :value="formatDate(confirmForm.attendanceDate)" disabled />
+        </el-form-item>
+        <el-form-item label="签到时间" prop="checkInTime">
+          <el-date-picker
+            v-model="confirmForm.checkInTime"
+            type="datetime"
+            placeholder="请选择签到时间"
+            style="width: 100%"
+            value-format="YYYY-MM-DD HH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item label="签退时间" prop="checkOutTime">
+          <el-date-picker
+            v-model="confirmForm.checkOutTime"
+            type="datetime"
+            placeholder="请选择签退时间"
+            style="width: 100%"
+            value-format="YYYY-MM-DD HH:mm:ss"
+          />
+        </el-form-item>
+        <el-form-item label="确认状态" prop="confirmStatus">
+          <el-radio-group v-model="confirmForm.confirmStatus">
+            <el-radio :label="1">已确认</el-radio>
+            <el-radio :label="2">已拒绝</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="确认意见">
+          <el-input
+            v-model="confirmForm.confirmComment"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入确认意见（可选）"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="confirmDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="confirmLoading" @click="handleSubmitConfirm">确定</el-button>
       </template>
     </el-dialog>
 
@@ -350,12 +420,15 @@ import PageLayout from '@/components/common/PageLayout.vue'
 const loading = ref(false)
 const submitLoading = ref(false)
 const batchLoading = ref(false)
+const confirmLoading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const batchDialogVisible = ref(false)
+const confirmDialogVisible = ref(false)
 const dialogTitle = ref('确认考勤')
 const formRef = ref(null)
 const batchFormRef = ref(null)
+const confirmFormRef = ref(null)
 
 const searchForm = reactive({
   studentName: '',
@@ -393,6 +466,23 @@ const batchForm = reactive({
   attendanceType: 1,
   workHours: 8
 })
+
+const confirmForm = reactive({
+  attendanceId: null,
+  studentName: '',
+  studentNo: '',
+  attendanceDate: '',
+  checkInTime: '',
+  checkOutTime: '',
+  confirmStatus: 1,
+  confirmComment: ''
+})
+
+const confirmFormRules = {
+  checkInTime: [{ required: true, message: '请选择签到时间', trigger: 'change' }],
+  checkOutTime: [{ required: true, message: '请选择签退时间', trigger: 'change' }],
+  confirmStatus: [{ required: true, message: '请选择确认状态', trigger: 'change' }]
+}
 
 const formRules = {
   studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
@@ -530,6 +620,58 @@ const handleView = async (row) => {
     console.error('查询详情失败:', error)
     ElMessage.error('查询详情失败')
   }
+}
+
+// 确认考勤
+const handleConfirm = async (row) => {
+  try {
+    const res = await attendanceApi.getAttendanceById(row.attendanceId)
+    if (res.code === 200) {
+      Object.assign(confirmForm, {
+        attendanceId: res.data.attendanceId,
+        studentName: res.data.studentName || '',
+        studentNo: res.data.studentNo || '',
+        attendanceDate: res.data.attendanceDate,
+        checkInTime: res.data.checkInTime || '',
+        checkOutTime: res.data.checkOutTime || '',
+        confirmStatus: 1,
+        confirmComment: ''
+      })
+      confirmDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('查询详情失败:', error)
+    ElMessage.error('查询详情失败')
+  }
+}
+
+// 提交确认
+const handleSubmitConfirm = async () => {
+  if (!confirmFormRef.value) return
+  await confirmFormRef.value.validate(async (valid) => {
+    if (valid) {
+      confirmLoading.value = true
+      try {
+        const res = await attendanceApi.confirmAttendance(
+          confirmForm.attendanceId,
+          confirmForm.confirmStatus,
+          confirmForm.confirmComment || undefined,
+          confirmForm.checkInTime || undefined,
+          confirmForm.checkOutTime || undefined
+        )
+        if (res.code === 200) {
+          ElMessage.success('确认成功')
+          confirmDialogVisible.value = false
+          loadData()
+        }
+      } catch (error) {
+        console.error('确认失败:', error)
+        ElMessage.error(error.response?.data?.message || '确认失败')
+      } finally {
+        confirmLoading.value = false
+      }
+    }
+  })
 }
 
 // 学生选择变化

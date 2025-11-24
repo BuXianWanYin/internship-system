@@ -231,7 +231,8 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean confirmAttendance(Long attendanceId, Integer confirmStatus, String confirmComment) {
+    public boolean confirmAttendance(Long attendanceId, Integer confirmStatus, String confirmComment, 
+                                    LocalDateTime checkInTime, LocalDateTime checkOutTime) {
         if (attendanceId == null) {
             throw new BusinessException("考勤ID不能为空");
         }
@@ -254,6 +255,30 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         if (apply == null || apply.getEnterpriseId() == null
                 || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
             throw new BusinessException("无权确认该考勤");
+        }
+        
+        // 如果提供了签到时间，更新签到时间
+        if (checkInTime != null) {
+            attendance.setCheckInTime(checkInTime);
+        }
+        
+        // 如果提供了签退时间，更新签退时间
+        if (checkOutTime != null) {
+            attendance.setCheckOutTime(checkOutTime);
+        }
+        
+        // 如果同时提供了签到和签退时间，重新计算工作时长
+        if (checkInTime != null && checkOutTime != null) {
+            Duration duration = Duration.between(checkInTime, checkOutTime);
+            double hours = duration.toMinutes() / 60.0;
+            attendance.setWorkHours(BigDecimal.valueOf(hours).setScale(2, BigDecimal.ROUND_HALF_UP));
+        } else if (attendance.getCheckInTime() != null && attendance.getCheckOutTime() != null) {
+            // 如果只更新了其中一个时间，也重新计算工作时长
+            LocalDateTime inTime = checkInTime != null ? checkInTime : attendance.getCheckInTime();
+            LocalDateTime outTime = checkOutTime != null ? checkOutTime : attendance.getCheckOutTime();
+            Duration duration = Duration.between(inTime, outTime);
+            double hours = duration.toMinutes() / 60.0;
+            attendance.setWorkHours(BigDecimal.valueOf(hours).setScale(2, BigDecimal.ROUND_HALF_UP));
         }
         
         // 设置确认信息

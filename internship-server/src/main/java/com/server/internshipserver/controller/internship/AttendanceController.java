@@ -81,8 +81,10 @@ public class AttendanceController {
     public Result<?> confirmAttendance(
             @ApiParam(value = "考勤ID", required = true) @PathVariable Long attendanceId,
             @ApiParam(value = "确认状态（1-已确认，2-已拒绝）", required = true) @RequestParam Integer confirmStatus,
-            @ApiParam(value = "确认意见", required = false) @RequestParam(required = false) String confirmComment) {
-        attendanceService.confirmAttendance(attendanceId, confirmStatus, confirmComment);
+            @ApiParam(value = "确认意见", required = false) @RequestParam(required = false) String confirmComment,
+            @ApiParam(value = "签到时间（可选，用于编辑）", required = false) @RequestParam(required = false) java.time.LocalDateTime checkInTime,
+            @ApiParam(value = "签退时间（可选，用于编辑）", required = false) @RequestParam(required = false) java.time.LocalDateTime checkOutTime) {
+        attendanceService.confirmAttendance(attendanceId, confirmStatus, confirmComment, checkInTime, checkOutTime);
         return Result.success("确认成功");
     }
     

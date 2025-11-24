@@ -26,10 +26,18 @@ export const attendanceApi = {
     return request.get(`/internship/attendance/${attendanceId}`)
   },
   // 确认考勤
-  confirmAttendance(attendanceId, confirmStatus, confirmComment) {
-    return request.post(`/internship/attendance/${attendanceId}/confirm`, null, {
-      params: { confirmStatus, confirmComment }
-    })
+  confirmAttendance(attendanceId, confirmStatus, confirmComment, checkInTime, checkOutTime) {
+    const params = { confirmStatus }
+    if (confirmComment) {
+      params.confirmComment = confirmComment
+    }
+    if (checkInTime) {
+      params.checkInTime = checkInTime
+    }
+    if (checkOutTime) {
+      params.checkOutTime = checkOutTime
+    }
+    return request.post(`/internship/attendance/${attendanceId}/confirm`, null, { params })
   },
   // 删除考勤
   deleteAttendance(attendanceId) {
