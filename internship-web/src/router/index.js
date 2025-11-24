@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/auth'
-import { getToken } from '@/utils/auth'
 import { hasAnyRole } from '@/utils/permission'
 import systemRoutes from './modules/system'
 import userRoutes from './modules/user'
@@ -76,19 +75,6 @@ const router = createRouter({
   routes
 })
 
-// 辅助函数：获取token（先从store，再从存储）
-function getTokenFromStore() {
-  const authStore = useAuthStore()
-  let token = authStore.token
-  if (!token) {
-    token = getToken()
-    if (token) {
-      authStore.token = token
-    }
-  }
-  return token
-}
-
 // 全局前置守卫
 router.beforeEach((to, from, next) => {
   // 设置页面标题
@@ -96,8 +82,9 @@ router.beforeEach((to, from, next) => {
     document.title = `${to.meta.title} - 实习管理系统`
   }
   
-  // 获取token（先从store，再从存储）
-  const token = getTokenFromStore()
+  // 从store获取token
+  const authStore = useAuthStore()
+  const token = authStore.token || ''
   
   // 检查是否需要认证
   if (to.meta.requiresAuth) {

@@ -57,8 +57,8 @@
       </el-table-column>
       <el-table-column prop="status" label="状态" width="100" align="center">
         <template #default="{ row }">
-          <el-tag :type="getStatusType(row.status)" size="small">
-            {{ getStatusText(row.status) }}
+          <el-tag :type="getStatusType(row)" size="small">
+            {{ getStatusText(row) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -82,7 +82,7 @@
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right" align="center">
+      <el-table-column label="操作" width="300" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
@@ -102,6 +102,16 @@
             @click="handleConfirm(row, 2)"
           >
             拒绝
+          </el-button>
+          <el-button
+            v-if="row.canConfirmOnboard"
+            link
+            type="warning"
+            size="small"
+            :loading="confirmOnboardLoading === row.interviewId"
+            @click="handleConfirmOnboard(row)"
+          >
+            确认上岗
           </el-button>
         </template>
       </el-table-column>
@@ -130,8 +140,8 @@
         <el-descriptions-item label="企业名称">{{ detailData.enterpriseName }}</el-descriptions-item>
         <el-descriptions-item label="岗位名称">{{ detailData.postName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="状态">
-          <el-tag :type="getStatusType(detailData.status)" size="small">
-            {{ getStatusText(detailData.status) }}
+          <el-tag :type="getStatusType(detailData)" size="small">
+            {{ getStatusText(detailData) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="我的确认">
@@ -196,11 +206,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { interviewApi } from '@/api/internship/interview'
+import { applyApi } from '@/api/internship/apply'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const confirmLoading = ref(false)
+const confirmOnboardLoading = ref(null)
 const detailDialogVisible = ref(false)
 
 const searchForm = reactive({
@@ -230,6 +242,24 @@ const loadData = async () => {
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
+      
+      // 为每个面试记录查询申请状态，判断是否可以确认上岗
+      for (const row of tableData.value) {
+        if (row.applyId && row.interviewResult === 1) {
+          try {
+            const applyRes = await applyApi.getApplyById(row.applyId)
+            if (applyRes.code === 200 && applyRes.data) {
+              // 如果申请状态为已录用（status = 3）且学生确认状态为未确认（studentConfirmStatus = 0或null）
+              if (applyRes.data.status === 3 && (applyRes.data.studentConfirmStatus === 0 || applyRes.data.studentConfirmStatus === null)) {
+                row.canConfirmOnboard = true
+                row.studentConfirmStatus = applyRes.data.studentConfirmStatus
+              }
+            }
+          } catch (error) {
+            console.error('查询申请状态失败:', error)
+          }
+        }
+      }
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -317,6 +347,35 @@ const handleConfirmFromDetail = async (confirm) => {
   }
 }
 
+// 确认上岗
+const handleConfirmOnboard = async (row) => {
+  if (!row.applyId) {
+    ElMessage.error('申请ID不存在，无法确认上岗')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm('确认上岗后，您将开始在该企业实习，可以开始考勤。确定要确认上岗吗？', '确认上岗', {
+      type: 'warning'
+    })
+    confirmOnboardLoading.value = row.interviewId
+    try {
+      const res = await applyApi.confirmOnboard(row.applyId)
+      if (res.code === 200) {
+        ElMessage.success('确认上岗成功，可以开始实习了！')
+        loadData()
+      }
+    } catch (error) {
+      console.error('确认上岗失败:', error)
+      ElMessage.error(error.response?.data?.message || '确认上岗失败')
+    } finally {
+      confirmOnboardLoading.value = null
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 // 分页处理
 const handleSizeChange = () => {
   loadData()
@@ -326,28 +385,84 @@ const handlePageChange = () => {
   loadData()
 }
 
-// 获取状态文本
-const getStatusText = (status) => {
-  const statusMap = {
-    0: '待确认',
-    1: '已确认',
-    2: '已拒绝',
-    3: '已完成',
-    4: '已取消'
+// 获取状态文本（综合考虑status、studentConfirm和interviewResult）
+const getStatusText = (row) => {
+  // 如果面试已取消
+  if (row.status === 3) {
+    return '已取消'
   }
-  return statusMap[status] || '未知'
+  
+  // 如果学生拒绝了面试
+  if (row.studentConfirm === 2) {
+    return '已拒绝'
+  }
+  
+  // 如果面试已完成且有结果
+  if (row.status === 2) {
+    if (row.interviewResult === 1) {
+      return '面试通过'
+    } else if (row.interviewResult === 2) {
+      return '面试未通过'
+    } else if (row.interviewResult === 3) {
+      return '面试待定'
+    } else {
+      return '已完成'
+    }
+  }
+  
+  // 如果学生已确认
+  if (row.studentConfirm === 1) {
+    return '已确认'
+  }
+  
+  // 默认状态
+  if (row.status === 0) {
+    return '待确认'
+  } else if (row.status === 1) {
+    return '已确认'
+  }
+  
+  return '未知'
 }
 
-// 获取状态类型
-const getStatusType = (status) => {
-  const typeMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger',
-    3: 'info',
-    4: 'info'
+// 获取状态类型（综合考虑status、studentConfirm和interviewResult）
+const getStatusType = (row) => {
+  // 如果面试已取消
+  if (row.status === 3) {
+    return 'info'
   }
-  return typeMap[status] || 'info'
+  
+  // 如果学生拒绝了面试
+  if (row.studentConfirm === 2) {
+    return 'danger'
+  }
+  
+  // 如果面试已完成且有结果
+  if (row.status === 2) {
+    if (row.interviewResult === 1) {
+      return 'success' // 面试通过
+    } else if (row.interviewResult === 2) {
+      return 'danger' // 面试未通过
+    } else if (row.interviewResult === 3) {
+      return 'warning' // 面试待定
+    } else {
+      return 'info' // 已完成但无结果
+    }
+  }
+  
+  // 如果学生已确认
+  if (row.studentConfirm === 1) {
+    return 'success'
+  }
+  
+  // 默认状态
+  if (row.status === 0) {
+    return 'warning' // 待确认
+  } else if (row.status === 1) {
+    return 'success' // 已确认
+  }
+  
+  return 'info'
 }
 
 // 获取面试方式文本

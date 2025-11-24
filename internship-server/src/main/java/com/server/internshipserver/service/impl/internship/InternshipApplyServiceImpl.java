@@ -33,7 +33,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 实习申请管理Service实现类
@@ -1194,6 +1193,239 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         this.updateById(apply);
         
         return true;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmOnboard(Long applyId) {
+        // 参数校验
+        if (applyId == null) {
+            throw new BusinessException("申请ID不能为空");
+        }
+        
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法确认上岗");
+        }
+        
+        // 检查申请是否存在
+        InternshipApply apply = this.getById(applyId);
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("申请不存在");
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            throw new BusinessException("无权操作该申请");
+        }
+        
+        // 验证申请状态为已录用（status = 3）
+        if (apply.getStatus() == null || apply.getStatus() != 3) {
+            throw new BusinessException("只有已录用的申请才能确认上岗");
+        }
+        
+        // 验证学生确认状态为未确认（student_confirm_status = 0）
+        if (apply.getStudentConfirmStatus() != null && apply.getStudentConfirmStatus() != 0) {
+            throw new BusinessException("该申请已经确认过了");
+        }
+        
+        // 获取学生信息
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        // 如果学生已有其他已确认的申请，需要先解绑
+        if (student.getCurrentApplyId() != null && !student.getCurrentApplyId().equals(applyId)) {
+            InternshipApply oldApply = this.getById(student.getCurrentApplyId());
+            if (oldApply != null && oldApply.getStudentConfirmStatus() != null && oldApply.getStudentConfirmStatus() == 1) {
+                throw new BusinessException("您已有其他已确认的实习申请，请先解绑后再确认新的申请");
+            }
+        }
+        
+        // 更新申请：student_confirm_status = 1, student_confirm_time = now()
+        apply.setStudentConfirmStatus(1);
+        apply.setStudentConfirmTime(LocalDateTime.now());
+        // 设置实习开始日期（如果未设置，使用当前日期）
+        if (apply.getInternshipStartDate() == null) {
+            apply.setInternshipStartDate(java.time.LocalDate.now());
+        }
+        this.updateById(apply);
+        
+        // 更新学生：current_apply_id = applyId, current_enterprise_id = enterpriseId, internship_status = 1
+        student.setCurrentApplyId(applyId);
+        if (apply.getEnterpriseId() != null) {
+            student.setCurrentEnterpriseId(apply.getEnterpriseId());
+        } else {
+            // 自主实习，没有企业ID
+            student.setCurrentEnterpriseId(null);
+        }
+        student.setInternshipStatus(1); // 实习中
+        studentMapper.updateById(student);
+        
+        return true;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean applyUnbind(Long applyId, String reason) {
+        // 参数校验
+        if (applyId == null) {
+            throw new BusinessException("申请ID不能为空");
+        }
+        if (!StringUtils.hasText(reason)) {
+            throw new BusinessException("离职原因不能为空");
+        }
+        
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法申请离职");
+        }
+        
+        // 检查申请是否存在
+        InternshipApply apply = this.getById(applyId);
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("申请不存在");
+        }
+        
+        // 验证申请是当前学生的已确认申请（current_apply_id = applyId）
+        Student student = studentMapper.selectById(studentId);
+        if (student == null || !applyId.equals(student.getCurrentApplyId())) {
+            throw new BusinessException("该申请不是您当前的实习申请，无法申请离职");
+        }
+        
+        // 验证学生确认状态为已确认（student_confirm_status = 1）
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            throw new BusinessException("该申请尚未确认上岗，无法申请离职");
+        }
+        
+        // 验证解绑状态为未申请（unbind_status = 0）
+        if (apply.getUnbindStatus() != null && apply.getUnbindStatus() != 0) {
+            throw new BusinessException("该申请已有解绑申请，请等待审核");
+        }
+        
+        // 更新申请：unbind_status = 1, unbind_reason = reason
+        apply.setUnbindStatus(1);
+        apply.setUnbindReason(reason);
+        this.updateById(apply);
+        
+        return true;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean auditUnbind(Long applyId, Integer auditStatus, String auditOpinion) {
+        // 参数校验
+        if (applyId == null) {
+            throw new BusinessException("申请ID不能为空");
+        }
+        if (auditStatus == null || (auditStatus != 2 && auditStatus != 3)) {
+            throw new BusinessException("审核状态无效，必须是2（已解绑）或3（解绑被拒绝）");
+        }
+        
+        // 检查申请是否存在
+        InternshipApply apply = this.getById(applyId);
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("申请不存在");
+        }
+        
+        // 验证申请的解绑状态为申请解绑（unbind_status = 1）
+        if (apply.getUnbindStatus() == null || apply.getUnbindStatus() != 1) {
+            throw new BusinessException("该申请没有待审核的解绑申请");
+        }
+        
+        // 验证申请的学生属于当前用户管理的班级
+        // 学校管理员可以审核所有学生的解绑申请
+        if (!dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+            if (apply.getStudentId() != null) {
+                Student student = studentMapper.selectById(apply.getStudentId());
+                if (student != null && student.getClassId() != null) {
+                    List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                    if (managedClassIds == null || managedClassIds.isEmpty() || !managedClassIds.contains(student.getClassId())) {
+                        // 如果不是班主任，检查是否是学院负责人
+                        if (!dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+                            throw new BusinessException("无权审核该学生的解绑申请");
+                        }
+                        // 学院负责人需要验证学生是否属于本学院
+                        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+                        if (currentUserCollegeId == null || !currentUserCollegeId.equals(student.getCollegeId())) {
+                            throw new BusinessException("无权审核该学生的解绑申请");
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 获取当前用户ID
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new BusinessException("无法获取当前用户信息");
+        }
+        
+        // 如果审核通过（auditStatus = 2）
+        if (auditStatus == 2) {
+            // 更新申请：unbind_status = 2, unbind_audit_user_id = currentUserId, unbind_audit_time = now(), unbind_audit_opinion = auditOpinion
+            apply.setUnbindStatus(2);
+            apply.setUnbindAuditUserId(currentUserId);
+            apply.setUnbindAuditTime(LocalDateTime.now());
+            apply.setUnbindAuditOpinion(auditOpinion);
+            // 重置确认状态
+            apply.setStudentConfirmStatus(0);
+            // 设置实习结束日期
+            apply.setInternshipEndDate(java.time.LocalDate.now());
+            this.updateById(apply);
+            
+            // 更新学生：current_apply_id = null, current_enterprise_id = null, internship_status = 2
+            Student student = studentMapper.selectById(apply.getStudentId());
+            if (student != null) {
+                student.setCurrentApplyId(null);
+                student.setCurrentEnterpriseId(null);
+                student.setInternshipStatus(2); // 已离职
+                studentMapper.updateById(student);
+            }
+        } else {
+            // 如果审核拒绝（auditStatus = 3）
+            apply.setUnbindStatus(3);
+            apply.setUnbindAuditUserId(currentUserId);
+            apply.setUnbindAuditTime(LocalDateTime.now());
+            apply.setUnbindAuditOpinion(auditOpinion);
+            this.updateById(apply);
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public InternshipApply getCurrentInternship() {
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            return null;
+        }
+        
+        // 获取学生信息
+        Student student = studentMapper.selectById(studentId);
+        if (student == null || student.getCurrentApplyId() == null) {
+            return null;
+        }
+        
+        // 查询 current_apply_id 对应的申请
+        InternshipApply apply = this.getById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            return null;
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            return null;
+        }
+        
+        // 填充关联字段（企业信息、岗位信息等）
+        fillApplyRelatedFields(apply);
+        
+        return apply;
     }
 }
 

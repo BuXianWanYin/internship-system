@@ -220,7 +220,7 @@ const loadData = async () => {
 // 加载企业导师列表
 const loadMentorList = async () => {
   try {
-    const res = await enterpriseMentorApi.getMentorPage({
+    const res = await enterpriseMentorApi.getEnterpriseMentorPage({
       current: 1,
       size: 1000,
       status: 1 // 只查询启用的导师
@@ -230,6 +230,7 @@ const loadMentorList = async () => {
     }
   } catch (error) {
     console.error('加载企业导师列表失败:', error)
+    ElMessage.error('加载企业导师列表失败')
   }
 }
 

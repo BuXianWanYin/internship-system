@@ -258,18 +258,54 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                         // 企业管理员或企业导师只能查看本企业的考勤
                         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
                         if (currentUserEnterpriseId != null) {
-                            // 通过applyId关联查询，过滤企业ID
-                            // 查询本企业的所有申请ID
+                            // 方式1：通过applyId关联查询，过滤企业ID（查询本企业的所有申请ID）
                             java.util.List<InternshipApply> applies = internshipApplyMapper.selectList(
                                     new LambdaQueryWrapper<InternshipApply>()
                                             .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
                                             .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                             .select(InternshipApply::getApplyId)
                             );
+                            
+                            // 方式2：通过student.current_enterprise_id查询（查询当前实习企业为本企业的学生）
+                            java.util.List<Student> students = studentMapper.selectList(
+                                    new LambdaQueryWrapper<Student>()
+                                            .eq(Student::getCurrentEnterpriseId, currentUserEnterpriseId)
+                                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                            .select(Student::getStudentId)
+                            );
+                            
+                            // 合并两种方式的查询结果
+                            java.util.List<Long> applyIds = new java.util.ArrayList<>();
+                            
+                            // 添加方式1的申请ID
                             if (applies != null && !applies.isEmpty()) {
-                                java.util.List<Long> applyIds = applies.stream()
+                                applyIds.addAll(applies.stream()
                                         .map(InternshipApply::getApplyId)
+                                        .collect(java.util.stream.Collectors.toList()));
+                            }
+                            
+                            // 添加方式2的申请ID（通过学生ID查询其当前申请）
+                            if (students != null && !students.isEmpty()) {
+                                java.util.List<Long> studentIds = students.stream()
+                                        .map(Student::getStudentId)
                                         .collect(java.util.stream.Collectors.toList());
+                                java.util.List<InternshipApply> studentApplies = internshipApplyMapper.selectList(
+                                        new LambdaQueryWrapper<InternshipApply>()
+                                                .in(InternshipApply::getStudentId, studentIds)
+                                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                                .select(InternshipApply::getApplyId)
+                                );
+                                if (studentApplies != null && !studentApplies.isEmpty()) {
+                                    applyIds.addAll(studentApplies.stream()
+                                            .map(InternshipApply::getApplyId)
+                                            .collect(java.util.stream.Collectors.toList()));
+                                }
+                            }
+                            
+                            // 去重
+                            applyIds = applyIds.stream().distinct().collect(java.util.stream.Collectors.toList());
+                            
+                            if (!applyIds.isEmpty()) {
                                 wrapper.in(Attendance::getApplyId, applyIds);
                             } else {
                                 // 如果没有申请，返回空结果
@@ -532,16 +568,30 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             throw new BusinessException("无法获取当前用户信息");
         }
         
-        // 获取当前学生的实习申请（已通过的）
-        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStudentId, studentId)
-                   .eq(InternshipApply::getStatus, 1) // 已通过
-                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .orderByDesc(InternshipApply::getCreateTime)
-                   .last("LIMIT 1");
-        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
-        if (apply == null) {
-            throw new BusinessException("您还没有已通过的实习申请，无法签到");
+        // 获取学生信息，查询当前实习申请
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        if (student.getCurrentApplyId() == null) {
+            throw new BusinessException("您还没有确认上岗的实习申请，无法签到");
+        }
+        
+        // 查询当前实习申请
+        InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("您的实习申请不存在或已删除");
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            throw new BusinessException("实习申请与学生不匹配");
+        }
+        
+        // 验证学生确认状态为已确认上岗
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            throw new BusinessException("您还没有确认上岗，无法签到");
         }
         
         // 如果未指定日期，使用今天
@@ -618,16 +668,30 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendanceDate = LocalDate.now();
         }
         
-        // 获取当前学生的实习申请（已通过的）
-        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStudentId, studentId)
-                   .eq(InternshipApply::getStatus, 1) // 已通过
-                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .orderByDesc(InternshipApply::getCreateTime)
-                   .last("LIMIT 1");
-        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
-        if (apply == null) {
-            throw new BusinessException("您还没有已通过的实习申请，无法签退");
+        // 获取学生信息，查询当前实习申请
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        if (student.getCurrentApplyId() == null) {
+            throw new BusinessException("您还没有确认上岗的实习申请，无法签退");
+        }
+        
+        // 查询当前实习申请
+        InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("您的实习申请不存在或已删除");
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            throw new BusinessException("实习申请与学生不匹配");
+        }
+        
+        // 验证学生确认状态为已确认上岗
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            throw new BusinessException("您还没有确认上岗，无法签退");
         }
         
         // 查找今天的考勤记录
@@ -691,16 +755,30 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             throw new BusinessException("无法获取当前用户信息");
         }
         
-        // 获取当前学生的实习申请（已通过的）
-        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStudentId, studentId)
-                   .eq(InternshipApply::getStatus, 1) // 已通过
-                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .orderByDesc(InternshipApply::getCreateTime)
-                   .last("LIMIT 1");
-        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
-        if (apply == null) {
-            throw new BusinessException("您还没有已通过的实习申请，无法申请请假");
+        // 获取学生信息，查询当前实习申请
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        if (student.getCurrentApplyId() == null) {
+            throw new BusinessException("您还没有确认上岗的实习申请，无法申请请假");
+        }
+        
+        // 查询当前实习申请
+        InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("您的实习申请不存在或已删除");
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            throw new BusinessException("实习申请与学生不匹配");
+        }
+        
+        // 验证学生确认状态为已确认上岗
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            throw new BusinessException("您还没有确认上岗，无法申请请假");
         }
         
         // 检查该日期是否已有考勤记录
@@ -758,16 +836,30 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             throw new BusinessException("无法获取当前用户信息");
         }
         
-        // 获取当前学生的实习申请（已通过的）
-        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStudentId, studentId)
-                   .eq(InternshipApply::getStatus, 1) // 已通过
-                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .orderByDesc(InternshipApply::getCreateTime)
-                   .last("LIMIT 1");
-        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
-        if (apply == null) {
-            throw new BusinessException("您还没有已通过的实习申请，无法选择休息");
+        // 获取学生信息，查询当前实习申请
+        Student student = studentMapper.selectById(studentId);
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        if (student.getCurrentApplyId() == null) {
+            throw new BusinessException("您还没有确认上岗的实习申请，无法选择休息");
+        }
+        
+        // 查询当前实习申请
+        InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("您的实习申请不存在或已删除");
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            throw new BusinessException("实习申请与学生不匹配");
+        }
+        
+        // 验证学生确认状态为已确认上岗
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            throw new BusinessException("您还没有确认上岗，无法选择休息");
         }
         
         // 检查该日期是否已有考勤记录
@@ -811,16 +903,28 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             return null;
         }
         
-        // 获取当前学生的实习申请（已通过的）
-        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStudentId, studentId)
-                   .eq(InternshipApply::getStatus, 1) // 已通过
-                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .orderByDesc(InternshipApply::getCreateTime)
-                   .last("LIMIT 1");
-        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
-        if (apply == null) {
-            // 没有已通过的申请，返回null
+        // 获取学生信息，查询当前实习申请
+        Student student = studentMapper.selectById(studentId);
+        if (student == null || student.getCurrentApplyId() == null) {
+            // 没有当前实习申请，返回null
+            return null;
+        }
+        
+        // 查询当前实习申请
+        InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            // 申请不存在或已删除，返回null
+            return null;
+        }
+        
+        // 验证申请属于当前学生
+        if (!apply.getStudentId().equals(studentId)) {
+            return null;
+        }
+        
+        // 验证学生确认状态为已确认上岗
+        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+            // 未确认上岗，返回null
             return null;
         }
         

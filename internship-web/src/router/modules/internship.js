@@ -43,6 +43,16 @@ export default [
     }
   },
   {
+    path: '/student/internship/my',
+    name: 'MyInternship',
+    component: () => import('@/views/student/MyInternship.vue'),
+    meta: {
+      title: '我的实习',
+      requiresAuth: true,
+      roles: ['ROLE_STUDENT']
+    }
+  },
+  {
     path: '/admin/internship/apply/audit',
     name: 'InternshipApplyAudit',
     component: () => import('@/views/admin/InternshipApplyAudit.vue'),

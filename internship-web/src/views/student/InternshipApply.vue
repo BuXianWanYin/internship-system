@@ -116,7 +116,7 @@
                     {{ formatDateTime(row.createTime) }}
                   </template>
                 </el-table-column>
-                <el-table-column label="操作" width="200" fixed="right" align="center">
+                <el-table-column label="操作" width="280" fixed="right" align="center">
                   <template #default="{ row }">
                     <el-button link type="primary" size="small" @click="handleViewCooperationApply(row)">查看详情</el-button>
                     <el-button
@@ -127,6 +127,16 @@
                       @click="handleCancelCooperationApply(row)"
                     >
                       取消
+                    </el-button>
+                    <el-button
+                      v-if="row.status === 3 && (row.studentConfirmStatus === 0 || row.studentConfirmStatus === null)"
+                      link
+                      type="warning"
+                      size="small"
+                      :loading="confirmOnboardLoading === row.applyId"
+                      @click="handleConfirmOnboard(row)"
+                    >
+                      确认上岗
                     </el-button>
                   </template>
                 </el-table-column>
@@ -592,6 +602,7 @@ const applyLoading = ref(false)
 const cooperationApplyLoading = ref(false)
 const applyPostLoading = ref(false)
 const selfApplyLoading = ref(false)
+const confirmOnboardLoading = ref(null)
 const postDetailDialogVisible = ref(false)
 const applyPostDialogVisible = ref(false)
 const selfApplyDialogVisible = ref(false)
@@ -1003,6 +1014,36 @@ const handleCancelCooperationApply = async (row) => {
       console.error('取消失败:', error)
       ElMessage.error(error.response?.data?.message || '取消失败')
     }
+  }
+}
+
+// 确认上岗
+const handleConfirmOnboard = async (row) => {
+  if (!row.applyId) {
+    ElMessage.error('申请ID不存在，无法确认上岗')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm('确认上岗后，您将开始在该企业实习，可以开始考勤。确定要确认上岗吗？', '确认上岗', {
+      type: 'warning'
+    })
+    confirmOnboardLoading.value = row.applyId
+    try {
+      const res = await applyApi.confirmOnboard(row.applyId)
+      if (res.code === 200) {
+        ElMessage.success('确认上岗成功，可以开始实习了！')
+        // 刷新列表
+        await loadCooperationApplyData()
+      }
+    } catch (error) {
+      console.error('确认上岗失败:', error)
+      ElMessage.error(error.response?.data?.message || '确认上岗失败')
+    } finally {
+      confirmOnboardLoading.value = null
+    }
+  } catch (error) {
+    // 用户取消
   }
 }
 

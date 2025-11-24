@@ -25,21 +25,7 @@ export const useAuthStore = defineStore('auth', {
           password: loginForm.password
         })
         if (res.code === 200) {
-          // 先保存到本地存储（确保token立即可用）
-          setToken(res.data.token, loginForm.remember)
-          setUserInfo({
-            username: res.data.username,
-            userId: res.data.userInfo?.userId,
-            realName: res.data.userInfo?.realName,
-            phone: res.data.userInfo?.phone,
-            email: res.data.userInfo?.email,
-            avatar: res.data.userInfo?.avatar,
-            roles: res.data.userInfo?.roles || []
-          }, loginForm.remember)
-          
-          // 然后更新store（确保store和存储一致）
-          this.token = res.data.token
-          this.userInfo = {
+          const userInfo = {
             username: res.data.username,
             userId: res.data.userInfo?.userId,
             realName: res.data.userInfo?.realName,
@@ -48,6 +34,14 @@ export const useAuthStore = defineStore('auth', {
             avatar: res.data.userInfo?.avatar,
             roles: res.data.userInfo?.roles || []
           }
+          
+          // 更新store（单一数据源）
+          this.token = res.data.token
+          this.userInfo = userInfo
+          
+          // 持久化到本地存储
+          setToken(res.data.token, loginForm.remember)
+          setUserInfo(userInfo, loginForm.remember)
           
           return Promise.resolve(res)
         } else {
@@ -102,7 +96,7 @@ export const useAuthStore = defineStore('auth', {
         const res = await request.post('/auth/refresh')
         if (res.code === 200) {
           this.token = res.data.token
-          // 刷新token时，使用之前的remember设置（默认使用localStorage）
+          // 刷新token时，使用之前的remember设置
           const remember = !!localStorage.getItem('token')
           setToken(this.token, remember)
           return Promise.resolve(res)
@@ -110,19 +104,8 @@ export const useAuthStore = defineStore('auth', {
           return Promise.reject(new Error(res.message))
         }
       } catch (error) {
-        // Token刷新失败，清除登录信息
         this.logout()
         return Promise.reject(error)
-      }
-    },
-    
-    /**
-     * 从存储中同步token到store（用于确保store和存储的一致性）
-     */
-    syncTokenFromStorage() {
-      const tokenFromStorage = getToken()
-      if (tokenFromStorage && this.token !== tokenFromStorage) {
-        this.token = tokenFromStorage
       }
     },
     
@@ -131,7 +114,8 @@ export const useAuthStore = defineStore('auth', {
      */
     updateUserInfo(userInfo) {
       this.userInfo = userInfo
-      setUserInfo(userInfo)
+      const remember = !!localStorage.getItem('userInfo')
+      setUserInfo(userInfo, remember)
     }
   }
 })

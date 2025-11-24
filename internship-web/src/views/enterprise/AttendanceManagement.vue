@@ -5,6 +5,29 @@
       <el-button type="success" :icon="Plus" @click="handleBatchAdd">批量确认</el-button>
     </template>
 
+    <!-- 待确认考勤提示 -->
+    <el-alert
+      v-if="pendingCount > 0"
+      :title="`有 ${pendingCount} 条待确认的考勤记录，请及时处理`"
+      type="warning"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 20px"
+    >
+      <template #default>
+        <span>待确认考勤：{{ pendingCount }} 条</span>
+        <el-button
+          type="primary"
+          link
+          size="small"
+          style="margin-left: 10px"
+          @click="handleViewPending"
+        >
+          立即查看
+        </el-button>
+      </template>
+    </el-alert>
+
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -48,6 +71,19 @@
             <el-option label="早退" :value="3" />
             <el-option label="请假" :value="4" />
             <el-option label="缺勤" :value="5" />
+            <el-option label="休息" :value="6" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="确认状态">
+          <el-select
+            v-model="searchForm.confirmStatus"
+            placeholder="请选择状态"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="待确认" :value="0" />
+            <el-option label="已确认" :value="1" />
+            <el-option label="已拒绝" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -64,6 +100,7 @@
       stripe
       style="width: 100%"
       :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+      :row-class-name="getRowClassName"
     >
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column prop="studentName" label="学生姓名" min-width="120" />
@@ -409,7 +446,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
@@ -434,8 +471,11 @@ const searchForm = reactive({
   studentName: '',
   studentNo: '',
   attendanceDate: null,
-  attendanceType: null
+  attendanceType: null,
+  confirmStatus: null
 })
+
+const pendingCount = ref(0)
 
 const pagination = reactive({
   current: 1,
@@ -510,7 +550,8 @@ const loadData = async () => {
       studentName: searchForm.studentName || undefined,
       studentNo: searchForm.studentNo || undefined,
       attendanceDate: searchForm.attendanceDate || undefined,
-      attendanceType: searchForm.attendanceType !== null ? searchForm.attendanceType : undefined
+      attendanceType: searchForm.attendanceType !== null ? searchForm.attendanceType : undefined,
+      confirmStatus: searchForm.confirmStatus !== null ? searchForm.confirmStatus : undefined
     })
     if (res.code === 200) {
       tableData.value = res.data.records || []
@@ -521,6 +562,22 @@ const loadData = async () => {
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 加载待确认考勤数量
+const loadPendingCount = async () => {
+  try {
+    const res = await attendanceApi.getAttendancePage({
+      current: 1,
+      size: 1,
+      confirmStatus: 0 // 待确认
+    })
+    if (res.code === 200) {
+      pendingCount.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('加载待确认数量失败:', error)
   }
 }
 
@@ -563,6 +620,14 @@ const handleReset = () => {
   searchForm.studentNo = ''
   searchForm.attendanceDate = null
   searchForm.attendanceType = null
+  searchForm.confirmStatus = null
+  handleSearch()
+}
+
+// 查看待确认考勤
+const handleViewPending = () => {
+  searchForm.confirmStatus = 0
+  pagination.current = 1
   handleSearch()
 }
 
@@ -663,6 +728,7 @@ const handleSubmitConfirm = async () => {
           ElMessage.success('确认成功')
           confirmDialogVisible.value = false
           loadData()
+          loadPendingCount()
         }
       } catch (error) {
         console.error('确认失败:', error)
@@ -675,10 +741,34 @@ const handleSubmitConfirm = async () => {
 }
 
 // 学生选择变化
-const handleStudentChange = (studentId) => {
+const handleStudentChange = async (studentId) => {
   const student = studentList.value.find(item => item.studentId === studentId)
   if (student) {
     formData.studentName = student.studentName || ''
+    
+    // 自动查询该学生的已通过申请，获取applyId
+    if (studentId && !formData.attendanceId) {
+      try {
+        const res = await applyApi.getApplyPage({
+          current: 1,
+          size: 100,
+          studentId: studentId,
+          status: 1 // 已通过的申请
+        })
+        if (res.code === 200 && res.data.records && res.data.records.length > 0) {
+          // 如果有多个申请，使用最新的一个
+          const latestApply = res.data.records[0]
+          formData.applyId = latestApply.applyId
+        } else {
+          ElMessage.warning('该学生没有已通过的实习申请，无法添加考勤')
+          formData.applyId = null
+        }
+      } catch (error) {
+        console.error('查询申请失败:', error)
+        ElMessage.error('查询申请失败')
+        formData.applyId = null
+      }
+    }
   }
 }
 
@@ -700,6 +790,7 @@ const handleSubmit = async () => {
             ElMessage.success('更新成功')
             dialogVisible.value = false
             loadData()
+            loadPendingCount()
           }
         } else {
           const res = await attendanceApi.addAttendance(data)
@@ -707,6 +798,7 @@ const handleSubmit = async () => {
             ElMessage.success('确认成功')
             dialogVisible.value = false
             loadData()
+            loadPendingCount()
           }
         }
       } catch (error) {
@@ -726,21 +818,46 @@ const handleSubmitBatch = async () => {
     if (valid) {
       batchLoading.value = true
       try {
-        // 构建批量考勤数据
-        const attendanceList = batchForm.studentIds.map(studentId => {
-          const student = studentList.value.find(s => s.studentId === studentId)
-          return {
-            studentId,
-            attendanceDate: batchForm.attendanceDate,
-            attendanceType: batchForm.attendanceType,
-            workHours: batchForm.workHours
+        // 为每个学生查询对应的申请ID
+        const attendanceList = []
+        for (const studentId of batchForm.studentIds) {
+          try {
+            const res = await applyApi.getApplyPage({
+              current: 1,
+              size: 1,
+              studentId: studentId,
+              status: 1 // 已通过的申请
+            })
+            if (res.code === 200 && res.data.records && res.data.records.length > 0) {
+              const latestApply = res.data.records[0]
+              attendanceList.push({
+                studentId,
+                applyId: latestApply.applyId,
+                attendanceDate: batchForm.attendanceDate,
+                attendanceType: batchForm.attendanceType,
+                workHours: batchForm.workHours
+              })
+            } else {
+              ElMessage.warning(`学生ID ${studentId} 没有已通过的实习申请，已跳过`)
+            }
+          } catch (error) {
+            console.error(`查询学生 ${studentId} 的申请失败:`, error)
+            ElMessage.warning(`查询学生ID ${studentId} 的申请失败，已跳过`)
           }
-        })
-        const res = await attendanceApi.batchAddAttendance({ attendanceList })
+        }
+        
+        if (attendanceList.length === 0) {
+          ElMessage.warning('没有可添加的考勤记录')
+          batchLoading.value = false
+          return
+        }
+        
+        const res = await attendanceApi.batchAddAttendance(attendanceList)
         if (res.code === 200) {
           ElMessage.success('批量确认成功')
           batchDialogVisible.value = false
           loadData()
+          loadPendingCount()
         }
       } catch (error) {
         console.error('批量确认失败:', error)
@@ -800,9 +917,23 @@ const getAttendanceTypeText = (type) => {
     2: '迟到',
     3: '早退',
     4: '请假',
-    5: '缺勤'
+    5: '缺勤',
+    6: '休息'
   }
   return typeMap[type] || '-'
+}
+
+// 获取表格行样式类名（用于高亮显示待确认的请假/休息申请）
+const getRowClassName = ({ row }) => {
+  // 如果是待确认的请假或休息申请，添加高亮样式
+  if (row.confirmStatus === 0 && (row.attendanceType === 4 || row.attendanceType === 6)) {
+    return 'pending-leave-rest-row'
+  }
+  // 如果是待确认的考勤，添加浅色背景
+  if (row.confirmStatus === 0) {
+    return 'pending-attendance-row'
+  }
+  return ''
 }
 
 // 获取考勤类型标签类型
@@ -817,9 +948,18 @@ const getAttendanceTypeTagType = (type) => {
   return typeMap[type] || 'info'
 }
 
+// 监听数据变化，更新待确认数量
+watch(() => [tableData.value, searchForm.confirmStatus], () => {
+  // 如果当前筛选的是待确认状态，更新数量
+  if (searchForm.confirmStatus === 0) {
+    pendingCount.value = pagination.total
+  }
+}, { deep: true })
+
 // 初始化
 onMounted(() => {
   loadData()
+  loadPendingCount()
 })
 </script>
 
@@ -838,6 +978,21 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* 待确认考勤行样式 */
+:deep(.pending-attendance-row) {
+  background-color: #fef0e6 !important;
+}
+
+/* 待确认的请假/休息申请行样式（高亮显示） */
+:deep(.pending-leave-rest-row) {
+  background-color: #fff7e6 !important;
+  border-left: 3px solid #faad14;
+}
+
+:deep(.pending-leave-rest-row:hover) {
+  background-color: #ffe58f !important;
 }
 </style>
 

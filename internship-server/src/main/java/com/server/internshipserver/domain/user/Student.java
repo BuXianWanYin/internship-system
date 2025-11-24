@@ -59,6 +59,18 @@ public class Student implements Serializable {
     @TableField("school_id")
     private Long schoolId;
     
+    @ApiModelProperty(value = "当前实习申请ID", example = "1")
+    @TableField("current_apply_id")
+    private Long currentApplyId;
+    
+    @ApiModelProperty(value = "当前实习企业ID", example = "1")
+    @TableField("current_enterprise_id")
+    private Long currentEnterpriseId;
+    
+    @ApiModelProperty(value = "实习状态：0-未实习，1-实习中，2-已离职，3-已结束", example = "0")
+    @TableField("internship_status")
+    private Integer internshipStatus;
+    
     @ApiModelProperty(value = "状态：1-启用，0-禁用", example = "1")
     @TableField("status")
     private Integer status;

@@ -44,6 +44,19 @@
             <el-option label="已拒绝" :value="2" />
             <el-option label="已录用" :value="3" />
             <el-option label="已拒绝录用" :value="4" />
+    0--0-0-0-0--090909999999999999999999999999999999999999999999999999909999999999999999999【=】】【【【【【【【【【【【【【-  </el-select>
+        </el-form-item>
+        <el-form-item label="解绑状态">
+          <el-select
+            v-model="searchForm.unbindStatus"
+            placeholder="请选择解绑状态"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="未申请" :value="0" />
+            <el-option label="申请中" :value="1" />
+            <el-option label="已解绑" :value="2" />
+            <el-option label="已拒绝" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -80,12 +93,20 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="解绑状态" width="120" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.unbindStatus === 1" type="warning" size="small">申请中</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 3" type="danger" size="small">已拒绝</el-tag>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="createTime" label="申请时间" width="180">
         <template #default="{ row }">
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right" align="center">
+      <el-table-column label="操作" width="300" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
@@ -105,6 +126,15 @@
             @click="handleAudit(row, 2)"
           >
             拒绝
+          </el-button>
+          <el-button
+            v-if="row.unbindStatus === 1"
+            link
+            type="warning"
+            size="small"
+            @click="handleAuditUnbind(row)"
+          >
+            审核解绑
           </el-button>
         </template>
       </el-table-column>
@@ -326,6 +356,51 @@
         <el-button type="primary" :loading="auditLoading" @click="handleSubmitAudit">确定</el-button>
       </template>
     </el-dialog>
+    
+    <!-- 审核解绑对话框 -->
+    <el-dialog
+      v-model="unbindAuditDialogVisible"
+      title="审核解绑申请"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="unbindAuditFormRef"
+        :model="unbindAuditForm"
+        :rules="unbindAuditFormRules"
+        label-width="100px"
+      >
+        <el-form-item label="申请信息">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            <div><strong>学生：</strong>{{ currentUnbindApply.studentName }}（{{ currentUnbindApply.studentNo }}）</div>
+            <div style="margin-top: 5px"><strong>企业：</strong>{{ currentUnbindApply.enterpriseName || currentUnbindApply.selfEnterpriseName || '-' }}</div>
+            <div style="margin-top: 5px"><strong>岗位：</strong>{{ currentUnbindApply.postName || currentUnbindApply.selfPostName || '-' }}</div>
+            <div v-if="currentUnbindApply.unbindReason" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #dcdfe6">
+              <strong>离职原因：</strong>
+              <div style="margin-top: 5px; color: #606266">{{ currentUnbindApply.unbindReason }}</div>
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="审核结果" prop="auditStatus">
+          <el-radio-group v-model="unbindAuditForm.auditStatus">
+            <el-radio :label="2">同意解绑</el-radio>
+            <el-radio :label="3">拒绝解绑</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="auditOpinion">
+          <el-input
+            v-model="unbindAuditForm.auditOpinion"
+            type="textarea"
+            :rows="6"
+            :placeholder="unbindAuditForm.auditStatus === 2 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="unbindAuditDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="unbindAuditLoading" @click="handleSubmitUnbindAudit">确定</el-button>
+      </template>
+    </el-dialog>
   </PageLayout>
 </template>
 
@@ -350,7 +425,8 @@ const searchForm = reactive({
   studentName: '',
   studentNo: '',
   applyType: null,
-  status: null
+  status: null,
+  unbindStatus: null
 })
 
 const pagination = reactive({
@@ -367,6 +443,31 @@ const auditForm = reactive({
   auditStatus: 1,
   auditOpinion: ''
 })
+
+const unbindAuditDialogVisible = ref(false)
+const unbindAuditFormRef = ref(null)
+const currentUnbindApply = ref({})
+const unbindAuditLoading = ref(false)
+
+const unbindAuditForm = reactive({
+  auditStatus: 2, // 2-已解绑，3-解绑被拒绝
+  auditOpinion: ''
+})
+
+const unbindAuditFormRules = {
+  auditOpinion: [
+    {
+      validator: (rule, value, callback) => {
+        if (unbindAuditForm.auditStatus === 3 && !value) {
+          callback(new Error('拒绝时必须填写拒绝原因'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 
 const auditFormRules = {
   auditOpinion: [
@@ -400,7 +501,7 @@ const loadData = async () => {
     if (res.code === 200) {
       let records = res.data.records || []
       
-      // 前端过滤学生姓名和学号（因为后端API不支持这些参数，需要在前端过滤）
+      // 前端过滤学生姓名、学号和解绑状态（因为后端API不支持这些参数，需要在前端过滤）
       if (searchForm.studentName) {
         records = records.filter(item => 
           item.studentName && item.studentName.includes(searchForm.studentName)
@@ -409,6 +510,11 @@ const loadData = async () => {
       if (searchForm.studentNo) {
         records = records.filter(item => 
           item.studentNo && item.studentNo.includes(searchForm.studentNo)
+        )
+      }
+      if (searchForm.unbindStatus !== null) {
+        records = records.filter(item => 
+          (item.unbindStatus || 0) === searchForm.unbindStatus
         )
       }
       
@@ -437,6 +543,7 @@ const handleReset = () => {
   searchForm.studentNo = ''
   searchForm.applyType = null
   searchForm.status = null
+  searchForm.unbindStatus = null
   handleSearch()
 }
 
@@ -575,6 +682,46 @@ const handleDownloadResume = async (filePath) => {
     console.error('下载文件失败:', error)
     ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
   }
+}
+
+// 审核解绑
+const handleAuditUnbind = (row) => {
+  currentUnbindApply.value = row
+  unbindAuditForm.auditStatus = 2 // 默认通过
+  unbindAuditForm.auditOpinion = ''
+  unbindAuditDialogVisible.value = true
+}
+
+// 提交解绑审核
+const handleSubmitUnbindAudit = async () => {
+  if (!unbindAuditFormRef.value) return
+  await unbindAuditFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    if (!currentUnbindApply.value || !currentUnbindApply.value.applyId) {
+      ElMessage.error('申请ID不存在')
+      return
+    }
+    
+    unbindAuditLoading.value = true
+    try {
+      const res = await applyApi.auditUnbind(
+        currentUnbindApply.value.applyId,
+        unbindAuditForm.auditStatus,
+        unbindAuditForm.auditOpinion || undefined
+      )
+      if (res.code === 200) {
+        ElMessage.success('审核成功')
+        unbindAuditDialogVisible.value = false
+        loadData()
+      }
+    } catch (error) {
+      console.error('审核解绑失败:', error)
+      ElMessage.error(error.response?.data?.message || '审核解绑失败')
+    } finally {
+      unbindAuditLoading.value = false
+    }
+  })
 }
 
 // 初始化

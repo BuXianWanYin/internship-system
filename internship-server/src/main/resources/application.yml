@@ -47,7 +47,7 @@ mybatis-plus:
 # JWT配置
 jwt:
   secret: internship-system-secret-key-2024-please-change-in-production
-  expiration: 7200000  # 2小时，单位：毫秒
+  expiration: 604800000  # 7天，单位：毫秒
   refresh-expiration: 604800000  # 7天，单位：毫秒
 
 # Swagger配置

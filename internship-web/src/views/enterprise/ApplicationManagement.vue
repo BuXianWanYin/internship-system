@@ -78,8 +78,9 @@
       <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
+          <!-- 安排面试：只有在没有面试记录，或者面试未完成，或者面试未通过时显示 -->
           <el-button
-            v-if="row.status === 1 && (!row.hasInterview || !row.latestInterview || row.latestInterview.status === 2)"
+            v-if="row.status === 1 && canArrangeInterview(row)"
             link
             type="warning"
             size="small"
@@ -87,8 +88,9 @@
           >
             安排面试
           </el-button>
+          <!-- 录用/拒绝：只有在没有面试记录，或者面试通过时显示 -->
           <el-button
-            v-if="row.status === 1"
+            v-if="row.status === 1 && canHireOrReject(row)"
             link
             type="success"
             size="small"
@@ -97,7 +99,7 @@
             录用
           </el-button>
           <el-button
-            v-if="row.status === 1"
+            v-if="row.status === 1 && canHireOrReject(row)"
             link
             type="danger"
             size="small"
@@ -221,21 +223,21 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.status === 1 && (!detailData.hasInterview || !detailData.latestInterview || detailData.latestInterview.status === 2)"
+          v-if="detailData.status === 1 && canArrangeInterview(detailData)"
           type="warning"
           @click="handleArrangeInterviewFromDetail"
         >
           安排面试
         </el-button>
         <el-button
-          v-if="detailData.status === 1"
+          v-if="detailData.status === 1 && canHireOrReject(detailData)"
           type="success"
           @click="handleFilterFromDetail(3)"
         >
           录用
         </el-button>
         <el-button
-          v-if="detailData.status === 1"
+          v-if="detailData.status === 1 && canHireOrReject(detailData)"
           type="danger"
           @click="handleFilterFromDetail(4)"
         >
@@ -521,6 +523,47 @@ const getStatusType = (status) => {
     4: 'danger'
   }
   return typeMap[status] || 'info'
+}
+
+// 判断是否可以安排面试
+// 可以安排面试的条件：没有面试记录，或者面试未完成，或者面试未通过
+const canArrangeInterview = (row) => {
+  // 如果没有面试记录，可以安排面试
+  if (!row.hasInterview || !row.latestInterview) {
+    return true
+  }
+  
+  const interview = row.latestInterview
+  // 如果面试已完成但未通过，可以重新安排面试
+  if (interview.status === 2 && interview.interviewResult === 2) {
+    return true
+  }
+  
+  // 如果面试已取消，可以重新安排面试
+  if (interview.status === 3) {
+    return true
+  }
+  
+  // 其他情况（面试进行中、面试通过）不能安排面试
+  return false
+}
+
+// 判断是否可以录用/拒绝
+// 可以录用/拒绝的条件：没有面试记录，或者面试通过
+const canHireOrReject = (row) => {
+  // 如果没有面试记录，可以直接录用/拒绝
+  if (!row.hasInterview || !row.latestInterview) {
+    return true
+  }
+  
+  const interview = row.latestInterview
+  // 如果面试已完成且通过，可以录用/拒绝
+  if (interview.status === 2 && interview.interviewResult === 1) {
+    return true
+  }
+  
+  // 其他情况不能录用/拒绝
+  return false
 }
 
 // 获取简历文件名

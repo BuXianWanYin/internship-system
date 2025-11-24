@@ -8,6 +8,7 @@ import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.service.user.AuthService;
 import com.server.internshipserver.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -39,6 +40,12 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private UserService userService;
     
+    @Value("${jwt.expiration}")
+    private Long jwtExpiration; // JWT过期时间（毫秒）
+    
+    @Value("${jwt.refresh-expiration}")
+    private Long jwtRefreshExpiration; // JWT刷新过期时间（毫秒）
+    
     @Override
     public Map<String, Object> login(UserInfo loginUser) {
         // 参数校验
@@ -57,9 +64,11 @@ public class AuthServiceImpl implements AuthService {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token = jwtUtil.generateToken(userDetails);
         
-        // 将Token存储到Redis
+        // 将Token存储到Redis（过期时间与JWT token过期时间一致）
         String redisKey = Constants.TOKEN_KEY_PREFIX + loginUser.getUsername();
-        redisUtil.set(redisKey, token, 2, TimeUnit.HOURS);
+        // 将毫秒转换为秒
+        long expirationSeconds = jwtExpiration / 1000;
+        redisUtil.set(redisKey, token, expirationSeconds, TimeUnit.SECONDS);
         
         // 获取用户角色列表
         List<String> roles = userDetails.getAuthorities().stream()
@@ -118,9 +127,11 @@ public class AuthServiceImpl implements AuthService {
         String username = jwtUtil.getUsernameFromToken(token);
         String newToken = jwtUtil.refreshToken(token);
         
-        // 更新Redis中的Token
+        // 更新Redis中的Token（过期时间与JWT refresh token过期时间一致）
         String redisKey = Constants.TOKEN_KEY_PREFIX + username;
-        redisUtil.set(redisKey, newToken, 7, TimeUnit.DAYS);
+        // 将毫秒转换为秒
+        long expirationSeconds = jwtRefreshExpiration / 1000;
+        redisUtil.set(redisKey, newToken, expirationSeconds, TimeUnit.SECONDS);
         
         Map<String, Object> data = new HashMap<>();
         data.put("token", newToken);

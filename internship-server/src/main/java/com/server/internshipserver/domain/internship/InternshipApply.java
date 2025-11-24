@@ -142,6 +142,46 @@ public class InternshipApply implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime acceptTime;
     
+    @ApiModelProperty(value = "学生确认状态：0-未确认，1-已确认上岗，2-已拒绝", example = "0")
+    @TableField("student_confirm_status")
+    private Integer studentConfirmStatus;
+    
+    @ApiModelProperty(value = "学生确认时间")
+    @TableField("student_confirm_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime studentConfirmTime;
+    
+    @ApiModelProperty(value = "解绑状态：0-未申请，1-申请解绑，2-已解绑，3-解绑被拒绝", example = "0")
+    @TableField("unbind_status")
+    private Integer unbindStatus;
+    
+    @ApiModelProperty(value = "解绑原因", example = "个人原因需要离职")
+    @TableField("unbind_reason")
+    private String unbindReason;
+    
+    @ApiModelProperty(value = "解绑审核人ID（班主任）", example = "1")
+    @TableField("unbind_audit_user_id")
+    private Long unbindAuditUserId;
+    
+    @ApiModelProperty(value = "解绑审核时间")
+    @TableField("unbind_audit_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime unbindAuditTime;
+    
+    @ApiModelProperty(value = "解绑审核意见", example = "同意解绑")
+    @TableField("unbind_audit_opinion")
+    private String unbindAuditOpinion;
+    
+    @ApiModelProperty(value = "实习开始日期", example = "2024-03-01")
+    @TableField("internship_start_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate internshipStartDate;
+    
+    @ApiModelProperty(value = "实习结束日期", example = "2024-06-30")
+    @TableField("internship_end_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate internshipEndDate;
+    
     @ApiModelProperty(value = "企业导师ID", example = "1")
     @TableField("mentor_id")
     private Long mentorId;

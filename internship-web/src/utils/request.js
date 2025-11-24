@@ -1,7 +1,7 @@
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/store/modules/auth'
-import { getToken, removeToken, removeUserInfo } from '@/utils/auth'
+import { removeToken, removeUserInfo } from '@/utils/auth'
 import router from '@/router'
 import { isCanceledRequest } from '@/utils/request-helper'
 
@@ -50,21 +50,9 @@ service.interceptors.request.use(
       // 请求会被取消，错误会在响应拦截器中处理
     }
     
-    // 优先从存储中读取token（确保获取最新的token，避免store响应式延迟问题）
-    // 存储是同步的，而store可能有响应式更新延迟
-    let token = getToken()
-    
-    // 如果从存储中读取到token，同步到store（保持store和存储的一致性）
+    // 从store获取token（store是单一数据源）
     const authStore = useAuthStore()
-    if (token) {
-      // 只有当store中的token与存储中的不一致时才更新
-      if (authStore.token !== token) {
-        authStore.token = token
-      }
-    } else {
-      // 如果存储中没有token，尝试从store中获取（兼容性处理）
-      token = authStore.token || ''
-    }
+    const token = authStore.token || ''
     
     // 如果不是登录相关请求且没有token，取消请求
     if (!isAuthRequest && !token) {
@@ -225,10 +213,7 @@ function handle401Error(message) {
   cancelTokenSource.cancel('Token已过期，正在跳转登录页')
   pendingRequests.clear()
   
-  // 显示错误消息（只显示一次）
-  ElMessage.error(message)
-  
-  // 清除token并跳转到登录页
+  // 清除token和用户信息
   const authStore = useAuthStore()
   // 直接清除本地数据，不调用API（避免再次401）
   authStore.token = ''
@@ -236,12 +221,19 @@ function handle401Error(message) {
   removeToken()
   removeUserInfo()
   
-  // 跳转到登录页
-  router.push('/login').finally(() => {
-    // 延迟重置标志，确保跳转完成
-    setTimeout(() => {
-      isHandling401 = false
-    }, 1000)
+  // 显示弹出框提示
+  ElMessageBox.alert('登录状态过期，请重新登录', '提示', {
+    confirmButtonText: '确定',
+    type: 'warning',
+    callback: () => {
+      // 跳转到登录页
+      router.push('/login').finally(() => {
+        // 延迟重置标志，确保跳转完成
+        setTimeout(() => {
+          isHandling401 = false
+        }, 1000)
+      })
+    }
   })
 }
 

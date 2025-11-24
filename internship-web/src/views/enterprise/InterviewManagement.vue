@@ -34,9 +34,8 @@
           >
             <el-option label="待确认" :value="0" />
             <el-option label="已确认" :value="1" />
-            <el-option label="已拒绝" :value="2" />
-            <el-option label="已完成" :value="3" />
-            <el-option label="已取消" :value="4" />
+            <el-option label="已完成" :value="2" />
+            <el-option label="已取消" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -113,7 +112,7 @@
             提交结果
           </el-button>
           <el-button
-            v-if="row.status !== 4 && row.status !== 3"
+            v-if="row.status !== 3 && row.status !== 2"
             link
             type="danger"
             size="small"
@@ -645,9 +644,8 @@ const getStatusText = (status) => {
   const statusMap = {
     0: '待确认',
     1: '已确认',
-    2: '已拒绝',
-    3: '已完成',
-    4: '已取消'
+    2: '已完成',
+    3: '已取消'
   }
   return statusMap[status] || '未知'
 }
@@ -657,9 +655,8 @@ const getStatusType = (status) => {
   const typeMap = {
     0: 'warning',
     1: 'success',
-    2: 'danger',
-    3: 'info',
-    4: 'info'
+    2: 'success', // 已完成也是绿色
+    3: 'info'
   }
   return typeMap[status] || 'info'
 }

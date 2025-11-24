@@ -134,5 +134,46 @@ public class InternshipApplyController {
         internshipApplyService.assignMentor(applyId, mentorId);
         return Result.success("分配成功");
     }
+    
+    @ApiOperation("学生确认上岗")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/{applyId}/confirm-onboard")
+    public Result<?> confirmOnboard(
+            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId) {
+        internshipApplyService.confirmOnboard(applyId);
+        return Result.success("确认上岗成功");
+    }
+    
+    @ApiOperation("学生申请离职/解绑")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/{applyId}/apply-unbind")
+    public Result<?> applyUnbind(
+            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
+            @ApiParam(value = "离职原因", required = true) @RequestParam String reason) {
+        internshipApplyService.applyUnbind(applyId, reason);
+        return Result.success("离职申请提交成功，等待审核");
+    }
+    
+    @ApiOperation("审核解绑申请（班主任/学院负责人/学校管理员）")
+    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_COLLEGE_LEADER', 'ROLE_SCHOOL_ADMIN')")
+    @PostMapping("/{applyId}/audit-unbind")
+    public Result<?> auditUnbind(
+            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
+            @ApiParam(value = "审核状态（2-已解绑，3-解绑被拒绝）", required = true) @RequestParam Integer auditStatus,
+            @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
+        internshipApplyService.auditUnbind(applyId, auditStatus, auditOpinion);
+        return Result.success("审核成功");
+    }
+    
+    @ApiOperation("获取当前学生的实习申请（已确认上岗的）")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/current")
+    public Result<InternshipApply> getCurrentInternship() {
+        InternshipApply apply = internshipApplyService.getCurrentInternship();
+        if (apply == null) {
+            return Result.success(null);
+        }
+        return Result.success(apply);
+    }
 }
 
