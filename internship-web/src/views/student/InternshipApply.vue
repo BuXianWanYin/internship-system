@@ -292,6 +292,70 @@
         <el-form-item label="申请企业">
           <el-input :value="applyPostForm.enterpriseName" disabled />
         </el-form-item>
+        <!-- 新增：选择实习计划 -->
+        <el-form-item label="实习计划" prop="planId" required>
+          <el-select
+            v-model="applyPostForm.planId"
+            placeholder="请选择实习计划"
+            style="width: 100%"
+            :loading="loadingPlans"
+            @change="handlePlanChange"
+          >
+            <el-option
+              v-for="plan in availablePlans"
+              :key="plan.planId"
+              :label="`${plan.planName} (${plan.planCode})`"
+              :value="plan.planId"
+            >
+              <div>
+                <div>{{ plan.planName }}</div>
+                <div style="font-size: 12px; color: #999;">
+                  {{ formatDate(plan.startDate) }} ~ {{ formatDate(plan.endDate) }}
+                </div>
+              </div>
+            </el-option>
+          </el-select>
+          <el-empty v-if="!loadingPlans && availablePlans.length === 0" description="暂无可用的实习计划" :image-size="60" style="margin-top: 10px" />
+        </el-form-item>
+        
+        <!-- 显示计划详情 -->
+        <el-form-item v-if="selectedPlan" label="计划详情">
+          <el-card shadow="never" style="margin-top: 10px;">
+            <div v-if="selectedPlan.planOutline" style="margin-bottom: 10px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">实习大纲：</h4>
+              <div v-html="selectedPlan.planOutline" style="font-size: 13px; color: #606266;"></div>
+            </div>
+            <div v-if="selectedPlan.taskRequirements" style="margin-bottom: 10px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">任务要求：</h4>
+              <div v-html="selectedPlan.taskRequirements" style="font-size: 13px; color: #606266;"></div>
+            </div>
+            <div v-if="selectedPlan.assessmentStandards">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">考核标准：</h4>
+              <div v-html="selectedPlan.assessmentStandards" style="font-size: 13px; color: #606266;"></div>
+            </div>
+          </el-card>
+        </el-form-item>
+        
+        <!-- 实习时间（根据计划自动填充，可手动调整） -->
+        <el-form-item label="实习开始日期" prop="internshipStartDate">
+          <el-date-picker
+            v-model="applyPostForm.internshipStartDate"
+            type="date"
+            placeholder="选择开始日期"
+            style="width: 100%"
+            :disabled-date="(date) => disabledStartDate(date)"
+          />
+        </el-form-item>
+        <el-form-item label="实习结束日期" prop="internshipEndDate">
+          <el-date-picker
+            v-model="applyPostForm.internshipEndDate"
+            type="date"
+            placeholder="选择结束日期"
+            style="width: 100%"
+            :disabled-date="(date) => disabledEndDate(date)"
+          />
+        </el-form-item>
+        
         <el-form-item label="简历附件" prop="resumeAttachment">
           <el-upload
             ref="resumeUploadRef"
@@ -400,6 +464,50 @@
         <el-form-item label="联系邮箱" prop="contactEmail">
           <el-input v-model="selfApplyForm.contactEmail" placeholder="请输入联系邮箱" />
         </el-form-item>
+        <!-- 新增：选择实习计划 -->
+        <el-form-item label="实习计划" prop="planId" required>
+          <el-select
+            v-model="selfApplyForm.planId"
+            placeholder="请选择实习计划"
+            style="width: 100%"
+            :loading="loadingPlans"
+            @change="handleSelfApplyPlanChange"
+          >
+            <el-option
+              v-for="plan in availablePlans"
+              :key="plan.planId"
+              :label="`${plan.planName} (${plan.planCode})`"
+              :value="plan.planId"
+            >
+              <div>
+                <div>{{ plan.planName }}</div>
+                <div style="font-size: 12px; color: #999;">
+                  {{ formatDate(plan.startDate) }} ~ {{ formatDate(plan.endDate) }}
+                </div>
+              </div>
+            </el-option>
+          </el-select>
+          <el-empty v-if="!loadingPlans && availablePlans.length === 0" description="暂无可用的实习计划" :image-size="60" style="margin-top: 10px" />
+        </el-form-item>
+        
+        <!-- 显示计划详情 -->
+        <el-form-item v-if="selectedSelfApplyPlan" label="计划详情">
+          <el-card shadow="never" style="margin-top: 10px;">
+            <div v-if="selectedSelfApplyPlan.planOutline" style="margin-bottom: 10px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">实习大纲：</h4>
+              <div v-html="selectedSelfApplyPlan.planOutline" style="font-size: 13px; color: #606266;"></div>
+            </div>
+            <div v-if="selectedSelfApplyPlan.taskRequirements" style="margin-bottom: 10px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">任务要求：</h4>
+              <div v-html="selectedSelfApplyPlan.taskRequirements" style="font-size: 13px; color: #606266;"></div>
+            </div>
+            <div v-if="selectedSelfApplyPlan.assessmentStandards">
+              <h4 style="margin: 0 0 8px 0; font-size: 14px;">考核标准：</h4>
+              <div v-html="selectedSelfApplyPlan.assessmentStandards" style="font-size: 13px; color: #606266;"></div>
+            </div>
+          </el-card>
+        </el-form-item>
+        
         <el-form-item label="实习岗位" prop="internshipPosition">
           <el-input v-model="selfApplyForm.internshipPosition" placeholder="请输入实习岗位名称" />
         </el-form-item>
@@ -412,6 +520,7 @@
                 placeholder="请选择开始日期"
                 style="width: 100%"
                 value-format="YYYY-MM-DD"
+                :disabled-date="(date) => disabledSelfApplyStartDate(date)"
               />
             </el-form-item>
           </el-col>
@@ -423,6 +532,7 @@
                 placeholder="请选择结束日期"
                 style="width: 100%"
                 value-format="YYYY-MM-DD"
+                :disabled-date="(date) => disabledSelfApplyEndDate(date)"
               />
             </el-form-item>
           </el-col>
@@ -451,6 +561,13 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item label="企业名称">{{ applyDetailData.enterpriseName }}</el-descriptions-item>
         <el-descriptions-item label="统一社会信用代码">{{ applyDetailData.unifiedSocialCreditCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="实习计划" :span="2">
+          <div v-if="applyDetailData.planName">
+            <div>{{ applyDetailData.planName }}</div>
+            <div style="font-size: 12px; color: #999;">{{ applyDetailData.planCode }}</div>
+          </div>
+          <span v-else>-</span>
+        </el-descriptions-item>
         <el-descriptions-item label="企业地址" :span="2">{{ applyDetailData.enterpriseAddress || '-' }}</el-descriptions-item>
         <el-descriptions-item label="所属行业">{{ applyDetailData.industry || '-' }}</el-descriptions-item>
         <el-descriptions-item label="企业规模">{{ applyDetailData.enterpriseScale || '-' }}</el-descriptions-item>
@@ -591,6 +708,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload, Document } from '@element-plus/icons-vue'
 import { postApi } from '@/api/internship/post'
 import { applyApi } from '@/api/internship/apply'
+import { planApi } from '@/api/internship/plan'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
@@ -643,19 +761,28 @@ const applyDetailData = ref({})
 const cooperationApplyDetailData = ref({})
 
 const applyPostForm = reactive({
+  planId: null,
   enterpriseId: null,
   postId: null,
   enterpriseName: '',
   postName: '',
-  applyReason: ''
+  applyReason: '',
+  internshipStartDate: null,
+  internshipEndDate: null
 })
 
 const resumeUploadRef = ref(null)
 const resumeFileList = ref([])
 const resumeAttachmentUrls = ref([])
 
+// 新增：可用计划列表
+const availablePlans = ref([])
+const selectedPlan = ref(null)
+const loadingPlans = ref(false)
+
 const selfApplyForm = reactive({
   applyId: null,
+  planId: null,
   enterpriseName: '',
   unifiedSocialCreditCode: '',
   enterpriseAddress: '',
@@ -670,7 +797,18 @@ const selfApplyForm = reactive({
   applyReason: ''
 })
 
+const selectedSelfApplyPlan = ref(null)
+
 const applyPostFormRules = {
+  planId: [
+    { required: true, message: '请选择实习计划', trigger: 'change' }
+  ],
+  internshipStartDate: [
+    { required: true, message: '请选择实习开始日期', trigger: 'change' }
+  ],
+  internshipEndDate: [
+    { required: true, message: '请选择实习结束日期', trigger: 'change' }
+  ],
   resumeAttachment: [
     { 
       validator: (rule, value, callback) => {
@@ -687,6 +825,9 @@ const applyPostFormRules = {
 }
 
 const selfApplyFormRules = {
+  planId: [
+    { required: true, message: '请选择实习计划', trigger: 'change' }
+  ],
   enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
   enterpriseAddress: [{ required: true, message: '请输入企业地址', trigger: 'blur' }],
   contactPerson: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
@@ -813,15 +954,108 @@ const handleViewPost = async (row) => {
 }
 
 // 申请岗位
+// 新增：加载可用计划列表
+const loadAvailablePlans = async () => {
+  loadingPlans.value = true
+  try {
+    const res = await planApi.getAvailablePlans()
+    if (res.code === 200) {
+      availablePlans.value = res.data || []
+      if (availablePlans.value.length === 0) {
+        ElMessage.warning('当前没有可用的实习计划，请联系管理员')
+      }
+    } else {
+      ElMessage.error(res.message || '加载实习计划失败')
+    }
+  } catch (error) {
+    ElMessage.error('加载实习计划失败：' + (error.message || '未知错误'))
+  } finally {
+    loadingPlans.value = false
+  }
+}
+
+// 新增：计划选择变化处理
+const handlePlanChange = (planId) => {
+  selectedPlan.value = availablePlans.value.find(p => p.planId === planId)
+  if (selectedPlan.value) {
+    // 自动填充实习时间
+    applyPostForm.internshipStartDate = selectedPlan.value.startDate
+    applyPostForm.internshipEndDate = selectedPlan.value.endDate
+  } else {
+    applyPostForm.internshipStartDate = null
+    applyPostForm.internshipEndDate = null
+  }
+}
+
+// 新增：禁用开始日期（不能早于计划开始日期，不能晚于计划结束日期）
+const disabledStartDate = (date) => {
+  if (!selectedPlan.value) return false
+  const planStart = new Date(selectedPlan.value.startDate)
+  const planEnd = new Date(selectedPlan.value.endDate)
+  return date < planStart || date > planEnd
+}
+
+// 新增：禁用结束日期（不能早于开始日期，不能晚于计划结束日期）
+const disabledEndDate = (date) => {
+  if (!selectedPlan.value) return false
+  const planStart = new Date(selectedPlan.value.startDate)
+  const planEnd = new Date(selectedPlan.value.endDate)
+  if (applyPostForm.internshipStartDate) {
+    const startDate = new Date(applyPostForm.internshipStartDate)
+    return date < startDate || date > planEnd
+  }
+  return date < planStart || date > planEnd
+}
+
+// 新增：自主实习申请计划选择变化处理
+const handleSelfApplyPlanChange = (planId) => {
+  selectedSelfApplyPlan.value = availablePlans.value.find(p => p.planId === planId)
+  if (selectedSelfApplyPlan.value) {
+    // 自动填充实习时间
+    selfApplyForm.internshipStartDate = selectedSelfApplyPlan.value.startDate
+    selfApplyForm.internshipEndDate = selectedSelfApplyPlan.value.endDate
+  } else {
+    selfApplyForm.internshipStartDate = ''
+    selfApplyForm.internshipEndDate = ''
+  }
+}
+
+// 新增：禁用自主实习开始日期
+const disabledSelfApplyStartDate = (date) => {
+  if (!selectedSelfApplyPlan.value) return false
+  const planStart = new Date(selectedSelfApplyPlan.value.startDate)
+  const planEnd = new Date(selectedSelfApplyPlan.value.endDate)
+  return date < planStart || date > planEnd
+}
+
+// 新增：禁用自主实习结束日期
+const disabledSelfApplyEndDate = (date) => {
+  if (!selectedSelfApplyPlan.value) return false
+  const planStart = new Date(selectedSelfApplyPlan.value.startDate)
+  const planEnd = new Date(selectedSelfApplyPlan.value.endDate)
+  if (selfApplyForm.internshipStartDate) {
+    const startDate = new Date(selfApplyForm.internshipStartDate)
+    return date < startDate || date > planEnd
+  }
+  return date < planStart || date > planEnd
+}
+
 const handleApplyPost = (row) => {
   applyPostForm.enterpriseId = row.enterpriseId
   applyPostForm.postId = row.postId
   applyPostForm.enterpriseName = row.enterpriseName || ''
   applyPostForm.postName = row.postName
-  applyPostForm.resumeContent = ''
+  applyPostForm.planId = null
   applyPostForm.applyReason = ''
+  applyPostForm.internshipStartDate = null
+  applyPostForm.internshipEndDate = null
+  selectedPlan.value = null
   resumeFileList.value = []
   resumeAttachmentUrls.value = []
+  
+  // 加载可用计划
+  loadAvailablePlans()
+  
   applyPostDialogVisible.value = true
 }
 
@@ -832,9 +1066,17 @@ const handleApplyFromPostDetail = () => {
   applyPostForm.postId = postDetailData.value.postId
   applyPostForm.enterpriseName = postDetailData.value.enterpriseName || ''
   applyPostForm.postName = postDetailData.value.postName
+  applyPostForm.planId = null
   applyPostForm.applyReason = ''
+  applyPostForm.internshipStartDate = null
+  applyPostForm.internshipEndDate = null
+  selectedPlan.value = null
   resumeFileList.value = []
   resumeAttachmentUrls.value = []
+  
+  // 加载可用计划
+  loadAvailablePlans()
+  
   applyPostDialogVisible.value = true
 }
 
@@ -938,11 +1180,14 @@ const handleSubmitPostApply = async () => {
         }
         
         const res = await applyApi.addCooperationApply({
+          planId: applyPostForm.planId,
           enterpriseId: applyPostForm.enterpriseId,
           postId: applyPostForm.postId,
           resumeContent: applyPostForm.resumeContent,
           resumeAttachment: resumeAttachmentUrlsStr,
-          applyReason: applyPostForm.applyReason
+          applyReason: applyPostForm.applyReason,
+          internshipStartDate: applyPostForm.internshipStartDate,
+          internshipEndDate: applyPostForm.internshipEndDate
         })
         if (res.code === 200) {
           ElMessage.success('申请提交成功')
@@ -965,6 +1210,8 @@ const handleSubmitPostApply = async () => {
 const handleAddSelfApply = () => {
   selfApplyDialogTitle.value = '添加自主实习申请'
   resetSelfApplyForm()
+  // 加载可用计划
+  loadAvailablePlans()
   selfApplyDialogVisible.value = true
 }
 
@@ -1077,6 +1324,7 @@ const handleSubmitSelfApply = async () => {
       try {
         // 映射前端表单字段到后端实体字段
         const submitData = {
+          planId: selfApplyForm.planId,
           selfEnterpriseName: selfApplyForm.enterpriseName,
           selfEnterpriseAddress: selfApplyForm.enterpriseAddress,
           selfContactPerson: selfApplyForm.contactPerson,
@@ -1108,6 +1356,7 @@ const handleSubmitSelfApply = async () => {
 const resetSelfApplyForm = () => {
   Object.assign(selfApplyForm, {
     applyId: null,
+    planId: null,
     enterpriseName: '',
     unifiedSocialCreditCode: '',
     enterpriseAddress: '',
@@ -1121,6 +1370,7 @@ const resetSelfApplyForm = () => {
     internshipEndDate: '',
     applyReason: ''
   })
+  selectedSelfApplyPlan.value = null
   if (selfApplyFormRef.value) {
     selfApplyFormRef.value.clearValidate()
   }

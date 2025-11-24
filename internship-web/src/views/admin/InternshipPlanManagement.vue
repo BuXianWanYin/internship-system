@@ -44,6 +44,7 @@
             placeholder="请选择学校"
             clearable
             style="width: 200px"
+            :disabled="isSchoolDisabled"
             @change="handleSchoolChange"
           >
             <el-option
@@ -60,7 +61,7 @@
             placeholder="请选择学院"
             clearable
             style="width: 200px"
-            :disabled="!searchForm.schoolId"
+            :disabled="isCollegeDisabled || !searchForm.schoolId"
             @change="handleCollegeChange"
           >
             <el-option
@@ -456,7 +457,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { hasAnyRole } from '@/utils/permission'
@@ -465,6 +466,7 @@ import { semesterApi } from '@/api/system/semester'
 import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
+import { userApi } from '@/api/user/user'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -498,6 +500,24 @@ const semesterList = ref([])
 const schoolList = ref([])
 const collegeList = ref([])
 const majorList = ref([])
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: '',
+  collegeId: null,
+  collegeName: ''
+})
+
+// 计算属性：学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 计算属性：学院下拉框是否禁用
+const isCollegeDisabled = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER'])
+})
 
 const formData = reactive({
   planId: null,
@@ -629,12 +649,33 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.planName = ''
   searchForm.semesterId = null
-  searchForm.schoolId = null
-  searchForm.collegeId = null
-  searchForm.majorId = null
   searchForm.status = null
-  collegeList.value = []
-  majorList.value = []
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])) {
+    // 学校管理员、学院负责人：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    // 学院负责人：保持学院ID
+    searchForm.collegeId = currentOrgInfo.value.collegeId || null
+  } else {
+    searchForm.collegeId = null
+  }
+  
+  searchForm.majorId = null
+  
+  // 重新加载列表
+  if (searchForm.schoolId) {
+    handleSchoolChange()
+  } else {
+    collegeList.value = []
+    majorList.value = []
+  }
+  
   handleSearch()
 }
 
@@ -906,10 +947,43 @@ const getStatusType = (status) => {
   return typeMap[status] || 'info'
 }
 
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || '',
+        collegeId: res.data.collegeId || null,
+        collegeName: res.data.collegeName || ''
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+          // 加载该学校的学院列表
+          await handleSchoolChange()
+        }
+      }
+      
+      if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+        if (currentOrgInfo.value.collegeId) {
+          searchForm.collegeId = currentOrgInfo.value.collegeId
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
+}
+
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   loadSemesterList()
   loadSchoolList()
+  await loadCurrentUserOrgInfo()
   loadData()
 })
 </script>

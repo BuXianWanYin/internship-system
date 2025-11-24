@@ -120,10 +120,9 @@ public class DataPermissionUtil {
             }
         }
         
-        // 检查是否为学院负责人、班主任或指导教师
+        // 检查是否为学院负责人、班主任
         if (roleCodes != null && (roleCodes.contains("ROLE_COLLEGE_LEADER") 
-                || roleCodes.contains("ROLE_CLASS_TEACHER") 
-                || roleCodes.contains("ROLE_INSTRUCTOR"))) {
+                || roleCodes.contains("ROLE_CLASS_TEACHER"))) {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
@@ -177,10 +176,9 @@ public class DataPermissionUtil {
         // 根据用户角色获取学院ID
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 学院负责人、班主任、指导教师：从Teacher表获取
+        // 学院负责人、班主任：从Teacher表获取
         if (roleCodes != null && (roleCodes.contains("ROLE_COLLEGE_LEADER") 
-                || roleCodes.contains("ROLE_CLASS_TEACHER") 
-                || roleCodes.contains("ROLE_INSTRUCTOR"))) {
+                || roleCodes.contains("ROLE_CLASS_TEACHER"))) {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
@@ -509,17 +507,8 @@ public class DataPermissionUtil {
         // 根据用户角色获取教师ID
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 指导教师：从Teacher表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_INSTRUCTOR")) {
-            Teacher teacher = teacherMapper.selectOne(
-                    new LambdaQueryWrapper<Teacher>()
-                            .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (teacher != null) {
-                return teacher.getTeacherId();
-            }
-        }
+        // 班主任：从Teacher表获取（已合并到 ROLE_CLASS_TEACHER）
+        // 此逻辑已在上面的 ROLE_CLASS_TEACHER 判断中处理
         
         return null;
     }
@@ -757,7 +746,7 @@ public class DataPermissionUtil {
         }
         
         // 学校管理员不能分配系统管理员角色（上面已处理）
-        // 可以分配学校相关角色（ROLE_SCHOOL_ADMIN、ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER、ROLE_INSTRUCTOR、ROLE_STUDENT）
+        // 可以分配学校相关角色（ROLE_SCHOOL_ADMIN、ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER、ROLE_STUDENT）
         // 不能分配企业相关角色
         if (currentUserRoles.contains("ROLE_SCHOOL_ADMIN")) {
             // 不能分配企业相关角色
@@ -770,14 +759,13 @@ public class DataPermissionUtil {
         }
         
         // 学院负责人不能分配系统管理员、学校管理员角色
-        // 只能分配教师相关角色（ROLE_INSTRUCTOR、ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER）和学生角色
+        // 只能分配教师相关角色（ROLE_COLLEGE_LEADER、ROLE_CLASS_TEACHER）和学生角色
         if (currentUserRoles.contains("ROLE_COLLEGE_LEADER")) {
             if ("ROLE_SCHOOL_ADMIN".equals(roleCode)) {
                 return false;
             }
-            // 可以分配的教师相关角色
-            if ("ROLE_INSTRUCTOR".equals(roleCode) || 
-                "ROLE_COLLEGE_LEADER".equals(roleCode) || 
+            // 可以分配的教师相关角色和学生角色
+            if ("ROLE_COLLEGE_LEADER".equals(roleCode) || 
                 "ROLE_CLASS_TEACHER".equals(roleCode) ||
                 "ROLE_STUDENT".equals(roleCode)) {
                 return true;

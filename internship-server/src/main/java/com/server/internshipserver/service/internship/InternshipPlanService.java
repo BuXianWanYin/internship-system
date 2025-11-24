@@ -73,5 +73,22 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
      * @return 是否成功
      */
     boolean deletePlan(Long planId);
+    
+    /**
+     * 根据学生信息获取可用的实习计划列表
+     * @param studentId 学生ID
+     * @return 实习计划列表
+     */
+    java.util.List<InternshipPlan> getAvailablePlansForStudent(Long studentId);
+    
+    /**
+     * 根据组织架构和时间范围查询已发布的实习计划
+     * @param schoolId 学校ID
+     * @param collegeId 学院ID（可选）
+     * @param majorId 专业ID（可选）
+     * @param currentDate 当前日期（用于判断计划是否有效）
+     * @return 实习计划列表
+     */
+    java.util.List<InternshipPlan> getPublishedPlans(Long schoolId, Long collegeId, Long majorId, java.time.LocalDate currentDate);
 }
 

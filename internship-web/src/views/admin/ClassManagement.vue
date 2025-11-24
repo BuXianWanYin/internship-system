@@ -22,6 +22,7 @@
             placeholder="请选择学校"
             clearable
             style="width: 200px"
+            :disabled="isSchoolDisabled"
             @change="handleSchoolChange"
           >
             <el-option
@@ -38,7 +39,7 @@
             placeholder="请选择学院"
             clearable
             style="width: 200px"
-            :disabled="!searchForm.schoolId"
+            :disabled="isCollegeDisabled || !searchForm.schoolId"
             @change="handleCollegeChange"
           >
             <el-option
@@ -245,15 +246,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
 import { classApi } from '@/api/system/class'
 import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
+import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { formatDateTime } from '@/utils/dateUtils'
+import { hasAnyRole } from '@/utils/permission'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -271,6 +274,16 @@ const collegeList = ref([])
 const collegeMap = ref({})
 const majorList = ref([])
 const majorMap = ref({})
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: '',
+  collegeId: null,
+  collegeName: '',
+  classIds: [],
+  classNames: []
+})
 
 const searchForm = reactive({
   className: '',
@@ -474,11 +487,32 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.className = ''
-  searchForm.schoolId = null
-  searchForm.collegeId = null
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+    // 学校管理员、学院负责人、班主任：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+    // 学院负责人、班主任：保持学院ID
+    searchForm.collegeId = currentOrgInfo.value.collegeId || null
+  } else {
+    searchForm.collegeId = null
+  }
+  
   searchForm.majorId = null
-  collegeList.value = []
-  majorList.value = []
+  
+  // 重新加载列表
+  if (searchForm.schoolId) {
+    handleSchoolChange(searchForm.schoolId)
+  } else {
+    collegeList.value = []
+    majorList.value = []
+  }
+  
   handleSearch()
 }
 
@@ -616,10 +650,52 @@ const handlePageChange = () => {
   loadData()
 }
 
-onMounted(() => {
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || '',
+        collegeId: res.data.collegeId || null,
+        collegeName: res.data.collegeName || '',
+        classIds: res.data.classIds || [],
+        classNames: res.data.classNames || []
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+          // 加载该学校的学院列表
+          await handleSchoolChange(currentOrgInfo.value.schoolId)
+        }
+      }
+      
+      if (hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+        if (currentOrgInfo.value.collegeId) {
+          searchForm.collegeId = currentOrgInfo.value.collegeId
+          // 加载该学院的专业列表
+          await handleCollegeChange(currentOrgInfo.value.collegeId)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
+}
+
+onMounted(async () => {
   loadSchoolList()
-  loadCollegeList(null) // 加载所有学院
-  loadMajorList(null) // 加载所有专业
+  await loadCurrentUserOrgInfo()
+  // 如果没有组织信息，加载所有数据
+  if (!currentOrgInfo.value.schoolId) {
+    loadCollegeList(null) // 加载所有学院
+  }
+  if (!currentOrgInfo.value.collegeId) {
+    loadMajorList(null) // 加载所有专业
+  }
   loadData()
 })
 </script>

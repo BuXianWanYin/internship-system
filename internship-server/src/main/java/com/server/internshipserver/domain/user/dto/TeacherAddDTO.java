@@ -38,7 +38,7 @@ public class TeacherAddDTO {
     @ApiModelProperty(value = "所属学院", example = "计算机学院")
     private String department;
     
-    @ApiModelProperty(value = "角色代码（可选，如：ROLE_INSTRUCTOR、ROLE_COLLEGE_LEADER）", example = "ROLE_INSTRUCTOR")
+    @ApiModelProperty(value = "角色代码（可选，如不指定则默认分配ROLE_CLASS_TEACHER。注意：角色分配建议在用户管理中统一处理）", example = "ROLE_CLASS_TEACHER")
     private String roleCode;
     
     @ApiModelProperty(value = "初始密码", required = true, example = "123456")

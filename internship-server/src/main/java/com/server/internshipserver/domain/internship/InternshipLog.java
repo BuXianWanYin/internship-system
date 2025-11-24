@@ -41,6 +41,10 @@ public class InternshipLog implements Serializable {
     @TableField("apply_id")
     private Long applyId;
     
+    @ApiModelProperty(value = "关联实习计划ID", example = "1")
+    @TableField("plan_id")
+    private Long planId;
+    
     @ApiModelProperty(value = "日志日期", required = true, example = "2024-03-01")
     @TableField("log_date")
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -109,5 +113,9 @@ public class InternshipLog implements Serializable {
     @ApiModelProperty(value = "企业名称")
     @TableField(exist = false)
     private String enterpriseName;
+    
+    @ApiModelProperty(value = "实习计划名称（用于前端显示）")
+    @TableField(exist = false)
+    private String planName;
 }
 

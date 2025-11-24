@@ -19,7 +19,9 @@
                 :action="uploadAction"
                 :headers="uploadHeaders"
                 :show-file-list="false"
+                name="file"
                 :on-success="handleAvatarSuccess"
+                :on-error="handleAvatarError"
                 :before-upload="beforeAvatarUpload"
               >
                 <el-avatar
@@ -225,16 +227,19 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, Edit, Camera, Message, Phone, Location } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import { userApi } from '@/api/user/user'
+
+const router = useRouter()
 
 const authStore = useAuthStore()
 
 // 上传相关
 const uploadAction = computed(() => {
-  return `${import.meta.env.VITE_API_BASE_URL || ''}/file/upload`
+  return `${import.meta.env.VITE_API_BASE_URL || ''}/file/upload/single`
 })
 const uploadHeaders = computed(() => {
   return {
@@ -323,7 +328,6 @@ const getUserRoleDesc = () => {
       'ROLE_SCHOOL_ADMIN': '学校管理员',
       'ROLE_COLLEGE_LEADER': '学院负责人',
       'ROLE_CLASS_TEACHER': '班主任',
-      'ROLE_INSTRUCTOR': '指导教师',
       'ROLE_STUDENT': '学生',
       'ROLE_ENTERPRISE_ADMIN': '企业管理员',
       'ROLE_ENTERPRISE_MENTOR': '企业导师'
@@ -414,30 +418,78 @@ const saveProfile = async () => {
 
 // 头像上传成功
 const handleAvatarSuccess = async (response) => {
-  if (response.code === 200 && response.data) {
-    const avatarUrl = response.data.url || response.data
-    profileForm.avatar = avatarUrl
-    ElMessage.success('头像上传成功')
+  try {
+    // 如果 response 是字符串，尝试解析为 JSON
+    let result = response
+    if (typeof response === 'string') {
+      try {
+        result = JSON.parse(response)
+      } catch (e) {
+        // 如果不是 JSON，可能是直接的 URL 字符串
+        result = { code: 200, data: response }
+      }
+    }
     
-    // 自动保存头像
-    try {
-      const res = await userApi.updateCurrentUserProfile({
-        avatar: avatarUrl
-      })
-      if (res.code === 200) {
-        // 更新 store 中的用户信息
-        authStore.updateUserInfo({
-          ...authStore.userInfo,
+    if (result.code === 200 && result.data) {
+      const avatarUrl = result.data.url || result.data
+      profileForm.avatar = avatarUrl
+      ElMessage.success('头像上传成功')
+      
+      // 自动保存头像
+      try {
+        const res = await userApi.updateCurrentUserProfile({
           avatar: avatarUrl
         })
-        originalProfile.value.avatar = avatarUrl
+        if (res.code === 200) {
+          // 更新 store 中的用户信息
+          authStore.updateUserInfo({
+            ...authStore.userInfo,
+            avatar: avatarUrl
+          })
+          originalProfile.value.avatar = avatarUrl
+        }
+      } catch (error) {
+        ElMessage.warning('头像已上传，但保存失败，请稍后重试')
       }
-    } catch (error) {
-      ElMessage.warning('头像已上传，但保存失败，请稍后重试')
+    } else {
+      ElMessage.error(result.message || '头像上传失败')
     }
-  } else {
-    ElMessage.error('头像上传失败')
+  } catch (error) {
+    ElMessage.error('头像上传失败：' + (error.message || '未知错误'))
   }
+}
+
+// 头像上传失败
+const handleAvatarError = (error, file, fileList) => {
+  console.error('头像上传错误：', error)
+  let errorMessage = '头像上传失败'
+  
+  if (error && error.response) {
+    // 处理 HTTP 错误响应
+    const response = error.response
+    if (response.data) {
+      if (typeof response.data === 'string') {
+        try {
+          const errorData = JSON.parse(response.data)
+          errorMessage = errorData.message || errorMessage
+        } catch (e) {
+          errorMessage = response.data || errorMessage
+        }
+      } else if (response.data.message) {
+        errorMessage = response.data.message
+      }
+    } else if (response.status === 500) {
+      errorMessage = '服务器错误，请稍后重试'
+    } else if (response.status === 413) {
+      errorMessage = '文件过大，请选择较小的图片'
+    } else if (response.status === 415) {
+      errorMessage = '不支持的文件类型'
+    }
+  } else if (error && error.message) {
+    errorMessage = error.message
+  }
+  
+  ElMessage.error(errorMessage)
 }
 
 // 头像上传前验证
@@ -489,16 +541,27 @@ const savePassword = async () => {
     )
     
     if (res.code === 200) {
-      ElMessage.success('密码修改成功，请重新登录')
       isEditingPassword.value = false
       passwordForm.oldPassword = ''
       passwordForm.newPassword = ''
       passwordForm.confirmPassword = ''
-      // 延迟跳转到登录页
-      setTimeout(() => {
-        authStore.logout()
-        window.location.href = '/login'
-      }, 1500)
+      
+      // 立即清除 token（无论用户是否点击确定，都要清除，防止刷新页面后还能使用旧token）
+      // 使用 skipApiCall = true 跳过后端登出接口调用（因为密码已修改，旧 token 已失效）
+      await authStore.logout(true)
+      
+      // 弹出确认对话框
+      try {
+        await ElMessageBox.alert('密码修改成功，请重新登录', '提示', {
+          confirmButtonText: '确定',
+          type: 'success'
+        })
+      } catch {
+        // token 已经清除，不需要额外处理
+      } finally {
+        // 无论用户是否点击确定，都跳转到登录页
+        router.push('/login')
+      }
     } else {
       ElMessage.error(res.message || '密码修改失败')
     }

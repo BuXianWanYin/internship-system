@@ -1,8 +1,15 @@
 package com.server.internshipserver.controller.internship;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.result.Result;
+import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipPlan;
+import com.server.internshipserver.domain.user.Student;
+import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.mapper.user.StudentMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.internship.InternshipPlanService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -22,8 +29,14 @@ public class InternshipPlanController {
     @Autowired
     private InternshipPlanService internshipPlanService;
     
+    @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private StudentMapper studentMapper;
+    
     @ApiOperation("创建实习计划")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @PostMapping
     public Result<InternshipPlan> addPlan(@RequestBody InternshipPlan plan) {
         InternshipPlan result = internshipPlanService.addPlan(plan);
@@ -31,7 +44,7 @@ public class InternshipPlanController {
     }
     
     @ApiOperation("更新实习计划")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @PutMapping
     public Result<InternshipPlan> updatePlan(@RequestBody InternshipPlan plan) {
         InternshipPlan result = internshipPlanService.updatePlan(plan);
@@ -101,6 +114,36 @@ public class InternshipPlanController {
             @ApiParam(value = "计划ID", required = true) @PathVariable Long planId) {
         internshipPlanService.deletePlan(planId);
         return Result.success("删除成功");
+    }
+    
+    @ApiOperation("获取学生可用的实习计划列表")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/available")
+    public Result<java.util.List<InternshipPlan>> getAvailablePlans() {
+        // 获取当前登录学生信息
+        String username = SecurityUtil.getCurrentUsername();
+        UserInfo user = userMapper.selectOne(
+            new LambdaQueryWrapper<UserInfo>()
+                .eq(UserInfo::getUsername, username)
+                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+        
+        Student student = studentMapper.selectOne(
+            new LambdaQueryWrapper<Student>()
+                .eq(Student::getUserId, user.getUserId())
+                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        
+        if (student == null) {
+            return Result.error("学生信息不存在");
+        }
+        
+        java.util.List<InternshipPlan> plans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
+        return Result.success(plans);
     }
 }
 

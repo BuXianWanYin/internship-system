@@ -12,11 +12,17 @@ import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.UserRole;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.domain.system.School;
+import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.UserRoleMapper;
+import com.server.internshipserver.mapper.system.SchoolMapper;
+import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.service.user.PermissionService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.service.user.RoleService;
@@ -29,7 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -65,6 +73,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     
     @Autowired
     private com.server.internshipserver.mapper.user.EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private SchoolMapper schoolMapper;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
+    
+    @Autowired
+    private ClassMapper classMapper;
     
     @Override
     public UserInfo getUserByUsername(String username) {
@@ -120,6 +137,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         // 保存
         this.save(user);
+        
+        // 如果指定了角色，分配角色
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            for (String roleCode : user.getRoles()) {
+                assignRoleToUser(user.getUserId(), roleCode);
+            }
+        }
+        
         return user;
     }
     
@@ -164,6 +189,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         // 更新
         this.updateById(user);
+        
+        // 如果指定了角色，更新角色分配
+        if (user.getRoles() != null) {
+            // 获取用户当前角色
+            List<String> currentRoles = this.baseMapper.selectRoleCodesByUserId(user.getUserId());
+            if (currentRoles == null) {
+                currentRoles = new ArrayList<>();
+            }
+            
+            // 计算需要添加和删除的角色
+            List<String> rolesToAdd = new ArrayList<>(user.getRoles());
+            rolesToAdd.removeAll(currentRoles);
+            
+            List<String> rolesToRemove = new ArrayList<>(currentRoles);
+            rolesToRemove.removeAll(user.getRoles());
+            
+            // 添加新角色
+            for (String roleCode : rolesToAdd) {
+                assignRoleToUser(user.getUserId(), roleCode);
+            }
+            
+            // 删除旧角色
+            for (String roleCode : rolesToRemove) {
+                removeRoleFromUser(user.getUserId(), roleCode);
+            }
+        }
+        
         return this.getById(user.getUserId());
     }
     
@@ -556,6 +608,56 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                 permissionService.clearUserPermissionCache(userId);
             } catch (Exception e) {
                 // Redis连接失败不影响角色分配，只记录日志
+                logger.warn("清除用户权限缓存失败，userId: {}, error: {}", userId, e.getMessage());
+            }
+        }
+        
+        return success;
+    }
+    
+    /**
+     * 移除用户的角色
+     * @param userId 用户ID
+     * @param roleCode 角色代码
+     * @return 是否成功
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeRoleFromUser(Long userId, String roleCode) {
+        if (userId == null) {
+            throw new BusinessException("用户ID不能为空");
+        }
+        if (!StringUtils.hasText(roleCode)) {
+            throw new BusinessException("角色代码不能为空");
+        }
+        
+        // 查询角色是否存在
+        Role role = roleService.getRoleByRoleCode(roleCode);
+        if (role == null || role.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("角色不存在：" + roleCode);
+        }
+        
+        // 查询用户角色关联
+        LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserRole::getUserId, userId)
+               .eq(UserRole::getRoleId, role.getRoleId())
+               .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        UserRole userRole = userRoleMapper.selectOne(wrapper);
+        
+        if (userRole == null) {
+            // 用户没有该角色，直接返回成功
+            return true;
+        }
+        
+        // 软删除用户角色关联
+        userRole.setDeleteFlag(DeleteFlag.DELETED.getCode());
+        boolean success = userRoleMapper.updateById(userRole) > 0;
+        
+        // 角色移除成功后，清除用户权限缓存
+        if (success) {
+            try {
+                permissionService.clearUserPermissionCache(userId);
+            } catch (Exception e) {
+                // Redis连接失败不影响角色移除，只记录日志
                 logger.warn("清除用户权限缓存失败，userId: {}, error: {}", userId, e.getMessage());
             }
         }
@@ -1116,6 +1218,59 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         this.updateById(currentUser);
         
         return true;
+    }
+    
+    @Override
+    public Map<String, Object> getCurrentUserOrgInfo() {
+        Map<String, Object> orgInfo = new HashMap<>();
+        
+        // 系统管理员不返回组织信息（不限制）
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return orgInfo;
+        }
+        
+        Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+        
+        // 获取学校信息
+        if (schoolId != null) {
+            School school = schoolMapper.selectById(schoolId);
+            if (school != null && school.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
+                orgInfo.put("schoolId", schoolId);
+                orgInfo.put("schoolName", school.getSchoolName());
+            }
+        }
+        
+        // 获取学院信息
+        if (collegeId != null) {
+            College college = collegeMapper.selectById(collegeId);
+            if (college != null && college.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
+                orgInfo.put("collegeId", collegeId);
+                orgInfo.put("collegeName", college.getCollegeName());
+            }
+        }
+        
+        // 获取班级信息（班主任可能有多个班级）
+        if (classIds != null && !classIds.isEmpty()) {
+            List<Class> classes = classMapper.selectBatchIds(classIds);
+            if (classes != null && !classes.isEmpty()) {
+                // 过滤已删除的班级
+                classes = classes.stream()
+                        .filter(c -> c.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode()))
+                        .collect(Collectors.toList());
+                if (!classes.isEmpty()) {
+                    orgInfo.put("classIds", classes.stream()
+                            .map(Class::getClassId)
+                            .collect(Collectors.toList()));
+                    orgInfo.put("classNames", classes.stream()
+                            .map(Class::getClassName)
+                            .collect(Collectors.toList()));
+                }
+            }
+        }
+        
+        return orgInfo;
     }
 }
 

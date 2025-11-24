@@ -355,8 +355,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                 wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
             }
         }
-        // 指导教师：可以查看分配的学生的反馈（通过日志/周报/成果中的instructor_id关联）
-        if (dataPermissionUtil.hasRole("ROLE_INSTRUCTOR")) {
+        // 班主任：可以查看分配的学生的反馈（通过日志/周报/成果中的instructor_id关联，已合并到 ROLE_CLASS_TEACHER）
+        if (dataPermissionUtil.hasRole("ROLE_CLASS_TEACHER")) {
             Long currentUserTeacherId = dataPermissionUtil.getCurrentUserTeacherId();
             if (currentUserTeacherId != null) {
                 // 通过实习申请关联，查找该教师指导的学生的反馈

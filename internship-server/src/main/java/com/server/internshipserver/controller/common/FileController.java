@@ -57,7 +57,7 @@ public class FileController {
     
     @ApiOperation("上传文件（支持单个或多个文件）")
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     public Result<List<String>> uploadFiles(
             @ApiParam(value = "文件列表", required = true) @RequestParam("files") MultipartFile[] files) {
         if (files == null || files.length == 0) {
@@ -116,7 +116,7 @@ public class FileController {
     
     @ApiOperation("上传单个文件")
     @PostMapping("/upload/single")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     public Result<String> uploadFile(
             @ApiParam(value = "文件", required = true) @RequestParam("file") MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -208,7 +208,7 @@ public class FileController {
     
     @ApiOperation("下载文件")
     @GetMapping("/download")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_INSTRUCTOR', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     public ResponseEntity<Resource> downloadFile(
             @ApiParam(value = "文件路径", required = true) @RequestParam("path") String filePath) {
         try {

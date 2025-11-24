@@ -43,7 +43,7 @@ public interface TeacherService extends IService<Teacher> {
      * @param schoolId 所属学校ID
      * @param title 职称
      * @param department 所属学院
-     * @param roleCode 角色代码（可选，如：ROLE_INSTRUCTOR、ROLE_COLLEGE_LEADER）
+     * @param roleCode 角色代码（可选，如：ROLE_CLASS_TEACHER、ROLE_COLLEGE_LEADER）
      * @param password 初始密码
      * @param status 状态
      * @return 添加的教师信息
@@ -72,7 +72,7 @@ public interface TeacherService extends IService<Teacher> {
      * @param schoolId 所属学校ID
      * @param title 职称
      * @param department 所属学院
-     * @param roleCode 角色代码（可选，如：ROLE_INSTRUCTOR、ROLE_COLLEGE_LEADER）
+     * @param roleCode 角色代码（可选，如：ROLE_CLASS_TEACHER、ROLE_COLLEGE_LEADER）
      * @param status 状态
      * @return 更新后的教师信息
      */

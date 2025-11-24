@@ -36,6 +36,10 @@ public class InternshipApply implements Serializable {
     @TableField("user_id")
     private Long userId;
     
+    @ApiModelProperty(value = "关联实习计划ID", example = "1")
+    @TableField("plan_id")
+    private Long planId;
+    
     @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习", example = "1")
     @TableField("apply_type")
     private Integer applyType;
@@ -236,6 +240,14 @@ public class InternshipApply implements Serializable {
     @ApiModelProperty(value = "企业导师姓名（用于前端显示）")
     @TableField(exist = false)
     private String mentorName;
+    
+    @ApiModelProperty(value = "实习计划名称（用于前端显示）")
+    @TableField(exist = false)
+    private String planName;
+    
+    @ApiModelProperty(value = "实习计划编号（用于前端显示）")
+    @TableField(exist = false)
+    private String planCode;
     
     @ApiModelProperty(value = "学生实习状态：0-未实习，1-实习中，2-已离职，3-已结束（用于前端显示）")
     @TableField(exist = false)

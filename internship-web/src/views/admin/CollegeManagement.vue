@@ -22,6 +22,7 @@
             placeholder="请选择学校"
             clearable
             style="width: 200px"
+            :disabled="isSchoolDisabled"
           >
             <el-option
               v-for="school in schoolList"
@@ -156,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { collegeApi } from '@/api/system/college'
@@ -164,6 +165,7 @@ import { schoolApi } from '@/api/system/school'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -175,6 +177,17 @@ const schoolList = ref([])
 const schoolMap = ref({})
 const teacherList = ref([])
 const userInfoMap = ref({})
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: ''
+})
+
+// 计算属性：学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN'])
+})
 
 const searchForm = reactive({
   collegeName: '',
@@ -318,7 +331,15 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.collegeName = ''
-  searchForm.schoolId = null
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+    // 学校管理员：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
   handleSearch()
 }
 
@@ -423,8 +444,31 @@ const handlePageChange = () => {
   loadData()
 }
 
-onMounted(() => {
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || ''
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
+}
+
+onMounted(async () => {
   loadSchoolList()
+  await loadCurrentUserOrgInfo()
   loadData()
 })
 </script>

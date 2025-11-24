@@ -62,6 +62,10 @@ export const userApi = {
     return request.post('/user/current/change-password', null, {
       params: { oldPassword, newPassword }
     })
+  },
+  // 获取当前用户组织信息（学校、学院、班级）
+  getCurrentUserOrgInfo() {
+    return request.get('/user/current/org-info')
   }
 }
 

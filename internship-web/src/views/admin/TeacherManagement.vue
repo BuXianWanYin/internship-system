@@ -29,6 +29,7 @@
             placeholder="请选择学校"
             clearable
             style="width: 200px"
+            :disabled="isSchoolDisabled"
             @change="handleSchoolChange"
           >
             <el-option
@@ -45,7 +46,7 @@
             placeholder="请选择学院"
             clearable
             style="width: 200px"
-            :disabled="!searchForm.schoolId"
+            :disabled="isCollegeDisabled || !searchForm.schoolId"
           >
             <el-option
               v-for="college in collegeList"
@@ -239,25 +240,9 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="职称">
-              <el-input v-model="formData.title" placeholder="请输入职称（如：教授、副教授）" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="角色" prop="roleCode">
-              <el-select v-model="formData.roleCode" placeholder="请选择角色" style="width: 100%">
-                <el-option
-                  v-for="role in filteredRoleList"
-                  :key="role.roleCode"
-                  :label="role.roleName"
-                  :value="role.roleCode"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="职称">
+          <el-input v-model="formData.title" placeholder="请输入职称（如：教授、副教授）" />
+        </el-form-item>
         <el-form-item v-if="!isEdit" label="初始密码" prop="password">
           <el-input
             v-model="formData.password"
@@ -280,12 +265,11 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
-import { hasAnyRole, canEditUser, canAssignRole } from '@/utils/permission'
+import { hasAnyRole, canEditUser } from '@/utils/permission'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import { collegeApi } from '@/api/system/college'
 import { schoolApi } from '@/api/system/school'
-import { roleApi } from '@/api/user/role'
 
 // 加载状态
 const loading = ref(false)
@@ -315,7 +299,24 @@ const schoolMap = ref({})
 // 学院列表和学校列表（用于下拉选择）
 const collegeList = ref([])
 const schoolList = ref([])
-const roleList = ref([])
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: '',
+  collegeId: null,
+  collegeName: ''
+})
+
+// 计算属性：学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 计算属性：学院下拉框是否禁用
+const isCollegeDisabled = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER'])
+})
 
 // 对话框
 const dialogVisible = ref(false)
@@ -335,7 +336,6 @@ const formData = reactive({
   collegeId: null,
   schoolId: null,
   title: '',
-  roleCode: '',
   status: 1,
   password: ''
 })
@@ -403,29 +403,6 @@ const loadSchoolList = async () => {
     console.error('加载学校列表失败:', error)
   }
 }
-
-// 加载角色列表（只加载教师相关角色）
-const loadRoleList = async () => {
-  try {
-    const res = await roleApi.getAllEnabledRoles()
-    if (res.code === 200) {
-      // 基础教师相关角色
-      const teacherRoles = ['ROLE_INSTRUCTOR', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
-      // 学校管理员和系统管理员可以分配学校管理员角色
-      if (hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])) {
-        teacherRoles.push('ROLE_SCHOOL_ADMIN')
-      }
-      roleList.value = (res.data || []).filter(role => teacherRoles.includes(role.roleCode))
-    }
-  } catch (error) {
-    console.error('加载角色列表失败:', error)
-  }
-}
-
-// 过滤后的角色列表（根据当前用户权限）
-const filteredRoleList = computed(() => {
-  return roleList.value.filter(role => canAssignRole(role.roleCode))
-})
 
 // 检查是否可以编辑该教师
 const canEditTeacher = (row) => {
@@ -499,10 +476,30 @@ const handleSearch = () => {
 // 重置搜索
 const handleReset = () => {
   searchForm.teacherNo = ''
-  searchForm.schoolId = null
-  searchForm.collegeId = null
   searchForm.status = null
-  collegeList.value = []
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])) {
+    // 学校管理员、学院负责人：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    // 学院负责人：保持学院ID
+    searchForm.collegeId = currentOrgInfo.value.collegeId || null
+  } else {
+    searchForm.collegeId = null
+  }
+  
+  // 重新加载学院列表
+  if (searchForm.schoolId) {
+    handleSchoolChange(searchForm.schoolId)
+  } else {
+    collegeList.value = []
+  }
+  
   handleSearch()
 }
 
@@ -533,24 +530,6 @@ const handleEdit = async (row) => {
   try {
     const res = await teacherApi.getTeacherById(row.teacherId)
     if (res.code === 200) {
-      // 获取用户角色
-      let roleCode = ''
-      if (res.data.userId) {
-        try {
-          const roleRes = await userApi.getUserRoles(res.data.userId)
-          if (roleRes.code === 200 && roleRes.data && roleRes.data.length > 0) {
-            // 获取第一个教师相关角色
-            const teacherRoles = ['ROLE_INSTRUCTOR', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
-            const teacherRole = roleRes.data.find(r => teacherRoles.includes(r.roleCode))
-            if (teacherRole) {
-              roleCode = teacherRole.roleCode
-            }
-          }
-        } catch (error) {
-          console.error('获取用户角色失败:', error)
-        }
-      }
-      
       Object.assign(formData, {
         teacherId: res.data.teacherId,
         teacherNo: res.data.teacherNo,
@@ -562,7 +541,6 @@ const handleEdit = async (row) => {
         collegeId: res.data.collegeId,
         schoolId: res.data.schoolId,
         title: res.data.title || '',
-        roleCode: roleCode,
         status: res.data.status,
         password: ''
       })
@@ -587,7 +565,6 @@ const resetFormData = () => {
     collegeId: null,
     schoolId: null,
     title: '',
-    roleCode: '',
     status: 1,
     password: ''
   })
@@ -620,7 +597,6 @@ const handleSubmit = async () => {
         collegeId: formData.collegeId,
         schoolId: formData.schoolId,
         title: formData.title || undefined,
-        roleCode: formData.roleCode || undefined,
         status: formData.status
       }
       
@@ -670,11 +646,47 @@ const handleDelete = async (row) => {
   }
 }
 
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || '',
+        collegeId: res.data.collegeId || null,
+        collegeName: res.data.collegeName || ''
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+          // 加载该学校的学院列表
+          await handleSchoolChange(currentOrgInfo.value.schoolId)
+        }
+      }
+      
+      if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+        if (currentOrgInfo.value.collegeId) {
+          searchForm.collegeId = currentOrgInfo.value.collegeId
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
+}
+
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   loadCollegeList()
   loadSchoolList()
-  loadRoleList()
+  await loadCurrentUserOrgInfo()
+  // 如果没有组织信息，加载所有学院
+  if (!currentOrgInfo.value.schoolId) {
+    loadCollegeList()
+  }
   loadData()
 })
 </script>

@@ -45,7 +45,6 @@ public class Constants {
     public static final String ROLE_SCHOOL_ADMIN = "ROLE_SCHOOL_ADMIN";
     public static final String ROLE_COLLEGE_LEADER = "ROLE_COLLEGE_LEADER";
     public static final String ROLE_CLASS_TEACHER = "ROLE_CLASS_TEACHER";
-    public static final String ROLE_INSTRUCTOR = "ROLE_INSTRUCTOR";
     public static final String ROLE_ENTERPRISE_ADMIN = "ROLE_ENTERPRISE_ADMIN";
     public static final String ROLE_ENTERPRISE_MENTOR = "ROLE_ENTERPRISE_MENTOR";
     public static final String ROLE_STUDENT = "ROLE_STUDENT";

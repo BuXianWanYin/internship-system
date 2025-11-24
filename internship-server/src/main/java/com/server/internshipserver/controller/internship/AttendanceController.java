@@ -52,7 +52,7 @@ public class AttendanceController {
     }
     
     @ApiOperation("分页查询考勤列表")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/page")
     public Result<Page<Attendance>> getAttendancePage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -68,7 +68,7 @@ public class AttendanceController {
     }
     
     @ApiOperation("查询考勤详情")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/{attendanceId}")
     public Result<Attendance> getAttendanceById(
             @ApiParam(value = "考勤ID", required = true) @PathVariable Long attendanceId) {
@@ -99,7 +99,7 @@ public class AttendanceController {
     }
     
     @ApiOperation("考勤统计")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_INSTRUCTOR', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/statistics")
     public Result<AttendanceStatistics> getAttendanceStatistics(
             @ApiParam(value = "学生ID", required = false) @RequestParam(required = false) Long studentId,

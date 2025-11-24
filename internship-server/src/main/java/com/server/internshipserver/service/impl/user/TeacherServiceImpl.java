@@ -109,8 +109,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 保存
         this.save(teacher);
         
-        // 分配指导教师角色
-        userService.assignRoleToUser(teacher.getUserId(), "ROLE_INSTRUCTOR");
+        // 分配班主任角色（默认角色）
+        userService.assignRoleToUser(teacher.getUserId(), "ROLE_CLASS_TEACHER");
         
         return teacher;
     }
@@ -331,8 +331,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 保存教师
         this.save(teacher);
         
-        // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配指导教师角色
-        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : "ROLE_INSTRUCTOR";
+        // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配班主任角色
+        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : "ROLE_CLASS_TEACHER";
         
         // 权限检查：检查当前用户是否可以分配该角色
         if (!dataPermissionUtil.canAssignRole(finalRoleCode)) {

@@ -9,6 +9,7 @@ import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.Interview;
 import com.server.internshipserver.domain.user.Student;
@@ -24,6 +25,7 @@ import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import com.server.internshipserver.service.internship.InternshipApplyService;
+import com.server.internshipserver.service.internship.InternshipPlanService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     
     @Autowired
     private EnterpriseMentorMapper enterpriseMentorMapper;
+    
+    @Autowired
+    private InternshipPlanService internshipPlanService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -118,6 +123,57 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             }
         }
         
+        // 新增：验证实习计划
+        if (apply.getPlanId() != null) {
+            InternshipPlan plan = internshipPlanService.getById(apply.getPlanId());
+            if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                throw new BusinessException("实习计划不存在");
+            }
+            
+            // 验证计划状态：必须是已发布
+            if (plan.getStatus() == null || plan.getStatus() != 4) {
+                throw new BusinessException("只能选择已发布的实习计划");
+            }
+            
+            // 验证组织架构匹配
+            if (!plan.getSchoolId().equals(student.getSchoolId())) {
+                throw new BusinessException("实习计划与学生的学校不匹配");
+            }
+            if (plan.getCollegeId() != null && !plan.getCollegeId().equals(student.getCollegeId())) {
+                throw new BusinessException("实习计划与学生的学院不匹配");
+            }
+            if (plan.getMajorId() != null && !plan.getMajorId().equals(student.getMajorId())) {
+                throw new BusinessException("实习计划与学生的专业不匹配");
+            }
+            
+            // 验证时间范围：如果申请中指定了实习时间，需要验证是否在计划范围内
+            if (apply.getInternshipStartDate() != null) {
+                if (apply.getInternshipStartDate().isBefore(plan.getStartDate())) {
+                    throw new BusinessException("实习开始日期不能早于计划的开始日期");
+                }
+            }
+            if (apply.getInternshipEndDate() != null) {
+                if (apply.getInternshipEndDate().isAfter(plan.getEndDate())) {
+                    throw new BusinessException("实习结束日期不能晚于计划的结束日期");
+                }
+            }
+            
+            // 如果申请中没有指定实习时间，使用计划的时间范围
+            if (apply.getInternshipStartDate() == null) {
+                apply.setInternshipStartDate(plan.getStartDate());
+            }
+            if (apply.getInternshipEndDate() == null) {
+                apply.setInternshipEndDate(plan.getEndDate());
+            }
+        } else {
+            // 如果没有选择计划，尝试自动匹配
+            List<InternshipPlan> availablePlans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
+            if (!availablePlans.isEmpty()) {
+                // 如果有匹配的计划，要求用户必须选择
+                throw new BusinessException("请选择实习计划");
+            }
+        }
+        
         // 检查是否已申请过该企业或岗位
         LambdaQueryWrapper<InternshipApply> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InternshipApply::getStudentId, student.getStudentId())
@@ -142,6 +198,15 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         
         // 保存
         this.save(apply);
+        
+        // 保存后，填充计划信息
+        if (apply.getPlanId() != null) {
+            InternshipPlan plan = internshipPlanService.getById(apply.getPlanId());
+            if (plan != null) {
+                apply.setPlanName(plan.getPlanName());
+                apply.setPlanCode(plan.getPlanCode());
+            }
+        }
         
         // 更新岗位申请人数
         if (apply.getPostId() != null) {
@@ -205,6 +270,49 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("学生信息不存在");
         }
         
+        // 新增：验证实习计划
+        if (apply.getPlanId() != null) {
+            InternshipPlan plan = internshipPlanService.getById(apply.getPlanId());
+            if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                throw new BusinessException("实习计划不存在");
+            }
+            
+            // 验证计划状态：必须是已发布
+            if (plan.getStatus() == null || plan.getStatus() != 4) {
+                throw new BusinessException("只能选择已发布的实习计划");
+            }
+            
+            // 验证组织架构匹配
+            if (!plan.getSchoolId().equals(student.getSchoolId())) {
+                throw new BusinessException("实习计划与学生的学校不匹配");
+            }
+            if (plan.getCollegeId() != null && !plan.getCollegeId().equals(student.getCollegeId())) {
+                throw new BusinessException("实习计划与学生的学院不匹配");
+            }
+            if (plan.getMajorId() != null && !plan.getMajorId().equals(student.getMajorId())) {
+                throw new BusinessException("实习计划与学生的专业不匹配");
+            }
+            
+            // 验证时间范围：自主实习的时间需要验证是否在计划范围内
+            if (apply.getSelfStartDate() != null) {
+                if (apply.getSelfStartDate().isBefore(plan.getStartDate())) {
+                    throw new BusinessException("实习开始日期不能早于计划的开始日期");
+                }
+            }
+            if (apply.getSelfEndDate() != null) {
+                if (apply.getSelfEndDate().isAfter(plan.getEndDate())) {
+                    throw new BusinessException("实习结束日期不能晚于计划的结束日期");
+                }
+            }
+        } else {
+            // 如果没有选择计划，尝试自动匹配
+            List<InternshipPlan> availablePlans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
+            if (!availablePlans.isEmpty()) {
+                // 如果有匹配的计划，要求用户必须选择
+                throw new BusinessException("请选择实习计划");
+            }
+        }
+        
         // 设置申请信息
         apply.setStudentId(student.getStudentId());
         apply.setUserId(user.getUserId());
@@ -215,6 +323,10 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 自主实习不应该有企业ID和岗位ID，清空这些字段
         apply.setEnterpriseId(null);
         apply.setPostId(null);
+        
+        // 将自主实习的时间字段映射到实习时间字段
+        apply.setInternshipStartDate(apply.getSelfStartDate());
+        apply.setInternshipEndDate(apply.getSelfEndDate());
         // 自主实习不应该有企业反馈、面试、录用相关字段，清空这些字段
         apply.setEnterpriseFeedback(null);
         apply.setEnterpriseFeedbackTime(null);
@@ -226,6 +338,16 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         
         // 保存
         this.save(apply);
+        
+        // 保存后，填充计划信息
+        if (apply.getPlanId() != null) {
+            InternshipPlan plan = internshipPlanService.getById(apply.getPlanId());
+            if (plan != null) {
+                apply.setPlanName(plan.getPlanName());
+                apply.setPlanCode(plan.getPlanCode());
+            }
+        }
+        
         return apply;
     }
     
@@ -410,6 +532,15 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             EnterpriseMentor mentor = enterpriseMentorMapper.selectById(apply.getMentorId());
             if (mentor != null) {
                 apply.setMentorName(mentor.getMentorName());
+            }
+        }
+        
+        // 新增：填充实习计划信息
+        if (apply.getPlanId() != null) {
+            InternshipPlan plan = internshipPlanService.getById(apply.getPlanId());
+            if (plan != null) {
+                apply.setPlanName(plan.getPlanName());
+                apply.setPlanCode(plan.getPlanCode());
             }
         }
         

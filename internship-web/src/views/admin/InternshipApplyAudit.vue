@@ -44,7 +44,7 @@
             <el-option label="已拒绝" :value="2" />
             <el-option label="已录用" :value="3" />
             <el-option label="已拒绝录用" :value="4" />
-    0--0-0-0-0--090909999999999999999999999999999999999999999999999999909999999999999999999【=】】【【【【【【【【【【【【【-  </el-select>
+        </el-select>
         </el-form-item>
         <el-form-item label="解绑状态">
           <el-select

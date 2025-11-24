@@ -2,6 +2,7 @@ package com.server.internshipserver.controller.user;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.service.user.UserService;
@@ -24,6 +25,9 @@ public class UserController {
     
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @ApiOperation("分页查询用户列表")
     @GetMapping("/page")
@@ -55,16 +59,32 @@ public class UserController {
     
     @ApiOperation("添加用户")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> addUser(@RequestBody UserInfo user) {
+        // 如果指定了角色，验证角色分配权限
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            for (String roleCode : user.getRoles()) {
+                if (!dataPermissionUtil.canAssignRole(roleCode)) {
+                    return Result.error("无权限分配角色：" + roleCode);
+                }
+            }
+        }
         UserInfo result = userService.addUser(user);
         return Result.success("添加成功", result);
     }
     
     @ApiOperation("更新用户信息")
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> updateUser(@RequestBody UserInfo user) {
+        // 如果指定了角色，验证角色分配权限
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            for (String roleCode : user.getRoles()) {
+                if (!dataPermissionUtil.canAssignRole(roleCode)) {
+                    return Result.error("无权限分配角色：" + roleCode);
+                }
+            }
+        }
         UserInfo result = userService.updateUser(user);
         return Result.success("更新成功", result);
     }
@@ -149,6 +169,13 @@ public class UserController {
             @ApiParam(value = "新密码", required = true) @RequestParam String newPassword) {
         boolean success = userService.changePassword(oldPassword, newPassword);
         return success ? Result.success("密码修改成功") : Result.error("密码修改失败");
+    }
+    
+    @ApiOperation("获取当前用户组织信息（学校、学院、班级）")
+    @GetMapping("/current/org-info")
+    public Result<java.util.Map<String, Object>> getCurrentUserOrgInfo() {
+        java.util.Map<String, Object> orgInfo = userService.getCurrentUserOrgInfo();
+        return Result.success("查询成功", orgInfo);
     }
 }
 

@@ -42,6 +42,7 @@
                 placeholder="请选择学校"
                 clearable
                 style="width: 200px"
+                :disabled="isSchoolDisabled"
                 @change="handleSchoolChange"
               >
                 <el-option
@@ -58,7 +59,7 @@
                 placeholder="请选择学院"
                 clearable
                 style="width: 200px"
-                :disabled="!searchForm.schoolId"
+                :disabled="isCollegeDisabled || !searchForm.schoolId"
                 @change="handleCollegeChange"
               >
                 <el-option
@@ -93,9 +94,10 @@
                 clearable
                 style="width: 200px"
                 :disabled="!searchForm.majorId"
+                :multiple="isClassMultiple"
               >
                 <el-option
-                  v-for="classItem in classList"
+                  v-for="classItem in filteredClassList"
                   :key="classItem.classId"
                   :label="classItem.className"
                   :value="classItem.classId"
@@ -584,6 +586,17 @@ const collegeList = ref([])
 const collegeMap = ref({})
 const majorList = ref([])
 const majorMap = ref({})
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: '',
+  collegeId: null,
+  collegeName: '',
+  classIds: [],
+  classNames: []
+})
+
 const searchForm = reactive({
   studentNo: '',
   schoolId: null,
@@ -713,15 +726,46 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.studentNo = ''
-  searchForm.schoolId = null
-  searchForm.collegeId = null
-  searchForm.majorId = null
-  searchForm.classId = null
   searchForm.status = null
   searchForm.enrollmentYear = null
-  collegeList.value = []
-  majorList.value = []
-  classList.value = []
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+    // 学校管理员、学院负责人、班主任：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+    // 学院负责人、班主任：保持学院ID
+    searchForm.collegeId = currentOrgInfo.value.collegeId || null
+  } else {
+    searchForm.collegeId = null
+  }
+  
+  searchForm.majorId = null
+  searchForm.classId = null
+  
+  // 重新加载列表
+  if (searchForm.schoolId) {
+    loadCollegeList(searchForm.schoolId)
+  } else {
+    collegeList.value = []
+  }
+  
+  if (searchForm.collegeId) {
+    loadMajorList(searchForm.collegeId)
+  } else {
+    majorList.value = []
+  }
+  
+  if (searchForm.majorId) {
+    loadClassList(searchForm.majorId)
+  } else {
+    classList.value = []
+  }
+  
   pagination.current = 1
   loadStudentList()
 }
@@ -1325,10 +1369,75 @@ const loadSchoolInfo = async (schoolIds) => {
 }
 
 // 初始化
-onMounted(() => {
+// 计算属性：学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
+
+// 计算属性：学院下拉框是否禁用
+const isCollegeDisabled = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
+
+// 计算属性：班级下拉框是否支持多选（班主任支持多选）
+const isClassMultiple = computed(() => {
+  return hasAnyRole(['ROLE_CLASS_TEACHER'])
+})
+
+// 计算属性：过滤后的班级列表（班主任只能看到管理的班级）
+const filteredClassList = computed(() => {
+  if (hasAnyRole(['ROLE_CLASS_TEACHER']) && currentOrgInfo.value.classIds && currentOrgInfo.value.classIds.length > 0) {
+    return classList.value.filter(c => currentOrgInfo.value.classIds.includes(c.classId))
+  }
+  return classList.value
+})
+
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || '',
+        collegeId: res.data.collegeId || null,
+        collegeName: res.data.collegeName || '',
+        classIds: res.data.classIds || [],
+        classNames: res.data.classNames || []
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+          // 加载该学校的学院列表
+          await loadCollegeList(currentOrgInfo.value.schoolId)
+        }
+      }
+      
+      if (hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
+        if (currentOrgInfo.value.collegeId) {
+          searchForm.collegeId = currentOrgInfo.value.collegeId
+          // 加载该学院的专业列表
+          await loadMajorList(currentOrgInfo.value.collegeId)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
+}
+
+onMounted(async () => {
   loadSchoolList()
-  loadCollegeList(null)
-  loadMajorList(null)
+  await loadCurrentUserOrgInfo()
+  // 如果没有组织信息，加载所有数据
+  if (!currentOrgInfo.value.schoolId) {
+    loadCollegeList(null)
+  }
+  if (!currentOrgInfo.value.collegeId) {
+    loadMajorList(null)
+  }
   loadClassList()
   loadStudentList()
 })

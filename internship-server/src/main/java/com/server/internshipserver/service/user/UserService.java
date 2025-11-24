@@ -113,5 +113,11 @@ public interface UserService extends IService<UserInfo> {
      * @return 是否成功
      */
     boolean changePassword(String oldPassword, String newPassword);
+    
+    /**
+     * 获取当前用户组织信息（学校、学院、班级）
+     * @return 组织信息Map，包含schoolId、schoolName、collegeId、collegeName、classIds、classNames
+     */
+    java.util.Map<String, Object> getCurrentUserOrgInfo();
 }
 

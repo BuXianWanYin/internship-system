@@ -38,6 +38,10 @@ export const planApi = {
   // 删除实习计划
   deletePlan(planId) {
     return request.delete(`/internship/plan/${planId}`)
+  },
+  // 获取学生可用的实习计划列表
+  getAvailablePlans() {
+    return request.get('/internship/plan/available')
   }
 }
 
