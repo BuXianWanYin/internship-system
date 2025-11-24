@@ -38,6 +38,34 @@ export const attendanceApi = {
   // 考勤统计
   getAttendanceStatistics(params) {
     return request.get('/internship/attendance/statistics', { params })
+  },
+  // 学生签到
+  studentCheckIn(attendanceDate) {
+    return request.post('/internship/attendance/check-in', null, {
+      params: attendanceDate ? { attendanceDate } : {}
+    })
+  },
+  // 学生签退
+  studentCheckOut(attendanceDate) {
+    return request.post('/internship/attendance/check-out', null, {
+      params: attendanceDate ? { attendanceDate } : {}
+    })
+  },
+  // 学生申请请假
+  studentApplyLeave(attendanceDate, leaveType, leaveReason) {
+    return request.post('/internship/attendance/apply-leave', null, {
+      params: { attendanceDate, leaveType, leaveReason }
+    })
+  },
+  // 学生选择休息
+  studentSelectRest(attendanceDate) {
+    return request.post('/internship/attendance/select-rest', null, {
+      params: { attendanceDate }
+    })
+  },
+  // 获取今天的考勤记录
+  getTodayAttendance() {
+    return request.get('/internship/attendance/today')
   }
 }
 

@@ -80,7 +80,7 @@
             编辑
           </el-button>
           <el-button
-            v-if="row.feedbackStatus === 2"
+            v-if="row.feedbackStatus === 1"
             link
             type="success"
             size="small"

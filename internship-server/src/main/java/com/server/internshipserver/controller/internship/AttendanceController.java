@@ -106,5 +106,51 @@ public class AttendanceController {
         AttendanceStatistics statistics = attendanceService.getAttendanceStatistics(studentId, applyId, startDate, endDate);
         return Result.success(statistics);
     }
+    
+    @ApiOperation("学生签到")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/check-in")
+    public Result<Attendance> studentCheckIn(
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) LocalDate attendanceDate) {
+        Attendance attendance = attendanceService.studentCheckIn(attendanceDate);
+        return Result.success("签到成功", attendance);
+    }
+    
+    @ApiOperation("学生签退")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/check-out")
+    public Result<Attendance> studentCheckOut(
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) LocalDate attendanceDate) {
+        Attendance attendance = attendanceService.studentCheckOut(attendanceDate);
+        return Result.success("签退成功", attendance);
+    }
+    
+    @ApiOperation("学生申请请假")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/apply-leave")
+    public Result<Attendance> studentApplyLeave(
+            @ApiParam(value = "考勤日期", required = true) @RequestParam LocalDate attendanceDate,
+            @ApiParam(value = "请假类型", required = true) @RequestParam String leaveType,
+            @ApiParam(value = "请假原因", required = true) @RequestParam String leaveReason) {
+        Attendance attendance = attendanceService.studentApplyLeave(attendanceDate, leaveType, leaveReason);
+        return Result.success("请假申请提交成功", attendance);
+    }
+    
+    @ApiOperation("学生选择休息")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @PostMapping("/select-rest")
+    public Result<Attendance> studentSelectRest(
+            @ApiParam(value = "考勤日期", required = true) @RequestParam LocalDate attendanceDate) {
+        Attendance attendance = attendanceService.studentSelectRest(attendanceDate);
+        return Result.success("休息申请提交成功", attendance);
+    }
+    
+    @ApiOperation("获取今天的考勤记录（学生端）")
+    @PreAuthorize("hasRole('ROLE_STUDENT')")
+    @GetMapping("/today")
+    public Result<Attendance> getTodayAttendance() {
+        Attendance attendance = attendanceService.getTodayAttendance();
+        return Result.success(attendance);
+    }
 }
 

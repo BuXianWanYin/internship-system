@@ -525,6 +525,35 @@ public class DataPermissionUtil {
     }
     
     /**
+     * 获取当前学生的学生ID
+     * @return 学生ID，如果当前用户不是学生则返回null
+     */
+    public Long getCurrentStudentId() {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            return null;
+        }
+        
+        // 检查当前用户是否有学生角色
+        if (!hasRole("ROLE_STUDENT")) {
+            return null;
+        }
+        
+        // 查询学生信息
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getUserId, userId)
+                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        
+        if (student != null) {
+            return student.getStudentId();
+        }
+        
+        return null;
+    }
+    
+    /**
      * 获取当前用户有合作关系的企业ID列表
      * @return 企业ID列表，如果无法获取则返回null（表示不限制）
      */

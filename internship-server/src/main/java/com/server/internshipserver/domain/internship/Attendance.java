@@ -46,7 +46,7 @@ public class Attendance implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate attendanceDate;
     
-    @ApiModelProperty(value = "考勤类型：1-出勤，2-迟到，3-早退，4-请假，5-缺勤", example = "1")
+    @ApiModelProperty(value = "考勤类型：1-出勤，2-迟到，3-早退，4-请假，5-缺勤，6-休息", example = "1")
     @TableField("attendance_type")
     private Integer attendanceType;
     

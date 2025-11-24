@@ -21,8 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.math.BigDecimal;
+import java.time.Duration;
 
 /**
  * 考勤管理Service实现类
@@ -352,6 +355,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         int earlyLeaveDays = 0;
         int leaveDays = 0;
         int absentDays = 0;
+        int restDays = 0;
         double totalWorkHours = 0.0;
         
         for (Attendance attendance : attendanceList) {
@@ -373,6 +377,9 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                     case 5: // 缺勤
                         absentDays++;
                         break;
+                    case 6: // 休息
+                        restDays++;
+                        break;
                 }
             }
             // 累计工作时长
@@ -381,10 +388,11 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             }
         }
         
-        // 计算出勤率（正常出勤天数 / 总天数 * 100）
+        // 计算出勤率（正常出勤天数 / (总天数 - 请假天数 - 休息天数) * 100）
         double attendanceRate = 0.0;
-        if (totalDays > 0) {
-            attendanceRate = (double) normalDays / totalDays * 100;
+        int effectiveTotalDays = totalDays - leaveDays - restDays;
+        if (effectiveTotalDays > 0) {
+            attendanceRate = (double) normalDays / effectiveTotalDays * 100;
         }
         
         statistics.setTotalDays(totalDays);
@@ -393,10 +401,326 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         statistics.setEarlyLeaveDays(earlyLeaveDays);
         statistics.setLeaveDays(leaveDays);
         statistics.setAbsentDays(absentDays);
+        statistics.setRestDays(restDays);
         statistics.setAttendanceRate(attendanceRate);
         statistics.setTotalWorkHours(totalWorkHours);
         
         return statistics;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Attendance studentCheckIn(LocalDate attendanceDate) {
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法签到");
+        }
+        
+        // 获取当前用户ID
+        Long userId = dataPermissionUtil.getCurrentUserId();
+        if (userId == null) {
+            throw new BusinessException("无法获取当前用户信息");
+        }
+        
+        // 获取当前学生的实习申请（已通过的）
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStudentId, studentId)
+                   .eq(InternshipApply::getStatus, 1) // 已通过
+                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                   .orderByDesc(InternshipApply::getCreateTime)
+                   .last("LIMIT 1");
+        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
+        if (apply == null) {
+            throw new BusinessException("您还没有已通过的实习申请，无法签到");
+        }
+        
+        // 如果未指定日期，使用今天
+        if (attendanceDate == null) {
+            attendanceDate = LocalDate.now();
+        }
+        
+        // 检查今天是否已经签到
+        LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Attendance::getApplyId, apply.getApplyId())
+               .eq(Attendance::getAttendanceDate, attendanceDate)
+               .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Attendance existAttendance = this.getOne(wrapper);
+        
+        LocalDateTime now = LocalDateTime.now();
+        
+        if (existAttendance != null) {
+            // 如果已存在考勤记录，更新签到时间
+            if (existAttendance.getCheckInTime() != null) {
+                throw new BusinessException("今天已经签到过了");
+            }
+            existAttendance.setCheckInTime(now);
+            // 如果考勤类型是缺勤，改为出勤
+            if (existAttendance.getAttendanceType() != null && existAttendance.getAttendanceType() == 5) {
+                existAttendance.setAttendanceType(1); // 改为出勤
+            } else if (existAttendance.getAttendanceType() == null) {
+                // 判断是否迟到（假设9:00为上班时间）
+                LocalTime checkInTime = now.toLocalTime();
+                LocalTime workStartTime = LocalTime.of(9, 0);
+                if (checkInTime.isAfter(workStartTime)) {
+                    existAttendance.setAttendanceType(2); // 迟到
+                } else {
+                    existAttendance.setAttendanceType(1); // 正常
+                }
+            }
+            this.updateById(existAttendance);
+            return existAttendance;
+        } else {
+            // 创建新的考勤记录
+            Attendance attendance = new Attendance();
+            attendance.setStudentId(studentId);
+            attendance.setUserId(userId);
+            attendance.setApplyId(apply.getApplyId());
+            attendance.setAttendanceDate(attendanceDate);
+            attendance.setCheckInTime(now);
+            attendance.setConfirmStatus(0); // 待确认
+            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            
+            // 判断是否迟到（假设9:00为上班时间）
+            LocalTime checkInTime = now.toLocalTime();
+            LocalTime workStartTime = LocalTime.of(9, 0);
+            if (checkInTime.isAfter(workStartTime)) {
+                attendance.setAttendanceType(2); // 迟到
+            } else {
+                attendance.setAttendanceType(1); // 正常
+            }
+            
+            this.save(attendance);
+            return attendance;
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Attendance studentCheckOut(LocalDate attendanceDate) {
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法签退");
+        }
+        
+        // 如果未指定日期，使用今天
+        if (attendanceDate == null) {
+            attendanceDate = LocalDate.now();
+        }
+        
+        // 获取当前学生的实习申请（已通过的）
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStudentId, studentId)
+                   .eq(InternshipApply::getStatus, 1) // 已通过
+                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                   .orderByDesc(InternshipApply::getCreateTime)
+                   .last("LIMIT 1");
+        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
+        if (apply == null) {
+            throw new BusinessException("您还没有已通过的实习申请，无法签退");
+        }
+        
+        // 查找今天的考勤记录
+        LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Attendance::getApplyId, apply.getApplyId())
+               .eq(Attendance::getAttendanceDate, attendanceDate)
+               .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Attendance attendance = this.getOne(wrapper);
+        
+        if (attendance == null) {
+            throw new BusinessException("请先签到后再签退");
+        }
+        
+        if (attendance.getCheckOutTime() != null) {
+            throw new BusinessException("今天已经签退过了");
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        attendance.setCheckOutTime(now);
+        
+        // 计算工作时长
+        if (attendance.getCheckInTime() != null) {
+            Duration duration = Duration.between(attendance.getCheckInTime(), now);
+            double hours = duration.toMinutes() / 60.0;
+            attendance.setWorkHours(BigDecimal.valueOf(hours).setScale(2, BigDecimal.ROUND_HALF_UP));
+            
+            // 判断是否早退（假设18:00为下班时间）
+            LocalTime checkOutTime = now.toLocalTime();
+            LocalTime workEndTime = LocalTime.of(18, 0);
+            if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() == 1) {
+                attendance.setAttendanceType(3); // 早退
+            }
+        }
+        
+        this.updateById(attendance);
+        return attendance;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Attendance studentApplyLeave(LocalDate attendanceDate, String leaveType, String leaveReason) {
+        if (attendanceDate == null) {
+            throw new BusinessException("请假日期不能为空");
+        }
+        if (!StringUtils.hasText(leaveType)) {
+            throw new BusinessException("请假类型不能为空");
+        }
+        if (!StringUtils.hasText(leaveReason)) {
+            throw new BusinessException("请假原因不能为空");
+        }
+        
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法申请请假");
+        }
+        
+        // 获取当前用户ID
+        Long userId = dataPermissionUtil.getCurrentUserId();
+        if (userId == null) {
+            throw new BusinessException("无法获取当前用户信息");
+        }
+        
+        // 获取当前学生的实习申请（已通过的）
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStudentId, studentId)
+                   .eq(InternshipApply::getStatus, 1) // 已通过
+                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                   .orderByDesc(InternshipApply::getCreateTime)
+                   .last("LIMIT 1");
+        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
+        if (apply == null) {
+            throw new BusinessException("您还没有已通过的实习申请，无法申请请假");
+        }
+        
+        // 检查该日期是否已有考勤记录
+        LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Attendance::getApplyId, apply.getApplyId())
+               .eq(Attendance::getAttendanceDate, attendanceDate)
+               .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Attendance existAttendance = this.getOne(wrapper);
+        
+        if (existAttendance != null) {
+            // 如果已存在考勤记录，更新为请假
+            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus() == 1) {
+                throw new BusinessException("该日期考勤已确认，无法修改为请假");
+            }
+            existAttendance.setAttendanceType(4); // 请假
+            existAttendance.setLeaveType(leaveType);
+            existAttendance.setLeaveReason(leaveReason);
+            existAttendance.setConfirmStatus(0); // 待确认
+            this.updateById(existAttendance);
+            return existAttendance;
+        } else {
+            // 创建新的请假记录
+            Attendance attendance = new Attendance();
+            attendance.setStudentId(studentId);
+            attendance.setUserId(userId);
+            attendance.setApplyId(apply.getApplyId());
+            attendance.setAttendanceDate(attendanceDate);
+            attendance.setAttendanceType(4); // 请假
+            attendance.setLeaveType(leaveType);
+            attendance.setLeaveReason(leaveReason);
+            attendance.setConfirmStatus(0); // 待确认
+            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            
+            this.save(attendance);
+            return attendance;
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Attendance studentSelectRest(LocalDate attendanceDate) {
+        if (attendanceDate == null) {
+            throw new BusinessException("休息日期不能为空");
+        }
+        
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            throw new BusinessException("当前用户不是学生，无法选择休息");
+        }
+        
+        // 获取当前用户ID
+        Long userId = dataPermissionUtil.getCurrentUserId();
+        if (userId == null) {
+            throw new BusinessException("无法获取当前用户信息");
+        }
+        
+        // 获取当前学生的实习申请（已通过的）
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStudentId, studentId)
+                   .eq(InternshipApply::getStatus, 1) // 已通过
+                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                   .orderByDesc(InternshipApply::getCreateTime)
+                   .last("LIMIT 1");
+        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
+        if (apply == null) {
+            throw new BusinessException("您还没有已通过的实习申请，无法选择休息");
+        }
+        
+        // 检查该日期是否已有考勤记录
+        LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Attendance::getApplyId, apply.getApplyId())
+               .eq(Attendance::getAttendanceDate, attendanceDate)
+               .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Attendance existAttendance = this.getOne(wrapper);
+        
+        if (existAttendance != null) {
+            // 如果已存在考勤记录，更新为休息
+            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus() == 1) {
+                throw new BusinessException("该日期考勤已确认，无法修改为休息");
+            }
+            existAttendance.setAttendanceType(6); // 休息
+            existAttendance.setConfirmStatus(0); // 待确认
+            this.updateById(existAttendance);
+            return existAttendance;
+        } else {
+            // 创建新的休息记录
+            Attendance attendance = new Attendance();
+            attendance.setStudentId(studentId);
+            attendance.setUserId(userId);
+            attendance.setApplyId(apply.getApplyId());
+            attendance.setAttendanceDate(attendanceDate);
+            attendance.setAttendanceType(6); // 休息
+            attendance.setConfirmStatus(0); // 待确认
+            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            
+            this.save(attendance);
+            return attendance;
+        }
+    }
+    
+    @Override
+    public Attendance getTodayAttendance() {
+        // 获取当前学生ID
+        Long studentId = dataPermissionUtil.getCurrentStudentId();
+        if (studentId == null) {
+            return null;
+        }
+        
+        // 获取当前学生的实习申请（已通过的）
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStudentId, studentId)
+                   .eq(InternshipApply::getStatus, 1) // 已通过
+                   .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                   .orderByDesc(InternshipApply::getCreateTime)
+                   .last("LIMIT 1");
+        InternshipApply apply = internshipApplyMapper.selectOne(applyWrapper);
+        if (apply == null) {
+            return null;
+        }
+        
+        // 查找今天的考勤记录
+        LocalDate today = LocalDate.now();
+        LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Attendance::getApplyId, apply.getApplyId())
+               .eq(Attendance::getAttendanceDate, today)
+               .eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        return this.getOne(wrapper);
     }
 }
 

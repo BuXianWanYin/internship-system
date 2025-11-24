@@ -79,5 +79,41 @@ public interface AttendanceService extends IService<Attendance> {
      */
     AttendanceStatistics getAttendanceStatistics(
             Long studentId, Long applyId, java.time.LocalDate startDate, java.time.LocalDate endDate);
+    
+    /**
+     * 学生签到
+     * @param attendanceDate 考勤日期（可选，默认为今天）
+     * @return 考勤信息
+     */
+    Attendance studentCheckIn(java.time.LocalDate attendanceDate);
+    
+    /**
+     * 学生签退
+     * @param attendanceDate 考勤日期（可选，默认为今天）
+     * @return 考勤信息
+     */
+    Attendance studentCheckOut(java.time.LocalDate attendanceDate);
+    
+    /**
+     * 学生申请请假
+     * @param attendanceDate 考勤日期
+     * @param leaveType 请假类型（事假、病假、调休等）
+     * @param leaveReason 请假原因
+     * @return 考勤信息
+     */
+    Attendance studentApplyLeave(java.time.LocalDate attendanceDate, String leaveType, String leaveReason);
+    
+    /**
+     * 学生选择休息
+     * @param attendanceDate 考勤日期
+     * @return 考勤信息
+     */
+    Attendance studentSelectRest(java.time.LocalDate attendanceDate);
+    
+    /**
+     * 获取今天的考勤记录（学生端）
+     * @return 考勤信息，如果不存在则返回null
+     */
+    Attendance getTodayAttendance();
 }
 

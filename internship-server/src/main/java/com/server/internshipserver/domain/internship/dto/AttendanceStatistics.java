@@ -33,6 +33,9 @@ public class AttendanceStatistics implements Serializable {
     @ApiModelProperty(value = "缺勤天数", example = "0")
     private Integer absentDays;
     
+    @ApiModelProperty(value = "休息天数", example = "0")
+    private Integer restDays;
+    
     @ApiModelProperty(value = "出勤率（百分比）", example = "83.33")
     private Double attendanceRate;
     
