@@ -3,89 +3,150 @@
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <!-- 合作企业申请 -->
       <el-tab-pane label="合作企业申请" name="cooperation">
-        <div class="apply-section">
-          <el-alert
-            type="info"
-            :closable="false"
-            show-icon
-            style="margin-bottom: 20px"
-          >
-            <template #default>
-              <div>您可以选择与学校有合作关系的企业发布的岗位进行申请</div>
-            </template>
-          </el-alert>
-
-          <!-- 搜索栏 -->
-          <div class="search-bar">
-            <el-form :inline="true" :model="searchForm" class="search-form">
-              <el-form-item label="岗位名称">
-                <el-input
-                  v-model="searchForm.postName"
-                  placeholder="请输入岗位名称"
-                  clearable
-                  style="width: 200px"
-                  @keyup.enter="handleSearch"
-                />
-              </el-form-item>
-              <el-form-item label="企业名称">
-                <el-input
-                  v-model="searchForm.enterpriseName"
-                  placeholder="请输入企业名称"
-                  clearable
-                  style="width: 200px"
-                  @keyup.enter="handleSearch"
-                />
-              </el-form-item>
-              <el-form-item>
-                <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
-                <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-              </el-form-item>
-            </el-form>
-          </div>
-
+        <el-tabs v-model="cooperationSubTab" @tab-change="handleCooperationSubTabChange">
           <!-- 岗位列表 -->
-          <el-table
-            v-loading="loading"
-            :data="postTableData"
-            stripe
-            style="width: 100%"
-            :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
-          >
-            <el-table-column prop="postName" label="岗位名称" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="workLocation" label="工作地点" min-width="150" />
-            <el-table-column prop="recruitCount" label="招聘人数" width="100" align="center" />
-            <el-table-column prop="appliedCount" label="已申请" width="100" align="center" />
-            <el-table-column label="薪资范围" width="150" align="center">
-              <template #default="{ row }">
-                <span v-if="row.salaryMin && row.salaryMax">
-                  {{ row.salaryMin }}-{{ row.salaryMax }}元/{{ row.salaryType || '月' }}
-                </span>
-                <span v-else-if="row.salaryType === '面议'">面议</span>
-                <span v-else style="color: #909399">未设置</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right" align="center">
-              <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="handleViewPost(row)">查看详情</el-button>
-                <el-button link type="success" size="small" @click="handleApplyPost(row)">申请</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <el-tab-pane label="岗位列表" name="postList">
+            <div class="apply-section">
+              <el-alert
+                type="info"
+                :closable="false"
+                show-icon
+                style="margin-bottom: 20px"
+              >
+                <template #default>
+                  <div>您可以选择与学校有合作关系的企业发布的岗位进行申请</div>
+                </template>
+              </el-alert>
 
-          <!-- 分页 -->
-          <div class="pagination-container">
-            <el-pagination
-              v-model:current-page="postPagination.current"
-              v-model:page-size="postPagination.size"
-              :total="postPagination.total"
-              :page-sizes="[10, 20, 50, 100]"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handlePostSizeChange"
-              @current-change="handlePostPageChange"
-            />
-          </div>
-        </div>
+              <!-- 搜索栏 -->
+              <div class="search-bar">
+                <el-form :inline="true" :model="searchForm" class="search-form">
+                  <el-form-item label="岗位名称">
+                    <el-input
+                      v-model="searchForm.postName"
+                      placeholder="请输入岗位名称"
+                      clearable
+                      style="width: 200px"
+                      @keyup.enter="handleSearch"
+                    />
+                  </el-form-item>
+                  <el-form-item label="企业名称">
+                    <el-input
+                      v-model="searchForm.enterpriseName"
+                      placeholder="请输入企业名称"
+                      clearable
+                      style="width: 200px"
+                      @keyup.enter="handleSearch"
+                    />
+                  </el-form-item>
+                  <el-form-item>
+                    <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+                    <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+                  </el-form-item>
+                </el-form>
+              </div>
+
+              <!-- 岗位列表 -->
+              <el-table
+                v-loading="loading"
+                :data="postTableData"
+                stripe
+                style="width: 100%"
+                :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+              >
+                <el-table-column prop="postName" label="岗位名称" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="workLocation" label="工作地点" min-width="150" />
+                <el-table-column prop="recruitCount" label="招聘人数" width="100" align="center" />
+                <el-table-column prop="appliedCount" label="已申请" width="100" align="center" />
+                <el-table-column label="薪资范围" width="150" align="center">
+                  <template #default="{ row }">
+                    <span v-if="row.salaryMin && row.salaryMax">
+                      {{ row.salaryMin }}-{{ row.salaryMax }}元/{{ row.salaryType || '月' }}
+                    </span>
+                    <span v-else-if="row.salaryType === '面议'">面议</span>
+                    <span v-else style="color: #909399">未设置</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="200" fixed="right" align="center">
+                  <template #default="{ row }">
+                    <el-button link type="primary" size="small" @click="handleViewPost(row)">查看详情</el-button>
+                    <el-button link type="success" size="small" @click="handleApplyPost(row)">申请</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+
+              <!-- 分页 -->
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="postPagination.current"
+                  v-model:page-size="postPagination.size"
+                  :total="postPagination.total"
+                  :page-sizes="[10, 20, 50, 100]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handlePostSizeChange"
+                  @current-change="handlePostPageChange"
+                />
+              </div>
+            </div>
+          </el-tab-pane>
+
+          <!-- 我的申请 -->
+          <el-tab-pane label="我的申请" name="myApply">
+            <div class="apply-section">
+              <el-table
+                v-loading="cooperationApplyLoading"
+                :data="cooperationApplyTableData"
+                stripe
+                style="width: 100%"
+                :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+              >
+                <el-table-column type="index" label="序号" width="60" align="center" />
+                <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
+                <el-table-column prop="enterpriseName" label="企业名称" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="status" label="状态" width="100" align="center">
+                  <template #default="{ row }">
+                    <el-tag :type="getApplyStatusType(row.status)" size="small">
+                      {{ getApplyStatusText(row.status) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="createTime" label="申请时间" width="180">
+                  <template #default="{ row }">
+                    {{ formatDateTime(row.createTime) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="200" fixed="right" align="center">
+                  <template #default="{ row }">
+                    <el-button link type="primary" size="small" @click="handleViewCooperationApply(row)">查看详情</el-button>
+                    <el-button
+                      v-if="row.status === 0"
+                      link
+                      type="danger"
+                      size="small"
+                      @click="handleCancelCooperationApply(row)"
+                    >
+                      取消
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+
+              <!-- 分页 -->
+              <div class="pagination-container">
+                <el-pagination
+                  v-model:current-page="cooperationApplyPagination.current"
+                  v-model:page-size="cooperationApplyPagination.size"
+                  :total="cooperationApplyPagination.total"
+                  :page-sizes="[10, 20, 50, 100]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleCooperationApplySizeChange"
+                  @current-change="handleCooperationApplyPageChange"
+                />
+              </div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
       </el-tab-pane>
 
       <!-- 自主实习申请 -->
@@ -428,6 +489,102 @@
           <div style="white-space: pre-wrap">{{ applyDetailData.auditOpinion }}</div>
         </el-descriptions-item>
       </el-descriptions>
+      
+      <!-- 状态流转历史 -->
+      <el-divider content-position="left">状态流转历史</el-divider>
+      <el-timeline v-if="applyDetailData.statusHistory && applyDetailData.statusHistory.length > 0">
+        <el-timeline-item
+          v-for="(item, index) in applyDetailData.statusHistory"
+          :key="index"
+          :timestamp="formatDateTime(item.actionTime)"
+          placement="top"
+        >
+          <el-card>
+            <h4>{{ item.actionName }}</h4>
+            <p><strong>操作人：</strong>{{ item.operator || '-' }}</p>
+            <p><strong>说明：</strong>{{ item.description || '-' }}</p>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+      <el-empty v-else description="暂无状态流转记录" :image-size="80" />
+      
+      <!-- 下一步操作提示 -->
+      <el-divider content-position="left">下一步操作</el-divider>
+      <el-alert
+        v-if="applyDetailData.nextActionTip"
+        :title="applyDetailData.nextActionTip"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-top: 10px"
+      />
+    </el-dialog>
+
+    <!-- 合作企业申请详情对话框 -->
+    <el-dialog
+      v-model="cooperationApplyDetailDialogVisible"
+      title="申请详情"
+      width="800px"
+    >
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="岗位名称">{{ cooperationApplyDetailData.postName }}</el-descriptions-item>
+        <el-descriptions-item label="企业名称">{{ cooperationApplyDetailData.enterpriseName }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getApplyStatusType(cooperationApplyDetailData.status)" size="small">
+            {{ getApplyStatusText(cooperationApplyDetailData.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="申请时间">
+          {{ formatDateTime(cooperationApplyDetailData.createTime) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="简历内容" :span="2">
+          <div style="white-space: pre-wrap">{{ cooperationApplyDetailData.resumeContent || '-' }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="cooperationApplyDetailData.resumeAttachment" label="简历附件" :span="2">
+          <div class="attachment-list">
+            <div v-for="(url, index) in (cooperationApplyDetailData.resumeAttachment || '').split(',').filter(u => u)" :key="index" class="attachment-item" style="display: flex; align-items: center; margin-bottom: 8px">
+              <el-icon style="margin-right: 8px"><Document /></el-icon>
+              <span style="flex: 1; margin-right: 8px">{{ getResumeFileName(url) }}</span>
+              <el-button link type="primary" size="small" @click="handleDownloadResume(url)">下载</el-button>
+            </div>
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item label="申请理由" :span="2">
+          <div style="white-space: pre-wrap">{{ cooperationApplyDetailData.applyReason || '-' }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="cooperationApplyDetailData.auditOpinion" label="审核意见" :span="2">
+          <div style="white-space: pre-wrap">{{ cooperationApplyDetailData.auditOpinion }}</div>
+        </el-descriptions-item>
+      </el-descriptions>
+      
+      <!-- 状态流转历史 -->
+      <el-divider content-position="left">状态流转历史</el-divider>
+      <el-timeline v-if="cooperationApplyDetailData.statusHistory && cooperationApplyDetailData.statusHistory.length > 0">
+        <el-timeline-item
+          v-for="(item, index) in cooperationApplyDetailData.statusHistory"
+          :key="index"
+          :timestamp="formatDateTime(item.actionTime)"
+          placement="top"
+        >
+          <el-card>
+            <h4>{{ item.actionName }}</h4>
+            <p><strong>操作人：</strong>{{ item.operator || '-' }}</p>
+            <p><strong>说明：</strong>{{ item.description || '-' }}</p>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+      <el-empty v-else description="暂无状态流转记录" :image-size="80" />
+      
+      <!-- 下一步操作提示 -->
+      <el-divider content-position="left">下一步操作</el-divider>
+      <el-alert
+        v-if="cooperationApplyDetailData.nextActionTip"
+        :title="cooperationApplyDetailData.nextActionTip"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-top: 10px"
+      />
     </el-dialog>
   </PageLayout>
 </template>
@@ -443,14 +600,17 @@ import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const activeTab = ref('cooperation')
+const cooperationSubTab = ref('postList')
 const loading = ref(false)
 const applyLoading = ref(false)
+const cooperationApplyLoading = ref(false)
 const applyPostLoading = ref(false)
 const selfApplyLoading = ref(false)
 const postDetailDialogVisible = ref(false)
 const applyPostDialogVisible = ref(false)
 const selfApplyDialogVisible = ref(false)
 const applyDetailDialogVisible = ref(false)
+const cooperationApplyDetailDialogVisible = ref(false)
 const selfApplyDialogTitle = ref('添加自主实习申请')
 const applyPostFormRef = ref(null)
 const selfApplyFormRef = ref(null)
@@ -472,10 +632,18 @@ const applyPagination = reactive({
   total: 0
 })
 
+const cooperationApplyPagination = reactive({
+  current: 1,
+  size: 10,
+  total: 0
+})
+
 const postTableData = ref([])
 const applyTableData = ref([])
+const cooperationApplyTableData = ref([])
 const postDetailData = ref({})
 const applyDetailData = ref({})
+const cooperationApplyDetailData = ref({})
 
 const applyPostForm = reactive({
   enterpriseId: null,
@@ -546,14 +714,35 @@ const loadPostData = async () => {
   }
 }
 
-// 加载申请数据
+// 加载合作企业申请数据
+const loadCooperationApplyData = async () => {
+  cooperationApplyLoading.value = true
+  try {
+    const res = await applyApi.getApplyPage({
+      current: cooperationApplyPagination.current,
+      size: cooperationApplyPagination.size,
+      applyType: 1 // 合作企业申请
+    })
+    if (res.code === 200) {
+      cooperationApplyTableData.value = res.data.records || []
+      cooperationApplyPagination.total = res.data.total || 0
+    }
+  } catch (error) {
+    console.error('加载合作企业申请数据失败:', error)
+    ElMessage.error('加载申请数据失败')
+  } finally {
+    cooperationApplyLoading.value = false
+  }
+}
+
+// 加载申请数据（自主实习）
 const loadApplyData = async () => {
   applyLoading.value = true
   try {
     const res = await applyApi.getApplyPage({
       current: applyPagination.current,
       size: applyPagination.size,
-      applyType: 1 // 自主实习
+      applyType: 2 // 自主实习
     })
     if (res.code === 200) {
       applyTableData.value = res.data.records || []
@@ -583,9 +772,22 @@ const handleReset = () => {
 // Tab切换
 const handleTabChange = (tabName) => {
   if (tabName === 'cooperation') {
-    loadPostData()
+    if (cooperationSubTab.value === 'postList') {
+      loadPostData()
+    } else if (cooperationSubTab.value === 'myApply') {
+      loadCooperationApplyData()
+    }
   } else if (tabName === 'self') {
     loadApplyData()
+  }
+}
+
+// 合作企业申请子Tab切换
+const handleCooperationSubTabChange = (tabName) => {
+  if (tabName === 'postList') {
+    loadPostData()
+  } else if (tabName === 'myApply') {
+    loadCooperationApplyData()
   }
 }
 
@@ -741,6 +943,7 @@ const handleSubmitPostApply = async () => {
           applyPostDialogVisible.value = false
           resumeFileList.value = []
           resumeAttachmentUrls.value = []
+          loadCooperationApplyData() // 刷新合作企业申请列表
         }
       } catch (error) {
         console.error('提交申请失败:', error)
@@ -759,7 +962,21 @@ const handleAddSelfApply = () => {
   selfApplyDialogVisible.value = true
 }
 
-// 查看申请详情
+// 查看合作企业申请详情
+const handleViewCooperationApply = async (row) => {
+  try {
+    const res = await applyApi.getApplyById(row.applyId)
+    if (res.code === 200) {
+      cooperationApplyDetailData.value = res.data
+      cooperationApplyDetailDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('查询申请详情失败:', error)
+    ElMessage.error('查询申请详情失败')
+  }
+}
+
+// 查看申请详情（自主实习）
 const handleViewApply = async (row) => {
   try {
     const res = await applyApi.getApplyById(row.applyId)
@@ -773,7 +990,26 @@ const handleViewApply = async (row) => {
   }
 }
 
-// 取消申请
+// 取消合作企业申请
+const handleCancelCooperationApply = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要取消该申请吗？', '提示', {
+      type: 'warning'
+    })
+    const res = await applyApi.cancelApply(row.applyId)
+    if (res.code === 200) {
+      ElMessage.success('取消成功')
+      loadCooperationApplyData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('取消失败:', error)
+      ElMessage.error(error.response?.data?.message || '取消失败')
+    }
+  }
+}
+
+// 取消申请（自主实习）
 const handleCancelApply = async (row) => {
   try {
     await ElMessageBox.confirm('确定要取消该申请吗？', '提示', {
@@ -857,6 +1093,14 @@ const handlePostSizeChange = () => {
 
 const handlePostPageChange = () => {
   loadPostData()
+}
+
+const handleCooperationApplySizeChange = () => {
+  loadCooperationApplyData()
+}
+
+const handleCooperationApplyPageChange = () => {
+  loadCooperationApplyData()
 }
 
 const handleApplySizeChange = () => {

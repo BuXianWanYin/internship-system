@@ -188,6 +188,12 @@ export const menuItems = [
         roles: ['ROLE_ENTERPRISE_ADMIN']
       },
       {
+        index: '/enterprise/internship/apply',
+        title: '申请管理',
+        icon: DocumentChecked,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
         index: '/enterprise/internship/interview',
         title: '面试管理',
         icon: ChatLineRound,

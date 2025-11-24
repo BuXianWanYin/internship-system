@@ -246,6 +246,36 @@
           </el-descriptions>
         </el-tab-pane>
       </el-tabs>
+      
+      <!-- 状态流转历史 -->
+      <el-divider content-position="left">状态流转历史</el-divider>
+      <el-timeline v-if="detailData.statusHistory && detailData.statusHistory.length > 0">
+        <el-timeline-item
+          v-for="(item, index) in detailData.statusHistory"
+          :key="index"
+          :timestamp="formatDateTime(item.actionTime)"
+          placement="top"
+        >
+          <el-card>
+            <h4>{{ item.actionName }}</h4>
+            <p><strong>操作人：</strong>{{ item.operator || '-' }}</p>
+            <p><strong>说明：</strong>{{ item.description || '-' }}</p>
+          </el-card>
+        </el-timeline-item>
+      </el-timeline>
+      <el-empty v-else description="暂无状态流转记录" :image-size="80" />
+      
+      <!-- 下一步操作提示 -->
+      <el-divider content-position="left">下一步操作</el-divider>
+      <el-alert
+        v-if="detailData.nextActionTip"
+        :title="detailData.nextActionTip"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-top: 10px"
+      />
+      
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button

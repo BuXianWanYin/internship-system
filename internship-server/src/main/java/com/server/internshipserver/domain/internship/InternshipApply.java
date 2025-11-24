@@ -192,5 +192,37 @@ public class InternshipApply implements Serializable {
     @ApiModelProperty(value = "联系电话（用于前端显示）")
     @TableField(exist = false)
     private String contactPhone;
+    
+    // ========== 状态流转相关字段（不映射到数据库） ==========
+    @ApiModelProperty(value = "状态流转历史")
+    @TableField(exist = false)
+    private java.util.List<StatusHistoryItem> statusHistory;
+    
+    @ApiModelProperty(value = "下一步操作提示")
+    @TableField(exist = false)
+    private String nextActionTip;
+    
+    /**
+     * 状态流转历史项
+     */
+    @Data
+    public static class StatusHistoryItem implements Serializable {
+        private static final long serialVersionUID = 1L;
+        
+        @ApiModelProperty(value = "操作名称", example = "申请提交")
+        private String actionName;
+        
+        @ApiModelProperty(value = "操作时间")
+        private LocalDateTime actionTime;
+        
+        @ApiModelProperty(value = "操作人", example = "张三")
+        private String operator;
+        
+        @ApiModelProperty(value = "操作说明", example = "学生提交了实习申请")
+        private String description;
+        
+        @ApiModelProperty(value = "状态值", example = "0")
+        private Integer status;
+    }
 }
 

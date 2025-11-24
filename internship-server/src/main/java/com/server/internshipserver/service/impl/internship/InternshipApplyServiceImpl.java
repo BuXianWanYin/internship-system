@@ -9,11 +9,13 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipPost;
+import com.server.internshipserver.domain.internship.Interview;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
+import com.server.internshipserver.mapper.internship.InterviewMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
@@ -25,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 实习申请管理Service实现类
@@ -49,6 +53,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     
     @Autowired
     private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private InterviewMapper interviewMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -289,6 +296,10 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 填充关联字段
         fillApplyRelatedFields(apply);
         
+        // 构建状态流转历史和下一步操作提示
+        buildStatusHistory(apply);
+        buildNextActionTip(apply);
+        
         return apply;
     }
     
@@ -346,6 +357,226 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             UserInfo auditor = userMapper.selectById(apply.getAuditUserId());
             if (auditor != null) {
                 apply.setAuditorName(auditor.getRealName());
+            }
+        }
+    }
+    
+    /**
+     * 构建状态流转历史
+     */
+    private void buildStatusHistory(InternshipApply apply) {
+        List<InternshipApply.StatusHistoryItem> history = new ArrayList<>();
+        
+        // 自主实习申请：简化流程（只显示：申请提交、学校审核、取消）
+        if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+            // 1. 申请提交
+            if (apply.getCreateTime() != null) {
+                InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                item.setActionName("申请提交");
+                item.setActionTime(apply.getCreateTime());
+                item.setOperator(apply.getStudentName());
+                item.setDescription("学生提交了自主实习申请");
+                item.setStatus(0);
+                history.add(item);
+            }
+            
+            // 2. 学校审核
+            if (apply.getAuditTime() != null) {
+                InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                item.setActionName(apply.getStatus() == 1 ? "学校审核通过" : "学校审核拒绝");
+                item.setActionTime(apply.getAuditTime());
+                item.setOperator(apply.getAuditorName());
+                item.setDescription(apply.getAuditOpinion() != null ? apply.getAuditOpinion() : 
+                    (apply.getStatus() == 1 ? "学校审核通过" : "学校审核拒绝"));
+                item.setStatus(apply.getStatus());
+                history.add(item);
+            }
+            
+            // 3. 取消状态（如果状态是已取消）
+            if (apply.getStatus() != null && apply.getStatus() == 5) {
+                InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                item.setActionName("申请已取消");
+                item.setActionTime(apply.getUpdateTime() != null ? apply.getUpdateTime() : apply.getCreateTime());
+                item.setOperator(apply.getStudentName());
+                item.setDescription("学生取消了申请");
+                item.setStatus(5);
+                history.add(item);
+            }
+            
+            apply.setStatusHistory(history);
+            return;
+        }
+        
+        // 合作企业申请：全流程状态
+        // 1. 申请提交
+        if (apply.getCreateTime() != null) {
+            InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+            item.setActionName("申请提交");
+            item.setActionTime(apply.getCreateTime());
+            item.setOperator(apply.getStudentName());
+            item.setDescription("学生提交了实习申请");
+            item.setStatus(0);
+            history.add(item);
+        }
+        
+        // 2. 学校审核（合作企业申请，学校审核通过后status=1）
+        if (apply.getApplyType() != null && apply.getApplyType() == 1 && apply.getAuditTime() != null) {
+            InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+            item.setActionName(apply.getStatus() == 1 ? "学校审核通过" : "学校审核拒绝");
+            item.setActionTime(apply.getAuditTime());
+            item.setOperator(apply.getAuditorName());
+            item.setDescription(apply.getAuditOpinion() != null ? apply.getAuditOpinion() : 
+                (apply.getStatus() == 1 ? "学校审核通过，等待企业处理" : "学校审核拒绝"));
+            item.setStatus(apply.getStatus());
+            history.add(item);
+        }
+        
+        // 4. 企业反馈（仅合作企业申请）
+        if (apply.getApplyType() != null && apply.getApplyType() == 1 && apply.getEnterpriseFeedbackTime() != null) {
+            InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+            item.setActionName("企业反馈");
+            item.setActionTime(apply.getEnterpriseFeedbackTime());
+            item.setOperator(apply.getEnterpriseName());
+            item.setDescription(apply.getEnterpriseFeedback() != null ? apply.getEnterpriseFeedback() : "企业已查看申请");
+            item.setStatus(apply.getStatus());
+            history.add(item);
+        }
+        
+        // 5. 面试安排（仅合作企业申请）
+        if (apply.getApplyType() != null && apply.getApplyType() == 1) {
+            List<Interview> interviews = interviewMapper.selectList(
+                new LambdaQueryWrapper<Interview>()
+                    .eq(Interview::getApplyId, apply.getApplyId())
+                    .eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                    .orderByAsc(Interview::getCreateTime)
+            );
+            
+            if (interviews != null && !interviews.isEmpty()) {
+                for (Interview interview : interviews) {
+                    if (interview.getCreateTime() != null) {
+                        InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                        item.setActionName("面试安排");
+                        item.setActionTime(interview.getCreateTime());
+                        item.setOperator(apply.getEnterpriseName());
+                        String interviewTypeText = interview.getInterviewType() == 1 ? "现场面试" : 
+                            (interview.getInterviewType() == 2 ? "视频面试" : "电话面试");
+                        item.setDescription("企业安排了" + interviewTypeText + "，面试时间：" + 
+                            (interview.getInterviewTime() != null ? interview.getInterviewTime().toString() : "待定"));
+                        item.setStatus(apply.getStatus());
+                        history.add(item);
+                    }
+                    
+                    // 学生确认面试
+                    if (interview.getStudentConfirmTime() != null) {
+                        InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                        item.setActionName(interview.getStudentConfirm() == 1 ? "学生确认面试" : "学生拒绝面试");
+                        item.setActionTime(interview.getStudentConfirmTime());
+                        item.setOperator(apply.getStudentName());
+                        item.setDescription(interview.getStudentConfirm() == 1 ? "学生已确认参加面试" : "学生已拒绝面试");
+                        item.setStatus(apply.getStatus());
+                        history.add(item);
+                    }
+                    
+                    // 面试完成
+                    if (interview.getInterviewFeedbackTime() != null) {
+                        InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+                        String resultText = interview.getInterviewResult() == 1 ? "通过" : 
+                            (interview.getInterviewResult() == 2 ? "不通过" : "待定");
+                        item.setActionName("面试完成");
+                        item.setActionTime(interview.getInterviewFeedbackTime());
+                        item.setOperator(apply.getEnterpriseName());
+                        item.setDescription("面试结果：" + resultText + 
+                            (interview.getInterviewComment() != null ? "，" + interview.getInterviewComment() : ""));
+                        item.setStatus(apply.getStatus());
+                        history.add(item);
+                    }
+                }
+            }
+        }
+        
+        // 6. 录用/拒绝
+        if (apply.getAcceptTime() != null) {
+            InternshipApply.StatusHistoryItem item = new InternshipApply.StatusHistoryItem();
+            item.setActionName(apply.getStatus() == 3 ? "企业录用" : "企业拒绝");
+            item.setActionTime(apply.getAcceptTime());
+            item.setOperator(apply.getEnterpriseName());
+            item.setDescription(apply.getStatus() == 3 ? "企业已录用" : "企业已拒绝录用");
+            item.setStatus(apply.getStatus());
+            history.add(item);
+        }
+        
+        // 按时间排序
+        history.sort((a, b) -> {
+            if (a.getActionTime() == null && b.getActionTime() == null) return 0;
+            if (a.getActionTime() == null) return 1;
+            if (b.getActionTime() == null) return -1;
+            return a.getActionTime().compareTo(b.getActionTime());
+        });
+        
+        apply.setStatusHistory(history);
+    }
+    
+    /**
+     * 构建下一步操作提示
+     */
+    private void buildNextActionTip(InternshipApply apply) {
+        if (apply.getStatus() == null) {
+            apply.setNextActionTip("状态异常，请联系管理员");
+            return;
+        }
+        
+        // 自主实习申请
+        if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+            if (apply.getStatus() == 0) {
+                apply.setNextActionTip("等待学校审核，请耐心等待");
+            } else if (apply.getStatus() == 1) {
+                apply.setNextActionTip("学校审核已通过，可以开始实习");
+            } else if (apply.getStatus() == 2) {
+                apply.setNextActionTip("学校审核已拒绝，如有疑问请联系班主任");
+            }
+            return;
+        }
+        
+        // 合作企业申请
+        if (apply.getApplyType() != null && apply.getApplyType() == 1) {
+            if (apply.getStatus() == 0) {
+                apply.setNextActionTip("等待学校审核，请耐心等待");
+            } else if (apply.getStatus() == 1) {
+                // 检查是否有面试记录
+                List<Interview> interviews = interviewMapper.selectList(
+                    new LambdaQueryWrapper<Interview>()
+                        .eq(Interview::getApplyId, apply.getApplyId())
+                        .eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .orderByDesc(Interview::getCreateTime)
+                        .last("LIMIT 1")
+                );
+                
+                if (interviews == null || interviews.isEmpty()) {
+                    apply.setNextActionTip("等待企业处理，企业可以安排面试或直接录用/拒绝");
+                } else {
+                    Interview latestInterview = interviews.get(0);
+                    if (latestInterview.getStudentConfirm() == 0) {
+                        apply.setNextActionTip("企业已安排面试，请前往\"我的面试\"页面确认是否参加");
+                    } else if (latestInterview.getStudentConfirm() == 1 && latestInterview.getStatus() == 1) {
+                        apply.setNextActionTip("面试已确认，请按时参加面试");
+                    } else if (latestInterview.getStatus() == 2) {
+                        if (latestInterview.getInterviewResult() == 1) {
+                            apply.setNextActionTip("面试已通过，等待企业决定是否录用");
+                        } else if (latestInterview.getInterviewResult() == 2) {
+                            apply.setNextActionTip("面试未通过，如有疑问请联系企业");
+                        } else {
+                            apply.setNextActionTip("面试已完成，等待企业反馈结果");
+                        }
+                    } else if (latestInterview.getStudentConfirm() == 2) {
+                        apply.setNextActionTip("已拒绝面试，申请流程已结束");
+                    }
+                }
+            } else if (apply.getStatus() == 3) {
+                apply.setNextActionTip("已录用，恭喜！请与企业联系确认实习安排");
+            } else if (apply.getStatus() == 4) {
+                apply.setNextActionTip("已拒绝录用，如有疑问请联系企业");
+            } else if (apply.getStatus() == 2) {
+                apply.setNextActionTip("学校审核已拒绝，如有疑问请联系班主任");
             }
         }
     }
