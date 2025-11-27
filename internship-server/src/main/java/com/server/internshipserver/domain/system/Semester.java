@@ -42,6 +42,10 @@ public class Semester implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate endDate;
     
+    @ApiModelProperty(value = "所属学校ID", required = true, example = "1")
+    @TableField("school_id")
+    private Long schoolId;
+    
     @ApiModelProperty(value = "是否当前学期：1-是，0-否", example = "1")
     @TableField("is_current")
     private Integer isCurrent;

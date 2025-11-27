@@ -37,6 +37,22 @@
             <el-option label="否" :value="0" />
           </el-select>
         </el-form-item>
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+            :disabled="isSchoolDisabled"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="日期范围">
           <el-date-picker
             v-model="searchForm.dateRange"
@@ -64,6 +80,12 @@
       :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
     >
       <el-table-column prop="semesterName" label="学期名称" min-width="200" />
+      <el-table-column label="所属学校" min-width="150">
+        <template #default="{ row }">
+          <span v-if="schoolMap[row.schoolId]">{{ schoolMap[row.schoolId].schoolName }}</span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="startDate" label="开始日期" width="120" />
       <el-table-column prop="endDate" label="结束日期" width="120" />
       <el-table-column prop="isCurrent" label="当前学期" width="100" align="center">
@@ -119,6 +141,20 @@
         <el-form-item label="学期名称" prop="semesterName">
           <el-input v-model="formData.semesterName" placeholder="请输入学期名称" />
         </el-form-item>
+        <el-form-item label="所属学校" prop="schoolId" v-if="!isSchoolDisabledForAdd">
+          <el-select 
+            v-model="formData.schoolId" 
+            placeholder="请选择学校" 
+            style="width: 100%"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
             v-model="formData.startDate"
@@ -150,11 +186,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { semesterApi } from '@/api/system/semester'
+import { schoolApi } from '@/api/system/school'
+import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { hasAnyRole } from '@/utils/permission'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -162,11 +201,31 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('添加学期')
 const formRef = ref(null)
 
+const schoolList = ref([])
+const schoolMap = ref({})
+
+// 当前用户组织信息
+const currentOrgInfo = ref({
+  schoolId: null,
+  schoolName: ''
+})
+
+// 计算属性：学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN'])
+})
+
+// 计算属性：添加表单中学校下拉框是否禁用
+const isSchoolDisabledForAdd = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN'])
+})
+
 const searchForm = reactive({
   semesterName: '',
   year: null,
   isCurrent: null,
-  dateRange: null
+  dateRange: null,
+  schoolId: null
 })
 
 const pagination = reactive({
@@ -180,6 +239,7 @@ const tableData = ref([])
 const formData = reactive({
   semesterId: null,
   semesterName: '',
+  schoolId: null,
   startDate: '',
   endDate: '',
   isCurrent: 0
@@ -188,6 +248,15 @@ const formData = reactive({
 const formRules = {
   semesterName: [
     { required: true, message: '请输入学期名称', trigger: 'blur' }
+  ],
+  schoolId: [
+    { required: true, message: '请选择所属学校', trigger: 'change', validator: (rule, value, callback) => {
+      if (!isSchoolDisabledForAdd.value && !value) {
+        callback(new Error('请选择所属学校'))
+      } else {
+        callback()
+      }
+    }}
   ],
   startDate: [
     { required: true, message: '请选择开始日期', trigger: 'change' }
@@ -207,17 +276,52 @@ const loadData = async () => {
       year: searchForm.year || undefined,
       isCurrent: searchForm.isCurrent !== null ? searchForm.isCurrent : undefined,
       startDate: searchForm.dateRange && searchForm.dateRange[0] ? searchForm.dateRange[0] : undefined,
-      endDate: searchForm.dateRange && searchForm.dateRange[1] ? searchForm.dateRange[1] : undefined
+      endDate: searchForm.dateRange && searchForm.dateRange[1] ? searchForm.dateRange[1] : undefined,
+      schoolId: searchForm.schoolId || undefined
     }
     const res = await semesterApi.getSemesterPage(params)
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
+
+      // 批量加载学校信息
+      const schoolIds = [...new Set(tableData.value.map(item => item.schoolId).filter(id => id))]
+      await loadSchoolInfo(schoolIds)
     }
   } catch (error) {
     console.error('加载数据失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const loadSchoolList = async () => {
+  try {
+    const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+    if (res.code === 200) {
+      schoolList.value = res.data.records || []
+      // 构建学校Map
+      schoolList.value.forEach(school => {
+        schoolMap.value[school.schoolId] = school
+      })
+    }
+  } catch (error) {
+    console.error('加载学校列表失败:', error)
+  }
+}
+
+const loadSchoolInfo = async (schoolIds) => {
+  try {
+    for (const schoolId of schoolIds) {
+      if (!schoolMap.value[schoolId]) {
+        const res = await schoolApi.getSchoolById(schoolId)
+        if (res.code === 200 && res.data) {
+          schoolMap.value[schoolId] = res.data
+        }
+      }
+    }
+  } catch (error) {
+    console.error('加载学校信息失败:', error)
   }
 }
 
@@ -231,6 +335,15 @@ const handleReset = () => {
   searchForm.year = null
   searchForm.isCurrent = null
   searchForm.dateRange = null
+  
+  // 根据角色重置筛选条件，保持组织信息的绑定
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+    // 学校管理员：保持学校ID
+    searchForm.schoolId = currentOrgInfo.value.schoolId || null
+  } else {
+    searchForm.schoolId = null
+  }
+  
   handleSearch()
 }
 
@@ -245,6 +358,7 @@ const handleEdit = (row) => {
   Object.assign(formData, {
     semesterId: row.semesterId,
     semesterName: row.semesterName,
+    schoolId: row.schoolId || null,
     startDate: row.startDate,
     endDate: row.endDate,
     isCurrent: row.isCurrent
@@ -318,14 +432,44 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
+  // 根据角色设置默认值
+  let defaultSchoolId = null
+  
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+    defaultSchoolId = currentOrgInfo.value.schoolId || null
+  }
+  
   Object.assign(formData, {
     semesterId: null,
     semesterName: '',
+    schoolId: defaultSchoolId,
     startDate: '',
     endDate: '',
     isCurrent: 0
   })
   formRef.value?.clearValidate()
+}
+
+// 加载当前用户组织信息
+const loadCurrentUserOrgInfo = async () => {
+  try {
+    const res = await userApi.getCurrentUserOrgInfo()
+    if (res.code === 200 && res.data) {
+      currentOrgInfo.value = {
+        schoolId: res.data.schoolId || null,
+        schoolName: res.data.schoolName || ''
+      }
+      
+      // 根据角色设置筛选框默认值
+      if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+        if (currentOrgInfo.value.schoolId) {
+          searchForm.schoolId = currentOrgInfo.value.schoolId
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取组织信息失败:', error)
+  }
 }
 
 const handleSizeChange = () => {
@@ -336,7 +480,9 @@ const handlePageChange = () => {
   loadData()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  loadSchoolList()
+  await loadCurrentUserOrgInfo()
   loadData()
 })
 </script>

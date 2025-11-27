@@ -23,7 +23,7 @@ public class SemesterController {
     private SemesterService semesterService;
     
     @ApiOperation("添加学期")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     @PostMapping
     public Result<Semester> addSemester(@RequestBody Semester semester) {
         Semester result = semesterService.addSemester(semester);
@@ -31,7 +31,7 @@ public class SemesterController {
     }
     
     @ApiOperation("更新学期信息")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     @PutMapping("/{id}")
     public Result<Semester> updateSemester(
             @ApiParam(value = "学期ID", required = true) @PathVariable Long id,
@@ -60,9 +60,10 @@ public class SemesterController {
             @ApiParam(value = "年份", required = false) @RequestParam(required = false) Integer year,
             @ApiParam(value = "是否当前学期：1-是，0-否", required = false) @RequestParam(required = false) Integer isCurrent,
             @ApiParam(value = "开始日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String startDate,
-            @ApiParam(value = "结束日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String endDate) {
+            @ApiParam(value = "结束日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String endDate,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId) {
         Page<Semester> page = new Page<>(current, size);
-        Page<Semester> result = semesterService.getSemesterPage(page, semesterName, year, isCurrent, startDate, endDate);
+        Page<Semester> result = semesterService.getSemesterPage(page, semesterName, year, isCurrent, startDate, endDate, schoolId);
         return Result.success(result);
     }
     

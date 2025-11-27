@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.Semester;
 import com.server.internshipserver.mapper.system.SemesterMapper;
 import com.server.internshipserver.service.system.SemesterService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -18,6 +20,9 @@ import org.springframework.util.StringUtils;
  */
 @Service
 public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> implements SemesterService {
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -35,14 +40,18 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         if (semester.getStartDate().isAfter(semester.getEndDate())) {
             throw new BusinessException("开始日期不能晚于结束日期");
         }
+        if (semester.getSchoolId() == null) {
+            throw new BusinessException("所属学校ID不能为空");
+        }
         
-        // 检查学期名称是否已存在
+        // 检查学期名称在同一学校内是否已存在
         LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Semester::getSemesterName, semester.getSemesterName())
+               .eq(Semester::getSchoolId, semester.getSchoolId())
                .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         Semester existSemester = this.getOne(wrapper);
         if (existSemester != null) {
-            throw new BusinessException("学期名称已存在");
+            throw new BusinessException("该学校下学期名称已存在");
         }
         
         // 设置默认值
@@ -51,9 +60,9 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         }
         semester.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
-        // 如果设置为当前学期，需要先取消其他当前学期
+        // 如果设置为当前学期，需要先取消该学校的其他当前学期
         if (semester.getIsCurrent() == 1) {
-            setCurrentSemester(null); // 先取消所有当前学期
+            setCurrentSemesterForSchool(semester.getSchoolId(), null); // 先取消该学校的所有当前学期
         }
         
         // 保存
@@ -74,22 +83,38 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
             throw new BusinessException("学期不存在");
         }
         
-        // 如果修改了学期名称，检查新名称是否已存在
+        // 如果修改了学期名称，检查新名称在同一学校内是否已存在
         if (StringUtils.hasText(semester.getSemesterName()) 
                 && !semester.getSemesterName().equals(existSemester.getSemesterName())) {
             LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Semester::getSemesterName, semester.getSemesterName())
+                   .eq(Semester::getSchoolId, existSemester.getSchoolId())
                    .ne(Semester::getSemesterId, semester.getSemesterId())
                    .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
             Semester nameExistSemester = this.getOne(wrapper);
             if (nameExistSemester != null) {
-                throw new BusinessException("学期名称已存在");
+                throw new BusinessException("该学校下学期名称已存在");
             }
         }
         
-        // 如果设置为当前学期，需要先取消其他当前学期
+        // 如果设置了schoolId，检查是否修改了学校
+        if (semester.getSchoolId() != null && !semester.getSchoolId().equals(existSemester.getSchoolId())) {
+            // 如果修改了学校，需要重新检查学期名称
+            LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Semester::getSemesterName, semester.getSemesterName())
+                   .eq(Semester::getSchoolId, semester.getSchoolId())
+                   .ne(Semester::getSemesterId, semester.getSemesterId())
+                   .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+            Semester nameExistSemester = this.getOne(wrapper);
+            if (nameExistSemester != null) {
+                throw new BusinessException("该学校下学期名称已存在");
+            }
+        }
+        
+        // 如果设置为当前学期，需要先取消该学校的其他当前学期
         if (semester.getIsCurrent() != null && semester.getIsCurrent() == 1) {
-            setCurrentSemester(semester.getSemesterId());
+            Long schoolId = semester.getSchoolId() != null ? semester.getSchoolId() : existSemester.getSchoolId();
+            setCurrentSemesterForSchool(schoolId, semester.getSemesterId());
         }
         
         // 更新
@@ -112,7 +137,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     }
     
     @Override
-    public Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate) {
+    public Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate, Long schoolId) {
         LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
@@ -121,6 +146,18 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         // 条件查询
         if (StringUtils.hasText(semesterName)) {
             wrapper.like(Semester::getSemesterName, semesterName);
+        }
+        
+        // 学校ID筛选
+        if (schoolId != null) {
+            wrapper.eq(Semester::getSchoolId, schoolId);
+        }
+        
+        // 数据权限过滤
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的学期
+            wrapper.eq(Semester::getSchoolId, currentUserSchoolId);
         }
         
         // 年份筛选
@@ -154,9 +191,31 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean setCurrentSemester(Long semesterId) {
-        // 先取消所有当前学期
+        if (semesterId == null) {
+            throw new BusinessException("学期ID不能为空");
+        }
+        
+        Semester semester = getSemesterById(semesterId);
+        if (semester.getSchoolId() == null) {
+            throw new BusinessException("学期所属学校ID不能为空");
+        }
+        
+        // 先取消该学校的所有当前学期
+        setCurrentSemesterForSchool(semester.getSchoolId(), semesterId);
+        
+        return true;
+    }
+    
+    /**
+     * 设置指定学校的当前学期（内部方法）
+     * @param schoolId 学校ID
+     * @param semesterId 学期ID（如果为null，则只取消当前学期）
+     */
+    private void setCurrentSemesterForSchool(Long schoolId, Long semesterId) {
+        // 先取消该学校的所有当前学期
         LambdaUpdateWrapper<Semester> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.set(Semester::getIsCurrent, 0)
+                     .eq(Semester::getSchoolId, schoolId)
                      .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         this.update(updateWrapper);
         
@@ -164,17 +223,24 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         if (semesterId != null) {
             Semester semester = getSemesterById(semesterId);
             semester.setIsCurrent(1);
-            return this.updateById(semester);
+            this.updateById(semester);
         }
-        
-        return true;
     }
     
     @Override
     public Semester getCurrentSemester() {
+        // 获取当前用户的学校ID
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
         LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Semester::getIsCurrent, 1)
                .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        
+        // 如果有学校ID，只查询该学校的当前学期
+        if (currentUserSchoolId != null) {
+            wrapper.eq(Semester::getSchoolId, currentUserSchoolId);
+        }
+        
         return this.getOne(wrapper);
     }
     

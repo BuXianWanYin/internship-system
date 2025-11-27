@@ -38,9 +38,10 @@ public interface SemesterService extends IService<Semester> {
      * @param isCurrent 是否当前学期：1-是，0-否（可选）
      * @param startDate 开始日期（可选）
      * @param endDate 结束日期（可选）
+     * @param schoolId 学校ID（可选）
      * @return 学期列表
      */
-    Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate);
+    Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate, Long schoolId);
     
     /**
      * 设置当前学期

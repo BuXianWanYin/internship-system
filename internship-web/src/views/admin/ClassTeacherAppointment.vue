@@ -12,6 +12,22 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
+        <el-form-item label="所属学校">
+          <el-select
+            v-model="searchForm.schoolId"
+            placeholder="请选择学校"
+            clearable
+            style="width: 200px"
+            @change="handleSchoolChange"
+          >
+            <el-option
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -29,6 +45,16 @@
     >
       <el-table-column prop="className" label="班级名称" min-width="180" />
       <el-table-column prop="classCode" label="班级代码" min-width="120" />
+      <el-table-column label="所属学校" min-width="150">
+        <template #default="{ row }">
+          <span v-if="majorMap[row.majorId] && 
+                      collegeMap[majorMap[row.majorId].collegeId] && 
+                      schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId]">
+            {{ schoolMap[collegeMap[majorMap[row.majorId].collegeId].schoolId].schoolName }}
+          </span>
+          <span v-else style="color: #909399">加载中...</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="enrollmentYear" label="入学年份" width="100" align="center" />
       <el-table-column label="当前班主任" min-width="150">
         <template #default="{ row }">
@@ -134,6 +160,9 @@ import PageLayout from '@/components/common/PageLayout.vue'
 import { classApi } from '@/api/system'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
+import { schoolApi } from '@/api/system/school'
+import { collegeApi } from '@/api/system/college'
+import { majorApi } from '@/api/system/major'
 
 export default {
   name: 'ClassTeacherAppointment',
@@ -153,9 +182,16 @@ export default {
     const currentClass = ref(null)
     const selectedTeacher = ref(null)
     const appointFormRef = ref(null)
+    
+    // 学校、学院、专业相关
+    const schoolList = ref([])
+    const schoolMap = ref({})
+    const collegeMap = ref({})
+    const majorMap = ref({})
 
     const searchForm = reactive({
-      className: ''
+      className: '',
+      schoolId: null
     })
 
     const pagination = reactive({
@@ -175,7 +211,8 @@ export default {
         const params = {
           current: pagination.current,
           size: pagination.size,
-          className: searchForm.className
+          className: searchForm.className || undefined,
+          schoolId: searchForm.schoolId || undefined
         }
         const res = await classApi.getClassPage(params)
         if (res.code === 200) {
@@ -188,6 +225,12 @@ export default {
             .map(item => item.classTeacherId)
           if (userIds.length > 0) {
             await loadTeacherInfoByUserIds(userIds)
+          }
+          
+          // 加载专业、学院、学校信息
+          const majorIds = [...new Set(tableData.value.map(item => item.majorId).filter(id => id))]
+          if (majorIds.length > 0) {
+            await loadMajorInfo(majorIds)
           }
         } else {
           ElMessage.error(res.message || '加载失败')
@@ -304,8 +347,97 @@ export default {
     // 重置
     const handleReset = () => {
       searchForm.className = ''
+      searchForm.schoolId = null
       pagination.current = 1
       loadData()
+    }
+    
+    // 学校改变
+    const handleSchoolChange = () => {
+      loadData()
+    }
+    
+    // 加载学校列表
+    const loadSchoolList = async () => {
+      try {
+        const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+        if (res.code === 200) {
+          schoolList.value = res.data.records || []
+          schoolList.value.forEach(school => {
+            schoolMap.value[school.schoolId] = school
+          })
+        }
+      } catch (error) {
+        console.error('加载学校列表失败:', error)
+      }
+    }
+    
+    // 加载专业信息
+    const loadMajorInfo = async (majorIds) => {
+      try {
+        for (const majorId of majorIds) {
+          if (!majorMap.value[majorId]) {
+            try {
+              const res = await majorApi.getMajorById(majorId)
+              if (res.code === 200 && res.data) {
+                majorMap.value[majorId] = res.data
+                // 同时加载学院和学校信息
+                if (res.data.collegeId) {
+                  await loadCollegeInfo([res.data.collegeId])
+                }
+              }
+            } catch (error) {
+              console.warn(`专业 ${majorId} 查询失败:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载专业信息失败:', error)
+      }
+    }
+    
+    // 加载学院信息
+    const loadCollegeInfo = async (collegeIds) => {
+      try {
+        for (const collegeId of collegeIds) {
+          if (!collegeMap.value[collegeId]) {
+            try {
+              const res = await collegeApi.getCollegeById(collegeId)
+              if (res.code === 200 && res.data) {
+                collegeMap.value[collegeId] = res.data
+                // 同时加载学校信息
+                if (res.data.schoolId && !schoolMap.value[res.data.schoolId]) {
+                  await loadSchoolInfo([res.data.schoolId])
+                }
+              }
+            } catch (error) {
+              console.warn(`学院 ${collegeId} 查询失败:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载学院信息失败:', error)
+      }
+    }
+    
+    // 加载学校信息
+    const loadSchoolInfo = async (schoolIds) => {
+      try {
+        for (const schoolId of schoolIds) {
+          if (!schoolMap.value[schoolId]) {
+            try {
+              const res = await schoolApi.getSchoolById(schoolId)
+              if (res.code === 200 && res.data) {
+                schoolMap.value[schoolId] = res.data
+              }
+            } catch (error) {
+              console.warn(`学校 ${schoolId} 查询失败:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载学校信息失败:', error)
+      }
     }
 
     // 任命
@@ -392,6 +524,7 @@ export default {
     }
 
     onMounted(() => {
+      loadSchoolList()
       loadData()
     })
 
@@ -417,7 +550,11 @@ export default {
       handleRemove,
       handleSizeChange,
       handlePageChange,
-      getTeacherName
+      getTeacherName,
+      handleSchoolChange,
+      schoolMap,
+      collegeMap,
+      majorMap
     }
   }
 }

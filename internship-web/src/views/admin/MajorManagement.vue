@@ -130,15 +130,39 @@
         <el-form-item label="专业代码" prop="majorCode">
           <el-input v-model="formData.majorCode" placeholder="请输入专业代码" />
         </el-form-item>
-        <el-form-item label="所属学院" prop="collegeId">
-          <el-select v-model="formData.collegeId" placeholder="请选择学院" style="width: 100%">
+        <el-form-item label="所属学校" prop="schoolId" v-if="!isSchoolDisabledForAdd">
+          <el-select 
+            v-model="formData.schoolId" 
+            placeholder="请选择学校" 
+            style="width: 100%"
+            @change="handleSchoolChangeForAdd"
+          >
             <el-option
-              v-for="college in collegeList"
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院" prop="collegeId">
+          <el-select 
+            v-model="formData.collegeId" 
+            placeholder="请选择学院" 
+            style="width: 100%"
+            :disabled="isCollegeDisabledForAdd || (formData.schoolId === null && !isSchoolDisabledForAdd)"
+            @change="handleCollegeChangeForAdd"
+          >
+            <el-option
+              v-for="college in collegeListForAdd"
               :key="college.collegeId"
               :label="college.collegeName"
               :value="college.collegeId"
             />
           </el-select>
+          <div v-if="formData.schoolId === null && !isSchoolDisabledForAdd" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            请先选择所属学校
+          </div>
         </el-form-item>
         <el-form-item label="学制年限" prop="duration">
           <el-input-number v-model="formData.duration" :min="1" :max="10" placeholder="请输入学制年限" style="width: 100%" />
@@ -171,6 +195,7 @@ import { collegeApi } from '@/api/system/college'
 import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole } from '@/utils/permission'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -182,6 +207,7 @@ const schoolList = ref([])
 const schoolMap = ref({})
 const collegeList = ref([])
 const collegeMap = ref({})
+const collegeListForAdd = ref([]) // 添加表单用的学院列表
 
 // 当前用户组织信息
 const currentOrgInfo = ref({
@@ -198,6 +224,16 @@ const isSchoolDisabled = computed(() => {
 
 // 计算属性：学院下拉框是否禁用
 const isCollegeDisabled = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER'])
+})
+
+// 计算属性：添加表单中学校下拉框是否禁用
+const isSchoolDisabledForAdd = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 计算属性：添加表单中学院下拉框是否禁用
+const isCollegeDisabledForAdd = computed(() => {
   return hasAnyRole(['ROLE_COLLEGE_LEADER'])
 })
 
@@ -219,6 +255,7 @@ const formData = reactive({
   majorId: null,
   majorName: '',
   majorCode: '',
+  schoolId: null,
   collegeId: null,
   duration: 4,
   trainingObjective: '',
@@ -232,8 +269,17 @@ const formRules = {
   majorCode: [
     { required: true, message: '请输入专业代码', trigger: 'blur' }
   ],
+  schoolId: [
+    { required: true, message: '请选择所属学校', trigger: 'change', validator: (rule, value, callback) => {
+      if (!isSchoolDisabledForAdd.value && !value) {
+        callback(new Error('请选择所属学校'))
+      } else {
+        callback()
+      }
+    }}
+  ],
   collegeId: [
-    { required: true, message: '请输入所属学院ID', trigger: 'blur' }
+    { required: true, message: '请选择所属学院', trigger: 'change' }
   ]
 }
 
@@ -380,17 +426,40 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑专业'
   Object.assign(formData, {
     majorId: row.majorId,
     majorName: row.majorName,
     majorCode: row.majorCode,
+    schoolId: null,
     collegeId: row.collegeId,
     duration: row.duration || 4,
     trainingObjective: row.trainingObjective || '',
     status: row.status
   })
+  
+  // 加载专业所属的学院信息，获取学校ID
+  if (row.collegeId) {
+    const college = collegeMap.value[row.collegeId]
+    if (college && college.schoolId) {
+      formData.schoolId = college.schoolId
+      // 加载该学校的学院列表
+      await loadCollegeListForAdd(college.schoolId)
+    } else {
+      // 如果缓存中没有，需要查询
+      try {
+        const res = await collegeApi.getCollegeById(row.collegeId)
+        if (res.code === 200 && res.data) {
+          formData.schoolId = res.data.schoolId
+          await loadCollegeListForAdd(res.data.schoolId)
+        }
+      } catch (error) {
+        console.error('加载学院信息失败:', error)
+      }
+    }
+  }
+  
   dialogVisible.value = true
 }
 
@@ -438,16 +507,70 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  
+  // 根据角色设置默认值
+  let defaultSchoolId = null
+  let defaultCollegeId = null
+  
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+    defaultSchoolId = currentOrgInfo.value.schoolId || null
+  } else if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    defaultSchoolId = currentOrgInfo.value.schoolId || null
+    defaultCollegeId = currentOrgInfo.value.collegeId || null
+  }
+  
   Object.assign(formData, {
     majorId: null,
     majorName: '',
     majorCode: '',
-    collegeId: null,
+    schoolId: defaultSchoolId,
+    collegeId: defaultCollegeId,
     duration: 4,
     trainingObjective: '',
     status: 1
   })
+  
+  // 如果有默认学校，加载学院列表
+  if (defaultSchoolId) {
+    loadCollegeListForAdd(defaultSchoolId)
+  } else {
+    collegeListForAdd.value = []
+  }
+  
   formRef.value?.clearValidate()
+}
+
+// 加载添加表单用的学院列表
+const loadCollegeListForAdd = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+// 学校改变时的处理（添加表单）
+const handleSchoolChangeForAdd = () => {
+  formData.collegeId = null
+  if (formData.schoolId) {
+    loadCollegeListForAdd(formData.schoolId)
+  } else {
+    collegeListForAdd.value = []
+  }
+}
+
+// 学院改变时的处理（添加表单）
+const handleCollegeChangeForAdd = () => {
+  // 可以在这里添加其他逻辑
 }
 
 const handleSizeChange = () => {

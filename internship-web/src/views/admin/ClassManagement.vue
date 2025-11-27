@@ -188,15 +188,57 @@
         <el-form-item label="班级代码" prop="classCode">
           <el-input v-model="formData.classCode" placeholder="请输入班级代码" />
         </el-form-item>
-        <el-form-item label="所属专业" prop="majorId">
-          <el-select v-model="formData.majorId" placeholder="请选择专业" style="width: 100%">
+        <el-form-item label="所属学校" prop="schoolId" v-if="!isSchoolDisabledForAdd">
+          <el-select 
+            v-model="formData.schoolId" 
+            placeholder="请选择学校" 
+            style="width: 100%"
+            @change="handleSchoolChangeForAdd"
+          >
             <el-option
-              v-for="major in majorList"
+              v-for="school in schoolList"
+              :key="school.schoolId"
+              :label="school.schoolName"
+              :value="school.schoolId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院" prop="collegeId" v-if="!isCollegeDisabledForAdd">
+          <el-select 
+            v-model="formData.collegeId" 
+            placeholder="请选择学院" 
+            style="width: 100%"
+            :disabled="isCollegeDisabledForAdd || (formData.schoolId === null && !isSchoolDisabledForAdd)"
+            @change="handleCollegeChangeForAdd"
+          >
+            <el-option
+              v-for="college in collegeListForAdd"
+              :key="college.collegeId"
+              :label="college.collegeName"
+              :value="college.collegeId"
+            />
+          </el-select>
+          <div v-if="formData.schoolId === null && !isSchoolDisabledForAdd" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            请先选择所属学校
+          </div>
+        </el-form-item>
+        <el-form-item label="所属专业" prop="majorId">
+          <el-select 
+            v-model="formData.majorId" 
+            placeholder="请选择专业" 
+            style="width: 100%"
+            :disabled="formData.collegeId === null && !isCollegeDisabledForAdd"
+          >
+            <el-option
+              v-for="major in majorListForAdd"
               :key="major.majorId"
               :label="major.majorName"
               :value="major.majorId"
             />
           </el-select>
+          <div v-if="formData.collegeId === null && !isCollegeDisabledForAdd" style="font-size: 12px; color: #909399; margin-top: 4px;">
+            请先选择所属学院
+          </div>
         </el-form-item>
         <el-form-item label="入学年份" prop="enrollmentYear">
           <el-input-number v-model="formData.enrollmentYear" :min="2000" :max="2100" placeholder="请输入入学年份" style="width: 100%" />
@@ -299,6 +341,8 @@ const collegeList = ref([])
 const collegeMap = ref({})
 const majorList = ref([])
 const majorMap = ref({})
+const collegeListForAdd = ref([]) // 添加表单用的学院列表
+const majorListForAdd = ref([]) // 添加表单用的专业列表
 
 // 页面标题（根据角色动态显示）
 const pageTitle = computed(() => {
@@ -313,6 +357,16 @@ const pageTitle = computed(() => {
 // 是否可以添加班级（只有系统管理员、学校管理员、学院负责人可以添加）
 const canAddClass = computed(() => {
   return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 计算属性：添加表单中学校下拉框是否禁用
+const isSchoolDisabledForAdd = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
+
+// 计算属性：添加表单中学院下拉框是否禁用
+const isCollegeDisabledForAdd = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
 })
 
 // 当前用户组织信息
@@ -344,6 +398,8 @@ const formData = reactive({
   classId: null,
   className: '',
   classCode: '',
+  schoolId: null,
+  collegeId: null,
   majorId: null,
   enrollmentYear: new Date().getFullYear(),
   status: 1
@@ -356,8 +412,26 @@ const formRules = {
   classCode: [
     { required: true, message: '请输入班级代码', trigger: 'blur' }
   ],
+  schoolId: [
+    { required: true, message: '请选择所属学校', trigger: 'change', validator: (rule, value, callback) => {
+      if (!isSchoolDisabledForAdd.value && !value) {
+        callback(new Error('请选择所属学校'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  collegeId: [
+    { required: true, message: '请选择所属学院', trigger: 'change', validator: (rule, value, callback) => {
+      if (!isCollegeDisabledForAdd.value && !value) {
+        callback(new Error('请选择所属学院'))
+      } else {
+        callback()
+      }
+    }}
+  ],
   majorId: [
-    { required: true, message: '请输入所属专业ID', trigger: 'blur' }
+    { required: true, message: '请选择所属专业', trigger: 'change' }
   ],
   enrollmentYear: [
     { required: true, message: '请输入入学年份', trigger: 'blur' }
@@ -562,16 +636,64 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑班级'
   Object.assign(formData, {
     classId: row.classId,
     className: row.className,
     classCode: row.classCode,
+    schoolId: null,
+    collegeId: null,
     majorId: row.majorId,
     enrollmentYear: row.enrollmentYear,
     status: row.status
   })
+  
+  // 加载专业信息，获取学院和学校ID
+  if (row.majorId) {
+    const major = majorMap.value[row.majorId]
+    if (major && major.collegeId) {
+      const college = collegeMap.value[major.collegeId]
+      if (college && college.schoolId) {
+        formData.schoolId = college.schoolId
+        formData.collegeId = major.collegeId
+        // 加载该学校的学院列表
+        await loadCollegeListForAdd(college.schoolId)
+        // 加载该学院的专业列表
+        await loadMajorListForAdd(major.collegeId)
+      } else {
+        // 如果缓存中没有，需要查询
+        try {
+          const collegeRes = await collegeApi.getCollegeById(major.collegeId)
+          if (collegeRes.code === 200 && collegeRes.data) {
+            formData.schoolId = collegeRes.data.schoolId
+            formData.collegeId = major.collegeId
+            await loadCollegeListForAdd(collegeRes.data.schoolId)
+            await loadMajorListForAdd(major.collegeId)
+          }
+        } catch (error) {
+          console.error('加载学院信息失败:', error)
+        }
+      }
+    } else {
+      // 如果缓存中没有专业信息，需要查询
+      try {
+        const majorRes = await majorApi.getMajorById(row.majorId)
+        if (majorRes.code === 200 && majorRes.data && majorRes.data.collegeId) {
+          const collegeRes = await collegeApi.getCollegeById(majorRes.data.collegeId)
+          if (collegeRes.code === 200 && collegeRes.data) {
+            formData.schoolId = collegeRes.data.schoolId
+            formData.collegeId = majorRes.data.collegeId
+            await loadCollegeListForAdd(collegeRes.data.schoolId)
+            await loadMajorListForAdd(majorRes.data.collegeId)
+          }
+        }
+      } catch (error) {
+        console.error('加载专业信息失败:', error)
+      }
+    }
+  }
+  
   dialogVisible.value = true
 }
 
@@ -694,15 +816,97 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
+  // 根据角色设置默认值
+  let defaultSchoolId = null
+  let defaultCollegeId = null
+  
+  if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
+    defaultSchoolId = currentOrgInfo.value.schoolId || null
+  } else if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    defaultSchoolId = currentOrgInfo.value.schoolId || null
+    defaultCollegeId = currentOrgInfo.value.collegeId || null
+  }
+  
   Object.assign(formData, {
     classId: null,
     className: '',
     classCode: '',
+    schoolId: defaultSchoolId,
+    collegeId: defaultCollegeId,
     majorId: null,
     enrollmentYear: new Date().getFullYear(),
     status: 1
   })
+  
+  // 如果有默认学校，加载学院列表
+  if (defaultSchoolId) {
+    loadCollegeListForAdd(defaultSchoolId)
+    // 如果有默认学院，加载专业列表
+    if (defaultCollegeId) {
+      loadMajorListForAdd(defaultCollegeId)
+    } else {
+      majorListForAdd.value = []
+    }
+  } else {
+    collegeListForAdd.value = []
+    majorListForAdd.value = []
+  }
+  
   formRef.value?.clearValidate()
+}
+
+// 加载添加表单用的学院列表
+const loadCollegeListForAdd = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+// 加载添加表单用的专业列表
+const loadMajorListForAdd = async (collegeId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (collegeId) {
+      params.collegeId = collegeId
+    }
+    const res = await majorApi.getMajorPage(params)
+    if (res.code === 200) {
+      majorListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载专业列表失败:', error)
+  }
+}
+
+// 学校改变时的处理（添加表单）
+const handleSchoolChangeForAdd = () => {
+  formData.collegeId = null
+  formData.majorId = null
+  majorListForAdd.value = []
+  if (formData.schoolId) {
+    loadCollegeListForAdd(formData.schoolId)
+  } else {
+    collegeListForAdd.value = []
+  }
+}
+
+// 学院改变时的处理（添加表单）
+const handleCollegeChangeForAdd = () => {
+  formData.majorId = null
+  if (formData.collegeId) {
+    loadMajorListForAdd(formData.collegeId)
+  } else {
+    majorListForAdd.value = []
+  }
 }
 
 const handleSizeChange = () => {
