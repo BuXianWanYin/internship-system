@@ -3,7 +3,9 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.user.SchoolAdmin;
 import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.service.user.SchoolAdminService;
@@ -47,7 +49,7 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
         
         // 设置默认值
         if (schoolAdmin.getStatus() == null) {
-            schoolAdmin.setStatus(1); // 默认启用
+            schoolAdmin.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         schoolAdmin.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -65,9 +67,7 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
         
         // 检查管理员是否存在
         SchoolAdmin existAdmin = this.getById(schoolAdmin.getAdminId());
-        if (existAdmin == null || existAdmin.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学校管理员不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existAdmin, "学校管理员");
         
         // 更新
         this.updateById(schoolAdmin);
@@ -77,14 +77,10 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteSchoolAdmin(Long adminId) {
-        if (adminId == null) {
-            throw new BusinessException("管理员ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(adminId, "管理员ID");
         
         SchoolAdmin schoolAdmin = this.getById(adminId);
-        if (schoolAdmin == null || schoolAdmin.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学校管理员不存在");
-        }
+        EntityValidationUtil.validateEntityExists(schoolAdmin, "学校管理员");
         
         // 软删除
         schoolAdmin.setDeleteFlag(DeleteFlag.DELETED.getCode());

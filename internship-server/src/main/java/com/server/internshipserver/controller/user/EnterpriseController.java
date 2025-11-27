@@ -13,7 +13,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -30,12 +29,6 @@ public class EnterpriseController {
     @ApiOperation("企业注册")
     @PostMapping("/register")
     public Result<Enterprise> registerEnterprise(@RequestBody EnterpriseRegisterDTO registerDTO) {
-        if (registerDTO == null || registerDTO.getEnterprise() == null) {
-            return Result.error("企业信息不能为空");
-        }
-        if (registerDTO.getSchoolIds() == null || registerDTO.getSchoolIds().isEmpty()) {
-            return Result.error("至少选择一个意向合作院校");
-        }
         Enterprise result = enterpriseService.registerEnterprise(registerDTO.getEnterprise(), registerDTO.getSchoolIds());
         return Result.success("注册成功，等待院校审核", result);
     }
@@ -76,19 +69,6 @@ public class EnterpriseController {
     @PostMapping
     @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     public Result<Enterprise> addEnterprise(@RequestBody EnterpriseAddDTO addDTO) {
-        if (addDTO == null || addDTO.getEnterprise() == null) {
-            return Result.error("企业信息不能为空");
-        }
-        if (!StringUtils.hasText(addDTO.getAdminName())) {
-            return Result.error("企业管理员姓名不能为空");
-        }
-        if (!StringUtils.hasText(addDTO.getAdminPhone())) {
-            return Result.error("企业管理员手机号不能为空");
-        }
-        if (!StringUtils.hasText(addDTO.getAdminPassword())) {
-            return Result.error("企业管理员初始密码不能为空");
-        }
-        
         Enterprise result = enterpriseService.addEnterpriseWithAdmin(
             addDTO.getEnterprise(),
             addDTO.getAdminName(),

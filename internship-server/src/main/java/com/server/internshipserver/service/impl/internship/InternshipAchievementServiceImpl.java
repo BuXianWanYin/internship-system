@@ -3,10 +3,13 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipAchievement;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
@@ -61,30 +64,20 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         if (!StringUtils.hasText(achievement.getAchievementType())) {
             throw new BusinessException("成果类型不能为空");
         }
-        if (!StringUtils.hasText(achievement.getFileUrls())) {
-            throw new BusinessException("文件URL不能为空");
-        }
+        // 文件URL改为非必填，允许不上传附件
+        // if (!StringUtils.hasText(achievement.getFileUrls())) {
+        //     throw new BusinessException("文件URL不能为空");
+        // }
         if (achievement.getSubmitDate() == null) {
             throw new BusinessException("提交日期不能为空");
         }
         
         // 验证申请是否存在
         InternshipApply apply = internshipApplyMapper.selectById(achievement.getApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("申请不存在");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "申请");
         
         // 获取当前登录学生信息
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            throw new BusinessException("未登录");
-        }
-        
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -123,25 +116,16 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         
         // 检查成果是否存在
         InternshipAchievement existAchievement = this.getById(achievement.getAchievementId());
-        if (existAchievement == null || existAchievement.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("成果不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existAchievement, "成果");
         
         // 数据权限：学生只能修改自己的成果
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user == null || !user.getUserId().equals(existAchievement.getUserId())) {
-                throw new BusinessException("无权修改该成果");
-            }
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user == null || !user.getUserId().equals(existAchievement.getUserId())) {
+            throw new BusinessException("无权修改该成果");
         }
         
         // 只有待审核状态的成果才能修改
-        if (existAchievement.getReviewStatus() != null && existAchievement.getReviewStatus() != 0) {
+        if (existAchievement.getReviewStatus() != null && !existAchievement.getReviewStatus().equals(ReviewStatus.PENDING.getCode())) {
             throw new BusinessException("只有待审核状态的成果才能修改");
         }
         
@@ -157,9 +141,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         InternshipAchievement achievement = this.getById(achievementId);
-        if (achievement == null || achievement.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("成果不存在");
-        }
+        EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 填充关联字段
         fillAchievementRelatedFields(achievement);
@@ -198,7 +180,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         Page<InternshipAchievement> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipAchievement achievement : result.getRecords()) {
                 fillAchievementRelatedFields(achievement);
             }
@@ -213,17 +195,15 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         if (achievementId == null) {
             throw new BusinessException("成果ID不能为空");
         }
-        if (reviewStatus == null || (reviewStatus != 1 && reviewStatus != 2)) {
+        if (reviewStatus == null || (!reviewStatus.equals(ReviewStatus.APPROVED.getCode()) && !reviewStatus.equals(ReviewStatus.REJECTED.getCode()))) {
             throw new BusinessException("审核状态无效");
         }
         
         InternshipAchievement achievement = this.getById(achievementId);
-        if (achievement == null || achievement.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("成果不存在");
-        }
+        EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 只有待审核状态的成果才能审核
-        if (achievement.getReviewStatus() == null || achievement.getReviewStatus() != 0) {
+        if (achievement.getReviewStatus() == null || !achievement.getReviewStatus().equals(ReviewStatus.PENDING.getCode())) {
             throw new BusinessException("只有待审核状态的成果才能审核");
         }
         
@@ -233,16 +213,9 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         achievement.setReviewComment(reviewComment);
         
         // 设置审核人ID（指导教师）
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                achievement.setInstructorId(user.getUserId());
-            }
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
+            achievement.setInstructorId(user.getUserId());
         }
         
         return this.updateById(achievement);
@@ -256,21 +229,12 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         InternshipAchievement achievement = this.getById(achievementId);
-        if (achievement == null || achievement.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("成果不存在");
-        }
+        EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 数据权限：学生只能删除自己的成果
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user == null || !user.getUserId().equals(achievement.getUserId())) {
-                throw new BusinessException("无权删除该成果");
-            }
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user == null || !user.getUserId().equals(achievement.getUserId())) {
+            throw new BusinessException("无权删除该成果");
         }
         
         // 软删除
@@ -289,7 +253,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         
         // 学生只能查看自己的成果
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+        if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, currentUserId)
@@ -302,7 +266,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         // 学校管理员：只能查看本学校学生的成果
-        if (dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
@@ -325,7 +289,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         // 学院负责人：只能查看本学院学生的成果
-        if (dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
                 // 查询本学院的所有学生
@@ -395,7 +359,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
                     if (enterprise != null) {
                         achievement.setEnterpriseName(enterprise.getEnterpriseName());
                     }
-                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
                     // 自主实习，使用自主实习企业名称
                     achievement.setEnterpriseName(apply.getSelfEnterpriseName());
                 }

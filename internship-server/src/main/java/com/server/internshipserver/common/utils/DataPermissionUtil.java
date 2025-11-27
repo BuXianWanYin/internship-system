@@ -17,6 +17,7 @@ import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
+import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -65,14 +66,14 @@ public class DataPermissionUtil {
      * 判断当前用户是否为系统管理员
      */
     public boolean isSystemAdmin() {
-        UserDetails userDetails = SecurityUtil.getCurrentUserDetails();
+        UserDetails userDetails = UserUtil.getCurrentUserDetails();
         if (userDetails == null) {
             return false;
         }
         
         Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
         return authorities.stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_SYSTEM_ADMIN"));
+                .anyMatch(auth -> auth.getAuthority().equals(Constants.ROLE_SYSTEM_ADMIN));
     }
     
     /**
@@ -84,18 +85,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -109,7 +99,7 @@ public class DataPermissionUtil {
         // 学生：从Student表获取
         
         // 检查是否为学校管理员
-        if (roleCodes != null && roleCodes.contains("ROLE_SCHOOL_ADMIN")) {
+        if (hasRole(roleCodes, "ROLE_SCHOOL_ADMIN")) {
             SchoolAdmin schoolAdmin = schoolAdminMapper.selectOne(
                     new LambdaQueryWrapper<SchoolAdmin>()
                             .eq(SchoolAdmin::getUserId, user.getUserId())
@@ -121,8 +111,7 @@ public class DataPermissionUtil {
         }
         
         // 检查是否为学院负责人、班主任
-        if (roleCodes != null && (roleCodes.contains("ROLE_COLLEGE_LEADER") 
-                || roleCodes.contains("ROLE_CLASS_TEACHER"))) {
+        if (hasRole(roleCodes, "ROLE_COLLEGE_LEADER") || hasRole(roleCodes, "ROLE_CLASS_TEACHER")) {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
@@ -134,7 +123,7 @@ public class DataPermissionUtil {
         }
         
         // 检查是否为学生
-        if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
+        if (hasRole(roleCodes, "ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
@@ -157,18 +146,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -177,8 +155,7 @@ public class DataPermissionUtil {
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
         // 学院负责人、班主任：从Teacher表获取
-        if (roleCodes != null && (roleCodes.contains("ROLE_COLLEGE_LEADER") 
-                || roleCodes.contains("ROLE_CLASS_TEACHER"))) {
+        if (hasRole(roleCodes, "ROLE_COLLEGE_LEADER") || hasRole(roleCodes, "ROLE_CLASS_TEACHER")) {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
@@ -190,7 +167,7 @@ public class DataPermissionUtil {
         }
         
         // 学生：从Student表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
+        if (hasRole(roleCodes, "ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
@@ -213,18 +190,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -233,7 +199,7 @@ public class DataPermissionUtil {
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
         // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是user_id）
-        if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
+        if (hasRole(roleCodes, "ROLE_CLASS_TEACHER")) {
             // 直接通过user_id查询所有管理的班级（支持多班级）
             List<Class> classList = classMapper.selectList(
                     new LambdaQueryWrapper<Class>()
@@ -248,7 +214,7 @@ public class DataPermissionUtil {
         }
         
         // 学生：从Student表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
+        if (hasRole(roleCodes, "ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
@@ -287,18 +253,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -316,24 +271,23 @@ public class DataPermissionUtil {
             return false;
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return false;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return false;
         }
         
         // 查询用户角色
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+        return hasRole(roleCodes, roleCode);
+    }
+    
+    /**
+     * 检查角色列表是否包含指定角色（静态方法）
+     * @param roleCodes 角色代码列表
+     * @param roleCode 要检查的角色代码
+     * @return 是否包含该角色
+     */
+    public static boolean hasRole(List<String> roleCodes, String roleCode) {
         return roleCodes != null && roleCodes.contains(roleCode);
     }
     
@@ -358,18 +312,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -378,7 +321,7 @@ public class DataPermissionUtil {
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
         // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是user_id）
-        if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
+        if (hasRole(roleCodes, "ROLE_CLASS_TEACHER")) {
             // 直接通过user_id查询所有管理的班级
             List<Class> classList = classMapper.selectList(
                     new LambdaQueryWrapper<Class>()
@@ -394,7 +337,7 @@ public class DataPermissionUtil {
         }
         
         // 学生：从Student表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_STUDENT")) {
+        if (hasRole(roleCodes, "ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
@@ -417,18 +360,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -437,7 +369,7 @@ public class DataPermissionUtil {
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
         // 企业管理员：从Enterprise表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
+        if (hasRole(roleCodes, "ROLE_ENTERPRISE_ADMIN")) {
             Enterprise enterprise = enterpriseMapper.selectOne(
                     new LambdaQueryWrapper<Enterprise>()
                             .eq(Enterprise::getUserId, user.getUserId())
@@ -449,7 +381,7 @@ public class DataPermissionUtil {
         }
         
         // 企业导师：从EnterpriseMentor表获取
-        if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_MENTOR")) {
+        if (hasRole(roleCodes, "ROLE_ENTERPRISE_MENTOR")) {
             EnterpriseMentor mentor = enterpriseMentorMapper.selectOne(
                     new LambdaQueryWrapper<EnterpriseMentor>()
                             .eq(EnterpriseMentor::getUserId, user.getUserId())
@@ -472,18 +404,7 @@ public class DataPermissionUtil {
             return null; // 系统管理员不限制
         }
         
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        // 查询用户信息
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return null;
         }
@@ -635,7 +556,7 @@ public class DataPermissionUtil {
         }
         
         // 获取当前用户的角色
-        String currentUsername = SecurityUtil.getCurrentUsername();
+        String currentUsername = UserUtil.getCurrentUsername();
         if (currentUsername == null) {
             return false;
         }
@@ -655,7 +576,7 @@ public class DataPermissionUtil {
         }
         
         // 任何人都不能编辑系统管理员
-        if (targetUserRoles.contains("ROLE_SYSTEM_ADMIN")) {
+        if (targetUserRoles.contains(Constants.ROLE_SYSTEM_ADMIN)) {
             return false;
         }
         
@@ -709,7 +630,7 @@ public class DataPermissionUtil {
         }
         
         // 获取当前用户的角色
-        String currentUsername = SecurityUtil.getCurrentUsername();
+        String currentUsername = UserUtil.getCurrentUsername();
         if (currentUsername == null) {
             return false;
         }
@@ -729,7 +650,7 @@ public class DataPermissionUtil {
         }
         
         // 任何人都不能分配系统管理员角色
-        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+        if (Constants.ROLE_SYSTEM_ADMIN.equals(roleCode)) {
             return false;
         }
         

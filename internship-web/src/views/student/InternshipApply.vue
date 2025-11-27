@@ -832,16 +832,17 @@ const applyPostFormRules = {
     { required: true, message: '请选择实习结束日期', trigger: 'change' }
   ],
   resumeAttachment: [
-    { 
-      validator: (rule, value, callback) => {
-        if (resumeAttachmentUrls.value.length === 0 && resumeFileList.value.length === 0) {
-          callback(new Error('请上传简历附件'))
-        } else {
-          callback()
-        }
-      }, 
-      trigger: 'change' 
-    }
+    // 简历附件改为非必填，允许不上传
+    // { 
+    //   validator: (rule, value, callback) => {
+    //     if (resumeAttachmentUrls.value.length === 0 && resumeFileList.value.length === 0) {
+    //       callback(new Error('请上传简历附件'))
+    //     } else {
+    //       callback()
+    //     }
+    //   }, 
+    //   trigger: 'change' 
+    // }
   ],
   applyReason: [{ required: true, message: '请输入申请理由', trigger: 'blur' }]
 }

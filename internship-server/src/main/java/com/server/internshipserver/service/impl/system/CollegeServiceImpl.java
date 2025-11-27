@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.system.Major;
@@ -73,7 +75,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         
         // 设置默认值
         if (college.getStatus() == null) {
-            college.setStatus(1); // 默认启用
+            college.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         college.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -99,9 +101,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         
         // 检查学院是否存在
         College existCollege = this.getById(college.getCollegeId());
-        if (existCollege == null || existCollege.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学院不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existCollege, "学院");
         
         // 如果修改了学院代码，检查新代码在同一学校内是否已存在
         if (StringUtils.hasText(college.getCollegeCode()) 
@@ -152,9 +152,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         }
         
         College college = this.getById(collegeId);
-        if (college == null || college.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学院不存在");
-        }
+        EntityValidationUtil.validateEntityExists(college, "学院");
         
         return college;
     }
@@ -253,9 +251,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         }
         
         College college = this.getById(collegeId);
-        if (college == null || college.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学院不存在");
-        }
+        EntityValidationUtil.validateEntityExists(college, "学院");
         
         // 软删除
         college.setDeleteFlag(DeleteFlag.DELETED.getCode());

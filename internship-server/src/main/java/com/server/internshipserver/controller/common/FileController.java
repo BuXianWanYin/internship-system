@@ -1,5 +1,6 @@
 package com.server.internshipserver.controller.common;
 
+import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.result.Result;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -68,14 +69,14 @@ public class FileController {
         List<String> errors = new ArrayList<>();
         
         for (MultipartFile file : files) {
+            // 验证文件
+            String error = validateFile(file);
+            if (error != null) {
+                errors.add(file.getOriginalFilename() + ": " + error);
+                continue;
+            }
+            
             try {
-                // 验证文件
-                String error = validateFile(file);
-                if (error != null) {
-                    errors.add(file.getOriginalFilename() + ": " + error);
-                    continue;
-                }
-                
                 // 生成文件名
                 String originalFilename = file.getOriginalFilename();
                 String extension = getFileExtension(originalFilename);
@@ -98,7 +99,7 @@ public class FileController {
                 fileUrls.add(fileUrl);
                 
             } catch (IOException e) {
-                errors.add(file.getOriginalFilename() + ": 文件保存失败 - " + e.getMessage());
+                throw new BusinessException("文件保存失败: " + file.getOriginalFilename() + " - " + e.getMessage());
             }
         }
         
@@ -123,13 +124,13 @@ public class FileController {
             return Result.error("请选择要上传的文件");
         }
         
+        // 验证文件
+        String error = validateFile(file);
+        if (error != null) {
+            throw new BusinessException(error);
+        }
+        
         try {
-            // 验证文件
-            String error = validateFile(file);
-            if (error != null) {
-                return Result.error(error);
-            }
-            
             // 生成文件名
             String originalFilename = file.getOriginalFilename();
             String extension = getFileExtension(originalFilename);
@@ -153,7 +154,7 @@ public class FileController {
             return Result.success("文件上传成功", fileUrl);
             
         } catch (IOException e) {
-            return Result.error("文件上传失败: " + e.getMessage());
+            throw new BusinessException("文件上传失败: " + e.getMessage());
         }
     }
     
@@ -236,23 +237,14 @@ public class FileController {
             
             // 检查文件是否存在
             if (!file.exists() || !file.isFile()) {
-                // 记录日志以便调试
-                System.err.println("文件不存在: " + file.getAbsolutePath());
-                System.err.println("原始路径: " + filePath);
-                System.err.println("清理后路径: " + cleanPath);
-                System.err.println("uploadPath: " + uploadPath);
-                System.err.println("项目根目录: " + System.getProperty("user.dir"));
-                return ResponseEntity.notFound().build();
+                throw new BusinessException("文件不存在");
             }
             
             // 检查文件是否在上传目录内（防止路径遍历攻击）
             Path uploadPathAbsolute = Paths.get(System.getProperty("user.dir"), uploadPath).normalize();
             Path filePathNormalized = file.toPath().normalize();
             if (!filePathNormalized.startsWith(uploadPathAbsolute)) {
-                System.err.println("路径安全检查失败: 文件不在上传目录内");
-                System.err.println("文件路径: " + filePathNormalized);
-                System.err.println("上传目录: " + uploadPathAbsolute);
-                return ResponseEntity.badRequest().build();
+                throw new BusinessException("路径安全检查失败: 文件不在上传目录内");
             }
             
             // 读取文件
@@ -278,7 +270,7 @@ public class FileController {
                     .body(resource);
                     
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+            throw new BusinessException("文件下载失败: " + e.getMessage());
         }
     }
 }

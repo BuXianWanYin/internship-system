@@ -142,12 +142,8 @@ public class ClassController {
         if (teacherId == null) {
             return Result.error("教师ID不能为空");
         }
-        try {
             boolean success = classService.appointClassTeacher(classId, teacherId);
             return success ? Result.success("任命班主任成功") : Result.error("任命班主任失败");
-        } catch (Exception e) {
-            throw e;
-        }
     }
     
     @ApiOperation("取消班主任任命")

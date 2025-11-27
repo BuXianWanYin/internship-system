@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.service.system.SchoolService;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +47,7 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         
         // 设置默认值
         if (school.getStatus() == null) {
-            school.setStatus(1); // 默认启用
+            school.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         school.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -57,15 +59,11 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
     @Override
     @Transactional(rollbackFor = Exception.class)
     public School updateSchool(School school) {
-        if (school.getSchoolId() == null) {
-            throw new BusinessException("学校ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(school.getSchoolId(), "学校ID");
         
         // 检查学校是否存在
         School existSchool = this.getById(school.getSchoolId());
-        if (existSchool == null || existSchool.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学校不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existSchool, "学校");
         
         // 如果修改了学校代码，检查新代码是否已存在
         if (StringUtils.hasText(school.getSchoolCode()) 
@@ -87,14 +85,10 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
     
     @Override
     public School getSchoolById(Long schoolId) {
-        if (schoolId == null) {
-            throw new BusinessException("学校ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(schoolId, "学校ID");
         
         School school = this.getById(schoolId);
-        if (school == null || school.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学校不存在");
-        }
+        EntityValidationUtil.validateEntityExists(school, "学校");
         
         // 数据权限检查：非系统管理员只能查看自己学校的学校信息
         if (!dataPermissionUtil.isSystemAdmin()) {
@@ -147,9 +141,7 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         }
         
         School school = this.getById(schoolId);
-        if (school == null || school.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学校不存在");
-        }
+        EntityValidationUtil.validateEntityExists(school, "学校");
         
         // 软删除
         school.setDeleteFlag(DeleteFlag.DELETED.getCode());

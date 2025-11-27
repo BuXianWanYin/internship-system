@@ -3,10 +3,15 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.FeedbackStatus;
+import com.server.internshipserver.common.enums.ReplyUserType;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipFeedback;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
@@ -24,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -68,21 +72,10 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 验证申请是否存在
         InternshipApply apply = internshipApplyMapper.selectById(feedback.getApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("申请不存在");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "申请");
         
         // 获取当前登录学生信息
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            throw new BusinessException("未登录");
-        }
-        
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -121,25 +114,18 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 检查反馈是否存在
         InternshipFeedback existFeedback = this.getById(feedback.getFeedbackId());
-        if (existFeedback == null || existFeedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existFeedback, "反馈");
         
         // 数据权限：学生只能修改自己的反馈
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(existFeedback.getUserId())) {
                 throw new BusinessException("无权修改该反馈");
             }
         }
         
         // 只有待处理状态的反馈才能修改
-        if (existFeedback.getFeedbackStatus() == null || existFeedback.getFeedbackStatus() != 0) {
+        if (existFeedback.getFeedbackStatus() == null || !existFeedback.getFeedbackStatus().equals(FeedbackStatus.PENDING.getCode())) {
             throw new BusinessException("只有待处理状态的反馈才能修改");
         }
         
@@ -155,9 +141,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         InternshipFeedback feedback = this.getById(feedbackId);
-        if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 填充关联字段
         fillFeedbackRelatedFields(feedback);
@@ -196,7 +180,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         Page<InternshipFeedback> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipFeedback feedback : result.getRecords()) {
                 fillFeedbackRelatedFields(feedback);
             }
@@ -214,14 +198,12 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         if (!StringUtils.hasText(replyContent)) {
             throw new BusinessException("回复内容不能为空");
         }
-        if (replyUserType == null || (replyUserType != 1 && replyUserType != 2)) {
+        if (replyUserType == null || (!replyUserType.equals(ReplyUserType.ENTERPRISE_MENTOR.getCode()) && !replyUserType.equals(ReplyUserType.CLASS_TEACHER.getCode()))) {
             throw new BusinessException("回复人类型无效");
         }
         
         InternshipFeedback feedback = this.getById(feedbackId);
-        if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 设置回复信息
         feedback.setReplyContent(replyContent);
@@ -230,13 +212,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         feedback.setFeedbackStatus(1); // 处理中
         
         // 设置回复人ID
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user != null) {
                 feedback.setReplyUserId(user.getUserId());
             }
@@ -253,17 +230,15 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         InternshipFeedback feedback = this.getById(feedbackId);
-        if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 只有处理中状态的反馈才能标记为已解决
-        if (feedback.getFeedbackStatus() == null || feedback.getFeedbackStatus() != 1) {
+        if (feedback.getFeedbackStatus() == null || !feedback.getFeedbackStatus().equals(FeedbackStatus.REPLIED.getCode())) {
             throw new BusinessException("只有处理中状态的反馈才能标记为已解决");
         }
         
         // 更新状态为已解决
-        feedback.setFeedbackStatus(2);
+        feedback.setFeedbackStatus(FeedbackStatus.SOLVED.getCode());
         feedback.setSolveTime(LocalDateTime.now());
         
         return this.updateById(feedback);
@@ -272,17 +247,13 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean closeFeedback(Long feedbackId) {
-        if (feedbackId == null) {
-            throw new BusinessException("反馈ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(feedbackId, "反馈ID");
         
         InternshipFeedback feedback = this.getById(feedbackId);
-        if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 更新状态为已关闭
-        feedback.setFeedbackStatus(3);
+        feedback.setFeedbackStatus(FeedbackStatus.CLOSED.getCode());
         
         return this.updateById(feedback);
     }
@@ -295,18 +266,11 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         InternshipFeedback feedback = this.getById(feedbackId);
-        if (feedback == null || feedback.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("反馈不存在");
-        }
+        EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 数据权限：学生只能删除自己的反馈
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(feedback.getUserId())) {
                 throw new BusinessException("无权删除该反馈");
             }
@@ -328,7 +292,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 学生只能查看自己的反馈
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+        if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, currentUserId)
@@ -359,7 +323,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             }
         }
         // 班主任：可以查看分配的学生的反馈（通过日志/周报/成果中的instructor_id关联，已合并到 ROLE_CLASS_TEACHER）
-        if (dataPermissionUtil.hasRole("ROLE_CLASS_TEACHER")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
             Long currentUserTeacherId = dataPermissionUtil.getCurrentUserTeacherId();
             if (currentUserTeacherId != null) {
                 // 通过实习申请关联，查找该教师指导的学生的反馈
@@ -389,7 +353,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         // 企业导师：可以查看本企业实习学生的反馈
-        if (dataPermissionUtil.hasRole("ROLE_ENTERPRISE_MENTOR")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
             Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
             if (currentUserEnterpriseId != null) {
                 // 查找该企业的所有实习申请
@@ -442,7 +406,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                     if (enterprise != null) {
                         feedback.setEnterpriseName(enterprise.getEnterpriseName());
                     }
-                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
                     // 自主实习，使用自主实习企业名称
                     feedback.setEnterpriseName(apply.getSelfEnterpriseName());
                 }

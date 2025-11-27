@@ -3,10 +3,15 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.AttendanceType;
+import com.server.internshipserver.common.enums.ConfirmStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.StudentConfirmStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.Attendance;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.dto.AttendanceStatistics;
@@ -68,9 +73,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 验证申请是否存在
         InternshipApply apply = internshipApplyMapper.selectById(attendance.getApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("申请不存在");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "申请");
         
         // 数据权限：企业管理员或企业导师只能为本企业的实习生确认考勤
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -95,24 +98,18 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 请假类型需要填写请假原因
-        if (attendance.getAttendanceType() == 4 && !StringUtils.hasText(attendance.getLeaveReason())) {
+        if (attendance.getAttendanceType() != null && attendance.getAttendanceType().equals(AttendanceType.LEAVE.getCode()) && !StringUtils.hasText(attendance.getLeaveReason())) {
             throw new BusinessException("请假类型必须填写请假原因");
         }
         
         // 设置考勤信息
         attendance.setUserId(apply.getUserId());
-        attendance.setConfirmStatus(0); // 待确认
+        attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode()); // 待确认
         attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
         // 设置确认人ID
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
                 attendance.setConfirmUserId(user.getUserId());
                 attendance.setConfirmStatus(1); // 已确认
                 attendance.setConfirmTime(LocalDateTime.now());
@@ -147,9 +144,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 检查考勤是否存在
         Attendance existAttendance = this.getById(attendance.getAttendanceId());
-        if (existAttendance == null || existAttendance.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("考勤不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existAttendance, "考勤");
         
         // 数据权限：企业管理员或企业导师只能修改本企业的考勤
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -164,7 +159,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 已确认的考勤不允许修改
-        if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus() == 1) {
+        if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus().equals(ConfirmStatus.CONFIRMED.getCode())) {
             throw new BusinessException("已确认的考勤不允许修改");
         }
         
@@ -180,9 +175,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         Attendance attendance = this.getById(attendanceId);
-        if (attendance == null || attendance.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("考勤不存在");
-        }
+        EntityValidationUtil.validateEntityExists(attendance, "考勤");
         
         // 填充关联字段
         fillAttendanceRelatedFields(attendance);
@@ -235,16 +228,10 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         if (dataPermissionUtil.isSystemAdmin()) {
             // 系统管理员可以查看所有考勤，不添加过滤条件
         } else {
-            String username = SecurityUtil.getCurrentUsername();
-            if (username != null) {
-                UserInfo user = userMapper.selectOne(
-                        new LambdaQueryWrapper<UserInfo>()
-                                .eq(UserInfo::getUsername, username)
-                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (user != null) {
+            UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+            if (user != null) {
                     // 学生只能查看自己的考勤
-                    if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+                    if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
                         Student student = studentMapper.selectOne(
                                 new LambdaQueryWrapper<Student>()
                                         .eq(Student::getUserId, user.getUserId())
@@ -342,7 +329,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Page<Attendance> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (Attendance attendance : result.getRecords()) {
                 fillAttendanceRelatedFields(attendance);
             }
@@ -358,14 +345,12 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         if (attendanceId == null) {
             throw new BusinessException("考勤ID不能为空");
         }
-        if (confirmStatus == null || (confirmStatus != 1 && confirmStatus != 2)) {
+        if (confirmStatus == null || (!confirmStatus.equals(ConfirmStatus.CONFIRMED.getCode()) && !confirmStatus.equals(ConfirmStatus.REJECTED.getCode()))) {
             throw new BusinessException("确认状态无效");
         }
         
         Attendance attendance = this.getById(attendanceId);
-        if (attendance == null || attendance.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("考勤不存在");
-        }
+        EntityValidationUtil.validateEntityExists(attendance, "考勤");
         
         // 数据权限：企业管理员或企业导师只能确认本企业的考勤
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -409,14 +394,8 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         attendance.setConfirmComment(confirmComment);
         
         // 设置确认人ID
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
                 attendance.setConfirmUserId(user.getUserId());
             }
         }
@@ -432,9 +411,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         Attendance attendance = this.getById(attendanceId);
-        if (attendance == null || attendance.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("考勤不存在");
-        }
+        EntityValidationUtil.validateEntityExists(attendance, "考勤");
         
         // 数据权限：企业管理员或企业导师只能删除本企业的考勤
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -460,7 +437,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         wrapper.eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
+        String username = UserUtil.getCurrentUsername();
         if (username != null) {
             UserInfo user = userMapper.selectOne(
                     new LambdaQueryWrapper<UserInfo>()
@@ -582,9 +559,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 查询当前实习申请
         InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("您的实习申请不存在或已删除");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "您的实习申请");
         
         // 验证申请属于当前学生
         if (!apply.getStudentId().equals(studentId)) {
@@ -592,7 +567,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 验证学生确认状态为已确认上岗
-        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+        if (apply.getStudentConfirmStatus() == null || !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
             throw new BusinessException("您还没有确认上岗，无法签到");
         }
         
@@ -617,7 +592,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             }
             existAttendance.setCheckInTime(now);
             // 如果考勤类型是缺勤，改为出勤
-            if (existAttendance.getAttendanceType() != null && existAttendance.getAttendanceType() == 5) {
+            if (existAttendance.getAttendanceType() != null && existAttendance.getAttendanceType().equals(AttendanceType.ABSENT.getCode())) {
                 existAttendance.setAttendanceType(1); // 改为出勤
             } else if (existAttendance.getAttendanceType() == null) {
                 // 判断是否迟到（假设9:00为上班时间）
@@ -682,9 +657,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 查询当前实习申请
         InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("您的实习申请不存在或已删除");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "您的实习申请");
         
         // 验证申请属于当前学生
         if (!apply.getStudentId().equals(studentId)) {
@@ -692,7 +665,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 验证学生确认状态为已确认上岗
-        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+        if (apply.getStudentConfirmStatus() == null || !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
             throw new BusinessException("您还没有确认上岗，无法签退");
         }
         
@@ -723,7 +696,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             // 判断是否早退（假设18:00为下班时间）
             LocalTime checkOutTime = now.toLocalTime();
             LocalTime workEndTime = LocalTime.of(18, 0);
-            if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() == 1) {
+            if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() != null && attendance.getAttendanceType().equals(AttendanceType.ATTENDANCE.getCode())) {
                 attendance.setAttendanceType(3); // 早退
             }
         }
@@ -769,9 +742,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 查询当前实习申请
         InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("您的实习申请不存在或已删除");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "您的实习申请");
         
         // 验证申请属于当前学生
         if (!apply.getStudentId().equals(studentId)) {
@@ -779,7 +750,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 验证学生确认状态为已确认上岗
-        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+        if (apply.getStudentConfirmStatus() == null || !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
             throw new BusinessException("您还没有确认上岗，无法申请请假");
         }
         
@@ -792,7 +763,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         if (existAttendance != null) {
             // 如果已存在考勤记录，更新为请假
-            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus() == 1) {
+            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus().equals(ConfirmStatus.CONFIRMED.getCode())) {
                 throw new BusinessException("该日期考勤已确认，无法修改为请假");
             }
             existAttendance.setAttendanceType(4); // 请假
@@ -850,9 +821,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 查询当前实习申请
         InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("您的实习申请不存在或已删除");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "您的实习申请");
         
         // 验证申请属于当前学生
         if (!apply.getStudentId().equals(studentId)) {
@@ -860,7 +829,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 验证学生确认状态为已确认上岗
-        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+        if (apply.getStudentConfirmStatus() == null || !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
             throw new BusinessException("您还没有确认上岗，无法选择休息");
         }
         
@@ -873,7 +842,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         if (existAttendance != null) {
             // 如果已存在考勤记录，更新为休息
-            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus() == 1) {
+            if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus().equals(ConfirmStatus.CONFIRMED.getCode())) {
                 throw new BusinessException("该日期考勤已确认，无法修改为休息");
             }
             existAttendance.setAttendanceType(6); // 休息
@@ -925,7 +894,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         }
         
         // 验证学生确认状态为已确认上岗
-        if (apply.getStudentConfirmStatus() == null || apply.getStudentConfirmStatus() != 1) {
+        if (apply.getStudentConfirmStatus() == null || !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
             // 未确认上岗，返回null
             return null;
         }

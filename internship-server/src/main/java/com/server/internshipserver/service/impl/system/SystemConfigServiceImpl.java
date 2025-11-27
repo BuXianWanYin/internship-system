@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.system.SystemConfig;
 import com.server.internshipserver.mapper.system.SystemConfigMapper;
 import com.server.internshipserver.service.system.SystemConfigService;
@@ -52,9 +53,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         
         // 检查配置是否存在
         SystemConfig existConfig = this.getById(config.getConfigId());
-        if (existConfig == null || existConfig.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("配置不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existConfig, "配置");
         
         // 如果修改了配置键，检查新键是否已存在
         if (StringUtils.hasText(config.getConfigKey()) 
@@ -76,14 +75,10 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     
     @Override
     public SystemConfig getConfigById(Long configId) {
-        if (configId == null) {
-            throw new BusinessException("配置ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(configId, "配置ID");
         
         SystemConfig config = this.getById(configId);
-        if (config == null || config.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("配置不存在");
-        }
+        EntityValidationUtil.validateEntityExists(config, "配置");
         
         return config;
     }
@@ -124,14 +119,10 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteConfig(Long configId) {
-        if (configId == null) {
-            throw new BusinessException("配置ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(configId, "配置ID");
         
         SystemConfig config = this.getById(configId);
-        if (config == null || config.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("配置不存在");
-        }
+        EntityValidationUtil.validateEntityExists(config, "配置");
         
         // 软删除
         config.setDeleteFlag(DeleteFlag.DELETED.getCode());

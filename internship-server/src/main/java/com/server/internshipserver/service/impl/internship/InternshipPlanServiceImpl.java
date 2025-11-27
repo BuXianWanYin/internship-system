@@ -4,10 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.InternshipPlanStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.AuditUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Semester;
@@ -112,31 +117,18 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
      * 获取当前登录用户
      */
     private UserInfo getCurrentUser() {
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return null;
-        }
-        
-        UserInfo currentUser = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (currentUser == null) {
-            throw new BusinessException("用户不存在");
-        }
-        return currentUser;
+        return UserUtil.getCurrentUser(userMapper);
     }
     
     /**
      * 根据角色设置组织架构信息
      */
     private void setOrgInfoByRole(InternshipPlan plan, List<String> roles) {
-        if (roles.contains("ROLE_COLLEGE_LEADER")) {
+        if (roles.contains(Constants.ROLE_COLLEGE_LEADER)) {
             setOrgInfoForCollegeLeader(plan);
-        } else if (roles.contains("ROLE_SCHOOL_ADMIN")) {
+        } else if (roles.contains(Constants.ROLE_SCHOOL_ADMIN)) {
             setOrgInfoForSchoolAdmin(plan);
-        } else if (roles.contains("ROLE_SYSTEM_ADMIN")) {
+        } else if (roles.contains(Constants.ROLE_SYSTEM_ADMIN)) {
             setOrgInfoForSystemAdmin(plan);
         } else {
             throw new BusinessException("无权限创建实习计划");
@@ -283,7 +275,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
      */
     private void setDefaultValues(InternshipPlan plan, UserInfo currentUser) {
         if (plan.getStatus() == null) {
-            plan.setStatus(0); // 默认草稿
+            plan.setStatus(InternshipPlanStatus.DRAFT.getCode()); // 默认草稿
         }
         plan.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -302,30 +294,20 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         
         // 检查计划是否存在
         InternshipPlan existPlan = this.getById(plan.getPlanId());
-        if (existPlan == null || existPlan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existPlan, "实习计划");
         
         // 权限检查：只有创建者或更高级别的管理员可以修改
-        String username = SecurityUtil.getCurrentUsername();
-        UserInfo currentUser = null;
-        if (username != null) {
-            currentUser = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-        }
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
         
         if (currentUser != null) {
             List<String> roles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
             
             // 系统管理员和学校管理员可以修改所有计划
-            boolean canModify = roles.contains("ROLE_SYSTEM_ADMIN") || 
-                               roles.contains("ROLE_SCHOOL_ADMIN");
+            boolean canModify = roles.contains(Constants.ROLE_SYSTEM_ADMIN) || 
+                               roles.contains(Constants.ROLE_SCHOOL_ADMIN);
             
             // 学院负责人只能修改自己创建的计划
-            if (!canModify && roles.contains("ROLE_COLLEGE_LEADER")) {
+            if (!canModify && roles.contains(Constants.ROLE_COLLEGE_LEADER)) {
                 if (!existPlan.getCreateUserId().equals(currentUser.getUserId())) {
                     throw new BusinessException("只能修改自己创建的实习计划");
                 }
@@ -339,7 +321,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
                 }
             }
             
-            if (!canModify && !roles.contains("ROLE_COLLEGE_LEADER")) {
+            if (!canModify && !roles.contains(Constants.ROLE_COLLEGE_LEADER)) {
                 throw new BusinessException("无权限修改实习计划");
             }
         }
@@ -395,9 +377,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         InternshipPlan plan = this.getById(planId);
-        if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 数据权限过滤
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
@@ -462,7 +442,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         Page<InternshipPlan> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipPlan plan : result.getRecords()) {
                 fillPlanRelatedFields(plan);
             }
@@ -525,17 +505,13 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         InternshipPlan plan = this.getById(planId);
-        if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 只有草稿状态才能提交审核
-        if (plan.getStatus() == null || plan.getStatus() != 0) {
-            throw new BusinessException("只有草稿状态的实习计划才能提交审核");
-        }
+        EntityValidationUtil.validateStatusEquals(plan, InternshipPlanStatus.DRAFT.getCode(), "实习计划", "只有草稿状态的实习计划才能提交审核");
         
         // 更新状态为待审核
-        plan.setStatus(1);
+        plan.setStatus(InternshipPlanStatus.PENDING.getCode());
         return this.updateById(plan);
     }
     
@@ -545,37 +521,19 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (planId == null) {
             throw new BusinessException("实习计划ID不能为空");
         }
-        if (auditStatus == null || (auditStatus != 2 && auditStatus != 3)) {
+        if (auditStatus == null || 
+                (!auditStatus.equals(AuditStatus.APPROVED.getCode()) && !auditStatus.equals(AuditStatus.REJECTED.getCode()))) {
             throw new BusinessException("审核状态无效");
         }
         
         InternshipPlan plan = this.getById(planId);
-        if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 只有待审核状态才能审核
-        if (plan.getStatus() == null || plan.getStatus() != 1) {
-            throw new BusinessException("只有待审核状态的实习计划才能审核");
-        }
+        EntityValidationUtil.validateStatusEquals(plan, InternshipPlanStatus.PENDING.getCode(), "实习计划", "只有待审核状态的实习计划才能审核");
         
         // 设置审核信息
-        plan.setStatus(auditStatus);
-        plan.setAuditTime(LocalDateTime.now());
-        plan.setAuditOpinion(auditOpinion);
-        
-        // 设置审核人ID
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                plan.setAuditUserId(user.getUserId());
-            }
-        }
+        AuditUtil.setAuditInfo(plan, auditStatus, auditOpinion, userMapper);
         
         return this.updateById(plan);
     }
@@ -588,17 +546,13 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         InternshipPlan plan = this.getById(planId);
-        if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 只有草稿状态才能发布
-        if (plan.getStatus() == null || plan.getStatus() != 0) {
-            throw new BusinessException("只有草稿状态的实习计划才能发布");
-        }
+        EntityValidationUtil.validateStatusEquals(plan, InternshipPlanStatus.DRAFT.getCode(), "实习计划", "只有草稿状态的实习计划才能发布");
         
         // 更新状态为已发布
-        plan.setStatus(4);
+        plan.setStatus(InternshipPlanStatus.PUBLISHED.getCode());
         plan.setPublishTime(LocalDateTime.now());
         return this.updateById(plan);
     }
@@ -611,9 +565,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         InternshipPlan plan = this.getById(planId);
-        if (plan == null || plan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("实习计划不存在");
-        }
+        EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 软删除（允许删除所有状态的计划，包括已发布的）
         plan.setDeleteFlag(DeleteFlag.DELETED.getCode());
@@ -628,9 +580,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         
         // 获取学生信息
         Student student = studentMapper.selectById(studentId);
-        if (student == null || student.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学生信息不存在");
-        }
+        EntityValidationUtil.validateEntityExists(student, "学生信息");
         
         // 查询已发布的、匹配组织架构的、在有效期内的实习计划
         LocalDate currentDate = LocalDate.now();

@@ -1,7 +1,6 @@
 package com.server.internshipserver.controller.user;
 
 import com.server.internshipserver.common.result.Result;
-import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
@@ -55,15 +54,7 @@ public class EnterpriseRegisterSchoolController {
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
         // 获取当前登录用户ID作为审核人
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            return Result.error("无法获取当前登录用户信息");
-        }
-        
-        UserInfo user = userService.getUserByUsername(username);
-        if (user == null) {
-            return Result.error("当前用户不存在");
-        }
+        UserInfo user = userService.getCurrentUser();
         
         boolean success = enterpriseRegisterSchoolService.auditEnterpriseRegister(
             id, auditStatus, auditOpinion, user.getUserId());

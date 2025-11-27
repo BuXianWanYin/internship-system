@@ -3,8 +3,11 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
@@ -92,7 +95,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         user.setPhone(phone);
         user.setEmail(email);
         if (status == null) {
-            user.setStatus(1); // 默认启用
+            user.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
             user.setStatus(status);
         }
@@ -108,7 +111,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         mentor.setPhone(phone);
         mentor.setEmail(email);
         if (status == null) {
-            mentor.setStatus(1); // 默认启用
+            mentor.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
             mentor.setStatus(status);
         }
@@ -118,12 +121,12 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         this.save(mentor);
         
         // 权限检查：检查当前用户是否可以分配企业导师角色
-        if (!dataPermissionUtil.canAssignRole("ROLE_ENTERPRISE_MENTOR")) {
+        if (!dataPermissionUtil.canAssignRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
             throw new BusinessException("无权限分配企业导师角色");
         }
         
         // 分配企业导师角色
-        userService.assignRoleToUser(mentor.getUserId(), "ROLE_ENTERPRISE_MENTOR");
+        userService.assignRoleToUser(mentor.getUserId(), Constants.ROLE_ENTERPRISE_MENTOR);
         
         return mentor;
     }
@@ -143,9 +146,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         
         // 检查企业导师是否存在
         EnterpriseMentor existMentor = this.getById(mentorId);
-        if (existMentor == null || existMentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("企业导师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existMentor, "企业导师");
         
         // 数据权限检查：只有系统管理员或企业管理员可以编辑企业导师
         // 企业管理员只能编辑自己企业的导师
@@ -217,9 +218,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         }
         
         EnterpriseMentor mentor = this.getById(mentorId);
-        if (mentor == null || mentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("企业导师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(mentor, "企业导师");
         
         return mentor;
     }
@@ -279,9 +278,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         }
         
         EnterpriseMentor mentor = this.getById(mentorId);
-        if (mentor == null || mentor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("企业导师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(mentor, "企业导师");
         
         // 数据权限检查：只有系统管理员或企业管理员可以删除企业导师
         // 企业管理员只能删除自己企业的导师

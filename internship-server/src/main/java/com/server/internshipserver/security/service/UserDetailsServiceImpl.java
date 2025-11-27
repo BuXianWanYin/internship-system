@@ -2,6 +2,7 @@ package com.server.internshipserver.security.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.domain.user.UserInfo;
 import org.springframework.security.core.userdetails.User;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -45,7 +46,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
         
         // 2. 检查用户状态
-        if (user.getStatus() == null || user.getStatus() == 0) {
+        if (user.getStatus() == null || user.getStatus().equals(UserStatus.DISABLED.getCode())) {
             throw new UsernameNotFoundException("用户已被禁用：" + username);
         }
         
@@ -90,7 +91,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(user.getStatus() == 0)
+                .disabled(user.getStatus() != null && user.getStatus().equals(UserStatus.DISABLED.getCode()))
                 .build();
     }
 }

@@ -2,7 +2,10 @@ package com.server.internshipserver.service.impl.user;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.user.Enterprise;
@@ -69,7 +72,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                     EnterpriseRegisterSchool record = new EnterpriseRegisterSchool();
                     record.setEnterpriseId(enterpriseId);
                     record.setSchoolId(schoolId);
-                    record.setAuditStatus(0); // 待审核
+                    record.setAuditStatus(AuditStatus.PENDING.getCode()); // 待审核
                     record.setDeleteFlag(DeleteFlag.NORMAL.getCode());
                     return record;
                 })
@@ -111,7 +114,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         
         LambdaQueryWrapper<EnterpriseRegisterSchool> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseRegisterSchool::getSchoolId, schoolId)
-               .eq(EnterpriseRegisterSchool::getAuditStatus, 0) // 待审核
+               .eq(EnterpriseRegisterSchool::getAuditStatus, AuditStatus.PENDING.getCode()) // 待审核
                .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                .orderByDesc(EnterpriseRegisterSchool::getCreateTime);
         return this.list(wrapper);
@@ -123,7 +126,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         if (id == null) {
             throw new BusinessException("关联ID不能为空");
         }
-        if (auditStatus == null || (auditStatus != 1 && auditStatus != 2)) {
+        if (auditStatus == null || (!auditStatus.equals(AuditStatus.APPROVED.getCode()) && !auditStatus.equals(AuditStatus.REJECTED.getCode()))) {
             throw new BusinessException("审核状态无效");
         }
         if (auditorId == null) {
@@ -131,11 +134,9 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         }
         
         EnterpriseRegisterSchool record = this.getById(id);
-        if (record == null || record.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("记录不存在");
-        }
+        EntityValidationUtil.validateEntityExists(record, "记录");
         
-        if (record.getAuditStatus() != 0) {
+        if (!record.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
             throw new BusinessException("该申请已审核，不能重复审核");
         }
         
@@ -148,7 +149,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         boolean updateResult = this.updateById(record);
         
         // 如果审核通过，自动建立合作关系
-        if (updateResult && auditStatus == 1) {
+        if (updateResult && auditStatus.equals(AuditStatus.APPROVED.getCode())) {
             // 检查合作关系是否已存在
             boolean hasCooperation = cooperationService.hasCooperation(record.getEnterpriseId(), record.getSchoolId());
             if (!hasCooperation) {
@@ -168,15 +169,15 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                 // 查询该企业是否有任何一个院校审核通过
                 LambdaQueryWrapper<EnterpriseRegisterSchool> checkWrapper = new LambdaQueryWrapper<>();
                 checkWrapper.eq(EnterpriseRegisterSchool::getEnterpriseId, record.getEnterpriseId())
-                           .eq(EnterpriseRegisterSchool::getAuditStatus, 1) // 已通过
+                           .eq(EnterpriseRegisterSchool::getAuditStatus, AuditStatus.APPROVED.getCode()) // 已通过
                            .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode());
                 long approvedCount = this.count(checkWrapper);
                 
                 // 如果有任何一个院校审核通过，激活企业账号
                 if (approvedCount > 0) {
                     UserInfo user = userMapper.selectById(enterprise.getUserId());
-                    if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode()) && user.getStatus() == 0) {
-                        user.setStatus(1); // 激活账号
+                    if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode()) && user.getStatus() != null && user.getStatus().equals(UserStatus.DISABLED.getCode())) {
+                        user.setStatus(UserStatus.ENABLED.getCode()); // 激活账号
                         userMapper.updateById(user);
                     }
                 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
@@ -79,9 +80,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         
         // 检查合作关系是否存在
         EnterpriseSchoolCooperation existCooperation = this.getById(cooperation.getId());
-        if (existCooperation == null || existCooperation.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("合作关系不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existCooperation, "合作关系");
         
         // 数据权限检查：学校管理员只能编辑自己学校的合作关系
         if (!dataPermissionUtil.isSystemAdmin()) {
@@ -125,9 +124,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         }
         
         EnterpriseSchoolCooperation cooperation = this.getById(id);
-        if (cooperation == null || cooperation.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("合作关系不存在");
-        }
+        EntityValidationUtil.validateEntityExists(cooperation, "合作关系");
         
         // 数据权限检查：学校管理员只能删除自己学校的合作关系
         if (!dataPermissionUtil.isSystemAdmin()) {

@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.IsCurrent;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.Semester;
 import com.server.internshipserver.mapper.system.SemesterMapper;
@@ -56,12 +58,12 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         
         // 设置默认值
         if (semester.getIsCurrent() == null) {
-            semester.setIsCurrent(0); // 默认不是当前学期
+            semester.setIsCurrent(IsCurrent.NO.getCode()); // 默认不是当前学期
         }
         semester.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
         // 如果设置为当前学期，需要先取消该学校的其他当前学期
-        if (semester.getIsCurrent() == 1) {
+        if (semester.getIsCurrent() != null && semester.getIsCurrent().equals(IsCurrent.YES.getCode())) {
             setCurrentSemesterForSchool(semester.getSchoolId(), null); // 先取消该学校的所有当前学期
         }
         
@@ -79,9 +81,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         
         // 检查学期是否存在
         Semester existSemester = this.getById(semester.getSemesterId());
-        if (existSemester == null || existSemester.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学期不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existSemester, "学期");
         
         // 如果修改了学期名称，检查新名称在同一学校内是否已存在
         if (StringUtils.hasText(semester.getSemesterName()) 
@@ -112,7 +112,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         }
         
         // 如果设置为当前学期，需要先取消该学校的其他当前学期
-        if (semester.getIsCurrent() != null && semester.getIsCurrent() == 1) {
+        if (semester.getIsCurrent() != null && semester.getIsCurrent().equals(IsCurrent.YES.getCode())) {
             Long schoolId = semester.getSchoolId() != null ? semester.getSchoolId() : existSemester.getSchoolId();
             setCurrentSemesterForSchool(schoolId, semester.getSemesterId());
         }
@@ -129,9 +129,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         }
         
         Semester semester = this.getById(semesterId);
-        if (semester == null || semester.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学期不存在");
-        }
+        EntityValidationUtil.validateEntityExists(semester, "学期");
         
         return semester;
     }
@@ -252,12 +250,10 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         }
         
         Semester semester = this.getById(semesterId);
-        if (semester == null || semester.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学期不存在");
-        }
+        EntityValidationUtil.validateEntityExists(semester, "学期");
         
         // 如果是当前学期，不能删除
-        if (semester.getIsCurrent() == 1) {
+        if (semester.getIsCurrent() != null && semester.getIsCurrent().equals(IsCurrent.YES.getCode())) {
             throw new BusinessException("不能删除当前学期，请先设置其他学期为当前学期");
         }
         

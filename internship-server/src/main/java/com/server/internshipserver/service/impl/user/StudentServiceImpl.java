@@ -3,8 +3,11 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.ExcelUtil;
 import com.server.internshipserver.domain.user.dto.StudentImportDTO;
 import com.server.internshipserver.domain.user.dto.StudentImportResult;
@@ -60,6 +63,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     
     @Override
     public Student getStudentByUserId(Long userId) {
+        // 允许返回null，不使用验证工具
         if (userId == null) {
             return null;
         }
@@ -113,7 +117,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         // 设置默认值
         if (student.getStatus() == null) {
-            student.setStatus(1); // 默认启用
+            student.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         student.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -125,15 +129,11 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Student updateStudent(Student student) {
-        if (student.getStudentId() == null) {
-            throw new BusinessException("学生ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(student.getStudentId(), "学生ID");
         
         // 检查学生是否存在
         Student existStudent = this.getById(student.getStudentId());
-        if (existStudent == null || existStudent.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学生不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existStudent, "学生");
         
         // 如果修改了学号，检查新学号是否已存在
         if (StringUtils.hasText(student.getStudentNo()) 
@@ -151,14 +151,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     
     @Override
     public Student getStudentById(Long studentId) {
-        if (studentId == null) {
-            throw new BusinessException("学生ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(studentId, "学生ID");
         
         Student student = this.getById(studentId);
-        if (student == null || student.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学生不存在");
-        }
+        EntityValidationUtil.validateEntityExists(student, "学生");
         
         return student;
     }
@@ -216,7 +212,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             wrapper.eq(Student::getSchoolId, currentUserSchoolId);
         } else if (currentUserId != null && !dataPermissionUtil.isSystemAdmin()) {
             // 学生：只能查看自己的信息
-            if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
                 wrapper.eq(Student::getUserId, currentUserId);
             }
         }
@@ -228,7 +224,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         Page<Student> result = this.page(page, wrapper);
         
         // 填充企业信息（如果有当前实习企业）
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (Student student : result.getRecords()) {
                 if (student.getCurrentEnterpriseId() != null) {
                     Enterprise enterprise = enterpriseMapper.selectById(student.getCurrentEnterpriseId());
@@ -245,14 +241,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteStudent(Long studentId) {
-        if (studentId == null) {
-            throw new BusinessException("学生ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(studentId, "学生ID");
         
         Student student = this.getById(studentId);
-        if (student == null || student.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学生不存在");
-        }
+        EntityValidationUtil.validateEntityExists(student, "学生");
         
         // 软删除
         student.setDeleteFlag(DeleteFlag.DELETED.getCode());
@@ -425,7 +417,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         student.setMajorId(classInfo.getMajorId());
         student.setCollegeId(collegeId);
         student.setSchoolId(schoolId);
-        student.setStatus(0); // 待审核状态
+        student.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
         this.addStudent(student);
     }
     
@@ -436,7 +428,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         String username = dto.getStudentNo();
         String password = StringUtils.hasText(dto.getPassword()) 
                 ? dto.getPassword() 
-                : "123456";
+                : Constants.DEFAULT_PASSWORD;
         
         UserInfo user = new UserInfo();
         user.setUsername(username);
@@ -445,7 +437,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setIdCard(dto.getIdCard());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
-        user.setStatus(0); // 待审核状态
+        user.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
         return user;
     }
     
@@ -501,10 +493,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("用户名（学号）已存在");
         }
         
-        // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码123456）
+        // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码）
         String password = StringUtils.hasText(studentImportDTO.getPassword()) 
                 ? studentImportDTO.getPassword() 
-                : "123456";
+                : Constants.DEFAULT_PASSWORD;
         
         // 创建用户
         UserInfo user = new UserInfo();
@@ -514,7 +506,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setIdCard(studentImportDTO.getIdCard());
         user.setPhone(studentImportDTO.getPhone());
         user.setEmail(studentImportDTO.getEmail());
-        user.setStatus(0); // 待审核状态
+        user.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
         user = userService.addUser(user);
         
         // 获取专业信息以获取collegeId
@@ -540,7 +532,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         student.setMajorId(classInfo.getMajorId());
         student.setCollegeId(collegeId);
         student.setSchoolId(schoolId);
-        student.setStatus(0); // 待审核状态
+        student.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
         student = this.addStudent(student);
         
         // 增加分享码使用次数
@@ -557,8 +549,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 只查询未删除的数据
         wrapper.eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
-        // 只查询待审核的学生（status=0）
-        wrapper.eq(Student::getStatus, 0);
+        // 只查询待审核的学生（status=0，禁用状态）
+        wrapper.eq(Student::getStatus, UserStatus.DISABLED.getCode());
         
         // 条件查询
         if (StringUtils.hasText(studentNo)) {
@@ -571,7 +563,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                     new LambdaQueryWrapper<UserInfo>()
                             .like(UserInfo::getRealName, realName)
                             .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .eq(UserInfo::getStatus, 0) // 待审核状态
+                            .eq(UserInfo::getStatus, UserStatus.DISABLED.getCode()) // 待审核状态
             );
             if (users != null && !users.isEmpty()) {
                 List<Long> userIds = new ArrayList<>();
@@ -604,18 +596,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean approveStudentRegistration(Long studentId, boolean approved, String auditOpinion) {
-        if (studentId == null) {
-            throw new BusinessException("学生ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(studentId, "学生ID");
         
         // 查询学生信息
         Student student = this.getById(studentId);
-        if (student == null || student.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("学生不存在");
-        }
+        EntityValidationUtil.validateEntityExists(student, "学生");
         
         // 检查学生状态是否为待审核
-        if (student.getStatus() != 0) {
+        if (!student.getStatus().equals(UserStatus.DISABLED.getCode())) {
             throw new BusinessException("该学生不是待审核状态");
         }
         
@@ -634,23 +622,23 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
         
         if (approved) {
-            // 审核通过：激活用户账号（status=1）
-            user.setStatus(1);
-            student.setStatus(1);
+            // 审核通过：激活用户账号
+            user.setStatus(UserStatus.ENABLED.getCode());
+            student.setStatus(UserStatus.ENABLED.getCode());
             
             // 权限检查：检查当前用户是否可以分配学生角色
-            if (!dataPermissionUtil.canAssignRole("ROLE_STUDENT")) {
+            if (!dataPermissionUtil.canAssignRole(Constants.ROLE_STUDENT)) {
                 throw new BusinessException("无权限分配学生角色");
             }
             
             // 分配学生角色
-            userService.assignRoleToUser(user.getUserId(), "ROLE_STUDENT");
+            userService.assignRoleToUser(user.getUserId(), Constants.ROLE_STUDENT);
         } else {
             // 审核拒绝：保持禁用状态（status=0），或者可以软删除
             // 这里选择保持status=0，表示审核被拒绝
             // 如果需要，可以添加一个拒绝原因字段
-            user.setStatus(0);
-            student.setStatus(0);
+            user.setStatus(UserStatus.DISABLED.getCode());
+            student.setStatus(UserStatus.DISABLED.getCode());
         }
         
         // 更新用户和学生状态

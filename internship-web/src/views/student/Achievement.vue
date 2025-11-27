@@ -301,13 +301,10 @@ const loadData = async () => {
 // 加载当前学生的申请信息
 const loadCurrentApply = async () => {
   try {
-    const res = await applyApi.getApplyPage({
-      current: 1,
-      size: 1,
-      status: 1 // 已通过的申请
-    })
-    if (res.code === 200 && res.data.records && res.data.records.length > 0) {
-      currentApply.value = res.data.records[0]
+    // 使用getCurrentInternship接口获取已确认上岗的申请
+    const res = await applyApi.getCurrentInternship()
+    if (res.code === 200 && res.data) {
+      currentApply.value = res.data
       formData.applyId = currentApply.value.applyId
       formData.enterpriseName = currentApply.value.enterpriseName || ''
     }

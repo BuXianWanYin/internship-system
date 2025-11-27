@@ -15,22 +15,7 @@ public class Constants {
     /**
      * Redis Key前缀
      */
-    public static final String REDIS_USER_INFO_PREFIX = "user:info:";
-    public static final String REDIS_CAPTCHA_PREFIX = "captcha:login:";
-    public static final String REDIS_CLASS_SHARE_CODE_PREFIX = "class:share_code:";
     public static final String REDIS_PERMISSION_PREFIX = "permission:";
-    
-    /**
-     * 用户状态
-     */
-    public static final int USER_STATUS_ENABLED = 1;
-    public static final int USER_STATUS_DISABLED = 0;
-    
-    /**
-     * 删除标志
-     */
-    public static final int DELETE_FLAG_NORMAL = 0;
-    public static final int DELETE_FLAG_DELETED = 1;
     
     /**
      * 班级分享码相关

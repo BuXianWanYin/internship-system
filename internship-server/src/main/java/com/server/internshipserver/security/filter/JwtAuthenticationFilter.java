@@ -7,6 +7,7 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.result.ResultCode;
 import com.server.internshipserver.common.utils.JwtUtil;
 import com.server.internshipserver.common.utils.RedisUtil;
+import com.server.internshipserver.common.utils.TokenUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,7 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         
         try {
-            String token = getTokenFromRequest(request);
+            String token = TokenUtil.getTokenFromRequest(request);
             
             if (StringUtils.hasText(token) && jwtUtil.validateToken(token, 
                     userDetailsService.loadUserByUsername(jwtUtil.getUsernameFromToken(token)))) {
@@ -92,16 +93,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * 从请求中获取Token
-     */
-    private String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader(Constants.TOKEN_HEADER);
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(Constants.TOKEN_PREFIX)) {
-            return bearerToken.substring(Constants.TOKEN_PREFIX.length());
-        }
-        return null;
-    }
 
     /**
      * 发送错误响应

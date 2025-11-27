@@ -2,7 +2,6 @@ package com.server.internshipserver.controller.user;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
-import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.service.user.UserService;
@@ -25,9 +24,6 @@ public class UserController {
     
     @Autowired
     private UserService userService;
-    
-    @Autowired
-    private DataPermissionUtil dataPermissionUtil;
     
     @ApiOperation("分页查询用户列表")
     @GetMapping("/page")
@@ -61,14 +57,6 @@ public class UserController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> addUser(@RequestBody UserInfo user) {
-        // 如果指定了角色，验证角色分配权限
-        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            for (String roleCode : user.getRoles()) {
-                if (!dataPermissionUtil.canAssignRole(roleCode)) {
-                    return Result.error("无权限分配角色：" + roleCode);
-                }
-            }
-        }
         UserInfo result = userService.addUser(user);
         return Result.success("添加成功", result);
     }
@@ -77,14 +65,6 @@ public class UserController {
     @PutMapping
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<UserInfo> updateUser(@RequestBody UserInfo user) {
-        // 如果指定了角色，验证角色分配权限
-        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            for (String roleCode : user.getRoles()) {
-                if (!dataPermissionUtil.canAssignRole(roleCode)) {
-                    return Result.error("无权限分配角色：" + roleCode);
-                }
-            }
-        }
         UserInfo result = userService.updateUser(user);
         return Result.success("更新成功", result);
     }
@@ -114,9 +94,6 @@ public class UserController {
     public Result<UserInfo> getUserByUsername(
             @ApiParam(value = "用户名", required = true) @PathVariable String username) {
         UserInfo user = userService.getUserByUsername(username);
-        if (user == null) {
-            return Result.error("用户不存在");
-        }
         return Result.success("查询成功", user);
     }
     

@@ -3,10 +3,14 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipPost;
@@ -84,21 +88,10 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 验证申请是否存在
         InternshipApply apply = internshipApplyMapper.selectById(report.getApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("申请不存在");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "申请");
         
         // 获取当前登录学生信息
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            throw new BusinessException("未登录");
-        }
-        
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -147,25 +140,18 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 检查周报是否存在
         InternshipWeeklyReport existReport = this.getById(report.getReportId());
-        if (existReport == null || existReport.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("周报不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existReport, "周报");
         
         // 数据权限：学生只能修改自己的周报
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(existReport.getUserId())) {
                 throw new BusinessException("无权修改该周报");
             }
         }
         
         // 只有未批阅的周报才能修改
-        if (existReport.getReviewStatus() != null && existReport.getReviewStatus() == 1) {
+        if (existReport.getReviewStatus() != null && existReport.getReviewStatus().equals(ReviewStatus.APPROVED.getCode())) {
             throw new BusinessException("已批阅的周报不允许修改");
         }
         
@@ -193,9 +179,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         InternshipWeeklyReport report = this.getById(reportId);
-        if (report == null || report.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("周报不存在");
-        }
+        EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 填充关联字段
         fillReportRelatedFields(report);
@@ -234,7 +218,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         Page<InternshipWeeklyReport> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipWeeklyReport report : result.getRecords()) {
                 fillReportRelatedFields(report);
             }
@@ -251,9 +235,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         InternshipWeeklyReport report = this.getById(reportId);
-        if (report == null || report.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("周报不存在");
-        }
+        EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 验证评分范围
         if (reviewScore != null && (reviewScore.compareTo(BigDecimal.ZERO) < 0 || reviewScore.compareTo(new BigDecimal("100")) > 0)) {
@@ -267,13 +249,8 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         report.setReviewScore(reviewScore);
         
         // 设置批阅人ID（指导教师）
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user != null) {
                 report.setInstructorId(user.getUserId());
             }
@@ -290,18 +267,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         InternshipWeeklyReport report = this.getById(reportId);
-        if (report == null || report.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("周报不存在");
-        }
+        EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 数据权限：学生只能删除自己的周报
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(report.getUserId())) {
                 throw new BusinessException("无权删除该周报");
             }
@@ -323,7 +293,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 学生只能查看自己的周报
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+        if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, currentUserId)
@@ -336,7 +306,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         // 学校管理员：只能查看本学校学生的周报
-        if (dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
@@ -359,7 +329,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         // 学院负责人：只能查看本学院学生的周报
-        if (dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
                 // 查询本学院的所有学生
@@ -441,7 +411,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
                             }
                         }
                     }
-                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
                     // 自主实习，使用自主实习企业名称和日期
                     report.setEnterpriseName(apply.getSelfEnterpriseName());
                     if (apply.getSelfStartDate() != null) {

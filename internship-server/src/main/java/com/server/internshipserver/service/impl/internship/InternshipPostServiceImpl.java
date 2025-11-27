@@ -3,14 +3,16 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.InternshipPostStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.AuditUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Enterprise;
-import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
@@ -71,7 +73,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         
         // 设置默认值
         if (post.getStatus() == null) {
-            post.setStatus(0); // 默认待审核
+            post.setStatus(InternshipPostStatus.PENDING.getCode()); // 默认待审核
         }
         if (post.getRecruitCount() == null) {
             post.setRecruitCount(1);
@@ -98,9 +100,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         
         // 检查岗位是否存在
         InternshipPost existPost = this.getById(post.getPostId());
-        if (existPost == null || existPost.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existPost, "岗位");
         
         // 数据权限：企业管理员只能修改自己企业的岗位
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -109,7 +109,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         // 如果状态为已发布或已关闭，不允许修改
-        if (existPost.getStatus() != null && (existPost.getStatus() == 3 || existPost.getStatus() == 4)) {
+        if (existPost.getStatus() != null && (existPost.getStatus().equals(InternshipPostStatus.PUBLISHED.getCode()) || existPost.getStatus().equals(InternshipPostStatus.CLOSED.getCode()))) {
             throw new BusinessException("已发布或已关闭的岗位不允许修改");
         }
         
@@ -134,14 +134,10 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
     
     @Override
     public InternshipPost getPostById(Long postId) {
-        if (postId == null) {
-            throw new BusinessException("岗位ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(postId, "岗位ID");
         
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 填充关联字段
         fillPostRelatedFields(post);
@@ -174,7 +170,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
         }
         // 学校管理员和班主任：只显示合作企业的岗位
-        else if (cooperationEnterpriseIds != null && !cooperationEnterpriseIds.isEmpty()) {
+        else if (EntityValidationUtil.isNotEmpty(cooperationEnterpriseIds)) {
             wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
         }
         
@@ -195,7 +191,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         Page<InternshipPost> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipPost post : result.getRecords()) {
                 fillPostRelatedFields(post);
             }
@@ -210,37 +206,19 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         if (postId == null) {
             throw new BusinessException("岗位ID不能为空");
         }
-        if (auditStatus == null || (auditStatus != 1 && auditStatus != 2)) {
+        if (auditStatus == null || 
+                (!auditStatus.equals(AuditStatus.APPROVED.getCode()) && !auditStatus.equals(AuditStatus.REJECTED.getCode()))) {
             throw new BusinessException("审核状态无效");
         }
         
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 只有待审核状态才能审核
-        if (post.getStatus() == null || post.getStatus() != 0) {
-            throw new BusinessException("只有待审核状态的岗位才能审核");
-        }
+        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PENDING.getCode(), "岗位", "只有待审核状态的岗位才能审核");
         
         // 设置审核信息
-        post.setStatus(auditStatus);
-        post.setAuditTime(LocalDateTime.now());
-        post.setAuditOpinion(auditOpinion);
-        
-        // 设置审核人ID
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                post.setAuditUserId(user.getUserId());
-            }
-        }
+        AuditUtil.setAuditInfo(post, auditStatus, auditOpinion, userMapper);
         
         return this.updateById(post);
     }
@@ -253,9 +231,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 数据权限：企业管理员只能发布自己企业的岗位
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -264,12 +240,10 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         // 只有已通过审核的才能发布
-        if (post.getStatus() == null || post.getStatus() != 1) {
-            throw new BusinessException("只有已通过审核的岗位才能发布");
-        }
+        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.APPROVED.getCode(), "岗位", "只有已通过审核的岗位才能发布");
         
         // 更新状态为已发布
-        post.setStatus(3);
+        post.setStatus(InternshipPostStatus.PUBLISHED.getCode());
         post.setPublishTime(LocalDateTime.now());
         return this.updateById(post);
     }
@@ -282,9 +256,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 数据权限：企业管理员只能关闭自己企业的岗位
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -293,12 +265,10 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         // 只有已发布的才能关闭
-        if (post.getStatus() == null || post.getStatus() != 3) {
-            throw new BusinessException("只有已发布的岗位才能关闭");
-        }
+        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PUBLISHED.getCode(), "岗位", "只有已发布的岗位才能关闭");
         
         // 更新状态为已关闭
-        post.setStatus(4);
+        post.setStatus(InternshipPostStatus.CLOSED.getCode());
         post.setCloseTime(LocalDateTime.now());
         return this.updateById(post);
     }
@@ -311,9 +281,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 数据权限：企业管理员只能删除自己企业的岗位
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -322,7 +290,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         // 已发布的岗位不允许删除
-        if (post.getStatus() != null && post.getStatus() == 3) {
+        if (post.getStatus() != null && post.getStatus().equals(InternshipPostStatus.PUBLISHED.getCode())) {
             throw new BusinessException("已发布的岗位不允许删除");
         }
         
@@ -339,9 +307,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         
         // 检查岗位是否存在
         InternshipPost post = this.getById(postId);
-        if (post == null || post.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("岗位不存在");
-        }
+        EntityValidationUtil.validateEntityExists(post, "岗位");
         
         // 数据权限：企业管理员只能查看自己企业岗位的申请
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();

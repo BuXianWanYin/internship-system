@@ -3,10 +3,14 @@ package com.server.internshipserver.service.impl.internship;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipLog;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.user.Student;
@@ -73,21 +77,10 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 验证申请是否存在
         InternshipApply apply = internshipApplyMapper.selectById(log.getApplyId());
-        if (apply == null || apply.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("申请不存在");
-        }
+        EntityValidationUtil.validateEntityExists(apply, "申请");
         
         // 获取当前登录学生信息
-        String username = SecurityUtil.getCurrentUsername();
-        if (username == null) {
-            throw new BusinessException("未登录");
-        }
-        
-        UserInfo user = userMapper.selectOne(
-                new LambdaQueryWrapper<UserInfo>()
-                        .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -126,25 +119,18 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 检查日志是否存在
         InternshipLog existLog = this.getById(log.getLogId());
-        if (existLog == null || existLog.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("日志不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existLog, "日志");
         
         // 数据权限：学生只能修改自己的日志
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(existLog.getUserId())) {
                 throw new BusinessException("无权修改该日志");
             }
         }
         
         // 只有未批阅的日志才能修改
-        if (existLog.getReviewStatus() != null && existLog.getReviewStatus() == 1) {
+        if (existLog.getReviewStatus() != null && existLog.getReviewStatus().equals(ReviewStatus.APPROVED.getCode())) {
             throw new BusinessException("已批阅的日志不允许修改");
         }
         
@@ -165,9 +151,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         InternshipLog log = this.getById(logId);
-        if (log == null || log.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("日志不存在");
-        }
+        EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 填充关联字段
         fillLogRelatedFields(log);
@@ -206,7 +190,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         Page<InternshipLog> result = this.page(page, wrapper);
         
         // 填充关联字段
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (InternshipLog log : result.getRecords()) {
                 fillLogRelatedFields(log);
             }
@@ -223,9 +207,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         InternshipLog log = this.getById(logId);
-        if (log == null || log.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("日志不存在");
-        }
+        EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 验证评分范围
         if (reviewScore != null && (reviewScore.compareTo(BigDecimal.ZERO) < 0 || reviewScore.compareTo(new BigDecimal("100")) > 0)) {
@@ -239,13 +221,8 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         log.setReviewScore(reviewScore);
         
         // 设置批阅人ID（指导教师）
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user != null) {
                 log.setInstructorId(user.getUserId());
             }
@@ -262,18 +239,11 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         InternshipLog log = this.getById(logId);
-        if (log == null || log.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("日志不存在");
-        }
+        EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 数据权限：学生只能删除自己的日志
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null) {
             if (user == null || !user.getUserId().equals(log.getUserId())) {
                 throw new BusinessException("无权删除该日志");
             }
@@ -295,7 +265,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 学生只能查看自己的日志
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        if (currentUserId != null && dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+        if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, currentUserId)
@@ -308,7 +278,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         // 学校管理员：只能查看本学校学生的日志
-        if (dataPermissionUtil.hasRole("ROLE_SCHOOL_ADMIN")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
@@ -332,7 +302,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         // 学院负责人：只能查看本学院学生的日志
-        if (dataPermissionUtil.hasRole("ROLE_COLLEGE_LEADER")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
                 // 查询本学院的所有学生
@@ -356,7 +326,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         // 班主任：只能查看管理的班级的学生的日志
-        if (dataPermissionUtil.hasRole("ROLE_CLASS_TEACHER")) {
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
             List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
             if (classIds != null && !classIds.isEmpty()) {
                 // 查询管理的班级的所有学生
@@ -412,7 +382,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
                     if (enterprise != null) {
                         log.setEnterpriseName(enterprise.getEnterpriseName());
                     }
-                } else if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
                     // 自主实习，使用自主实习企业名称
                     log.setEnterpriseName(apply.getSelfEnterpriseName());
                 }

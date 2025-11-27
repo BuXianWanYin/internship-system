@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
@@ -57,7 +59,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         
         // 设置默认值
         if (major.getStatus() == null) {
-            major.setStatus(1); // 默认启用
+            major.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         major.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -69,15 +71,11 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Major updateMajor(Major major) {
-        if (major.getMajorId() == null) {
-            throw new BusinessException("专业ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(major.getMajorId(), "专业ID");
         
         // 检查专业是否存在
         Major existMajor = this.getById(major.getMajorId());
-        if (existMajor == null || existMajor.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("专业不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existMajor, "专业");
         
         // 如果修改了专业代码，检查新代码在同一学院内是否已存在
         if (StringUtils.hasText(major.getMajorCode()) 
@@ -100,14 +98,10 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     
     @Override
     public Major getMajorById(Long majorId) {
-        if (majorId == null) {
-            throw new BusinessException("专业ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(majorId, "专业ID");
         
         Major major = this.getById(majorId);
-        if (major == null || major.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("专业不存在");
-        }
+        EntityValidationUtil.validateEntityExists(major, "专业");
         
         return major;
     }
@@ -193,9 +187,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         }
         
         Major major = this.getById(majorId);
-        if (major == null || major.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("专业不存在");
-        }
+        EntityValidationUtil.validateEntityExists(major, "专业");
         
         // 软删除
         major.setDeleteFlag(DeleteFlag.DELETED.getCode());

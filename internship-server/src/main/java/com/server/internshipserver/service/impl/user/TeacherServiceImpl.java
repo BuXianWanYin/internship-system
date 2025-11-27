@@ -3,9 +3,12 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.College;
@@ -104,7 +107,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         
         // 设置默认值
         if (teacher.getStatus() == null) {
-            teacher.setStatus(1); // 默认启用
+            teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
         teacher.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
@@ -112,7 +115,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         this.save(teacher);
         
         // 分配班主任角色（默认角色）
-        userService.assignRoleToUser(teacher.getUserId(), "ROLE_CLASS_TEACHER");
+        userService.assignRoleToUser(teacher.getUserId(), Constants.ROLE_CLASS_TEACHER);
         
         return teacher;
     }
@@ -126,9 +129,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         
         // 检查教师是否存在
         Teacher existTeacher = this.getById(teacher.getTeacherId());
-        if (existTeacher == null || existTeacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("教师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existTeacher, "教师");
         
         // 权限检查：检查当前用户是否可以编辑该教师对应的用户
         if (!dataPermissionUtil.canEditUser(existTeacher.getUserId())) {
@@ -156,9 +157,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         Teacher teacher = this.getById(teacherId);
-        if (teacher == null || teacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("教师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(teacher, "教师");
         
         // 填充角色信息
         if (teacher.getUserId() != null) {
@@ -227,7 +226,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         Page<Teacher> result = this.page(page, wrapper);
         
         // 填充每个教师的角色信息
-        if (result != null && result.getRecords() != null && !result.getRecords().isEmpty()) {
+        if (EntityValidationUtil.hasRecords(result)) {
             for (Teacher teacher : result.getRecords()) {
                 if (teacher.getUserId() != null) {
                     List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
@@ -247,9 +246,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         Teacher teacher = this.getById(teacherId);
-        if (teacher == null || teacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("教师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(teacher, "教师");
         
         // 软删除
         teacher.setDeleteFlag(DeleteFlag.DELETED.getCode());
@@ -297,7 +294,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         user.setPhone(phone);
         user.setEmail(email);
         if (status == null) {
-            user.setStatus(1); // 默认启用
+            user.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
             user.setStatus(status);
         }
@@ -324,7 +321,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         if (status == null) {
-            teacher.setStatus(1); // 默认启用
+            teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
             teacher.setStatus(status);
         }
@@ -334,7 +331,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         this.save(teacher);
         
         // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配班主任角色
-        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : "ROLE_CLASS_TEACHER";
+        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : Constants.ROLE_CLASS_TEACHER;
         
         // 权限检查：检查当前用户是否可以分配该角色
         if (!dataPermissionUtil.canAssignRole(finalRoleCode)) {
@@ -344,7 +341,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         userService.assignRoleToUser(teacher.getUserId(), finalRoleCode);
         
         // 如果分配的是学校管理员角色，需要创建SchoolAdmin记录
-        if ("ROLE_SCHOOL_ADMIN".equals(finalRoleCode) && schoolId != null) {
+        if (Constants.ROLE_SCHOOL_ADMIN.equals(finalRoleCode) && schoolId != null) {
             // 检查是否已经存在SchoolAdmin记录
             SchoolAdmin existSchoolAdmin = schoolAdminMapper.selectOne(
                     new LambdaQueryWrapper<SchoolAdmin>()
@@ -379,9 +376,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         
         // 检查教师是否存在
         Teacher existTeacher = this.getById(teacherId);
-        if (existTeacher == null || existTeacher.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
-            throw new BusinessException("教师不存在");
-        }
+        EntityValidationUtil.validateEntityExists(existTeacher, "教师");
         
         // 权限检查：检查当前用户是否可以编辑该教师对应的用户
         if (!dataPermissionUtil.canEditUser(existTeacher.getUserId())) {

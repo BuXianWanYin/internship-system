@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.result.Result;
-import com.server.internshipserver.common.utils.SecurityUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
@@ -121,13 +121,7 @@ public class InternshipPlanController {
     @GetMapping("/available")
     public Result<java.util.List<InternshipPlan>> getAvailablePlans() {
         // 获取当前登录学生信息
-        String username = SecurityUtil.getCurrentUsername();
-        UserInfo user = userMapper.selectOne(
-            new LambdaQueryWrapper<UserInfo>()
-                .eq(UserInfo::getUsername, username)
-                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user == null) {
             return Result.error("用户不存在");
         }
