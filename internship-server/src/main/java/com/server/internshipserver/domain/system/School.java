@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.server.internshipserver.domain.user.UserInfo;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -64,5 +65,25 @@ public class School implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    @ApiModelProperty(value = "负责人姓名（非数据库字段，从学校管理员中获取）")
+    @TableField(exist = false)
+    private String managerName;
+    
+    @ApiModelProperty(value = "负责人电话（非数据库字段，从学校管理员中获取）")
+    @TableField(exist = false)
+    private String managerPhone;
+    
+    @ApiModelProperty(value = "学校管理员用户ID（非数据库字段，用于新增/编辑时绑定管理员）")
+    @TableField(exist = false)
+    private Long managerUserId;
+    
+    @ApiModelProperty(value = "是否创建新用户（非数据库字段，用于新增/编辑时创建新管理员用户）")
+    @TableField(exist = false)
+    private Boolean createNewUser;
+    
+    @ApiModelProperty(value = "新用户信息（非数据库字段，用于创建新管理员用户）")
+    @TableField(exist = false)
+    private UserInfo newUserInfo;
 }
 

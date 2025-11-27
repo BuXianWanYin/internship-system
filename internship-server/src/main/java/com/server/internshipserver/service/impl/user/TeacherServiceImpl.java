@@ -24,7 +24,6 @@ import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.domain.user.SchoolAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -38,32 +37,20 @@ import java.util.List;
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
     
-    private final DataPermissionUtil dataPermissionUtil;
-    private final UserService userService;
-    private final UserMapper userMapper;
-    private final SchoolAdminMapper schoolAdminMapper;
-    private final CollegeMapper collegeMapper;
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
-    /**
-     * 构造函数注入，使用@Lazy解决循环依赖
-     * @param dataPermissionUtil 数据权限工具
-     * @param userService 用户服务（延迟加载，解决循环依赖）
-     * @param userMapper 用户Mapper
-     * @param schoolAdminMapper 学校管理员Mapper
-     * @param collegeMapper 学院Mapper
-     */
-    public TeacherServiceImpl(
-            DataPermissionUtil dataPermissionUtil,
-            @Lazy UserService userService,
-            UserMapper userMapper,
-            SchoolAdminMapper schoolAdminMapper,
-            CollegeMapper collegeMapper) {
-        this.dataPermissionUtil = dataPermissionUtil;
-        this.userService = userService;
-        this.userMapper = userMapper;
-        this.schoolAdminMapper = schoolAdminMapper;
-        this.collegeMapper = collegeMapper;
-    }
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private SchoolAdminMapper schoolAdminMapper;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
     
     @Override
     public Teacher getTeacherByUserId(Long userId) {

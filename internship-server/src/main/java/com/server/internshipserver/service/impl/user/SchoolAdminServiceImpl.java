@@ -31,6 +31,20 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
     }
     
     @Override
+    public SchoolAdmin getSchoolAdminBySchoolId(Long schoolId) {
+        if (schoolId == null) {
+            return null;
+        }
+        
+        LambdaQueryWrapper<SchoolAdmin> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(SchoolAdmin::getDeleteFlag);
+        wrapper.eq(SchoolAdmin::getSchoolId, schoolId)
+               .eq(SchoolAdmin::getStatus, com.server.internshipserver.common.enums.UserStatus.ENABLED.getCode())
+               .orderByAsc(SchoolAdmin::getCreateTime)
+               .last("LIMIT 1");
+        return this.getOne(wrapper);
+    }
+    
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public SchoolAdmin addSchoolAdmin(SchoolAdmin schoolAdmin) {
         // 参数校验

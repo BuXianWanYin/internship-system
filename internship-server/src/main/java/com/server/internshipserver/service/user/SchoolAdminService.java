@@ -16,6 +16,13 @@ public interface SchoolAdminService extends IService<SchoolAdmin> {
     SchoolAdmin getSchoolAdminByUserId(Long userId);
     
     /**
+     * 根据学校ID查询学校管理员信息（取第一个启用的管理员）
+     * @param schoolId 学校ID
+     * @return 学校管理员信息
+     */
+    SchoolAdmin getSchoolAdminBySchoolId(Long schoolId);
+    
+    /**
      * 添加学校管理员
      * @param schoolAdmin 学校管理员信息
      * @return 添加的学校管理员信息

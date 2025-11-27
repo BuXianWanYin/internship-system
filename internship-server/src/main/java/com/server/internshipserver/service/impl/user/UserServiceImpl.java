@@ -38,12 +38,9 @@ import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.service.user.PermissionService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.service.user.RoleService;
-import com.server.internshipserver.service.user.StudentService;
-import com.server.internshipserver.service.user.TeacherService;
-import com.server.internshipserver.service.user.EnterpriseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,72 +62,42 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
-    private final RoleService roleService;
-    private final UserRoleMapper userRoleMapper;
-    private final DataPermissionUtil dataPermissionUtil;
-    private final PermissionService permissionService;
-    private final StudentMapper studentMapper;
-    private final TeacherMapper teacherMapper;
-    private final SchoolAdminMapper schoolAdminMapper;
-    private final EnterpriseMapper enterpriseMapper;
-    private final SchoolMapper schoolMapper;
-    private final CollegeMapper collegeMapper;
-    private final ClassMapper classMapper;
-    private final StudentService studentService;
-    private final TeacherService teacherService;
-    private final EnterpriseService enterpriseService;
-    private final EnterpriseMentorMapper enterpriseMentorMapper;
+    @Autowired
+    private RoleService roleService;
     
-    /**
-     * 构造函数注入，使用@Lazy解决循环依赖
-     * @param roleService 角色服务
-     * @param userRoleMapper 用户角色Mapper
-     * @param dataPermissionUtil 数据权限工具
-     * @param permissionService 权限服务
-     * @param studentMapper 学生Mapper
-     * @param teacherMapper 教师Mapper
-     * @param schoolAdminMapper 学校管理员Mapper
-     * @param enterpriseMapper 企业Mapper
-     * @param schoolMapper 学校Mapper
-     * @param collegeMapper 学院Mapper
-     * @param classMapper 班级Mapper
-     * @param studentService 学生服务（延迟加载，解决循环依赖）
-     * @param teacherService 教师服务（延迟加载，解决循环依赖）
-     * @param enterpriseService 企业服务（延迟加载，解决循环依赖）
-     * @param enterpriseMentorMapper 企业导师Mapper
-     */
-    public UserServiceImpl(
-            RoleService roleService,
-            UserRoleMapper userRoleMapper,
-            DataPermissionUtil dataPermissionUtil,
-            PermissionService permissionService,
-            StudentMapper studentMapper,
-            TeacherMapper teacherMapper,
-            SchoolAdminMapper schoolAdminMapper,
-            EnterpriseMapper enterpriseMapper,
-            SchoolMapper schoolMapper,
-            CollegeMapper collegeMapper,
-            ClassMapper classMapper,
-            @Lazy StudentService studentService,
-            @Lazy TeacherService teacherService,
-            @Lazy EnterpriseService enterpriseService,
-            EnterpriseMentorMapper enterpriseMentorMapper) {
-        this.roleService = roleService;
-        this.userRoleMapper = userRoleMapper;
-        this.dataPermissionUtil = dataPermissionUtil;
-        this.permissionService = permissionService;
-        this.studentMapper = studentMapper;
-        this.teacherMapper = teacherMapper;
-        this.schoolAdminMapper = schoolAdminMapper;
-        this.enterpriseMapper = enterpriseMapper;
-        this.schoolMapper = schoolMapper;
-        this.collegeMapper = collegeMapper;
-        this.classMapper = classMapper;
-        this.studentService = studentService;
-        this.teacherService = teacherService;
-        this.enterpriseService = enterpriseService;
-        this.enterpriseMentorMapper = enterpriseMentorMapper;
-    }
+    @Autowired
+    private UserRoleMapper userRoleMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
+    
+    @Autowired
+    private PermissionService permissionService;
+    
+    @Autowired
+    private StudentMapper studentMapper;
+    
+    @Autowired
+    private TeacherMapper teacherMapper;
+    
+    @Autowired
+    private SchoolAdminMapper schoolAdminMapper;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private SchoolMapper schoolMapper;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
+    
+    @Autowired
+    private ClassMapper classMapper;
+    
+    
+    @Autowired
+    private EnterpriseMentorMapper enterpriseMentorMapper;
     
     @Override
     public UserInfo getUserByUsername(String username) {
@@ -244,6 +211,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (user.getStudentNo() == null || user.getClassId() == null || user.getEnrollmentYear() == null) {
             throw new BusinessException("学生角色需要提供学号、班级ID和入学年份");
         }
+        
+        // 检查学号是否已存在
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Student::getStudentNo, user.getStudentNo())
+               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Student existStudent = studentMapper.selectOne(wrapper);
+        if (existStudent != null) {
+            throw new BusinessException("学号已存在");
+        }
+        
         Student student = new Student();
         student.setUserId(user.getUserId());
         student.setStudentNo(user.getStudentNo());
@@ -253,7 +230,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         student.setCollegeId(user.getCollegeId());
         student.setMajorId(user.getMajorId());
         student.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        studentService.addStudent(student);
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(student);
+        studentMapper.insert(student);
     }
     
     /**
@@ -294,13 +272,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (user.getSchoolId() == null || user.getCollegeId() == null) {
             throw new BusinessException(roleName + "角色需要提供学校ID和学院ID");
         }
+        
+        // 检查工号是否已存在
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Teacher::getTeacherNo, user.getUsername())
+               .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        Teacher existTeacher = teacherMapper.selectOne(wrapper);
+        if (existTeacher != null) {
+            throw new BusinessException("工号已存在");
+        }
+        
         Teacher teacher = new Teacher();
         teacher.setUserId(user.getUserId());
         teacher.setCollegeId(user.getCollegeId());
         teacher.setSchoolId(user.getSchoolId());
         teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         teacher.setTeacherNo(user.getUsername());
-        teacherService.addTeacher(teacher);
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(teacher);
+        teacherMapper.insert(teacher);
         return teacher;
     }
     
@@ -311,10 +300,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (user.getEnterpriseId() == null) {
             throw new BusinessException("企业管理员角色需要提供企业ID");
         }
-        Enterprise enterprise = enterpriseService.getById(user.getEnterpriseId());
+        Enterprise enterprise = enterpriseMapper.selectById(user.getEnterpriseId());
         EntityValidationUtil.validateEntityExists(enterprise, "企业");
         enterprise.setUserId(user.getUserId());
-        enterpriseService.updateById(enterprise);
+        enterpriseMapper.updateById(enterprise);
     }
     
     /**
@@ -324,7 +313,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (user.getEnterpriseId() == null) {
             throw new BusinessException("企业导师角色需要提供企业ID");
         }
-        Enterprise enterprise = enterpriseService.getById(user.getEnterpriseId());
+        Enterprise enterprise = enterpriseMapper.selectById(user.getEnterpriseId());
         EntityValidationUtil.validateEntityExists(enterprise, "企业");
         EnterpriseMentor mentor = new EnterpriseMentor();
         mentor.setUserId(user.getUserId());

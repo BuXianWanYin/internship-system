@@ -43,8 +43,16 @@
       <el-table-column prop="schoolName" label="学校名称" min-width="150" />
       <el-table-column prop="schoolCode" label="学校代码" min-width="120" />
       <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
-      <el-table-column prop="contactPerson" label="联系人" min-width="100" />
-      <el-table-column prop="contactPhone" label="联系电话" min-width="120" />
+      <el-table-column prop="managerName" label="负责人" min-width="100">
+        <template #default="{ row }">
+          {{ row.managerName || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="managerPhone" label="负责人电话" min-width="120">
+        <template #default="{ row }">
+          {{ row.managerPhone || '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="80" align="center">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
@@ -55,7 +63,7 @@
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="180" fixed="right" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="primary" size="small" style="background: none; border: none; padding: 0;" @click="handleEdit(row)">编辑</el-button>
           <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
         </template>
       </el-table-column>
@@ -96,12 +104,55 @@
         <el-form-item label="地址" prop="address">
           <el-input v-model="formData.address" type="textarea" :rows="2" placeholder="请输入地址" />
         </el-form-item>
-        <el-form-item label="联系人" prop="contactPerson">
-          <el-input v-model="formData.contactPerson" placeholder="请输入联系人" />
+        <el-form-item label="学校管理员" prop="managerType">
+          <el-radio-group v-model="formData.managerType" @change="handleManagerTypeChange">
+            <el-radio label="existing">选择已有用户</el-radio>
+            <el-radio label="new">创建新用户</el-radio>
+            <el-radio label="none">暂不绑定</el-radio>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="联系电话" prop="contactPhone">
-          <el-input v-model="formData.contactPhone" placeholder="请输入联系电话" />
+        <!-- 选择已有用户 -->
+        <el-form-item v-if="formData.managerType === 'existing'" label="选择用户" prop="managerUserId">
+          <el-select
+            v-model="formData.managerUserId"
+            placeholder="请选择用户"
+            filterable
+            remote
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="user in availableUserList"
+              :key="user.userId"
+              :label="`${user.realName} (${user.username}) - ${user.phone || '无手机号'}`"
+              :value="user.userId"
+            />
+          </el-select>
         </el-form-item>
+        <!-- 创建新用户 -->
+        <template v-if="formData.managerType === 'new'">
+          <el-form-item label="用户名" prop="newUserUsername">
+            <el-input v-model="formData.newUserUsername" placeholder="请输入用户名" />
+          </el-form-item>
+          <el-form-item label="密码" prop="newUserPassword">
+            <el-input
+              v-model="formData.newUserPassword"
+              type="password"
+              placeholder="请输入密码"
+              show-password
+            />
+          </el-form-item>
+          <el-form-item label="真实姓名" prop="newUserRealName">
+            <el-input v-model="formData.newUserRealName" placeholder="请输入真实姓名" />
+          </el-form-item>
+          <el-form-item label="手机号" prop="newUserPhone">
+            <el-input v-model="formData.newUserPhone" placeholder="请输入手机号" />
+          </el-form-item>
+          <el-form-item label="邮箱" prop="newUserEmail">
+            <el-input v-model="formData.newUserEmail" placeholder="请输入邮箱（可选）" />
+          </el-form-item>
+        </template>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="formData.status">
             <el-radio :label="1">启用</el-radio>
@@ -118,10 +169,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { schoolApi } from '@/api/system/school'
+import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -142,15 +194,22 @@ const pagination = reactive({
 })
 
 const tableData = ref([])
+const availableUserList = ref([])
+const userSearchLoading = ref(false)
 
 const formData = reactive({
   schoolId: null,
   schoolName: '',
   schoolCode: '',
   address: '',
-  contactPerson: '',
-  contactPhone: '',
-  status: 1
+  status: 1,
+  managerType: 'none', // 'existing', 'new', 'none'
+  managerUserId: null,
+  newUserUsername: '',
+  newUserPassword: '',
+  newUserRealName: '',
+  newUserPhone: '',
+  newUserEmail: ''
 })
 
 const formRules = {
@@ -159,6 +218,56 @@ const formRules = {
   ],
   schoolCode: [
     { required: true, message: '请输入学校代码', trigger: 'blur' }
+  ],
+  managerUserId: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.managerType === 'existing' && !value) {
+          callback(new Error('请选择用户'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ],
+  newUserUsername: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.managerType === 'new' && !value) {
+          callback(new Error('请输入用户名'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  newUserPassword: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.managerType === 'new' && !value) {
+          callback(new Error('请输入密码'))
+        } else if (formData.managerType === 'new' && value && value.length < 6) {
+          callback(new Error('密码长度不能少于6位'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  newUserRealName: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.managerType === 'new' && !value) {
+          callback(new Error('请输入真实姓名'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -204,18 +313,106 @@ const handleAdd = () => {
 }
 
 // 编辑
-const handleEdit = (row) => {
+const handleEdit = async (row) => {
   dialogTitle.value = '编辑学校'
-  Object.assign(formData, {
-    schoolId: row.schoolId,
-    schoolName: row.schoolName,
-    schoolCode: row.schoolCode,
-    address: row.address || '',
-    contactPerson: row.contactPerson || '',
-    contactPhone: row.contactPhone || '',
-    status: row.status
-  })
-  dialogVisible.value = true
+  try {
+    // 获取学校详情（包含当前绑定的管理员用户ID）
+    const res = await schoolApi.getSchoolById(row.schoolId)
+    if (res.code === 200 && res.data) {
+      const school = res.data
+      Object.assign(formData, {
+        schoolId: school.schoolId,
+        schoolName: school.schoolName,
+        schoolCode: school.schoolCode,
+        address: school.address || '',
+        status: school.status,
+        managerType: school.managerUserId ? 'existing' : 'none',
+        managerUserId: school.managerUserId || null,
+        newUserUsername: '',
+        newUserPassword: '',
+        newUserRealName: '',
+        newUserPhone: '',
+        newUserEmail: ''
+      })
+      // 如果已有绑定的管理员，加载用户信息到下拉列表
+      if (school.managerUserId) {
+        await loadUserById(school.managerUserId)
+      }
+    }
+    dialogVisible.value = true
+  } catch (error) {
+    console.error('获取学校详情失败:', error)
+    ElMessage.error('获取学校详情失败')
+  }
+}
+
+// 加载用户信息
+const loadUserById = async (userId) => {
+  try {
+    const res = await userApi.getUserById(userId)
+    if (res.code === 200 && res.data) {
+      const user = res.data
+      // 检查用户是否已在列表中
+      const existUser = availableUserList.value.find(u => u.userId === userId)
+      if (!existUser) {
+        availableUserList.value.push(user)
+      }
+    }
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+  }
+}
+
+// 搜索用户（查询没有绑定学校管理员的用户）
+const searchUsers = async (query) => {
+  if (!query) {
+    availableUserList.value = []
+    return
+  }
+  userSearchLoading.value = true
+  try {
+    const res = await userApi.getUserPage({
+      current: 1,
+      size: 20,
+      realName: query,
+      status: 1
+    })
+    if (res.code === 200 && res.data) {
+      // 过滤掉已经是学校管理员的用户
+      const users = res.data.records || []
+      // 这里简化处理，直接显示所有用户，后端会在绑定时报错
+      availableUserList.value = users
+    }
+  } catch (error) {
+    console.error('搜索用户失败:', error)
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
+// 管理员类型变化
+const handleManagerTypeChange = (value) => {
+  if (value === 'existing') {
+    // 清空新用户表单
+    formData.newUserUsername = ''
+    formData.newUserPassword = ''
+    formData.newUserRealName = ''
+    formData.newUserPhone = ''
+    formData.newUserEmail = ''
+  } else if (value === 'new') {
+    // 清空已有用户选择
+    formData.managerUserId = null
+    availableUserList.value = []
+  } else {
+    // 清空所有
+    formData.managerUserId = null
+    formData.newUserUsername = ''
+    formData.newUserPassword = ''
+    formData.newUserRealName = ''
+    formData.newUserPhone = ''
+    formData.newUserEmail = ''
+    availableUserList.value = []
+  }
 }
 
 // 删除
@@ -243,11 +440,43 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 构建提交数据
+        const submitData = {
+          schoolId: formData.schoolId,
+          schoolName: formData.schoolName,
+          schoolCode: formData.schoolCode,
+          address: formData.address,
+          status: formData.status
+        }
+        
+        // 处理学校管理员绑定
+        if (formData.managerType === 'existing' && formData.managerUserId) {
+          submitData.managerUserId = formData.managerUserId
+          submitData.createNewUser = false
+        } else if (formData.managerType === 'new') {
+          submitData.createNewUser = true
+          submitData.newUserInfo = {
+            username: formData.newUserUsername,
+            password: formData.newUserPassword,
+            realName: formData.newUserRealName,
+            phone: formData.newUserPhone,
+            email: formData.newUserEmail || undefined
+          }
+        } else {
+          // 暂不绑定：编辑时解除绑定，新增时不绑定
+          if (formData.schoolId) {
+            // 编辑时，传递null表示解除绑定
+            submitData.managerUserId = null
+            submitData.createNewUser = false
+          }
+          // 新增时，不传递managerUserId和createNewUser，后端不会处理绑定
+        }
+        
         let res
         if (formData.schoolId) {
-          res = await schoolApi.updateSchool(formData.schoolId, formData)
+          res = await schoolApi.updateSchool(formData.schoolId, submitData)
         } else {
-          res = await schoolApi.addSchool(formData)
+          res = await schoolApi.addSchool(submitData)
         }
         if (res.code === 200) {
           ElMessage.success(formData.schoolId ? '更新成功' : '添加成功')
@@ -256,6 +485,7 @@ const handleSubmit = async () => {
         }
       } catch (error) {
         console.error('提交失败:', error)
+        ElMessage.error(error.response?.data?.message || '提交失败')
       } finally {
         submitLoading.value = false
       }
@@ -270,10 +500,16 @@ const resetForm = () => {
     schoolName: '',
     schoolCode: '',
     address: '',
-    contactPerson: '',
-    contactPhone: '',
-    status: 1
+    status: 1,
+    managerType: 'none',
+    managerUserId: null,
+    newUserUsername: '',
+    newUserPassword: '',
+    newUserRealName: '',
+    newUserPhone: '',
+    newUserEmail: ''
   })
+  availableUserList.value = []
   formRef.value?.clearValidate()
 }
 
@@ -314,14 +550,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-:deep(.el-button--primary) {
-  background-color: #409eff;
-  border-color: #409eff;
-}
-
-:deep(.el-button--primary:hover) {
-  background-color: #66b1ff;
-  border-color: #66b1ff;
-}
+/* 移除全局primary按钮背景色样式，使用Element Plus默认样式 */
 </style>
 

@@ -886,7 +886,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return;
         }
         
-        boolean isApproved = apply.getStatus().equals(InternshipApplyStatus.APPROVED.getCode());
+        // 判断是否审核通过：APPROVED（已通过）、ACCEPTED（已录用）、REJECTED_ACCEPTANCE（已拒绝录用）都表示审核通过
+        // 只有REJECTED（已拒绝）表示审核被拒绝
+        Integer status = apply.getStatus();
+        boolean isApproved = status != null && (
+                status.equals(InternshipApplyStatus.APPROVED.getCode()) ||
+                status.equals(InternshipApplyStatus.ACCEPTED.getCode()) ||
+                status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())
+        );
         String actionName = isApproved ? "学校审核通过" : "学校审核拒绝";
         String description = apply.getAuditOpinion() != null 
                 ? apply.getAuditOpinion() 
@@ -910,7 +917,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return;
         }
         
-        boolean isApproved = apply.getStatus().equals(InternshipApplyStatus.APPROVED.getCode());
+        // 判断是否审核通过：APPROVED（已通过）、ACCEPTED（已录用）、REJECTED_ACCEPTANCE（已拒绝录用）都表示审核通过
+        // 只有REJECTED（已拒绝）表示审核被拒绝
+        Integer status = apply.getStatus();
+        boolean isApproved = status != null && (
+                status.equals(InternshipApplyStatus.APPROVED.getCode()) ||
+                status.equals(InternshipApplyStatus.ACCEPTED.getCode()) ||
+                status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())
+        );
         String actionName = isApproved ? "学校审核通过" : "学校审核拒绝";
         String description = apply.getAuditOpinion() != null 
                 ? apply.getAuditOpinion() 
@@ -1946,7 +1960,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("该申请已有解绑申请，请等待审核");
         }
         
-        // 更新申请：unbind_status = 1, unbind_reason = reason
+        // 更新申请：unbind_status = APPLIED, unbind_reason = reason
         apply.setUnbindStatus(UnbindStatus.APPLIED.getCode());
         apply.setUnbindReason(reason);
         this.updateById(apply);

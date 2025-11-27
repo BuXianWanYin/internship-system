@@ -30,7 +30,6 @@ import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -44,36 +43,23 @@ import java.util.List;
 @Service
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
     
-    private final UserService userService;
-    private final ClassService classService;
-    private final MajorService majorService;
-    private final CollegeService collegeService;
-    private final EnterpriseMapper enterpriseMapper;
-    private final DataPermissionUtil dataPermissionUtil;
+    @Autowired
+    private UserService userService;
     
-    /**
-     * 构造函数注入，使用@Lazy解决循环依赖
-     * @param userService 用户服务（延迟加载，解决循环依赖）
-     * @param classService 班级服务
-     * @param majorService 专业服务
-     * @param collegeService 学院服务
-     * @param enterpriseMapper 企业Mapper
-     * @param dataPermissionUtil 数据权限工具
-     */
-    public StudentServiceImpl(
-            @Lazy UserService userService,
-            ClassService classService,
-            MajorService majorService,
-            CollegeService collegeService,
-            EnterpriseMapper enterpriseMapper,
-            DataPermissionUtil dataPermissionUtil) {
-        this.userService = userService;
-        this.classService = classService;
-        this.majorService = majorService;
-        this.collegeService = collegeService;
-        this.enterpriseMapper = enterpriseMapper;
-        this.dataPermissionUtil = dataPermissionUtil;
-    }
+    @Autowired
+    private ClassService classService;
+    
+    @Autowired
+    private MajorService majorService;
+    
+    @Autowired
+    private CollegeService collegeService;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     
     @Override
@@ -550,7 +536,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 只查询未删除的数据
         QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
         
-        // 只查询待审核的学生（status=0，禁用状态）
+        // 只查询待审核的学生（status=DISABLED，禁用状态）
         wrapper.eq(Student::getStatus, UserStatus.DISABLED.getCode());
         
         // 条件查询
@@ -635,8 +621,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             // 分配学生角色
             userService.assignRoleToUser(user.getUserId(), Constants.ROLE_STUDENT);
         } else {
-            // 审核拒绝：保持禁用状态（status=0），或者可以软删除
-            // 这里选择保持status=0，表示审核被拒绝
+            // 审核拒绝：保持禁用状态（status=DISABLED），或者可以软删除
+            // 这里选择保持status=DISABLED，表示审核被拒绝
             // 如果需要，可以添加一个拒绝原因字段
             user.setStatus(UserStatus.DISABLED.getCode());
             student.setStatus(UserStatus.DISABLED.getCode());
