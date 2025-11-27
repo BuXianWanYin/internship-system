@@ -245,7 +245,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             return;
         }
         
-        // 学院负责人：只能查看本院的班级（通过专业关联）
+            // 学院负责人：只能查看本院的班级（通过专业关联）
         if (currentUserCollegeId != null) {
             List<Long> majorIds = getMajorIdsByCollegeId(currentUserCollegeId);
             if (majorIds != null && !majorIds.isEmpty()) {
@@ -256,7 +256,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             return;
         }
         
-        // 学校管理员：只能查看本校的班级（通过专业和学院关联）
+            // 学校管理员：只能查看本校的班级（通过专业和学院关联）
         if (currentUserSchoolId != null) {
             List<Long> majorIds = getMajorIdsBySchoolId(currentUserSchoolId);
             if (majorIds != null && !majorIds.isEmpty()) {

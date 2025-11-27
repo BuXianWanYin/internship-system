@@ -188,6 +188,16 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             throw new BusinessException("无权限创建实习计划");
         }
         
+        // 验证计划范围的一致性
+        // 如果collegeId为NULL，majorId也必须为NULL（不能只有专业没有学院）
+        if (plan.getCollegeId() == null && plan.getMajorId() != null) {
+            throw new BusinessException("专业计划必须指定所属学院");
+        }
+        // 如果majorId不为NULL，collegeId也不能为NULL（专业必须属于某个学院）
+        if (plan.getMajorId() != null && plan.getCollegeId() == null) {
+            throw new BusinessException("专业计划必须指定所属学院");
+        }
+        
         // 检查计划编号是否已存在
         LambdaQueryWrapper<InternshipPlan> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InternshipPlan::getPlanCode, plan.getPlanCode())
@@ -224,11 +234,6 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         InternshipPlan existPlan = this.getById(plan.getPlanId());
         if (existPlan == null || existPlan.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
             throw new BusinessException("实习计划不存在");
-        }
-        
-        // 如果状态为已发布，不允许修改
-        if (existPlan.getStatus() != null && existPlan.getStatus() == 4) {
-            throw new BusinessException("已发布的实习计划不允许修改");
         }
         
         // 权限检查：只有创建者或更高级别的管理员可以修改
@@ -482,9 +487,9 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             throw new BusinessException("实习计划不存在");
         }
         
-        // 只有已通过审核的才能发布
-        if (plan.getStatus() == null || plan.getStatus() != 2) {
-            throw new BusinessException("只有已通过审核的实习计划才能发布");
+        // 只有草稿状态才能发布
+        if (plan.getStatus() == null || plan.getStatus() != 0) {
+            throw new BusinessException("只有草稿状态的实习计划才能发布");
         }
         
         // 更新状态为已发布
@@ -505,12 +510,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             throw new BusinessException("实习计划不存在");
         }
         
-        // 已发布的计划不允许删除
-        if (plan.getStatus() != null && plan.getStatus() == 4) {
-            throw new BusinessException("已发布的实习计划不允许删除");
-        }
-        
-        // 软删除
+        // 软删除（允许删除所有状态的计划，包括已发布的）
         plan.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(plan);
     }

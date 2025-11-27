@@ -96,9 +96,6 @@
             style="width: 150px"
           >
             <el-option label="草稿" :value="0" />
-            <el-option label="待审核" :value="1" />
-            <el-option label="已通过" :value="2" />
-            <el-option label="已拒绝" :value="3" />
             <el-option label="已发布" :value="4" />
           </el-select>
         </el-form-item>
@@ -158,7 +155,7 @@
             查看
           </el-button>
           <el-button
-            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="primary"
             size="small"
@@ -169,24 +166,6 @@
           <el-button
             v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
-            type="success"
-            size="small"
-            @click="handleSubmit(row)"
-          >
-            提交审核
-          </el-button>
-          <el-button
-            v-if="row.status === 1 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
-            link
-            type="success"
-            size="small"
-            @click="handleAudit(row)"
-          >
-            审核
-          </el-button>
-          <el-button
-            v-if="row.status === 2 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
-            link
             type="warning"
             size="small"
             @click="handlePublish(row)"
@@ -194,7 +173,7 @@
             发布
           </el-button>
           <el-button
-            v-if="row.status !== 4 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
             link
             type="danger"
             size="small"
@@ -274,6 +253,20 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="计划范围" prop="planScope">
+              <el-select 
+                v-model="formData.planScope" 
+                placeholder="请选择计划范围" 
+                style="width: 100%"
+                @change="handlePlanScopeChange"
+              >
+                <el-option label="全校计划" value="school" />
+                <el-option label="学院计划" value="college" />
+                <el-option label="专业计划" value="major" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="所属学校" prop="schoolId">
               <el-select
                 v-model="formData.schoolId"
@@ -290,12 +283,17 @@
               </el-select>
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20" v-if="formData.planScope === 'college' || formData.planScope === 'major'">
           <el-col :span="12">
-            <el-form-item label="所属学院" prop="collegeId">
+            <el-form-item 
+              label="所属学院" 
+              prop="collegeId"
+              :rules="formData.planScope === 'college' || formData.planScope === 'major' ? [{ required: true, message: '请选择所属学院', trigger: 'change' }] : []"
+            >
               <el-select
                 v-model="formData.collegeId"
-                placeholder="请选择学院（可选）"
-                clearable
+                placeholder="请选择学院"
                 style="width: 100%"
                 :disabled="!formData.schoolId"
                 @change="handleFormCollegeChange"
@@ -309,14 +307,15 @@
               </el-select>
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="所属专业" prop="majorId">
+          <el-col :span="12" v-if="formData.planScope === 'major'">
+            <el-form-item 
+              label="所属专业" 
+              prop="majorId"
+              :rules="formData.planScope === 'major' ? [{ required: true, message: '请选择所属专业', trigger: 'change' }] : []"
+            >
               <el-select
                 v-model="formData.majorId"
-                placeholder="请选择专业（可选）"
-                clearable
+                placeholder="请选择专业"
                 style="width: 100%"
                 :disabled="!formData.collegeId"
               >
@@ -421,38 +420,6 @@
       </el-descriptions>
     </el-dialog>
 
-    <!-- 审核对话框 -->
-    <el-dialog
-      v-model="auditDialogVisible"
-      title="审核实习计划"
-      width="500px"
-    >
-      <el-form
-        ref="auditFormRef"
-        :model="auditForm"
-        :rules="auditFormRules"
-        label-width="100px"
-      >
-        <el-form-item label="审核结果" prop="auditStatus">
-          <el-radio-group v-model="auditForm.auditStatus">
-            <el-radio :label="2">通过</el-radio>
-            <el-radio :label="3">拒绝</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审核意见" prop="auditOpinion">
-          <el-input
-            v-model="auditForm.auditOpinion"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入审核意见"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="auditDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="auditLoading" @click="handleAuditSubmit">确定</el-button>
-      </template>
-    </el-dialog>
   </PageLayout>
 </template>
 
@@ -472,13 +439,10 @@ import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
-const auditLoading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
-const auditDialogVisible = ref(false)
 const dialogTitle = ref('创建实习计划')
 const formRef = ref(null)
-const auditFormRef = ref(null)
 
 const searchForm = reactive({
   planName: '',
@@ -524,6 +488,7 @@ const formData = reactive({
   planName: '',
   planCode: '',
   semesterId: null,
+  planScope: '', // 计划范围：school-全校, college-学院, major-专业
   schoolId: null,
   collegeId: null,
   majorId: null,
@@ -538,23 +503,14 @@ const formData = reactive({
 
 const detailData = ref({})
 
-const auditForm = reactive({
-  planId: null,
-  auditStatus: 2,
-  auditOpinion: ''
-})
-
 const formRules = {
   planName: [{ required: true, message: '请输入计划名称', trigger: 'blur' }],
   planCode: [{ required: true, message: '请输入计划编号', trigger: 'blur' }],
+  planScope: [{ required: true, message: '请选择计划范围', trigger: 'change' }],
   schoolId: [{ required: true, message: '请选择所属学校', trigger: 'change' }],
   planType: [{ required: true, message: '请输入实习类型', trigger: 'blur' }],
   startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
   endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
-}
-
-const auditFormRules = {
-  auditStatus: [{ required: true, message: '请选择审核结果', trigger: 'change' }]
 }
 
 // 加载数据
@@ -699,8 +655,47 @@ const handleCollegeChange = () => {
   }
 }
 
+// 计划范围变化
+const handlePlanScopeChange = () => {
+  // 根据计划范围清空相关字段
+  if (formData.planScope === 'school') {
+    // 全校计划：清空学院和专业
+    formData.collegeId = null
+    formData.majorId = null
+    collegeList.value = []
+    majorList.value = []
+  } else if (formData.planScope === 'college') {
+    // 学院计划：清空专业，保留学院选择
+    formData.majorId = null
+    majorList.value = []
+    // 如果已选择学校，加载学院列表
+    if (formData.schoolId) {
+      loadCollegeList(formData.schoolId)
+    }
+  } else if (formData.planScope === 'major') {
+    // 专业计划：需要选择学院和专业
+    // 如果已选择学校，加载学院列表
+    if (formData.schoolId) {
+      loadCollegeList(formData.schoolId)
+    }
+    // 如果已选择学院，加载专业列表
+    if (formData.collegeId) {
+      loadMajorList(formData.collegeId)
+    }
+  }
+}
+
 // 表单学校变化
 const handleFormSchoolChange = () => {
+  // 如果是全校计划，不需要加载学院列表
+  if (formData.planScope === 'school') {
+    formData.collegeId = null
+    formData.majorId = null
+    collegeList.value = []
+    majorList.value = []
+    return
+  }
+  
   formData.collegeId = null
   formData.majorId = null
   collegeList.value = []
@@ -712,6 +707,13 @@ const handleFormSchoolChange = () => {
 
 // 表单学院变化
 const handleFormCollegeChange = () => {
+  // 如果是学院计划，不需要加载专业列表
+  if (formData.planScope === 'college') {
+    formData.majorId = null
+    majorList.value = []
+    return
+  }
+  
   formData.majorId = null
   majorList.value = []
   if (formData.collegeId) {
@@ -729,11 +731,21 @@ const handleAdd = () => {
 // 编辑
 const handleEdit = (row) => {
   dialogTitle.value = '编辑实习计划'
+  
+  // 根据现有数据判断计划范围
+  let planScope = 'school'
+  if (row.majorId) {
+    planScope = 'major'
+  } else if (row.collegeId) {
+    planScope = 'college'
+  }
+  
   Object.assign(formData, {
     planId: row.planId,
     planName: row.planName,
     planCode: row.planCode,
     semesterId: row.semesterId,
+    planScope: planScope,
     schoolId: row.schoolId,
     collegeId: row.collegeId,
     majorId: row.majorId,
@@ -745,12 +757,15 @@ const handleEdit = (row) => {
     assessmentStandards: row.assessmentStandards || '',
     status: row.status
   })
-  if (row.schoolId) {
+  
+  // 根据计划范围加载相关数据
+  if (row.schoolId && (planScope === 'college' || planScope === 'major')) {
     loadCollegeList(row.schoolId)
   }
-  if (row.collegeId) {
+  if (row.collegeId && planScope === 'major') {
     loadMajorList(row.collegeId)
   }
+  
   dialogVisible.value = true
 }
 
@@ -766,33 +781,6 @@ const handleView = async (row) => {
     console.error('查询详情失败:', error)
     ElMessage.error('查询详情失败')
   }
-}
-
-// 提交审核
-const handleSubmit = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定要提交审核吗？', '提示', {
-      type: 'warning'
-    })
-    const res = await planApi.submitPlan(row.planId)
-    if (res.code === 200) {
-      ElMessage.success('提交审核成功')
-      loadData()
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('提交审核失败:', error)
-      ElMessage.error(error.response?.data?.message || '提交审核失败')
-    }
-  }
-}
-
-// 审核
-const handleAudit = (row) => {
-  auditForm.planId = row.planId
-  auditForm.auditStatus = 2
-  auditForm.auditOpinion = ''
-  auditDialogVisible.value = true
 }
 
 // 发布
@@ -838,13 +826,29 @@ const handleSubmitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      // 根据计划范围设置字段值
+      const submitData = { ...formData }
+      
+      if (submitData.planScope === 'school') {
+        // 全校计划：清空学院和专业ID
+        submitData.collegeId = null
+        submitData.majorId = null
+      } else if (submitData.planScope === 'college') {
+        // 学院计划：清空专业ID
+        submitData.majorId = null
+      }
+      // 专业计划：保留所有字段
+      
+      // 移除 planScope 字段（不提交到后端）
+      delete submitData.planScope
+      
       submitLoading.value = true
       try {
         let res
         if (formData.planId) {
-          res = await planApi.updatePlan(formData)
+          res = await planApi.updatePlan(submitData)
         } else {
-          res = await planApi.addPlan(formData)
+          res = await planApi.addPlan(submitData)
         }
         if (res.code === 200) {
           ElMessage.success(formData.planId ? '更新成功' : '创建成功')
@@ -861,33 +865,6 @@ const handleSubmitForm = async () => {
   })
 }
 
-// 提交审核表单
-const handleAuditSubmit = async () => {
-  if (!auditFormRef.value) return
-  await auditFormRef.value.validate(async (valid) => {
-    if (valid) {
-      auditLoading.value = true
-      try {
-        const res = await planApi.auditPlan(
-          auditForm.planId,
-          auditForm.auditStatus,
-          auditForm.auditOpinion
-        )
-        if (res.code === 200) {
-          ElMessage.success('审核成功')
-          auditDialogVisible.value = false
-          loadData()
-        }
-      } catch (error) {
-        console.error('审核失败:', error)
-        ElMessage.error(error.response?.data?.message || '审核失败')
-      } finally {
-        auditLoading.value = false
-      }
-    }
-  })
-}
-
 // 重置表单数据
 const resetFormData = () => {
   Object.assign(formData, {
@@ -895,6 +872,7 @@ const resetFormData = () => {
     planName: '',
     planCode: '',
     semesterId: null,
+    planScope: '',
     schoolId: null,
     collegeId: null,
     majorId: null,
@@ -927,9 +905,6 @@ const handlePageChange = () => {
 const getStatusText = (status) => {
   const statusMap = {
     0: '草稿',
-    1: '待审核',
-    2: '已通过',
-    3: '已拒绝',
     4: '已发布'
   }
   return statusMap[status] || '未知'
@@ -939,9 +914,6 @@ const getStatusText = (status) => {
 const getStatusType = (status) => {
   const typeMap = {
     0: 'info',
-    1: 'warning',
-    2: 'success',
-    3: 'danger',
     4: 'success'
   }
   return typeMap[status] || 'info'
