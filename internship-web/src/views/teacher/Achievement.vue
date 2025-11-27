@@ -159,23 +159,15 @@
       </div>
 
       <!-- 附件 -->
-      <div v-if="detailData.achievementAttachment" class="content-section">
+      <div v-if="detailData.fileUrls" class="content-section">
         <div class="content-title">成果附件</div>
         <div class="attachment-list">
-          <div v-for="(url, index) in (detailData.achievementAttachment || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+          <div v-for="(url, index) in (detailData.fileUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
             <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
               {{ getFileName(url) }}
             </el-link>
           </div>
         </div>
-      </div>
-
-      <!-- 成果展示链接 -->
-      <div v-if="detailData.achievementLink" class="content-section">
-        <div class="content-title">成果展示链接</div>
-        <el-link :href="detailData.achievementLink" target="_blank" type="primary">
-          {{ detailData.achievementLink }}
-        </el-link>
       </div>
 
       <!-- 审核信息 -->
@@ -525,6 +517,24 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.achievement-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.achievement-content :deep(table td),
+.achievement-content :deep(table th) {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.achievement-content :deep(table th) {
+  background-color: #f5f7fa;
+  font-weight: bold;
+}
+
 .achievement-content :deep(ul),
 .achievement-content :deep(ol) {
   margin: 12px 0;
@@ -534,6 +544,46 @@ onMounted(() => {
 .achievement-content :deep(li) {
   margin: 8px 0;
   line-height: 1.8;
+}
+
+.achievement-content :deep(h1),
+.achievement-content :deep(h2),
+.achievement-content :deep(h3),
+.achievement-content :deep(h4),
+.achievement-content :deep(h5),
+.achievement-content :deep(h6) {
+  margin: 16px 0 12px 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.achievement-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid #409eff;
+  background-color: #f5f7fa;
+  color: #606266;
+}
+
+.achievement-content :deep(code) {
+  padding: 2px 6px;
+  background-color: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.achievement-content :deep(pre) {
+  margin: 16px 0;
+  padding: 12px;
+  background-color: #f5f7fa;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.achievement-content :deep(pre code) {
+  padding: 0;
+  background-color: transparent;
 }
 
 .attachment-list {

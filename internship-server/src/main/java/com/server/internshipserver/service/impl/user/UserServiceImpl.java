@@ -8,7 +8,10 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.user.SchoolAdmin;
 import com.server.internshipserver.domain.user.Student;
@@ -18,6 +21,7 @@ import com.server.internshipserver.domain.user.UserRole;
 import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
+import com.server.internshipserver.domain.user.dto.UserQueryDTO;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Class;
@@ -39,7 +43,6 @@ import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.EnterpriseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -62,53 +65,72 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     
-    @Autowired
-    private RoleService roleService;
+    private final RoleService roleService;
+    private final UserRoleMapper userRoleMapper;
+    private final DataPermissionUtil dataPermissionUtil;
+    private final PermissionService permissionService;
+    private final StudentMapper studentMapper;
+    private final TeacherMapper teacherMapper;
+    private final SchoolAdminMapper schoolAdminMapper;
+    private final EnterpriseMapper enterpriseMapper;
+    private final SchoolMapper schoolMapper;
+    private final CollegeMapper collegeMapper;
+    private final ClassMapper classMapper;
+    private final StudentService studentService;
+    private final TeacherService teacherService;
+    private final EnterpriseService enterpriseService;
+    private final EnterpriseMentorMapper enterpriseMentorMapper;
     
-    @Autowired
-    private UserRoleMapper userRoleMapper;
-    
-    @Autowired
-    private DataPermissionUtil dataPermissionUtil;
-    
-    @Autowired
-    private PermissionService permissionService;
-    
-    @Autowired
-    private StudentMapper studentMapper;
-    
-    @Autowired
-    private TeacherMapper teacherMapper;
-    
-    @Autowired
-    private SchoolAdminMapper schoolAdminMapper;
-    
-    @Autowired
-    private EnterpriseMapper enterpriseMapper;
-    
-    @Autowired
-    private SchoolMapper schoolMapper;
-    
-    @Autowired
-    private CollegeMapper collegeMapper;
-    
-    @Autowired
-    private ClassMapper classMapper;
-    
-    @Autowired
-    @Lazy
-    private StudentService studentService;
-    
-    @Autowired
-    @Lazy
-    private TeacherService teacherService;
-    
-    @Autowired
-    @Lazy
-    private EnterpriseService enterpriseService;
-    
-    @Autowired
-    private EnterpriseMentorMapper enterpriseMentorMapper;
+    /**
+     * 构造函数注入，使用@Lazy解决循环依赖
+     * @param roleService 角色服务
+     * @param userRoleMapper 用户角色Mapper
+     * @param dataPermissionUtil 数据权限工具
+     * @param permissionService 权限服务
+     * @param studentMapper 学生Mapper
+     * @param teacherMapper 教师Mapper
+     * @param schoolAdminMapper 学校管理员Mapper
+     * @param enterpriseMapper 企业Mapper
+     * @param schoolMapper 学校Mapper
+     * @param collegeMapper 学院Mapper
+     * @param classMapper 班级Mapper
+     * @param studentService 学生服务（延迟加载，解决循环依赖）
+     * @param teacherService 教师服务（延迟加载，解决循环依赖）
+     * @param enterpriseService 企业服务（延迟加载，解决循环依赖）
+     * @param enterpriseMentorMapper 企业导师Mapper
+     */
+    public UserServiceImpl(
+            RoleService roleService,
+            UserRoleMapper userRoleMapper,
+            DataPermissionUtil dataPermissionUtil,
+            PermissionService permissionService,
+            StudentMapper studentMapper,
+            TeacherMapper teacherMapper,
+            SchoolAdminMapper schoolAdminMapper,
+            EnterpriseMapper enterpriseMapper,
+            SchoolMapper schoolMapper,
+            CollegeMapper collegeMapper,
+            ClassMapper classMapper,
+            @Lazy StudentService studentService,
+            @Lazy TeacherService teacherService,
+            @Lazy EnterpriseService enterpriseService,
+            EnterpriseMentorMapper enterpriseMentorMapper) {
+        this.roleService = roleService;
+        this.userRoleMapper = userRoleMapper;
+        this.dataPermissionUtil = dataPermissionUtil;
+        this.permissionService = permissionService;
+        this.studentMapper = studentMapper;
+        this.teacherMapper = teacherMapper;
+        this.schoolAdminMapper = schoolAdminMapper;
+        this.enterpriseMapper = enterpriseMapper;
+        this.schoolMapper = schoolMapper;
+        this.collegeMapper = collegeMapper;
+        this.classMapper = classMapper;
+        this.studentService = studentService;
+        this.teacherService = teacherService;
+        this.enterpriseService = enterpriseService;
+        this.enterpriseMentorMapper = enterpriseMentorMapper;
+    }
     
     @Override
     public UserInfo getUserByUsername(String username) {
@@ -166,38 +188,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 验证用户参数
      */
     private void validateUserParams(UserInfo user) {
-        if (!StringUtils.hasText(user.getUsername())) {
-            throw new BusinessException("用户名不能为空");
-        }
-        if (!StringUtils.hasText(user.getPassword())) {
-            throw new BusinessException("密码不能为空");
-        }
-        if (!StringUtils.hasText(user.getRealName())) {
-            throw new BusinessException("真实姓名不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(user.getUsername(), "用户名");
+        EntityValidationUtil.validateStringNotBlank(user.getPassword(), "密码");
+        EntityValidationUtil.validateStringNotBlank(user.getRealName(), "真实姓名");
     }
     
     /**
      * 检查用户名是否已存在
      */
     private void checkUsernameExists(String username) {
-        LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserInfo::getUsername, username)
-               .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        UserInfo existUser = this.getOne(wrapper);
-        if (existUser != null) {
-            throw new BusinessException("用户名已存在");
-        }
+        UniquenessValidationUtil.validateUnique(this, UserInfo::getUsername, username, 
+                UserInfo::getDeleteFlag, "用户名");
     }
     
     /**
      * 设置用户默认值
      */
     private void setDefaultUserValues(UserInfo user) {
-        if (user.getStatus() == null) {
-            user.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        user.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(user);
     }
     
     /**
@@ -265,24 +273,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 创建学院负责人实体
      */
     private void createCollegeLeaderEntity(UserInfo user) {
-        if (user.getSchoolId() == null || user.getCollegeId() == null) {
-            throw new BusinessException("学院负责人角色需要提供学校ID和学院ID");
-        }
-        Teacher teacher = new Teacher();
-        teacher.setUserId(user.getUserId());
-        teacher.setCollegeId(user.getCollegeId());
-        teacher.setSchoolId(user.getSchoolId());
-        teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        teacher.setTeacherNo(user.getUsername());
-        teacherService.addTeacher(teacher);
+        createTeacherEntity(user, "学院负责人");
     }
     
     /**
      * 创建班主任实体
      */
     private void createClassTeacherEntity(UserInfo user) {
+        createTeacherEntity(user, "班主任");
+        // 设置管理的班级（如果有）
+        if (user.getClassIds() != null && !user.getClassIds().isEmpty()) {
+            // TODO: 关联班级逻辑（如果需要）
+        }
+    }
+    
+    /**
+     * 创建教师实体的公共方法
+     */
+    private Teacher createTeacherEntity(UserInfo user, String roleName) {
         if (user.getSchoolId() == null || user.getCollegeId() == null) {
-            throw new BusinessException("班主任角色需要提供学校ID和学院ID");
+            throw new BusinessException(roleName + "角色需要提供学校ID和学院ID");
         }
         Teacher teacher = new Teacher();
         teacher.setUserId(user.getUserId());
@@ -291,10 +301,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         teacher.setTeacherNo(user.getUsername());
         teacherService.addTeacher(teacher);
-        // 设置管理的班级（如果有）
-        if (user.getClassIds() != null && !user.getClassIds().isEmpty()) {
-            // TODO: 关联班级逻辑（如果需要）
-        }
+        return teacher;
     }
     
     /**
@@ -419,41 +426,46 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     }
     
     @Override
-    public Page<UserInfo> getUserPage(Page<UserInfo> page, String username, String realName, String phone, 
-                                      Integer status, String roleCodes, Long schoolId, Long collegeId, Long classId) {
+    public Page<UserInfo> getUserPage(Page<UserInfo> page, UserQueryDTO queryDTO) {
         LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, UserInfo::getDeleteFlag);
         
         // 条件查询
-        if (StringUtils.hasText(username)) {
-            wrapper.like(UserInfo::getUsername, username);
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getUsername())) {
+                wrapper.like(UserInfo::getUsername, queryDTO.getUsername());
+            }
+            if (StringUtils.hasText(queryDTO.getRealName())) {
+                wrapper.like(UserInfo::getRealName, queryDTO.getRealName());
+            }
+            if (StringUtils.hasText(queryDTO.getPhone())) {
+                wrapper.like(UserInfo::getPhone, queryDTO.getPhone());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(UserInfo::getStatus, queryDTO.getStatus());
+            }
+            
+            // 角色筛选：通过user_role表查询
+            List<Long> roleFilterUserIds = getRoleFilterUserIds(queryDTO.getRoleCodes());
+            
+            // 组织筛选：通过Student、Teacher表关联查询
+            List<Long> orgFilterUserIds = getOrgFilterUserIds(queryDTO.getClassId(), queryDTO.getCollegeId(), queryDTO.getSchoolId());
+            
+            // 数据权限过滤：根据用户角色自动添加查询条件
+            List<Long> dataPermissionUserIds = getDataPermissionUserIds();
+            
+            // 合并角色筛选、组织筛选和数据权限过滤的user_id列表
+            List<Long> finalUserIds = mergeFilterUserIds(roleFilterUserIds, orgFilterUserIds, dataPermissionUserIds);
+            
+            // 应用筛选结果
+            applyFilterToWrapper(wrapper, finalUserIds);
+        } else {
+            // 如果没有查询条件，只应用数据权限过滤
+            List<Long> dataPermissionUserIds = getDataPermissionUserIds();
+            applyFilterToWrapper(wrapper, dataPermissionUserIds);
         }
-        if (StringUtils.hasText(realName)) {
-            wrapper.like(UserInfo::getRealName, realName);
-        }
-        if (StringUtils.hasText(phone)) {
-            wrapper.like(UserInfo::getPhone, phone);
-        }
-        if (status != null) {
-            wrapper.eq(UserInfo::getStatus, status);
-        }
-        
-        // 角色筛选：通过user_role表查询
-        List<Long> roleFilterUserIds = getRoleFilterUserIds(roleCodes);
-        
-        // 组织筛选：通过Student、Teacher表关联查询
-        List<Long> orgFilterUserIds = getOrgFilterUserIds(classId, collegeId, schoolId);
-        
-        // 数据权限过滤：根据用户角色自动添加查询条件
-        List<Long> dataPermissionUserIds = getDataPermissionUserIds();
-        
-        // 合并角色筛选、组织筛选和数据权限过滤的user_id列表
-        List<Long> finalUserIds = mergeFilterUserIds(roleFilterUserIds, orgFilterUserIds, dataPermissionUserIds);
-        
-        // 应用筛选结果
-        applyFilterToWrapper(wrapper, finalUserIds);
         // 系统管理员不添加限制
         
         // 按创建时间倒序
@@ -510,34 +522,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 检查系统管理员删除权限
      */
     private void checkSystemAdminDeletion() {
-        Role systemAdminRole = roleService.getRoleByRoleCode(Constants.ROLE_SYSTEM_ADMIN);
-        if (systemAdminRole == null) {
-            return;
-        }
-        
-        List<UserRole> systemAdminUserRoles = userRoleMapper.selectList(
-                new LambdaQueryWrapper<UserRole>()
-                        .eq(UserRole::getRoleId, systemAdminRole.getRoleId())
-                        .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (systemAdminUserRoles == null || systemAdminUserRoles.isEmpty()) {
-            return;
-        }
-        
-        List<Long> systemAdminUserIds = systemAdminUserRoles.stream()
-                .map(UserRole::getUserId)
-                .distinct()
-                .collect(Collectors.toList());
-        
-        // 查询这些用户中启用的数量
-        long enabledSystemAdminCount = this.count(
-                new LambdaQueryWrapper<UserInfo>()
-                        .in(UserInfo::getUserId, systemAdminUserIds)
-                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
-        if (enabledSystemAdminCount <= 1) {
+        if (!canDeleteSystemAdmin()) {
             throw new BusinessException("系统至少需要保留一个启用的系统管理员，无法停用");
         }
     }
@@ -546,40 +531,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 检查学校管理员删除权限
      */
     private void checkSchoolAdminDeletion(Long userId) {
-        SchoolAdmin schoolAdmin = schoolAdminMapper.selectOne(
-                new LambdaQueryWrapper<SchoolAdmin>()
-                        .eq(SchoolAdmin::getUserId, userId)
-                        .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (schoolAdmin == null) {
-            return;
-        }
-        
-        Long schoolId = schoolAdmin.getSchoolId();
-        // 统计该学校启用的学校管理员数量
-        List<SchoolAdmin> schoolAdmins = schoolAdminMapper.selectList(
-                new LambdaQueryWrapper<SchoolAdmin>()
-                        .eq(SchoolAdmin::getSchoolId, schoolId)
-                        .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (schoolAdmins == null || schoolAdmins.isEmpty()) {
-            return;
-        }
-        
-        List<Long> schoolAdminUserIds = schoolAdmins.stream()
-                .map(SchoolAdmin::getUserId)
-                .distinct()
-                .collect(Collectors.toList());
-        
-        // 查询这些用户中启用的数量
-        long enabledSchoolAdminCount = this.count(
-                new LambdaQueryWrapper<UserInfo>()
-                        .in(UserInfo::getUserId, schoolAdminUserIds)
-                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
-        if (enabledSchoolAdminCount <= 1) {
+        if (!canDeleteSchoolAdmin(userId)) {
             throw new BusinessException("该学校至少需要保留一个启用的学校管理员，无法停用");
         }
     }
@@ -588,45 +540,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 检查企业管理员删除权限
      */
     private void checkEnterpriseAdminDeletion(Long userId) {
-        Enterprise enterprise = enterpriseMapper.selectOne(
-                new LambdaQueryWrapper<Enterprise>()
-                        .eq(Enterprise::getUserId, userId)
-                        .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (enterprise == null) {
-            return;
-        }
-        
-        Long enterpriseId = enterprise.getEnterpriseId();
-        // 统计该企业启用的企业管理员数量
-        List<Enterprise> enterprises = enterpriseMapper.selectList(
-                new LambdaQueryWrapper<Enterprise>()
-                        .eq(Enterprise::getEnterpriseId, enterpriseId)
-                        .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        if (enterprises == null || enterprises.isEmpty()) {
-            return;
-        }
-        
-        List<Long> enterpriseUserIds = enterprises.stream()
-                .map(Enterprise::getUserId)
-                .filter(id -> id != null)
-                .distinct()
-                .collect(Collectors.toList());
-        
-        if (enterpriseUserIds.isEmpty()) {
-            return;
-        }
-        
-        // 查询这些用户中启用的数量
-        long enabledEnterpriseAdminCount = this.count(
-                new LambdaQueryWrapper<UserInfo>()
-                        .in(UserInfo::getUserId, enterpriseUserIds)
-                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-        );
-        
-        if (enabledEnterpriseAdminCount <= 1) {
+        if (!canDeleteEnterpriseAdmin(userId)) {
             throw new BusinessException("该企业至少需要保留一个启用的企业管理员，无法停用");
         }
     }
@@ -649,109 +563,144 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         // 检查用户角色，确保至少保留一个管理员
         List<String> roleCodes = this.baseMapper.selectRoleCodesByUserId(userId);
-        if (roleCodes != null && !roleCodes.isEmpty()) {
-            // 检查是否为系统管理员
-            if (roleCodes.contains(Constants.ROLE_SYSTEM_ADMIN)) {
-                Role systemAdminRole = roleService.getRoleByRoleCode(Constants.ROLE_SYSTEM_ADMIN);
-                if (systemAdminRole != null) {
-                    List<UserRole> systemAdminUserRoles = userRoleMapper.selectList(
-                            new LambdaQueryWrapper<UserRole>()
-                                    .eq(UserRole::getRoleId, systemAdminRole.getRoleId())
-                                    .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                    );
-                    if (systemAdminUserRoles != null && !systemAdminUserRoles.isEmpty()) {
-                        List<Long> systemAdminUserIds = systemAdminUserRoles.stream()
-                                .map(UserRole::getUserId)
-                                .distinct()
-                                .collect(Collectors.toList());
-                        
-                        long enabledSystemAdminCount = this.count(
-                                new LambdaQueryWrapper<UserInfo>()
-                                        .in(UserInfo::getUserId, systemAdminUserIds)
-                                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        );
-                        
-                        if (enabledSystemAdminCount <= 1) {
-                            return false;
-                        }
-                    }
-                }
+        if (roleCodes == null || roleCodes.isEmpty()) {
+            return true;
+        }
+        
+        // 检查是否为系统管理员
+        if (roleCodes.contains(Constants.ROLE_SYSTEM_ADMIN)) {
+            if (!canDeleteSystemAdmin()) {
+                return false;
             }
-            
-            // 检查是否为学校管理员
-            if (roleCodes.contains(Constants.ROLE_SCHOOL_ADMIN)) {
-                SchoolAdmin schoolAdmin = schoolAdminMapper.selectOne(
-                        new LambdaQueryWrapper<SchoolAdmin>()
-                                .eq(SchoolAdmin::getUserId, userId)
-                                .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (schoolAdmin != null) {
-                    Long schoolId = schoolAdmin.getSchoolId();
-                    List<SchoolAdmin> schoolAdmins = schoolAdminMapper.selectList(
-                            new LambdaQueryWrapper<SchoolAdmin>()
-                                    .eq(SchoolAdmin::getSchoolId, schoolId)
-                                    .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                    );
-                    if (schoolAdmins != null && !schoolAdmins.isEmpty()) {
-                        List<Long> schoolAdminUserIds = schoolAdmins.stream()
-                                .map(SchoolAdmin::getUserId)
-                                .distinct()
-                                .collect(Collectors.toList());
-                        
-                        long enabledSchoolAdminCount = this.count(
-                                new LambdaQueryWrapper<UserInfo>()
-                                        .in(UserInfo::getUserId, schoolAdminUserIds)
-                                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        );
-                        
-                        if (enabledSchoolAdminCount <= 1) {
-                            return false;
-                        }
-                    }
-                }
+        }
+        
+        // 检查是否为学校管理员
+        if (roleCodes.contains(Constants.ROLE_SCHOOL_ADMIN)) {
+            if (!canDeleteSchoolAdmin(userId)) {
+                return false;
             }
-            
-            // 检查是否为企业管理员
-            if (roleCodes.contains(Constants.ROLE_ENTERPRISE_ADMIN)) {
-                Enterprise enterprise = enterpriseMapper.selectOne(
-                        new LambdaQueryWrapper<Enterprise>()
-                                .eq(Enterprise::getUserId, userId)
-                                .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (enterprise != null) {
-                    Long enterpriseId = enterprise.getEnterpriseId();
-                    List<Enterprise> enterprises = enterpriseMapper.selectList(
-                            new LambdaQueryWrapper<Enterprise>()
-                                    .eq(Enterprise::getEnterpriseId, enterpriseId)
-                                    .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                    );
-                    if (enterprises != null && !enterprises.isEmpty()) {
-                        List<Long> enterpriseUserIds = enterprises.stream()
-                                .map(Enterprise::getUserId)
-                                .filter(id -> id != null)
-                                .distinct()
-                                .collect(Collectors.toList());
-                        
-                        if (!enterpriseUserIds.isEmpty()) {
-                            long enabledEnterpriseAdminCount = this.count(
-                                    new LambdaQueryWrapper<UserInfo>()
-                                            .in(UserInfo::getUserId, enterpriseUserIds)
-                                            .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
-                                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            );
-                            
-                            if (enabledEnterpriseAdminCount <= 1) {
-                                return false;
-                            }
-                        }
-                    }
-                }
+        }
+        
+        // 检查是否为企业管理员
+        if (roleCodes.contains(Constants.ROLE_ENTERPRISE_ADMIN)) {
+            if (!canDeleteEnterpriseAdmin(userId)) {
+                return false;
             }
         }
         
         return true;
+    }
+    
+    /**
+     * 检查是否可以删除系统管理员
+     */
+    private boolean canDeleteSystemAdmin() {
+        Role systemAdminRole = roleService.getRoleByRoleCode(Constants.ROLE_SYSTEM_ADMIN);
+        if (systemAdminRole == null) {
+            return true;
+        }
+        
+        List<UserRole> systemAdminUserRoles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<UserRole>()
+                        .eq(UserRole::getRoleId, systemAdminRole.getRoleId())
+                        .eq(UserRole::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (systemAdminUserRoles == null || systemAdminUserRoles.isEmpty()) {
+            return true;
+        }
+        
+        List<Long> systemAdminUserIds = systemAdminUserRoles.stream()
+                .map(UserRole::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        long enabledSystemAdminCount = countEnabledUsers(systemAdminUserIds);
+        return enabledSystemAdminCount > 1;
+    }
+    
+    /**
+     * 检查是否可以删除学校管理员
+     */
+    private boolean canDeleteSchoolAdmin(Long userId) {
+        SchoolAdmin schoolAdmin = schoolAdminMapper.selectOne(
+                new LambdaQueryWrapper<SchoolAdmin>()
+                        .eq(SchoolAdmin::getUserId, userId)
+                        .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (schoolAdmin == null) {
+            return true;
+        }
+        
+        Long schoolId = schoolAdmin.getSchoolId();
+        List<SchoolAdmin> schoolAdmins = schoolAdminMapper.selectList(
+                new LambdaQueryWrapper<SchoolAdmin>()
+                        .eq(SchoolAdmin::getSchoolId, schoolId)
+                        .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (schoolAdmins == null || schoolAdmins.isEmpty()) {
+            return true;
+        }
+        
+        List<Long> schoolAdminUserIds = schoolAdmins.stream()
+                .map(SchoolAdmin::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        long enabledSchoolAdminCount = countEnabledUsers(schoolAdminUserIds);
+        return enabledSchoolAdminCount > 1;
+    }
+    
+    /**
+     * 检查是否可以删除企业管理员
+     */
+    private boolean canDeleteEnterpriseAdmin(Long userId) {
+        Enterprise enterprise = enterpriseMapper.selectOne(
+                new LambdaQueryWrapper<Enterprise>()
+                        .eq(Enterprise::getUserId, userId)
+                        .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (enterprise == null) {
+            return true;
+        }
+        
+        Long enterpriseId = enterprise.getEnterpriseId();
+        List<Enterprise> enterprises = enterpriseMapper.selectList(
+                new LambdaQueryWrapper<Enterprise>()
+                        .eq(Enterprise::getEnterpriseId, enterpriseId)
+                        .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (enterprises == null || enterprises.isEmpty()) {
+            return true;
+        }
+        
+        List<Long> enterpriseUserIds = enterprises.stream()
+                .map(Enterprise::getUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        if (enterpriseUserIds.isEmpty()) {
+            return true;
+        }
+        
+        long enabledEnterpriseAdminCount = countEnabledUsers(enterpriseUserIds);
+        return enabledEnterpriseAdminCount > 1;
+    }
+    
+    /**
+     * 统计启用的用户数量
+     */
+    private long countEnabledUsers(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return 0;
+        }
+        
+        return this.count(
+                new LambdaQueryWrapper<UserInfo>()
+                        .in(UserInfo::getUserId, userIds)
+                        .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
     }
     
     @Override
@@ -805,7 +754,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         UserRole userRole = new UserRole();
         userRole.setUserId(userId);
         userRole.setRoleId(role.getRoleId());
-        userRole.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(userRole);
         
         boolean success = userRoleMapper.insert(userRole) > 0;
         
@@ -1395,8 +1344,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (!StringUtils.hasText(newPassword)) {
             throw new BusinessException("新密码不能为空");
         }
-        if (newPassword.length() < 6 || newPassword.length() > 20) {
-            throw new BusinessException("新密码长度必须在6-20个字符之间");
+        if (newPassword.length() < Constants.PASSWORD_MIN_LENGTH || newPassword.length() > Constants.PASSWORD_MAX_LENGTH) {
+            throw new BusinessException("新密码长度必须在" + Constants.PASSWORD_MIN_LENGTH + "-" + Constants.PASSWORD_MAX_LENGTH + "个字符之间");
         }
         
         // 获取当前用户

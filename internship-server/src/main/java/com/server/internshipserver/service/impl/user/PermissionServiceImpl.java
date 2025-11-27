@@ -55,7 +55,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
     @Override
     public List<Permission> getAllEnabledPermissions() {
         LambdaQueryWrapper<Permission> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Permission::getStatus, 1)
+        wrapper.eq(Permission::getStatus, com.server.internshipserver.common.enums.UserStatus.ENABLED.getCode())
                .eq(Permission::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                .orderByAsc(Permission::getPermissionId);
         return this.list(wrapper);

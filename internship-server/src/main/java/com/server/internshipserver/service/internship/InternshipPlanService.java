@@ -3,6 +3,7 @@ package com.server.internshipserver.service.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipPlan;
+import com.server.internshipserver.domain.internship.dto.InternshipPlanQueryDTO;
 
 /**
  * 实习计划管理Service接口
@@ -33,16 +34,10 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
     /**
      * 分页查询实习计划列表
      * @param page 分页参数
-     * @param planName 计划名称（可选）
-     * @param semesterId 学期ID（可选）
-     * @param schoolId 学校ID（可选）
-     * @param collegeId 学院ID（可选）
-     * @param majorId 专业ID（可选）
-     * @param status 状态（可选）
+     * @param queryDTO 查询条件
      * @return 实习计划列表
      */
-    Page<InternshipPlan> getPlanPage(Page<InternshipPlan> page, String planName, Long semesterId, 
-                                     Long schoolId, Long collegeId, Long majorId, Integer status);
+    Page<InternshipPlan> getPlanPage(Page<InternshipPlan> page, InternshipPlanQueryDTO queryDTO);
     
     /**
      * 提交审核

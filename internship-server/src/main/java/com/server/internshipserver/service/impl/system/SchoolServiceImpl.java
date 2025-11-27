@@ -4,13 +4,15 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
-import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.service.system.SchoolService;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,27 +31,15 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
     @Transactional(rollbackFor = Exception.class)
     public School addSchool(School school) {
         // 参数校验
-        if (!StringUtils.hasText(school.getSchoolName())) {
-            throw new BusinessException("学校名称不能为空");
-        }
-        if (!StringUtils.hasText(school.getSchoolCode())) {
-            throw new BusinessException("学校代码不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(school.getSchoolName(), "学校名称");
+        EntityValidationUtil.validateStringNotBlank(school.getSchoolCode(), "学校代码");
         
         // 检查学校代码是否已存在
-        LambdaQueryWrapper<School> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(School::getSchoolCode, school.getSchoolCode())
-               .eq(School::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        School existSchool = this.getOne(wrapper);
-        if (existSchool != null) {
-            throw new BusinessException("学校代码已存在");
-        }
+        UniquenessValidationUtil.validateUnique(this, School::getSchoolCode, school.getSchoolCode(), 
+                School::getDeleteFlag, "学校代码");
         
         // 设置默认值
-        if (school.getStatus() == null) {
-            school.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        school.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(school);
         
         // 保存
         this.save(school);
@@ -68,14 +58,8 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         // 如果修改了学校代码，检查新代码是否已存在
         if (StringUtils.hasText(school.getSchoolCode()) 
                 && !school.getSchoolCode().equals(existSchool.getSchoolCode())) {
-            LambdaQueryWrapper<School> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(School::getSchoolCode, school.getSchoolCode())
-                   .ne(School::getSchoolId, school.getSchoolId())
-                   .eq(School::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            School codeExistSchool = this.getOne(wrapper);
-            if (codeExistSchool != null) {
-                throw new BusinessException("学校代码已存在");
-            }
+            UniquenessValidationUtil.validateUniqueExcludeId(this, School::getSchoolCode, school.getSchoolCode(),
+                    School::getSchoolId, school.getSchoolId(), School::getDeleteFlag, "学校代码");
         }
         
         // 更新
@@ -103,10 +87,7 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
     
     @Override
     public Page<School> getSchoolPage(Page<School> page, String schoolName, String schoolCode) {
-        LambdaQueryWrapper<School> wrapper = new LambdaQueryWrapper<>();
-        
-        // 只查询未删除的数据
-        wrapper.eq(School::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<School> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(School::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(schoolName)) {

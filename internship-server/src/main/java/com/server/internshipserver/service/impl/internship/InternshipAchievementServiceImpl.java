@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipAchievement;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -78,9 +81,6 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         
         // 获取当前登录学生信息
         UserInfo user = UserUtil.getCurrentUser(userMapper);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
         
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
@@ -99,8 +99,8 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         // 设置成果信息
         achievement.setStudentId(student.getStudentId());
         achievement.setUserId(user.getUserId());
-        achievement.setReviewStatus(0); // 待审核
-        achievement.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        achievement.setReviewStatus(ReviewStatus.PENDING.getCode()); // 待审核
+        EntityDefaultValueUtil.setDefaultValues(achievement);
         
         // 保存
         this.save(achievement);
@@ -129,8 +129,17 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             throw new BusinessException("只有待审核状态的成果才能修改");
         }
         
-        // 更新
-        this.updateById(achievement);
+        // 使用LambdaUpdateWrapper确保null值也能正确更新
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<InternshipAchievement> updateWrapper = 
+            new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipAchievement::getAchievementId, achievement.getAchievementId())
+                    .set(InternshipAchievement::getAchievementName, achievement.getAchievementName())
+                    .set(InternshipAchievement::getAchievementType, achievement.getAchievementType())
+                    .set(InternshipAchievement::getAchievementDescription, achievement.getAchievementDescription())
+                    .set(InternshipAchievement::getFileUrls, achievement.getFileUrls()) // 允许设置为null
+                    .set(InternshipAchievement::getSubmitDate, achievement.getSubmitDate());
+        
+        this.update(updateWrapper);
         return this.getById(achievement.getAchievementId());
     }
     
@@ -152,10 +161,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
     @Override
     public Page<InternshipAchievement> getAchievementPage(Page<InternshipAchievement> page, Long studentId, Long applyId,
                                                           String achievementType, Integer reviewStatus) {
-        LambdaQueryWrapper<InternshipAchievement> wrapper = new LambdaQueryWrapper<>();
-        
-        // 只查询未删除的数据
-        wrapper.eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<InternshipAchievement> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(InternshipAchievement::getDeleteFlag);
         
         // 数据权限过滤
         applyDataPermissionFilter(wrapper);

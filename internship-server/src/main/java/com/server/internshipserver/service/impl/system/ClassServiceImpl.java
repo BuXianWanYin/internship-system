@@ -6,10 +6,13 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
-import com.server.internshipserver.common.utils.EntityValidationUtil;
-import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.common.utils.UserUtil;
+import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
@@ -70,34 +73,19 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     @Transactional(rollbackFor = Exception.class)
     public Class addClass(Class classInfo) {
         // 参数校验
-        if (!StringUtils.hasText(classInfo.getClassName())) {
-            throw new BusinessException("班级名称不能为空");
-        }
-        if (!StringUtils.hasText(classInfo.getClassCode())) {
-            throw new BusinessException("班级代码不能为空");
-        }
-        if (classInfo.getMajorId() == null) {
-            throw new BusinessException("所属专业ID不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(classInfo.getClassName(), "班级名称");
+        EntityValidationUtil.validateStringNotBlank(classInfo.getClassCode(), "班级代码");
+        EntityValidationUtil.validateIdNotNull(classInfo.getMajorId(), "所属专业ID");
         if (classInfo.getEnrollmentYear() == null) {
             throw new BusinessException("入学年份不能为空");
         }
         
         // 检查班级代码在同一专业内是否已存在
-        LambdaQueryWrapper<Class> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Class::getClassCode, classInfo.getClassCode())
-               .eq(Class::getMajorId, classInfo.getMajorId())
-               .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        Class existClass = this.getOne(wrapper);
-        if (existClass != null) {
-            throw new BusinessException("该专业下班级代码已存在");
-        }
+        UniquenessValidationUtil.validateUniqueInScope(this, Class::getClassCode, classInfo.getClassCode(),
+                Class::getMajorId, classInfo.getMajorId(), Class::getDeleteFlag, "班级代码", "专业");
         
         // 设置默认值
-        if (classInfo.getStatus() == null) {
-            classInfo.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        classInfo.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(classInfo);
         if (classInfo.getShareCodeUseCount() == null) {
             classInfo.setShareCodeUseCount(0);
         }
@@ -150,7 +138,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         LambdaQueryWrapper<Class> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Class::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(className)) {
@@ -234,7 +222,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             return;
         }
         
-            // 学院负责人：只能查看本院的班级（通过专业关联）
+        // 学院负责人：只能查看本院的班级（通过专业关联）
         if (currentUserCollegeId != null) {
             List<Long> majorIds = getMajorIdsByCollegeId(currentUserCollegeId);
             if (EntityValidationUtil.isNotEmpty(majorIds)) {
@@ -245,7 +233,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             return;
         }
         
-            // 学校管理员：只能查看本校的班级（通过专业和学院关联）
+        // 学校管理员：只能查看本校的班级（通过专业和学院关联）
         if (currentUserSchoolId != null) {
             List<Long> majorIds = getMajorIdsBySchoolId(currentUserSchoolId);
             if (EntityValidationUtil.isNotEmpty(majorIds)) {
@@ -279,34 +267,34 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
      */
     private List<Long> getMajorIdsBySchoolId(Long schoolId) {
         // 先查询该学校下的学院ID列表
-            List<College> colleges = collegeMapper.selectList(
-                    new LambdaQueryWrapper<College>()
+        List<College> colleges = collegeMapper.selectList(
+                new LambdaQueryWrapper<College>()
                         .eq(College::getSchoolId, schoolId)
-                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(College::getCollegeId)
-            );
+                        .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(College::getCollegeId)
+        );
         if (colleges == null || colleges.isEmpty()) {
             return null;
         }
         
-                List<Long> collegeIds = colleges.stream()
-                        .map(College::getCollegeId)
-                        .collect(Collectors.toList());
+        List<Long> collegeIds = colleges.stream()
+                .map(College::getCollegeId)
+                .collect(Collectors.toList());
         
-                // 再查询这些学院的专业ID列表
-                List<Major> majors = majorService.list(
-                        new LambdaQueryWrapper<Major>()
-                                .in(Major::getCollegeId, collegeIds)
-                                .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Major::getMajorId)
-                );
+        // 再查询这些学院的专业ID列表
+        List<Major> majors = majorService.list(
+                new LambdaQueryWrapper<Major>()
+                        .in(Major::getCollegeId, collegeIds)
+                        .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(Major::getMajorId)
+        );
         if (majors == null || majors.isEmpty()) {
             return null;
         }
         
         return majors.stream()
-                            .map(Major::getMajorId)
-                            .collect(Collectors.toList());
+                .map(Major::getMajorId)
+                .collect(Collectors.toList());
     }
     
     @Override

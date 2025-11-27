@@ -7,10 +7,13 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.ExcelUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.domain.user.dto.StudentImportDTO;
 import com.server.internshipserver.domain.user.dto.StudentImportResult;
+import com.server.internshipserver.domain.user.dto.StudentQueryDTO;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
@@ -41,24 +44,36 @@ import java.util.List;
 @Service
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
     
-    @Autowired
-    @Lazy
-    private UserService userService;
+    private final UserService userService;
+    private final ClassService classService;
+    private final MajorService majorService;
+    private final CollegeService collegeService;
+    private final EnterpriseMapper enterpriseMapper;
+    private final DataPermissionUtil dataPermissionUtil;
     
-    @Autowired
-    private ClassService classService;
-    
-    @Autowired
-    private MajorService majorService;
-    
-    @Autowired
-    private CollegeService collegeService;
-    
-    @Autowired
-    private EnterpriseMapper enterpriseMapper;
-    
-    @Autowired
-    private DataPermissionUtil dataPermissionUtil;
+    /**
+     * 构造函数注入，使用@Lazy解决循环依赖
+     * @param userService 用户服务（延迟加载，解决循环依赖）
+     * @param classService 班级服务
+     * @param majorService 专业服务
+     * @param collegeService 学院服务
+     * @param enterpriseMapper 企业Mapper
+     * @param dataPermissionUtil 数据权限工具
+     */
+    public StudentServiceImpl(
+            @Lazy UserService userService,
+            ClassService classService,
+            MajorService majorService,
+            CollegeService collegeService,
+            EnterpriseMapper enterpriseMapper,
+            DataPermissionUtil dataPermissionUtil) {
+        this.userService = userService;
+        this.classService = classService;
+        this.majorService = majorService;
+        this.collegeService = collegeService;
+        this.enterpriseMapper = enterpriseMapper;
+        this.dataPermissionUtil = dataPermissionUtil;
+    }
     
     
     @Override
@@ -80,9 +95,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             return null;
         }
         
-        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Student::getStudentNo, studentNo)
-               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<Student> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Student::getDeleteFlag);
+        wrapper.eq(Student::getStudentNo, studentNo);
         return this.getOne(wrapper);
     }
     
@@ -90,15 +104,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Transactional(rollbackFor = Exception.class)
     public Student addStudent(Student student) {
         // 参数校验
-        if (student.getUserId() == null) {
-            throw new BusinessException("用户ID不能为空");
-        }
-        if (!StringUtils.hasText(student.getStudentNo())) {
-            throw new BusinessException("学号不能为空");
-        }
-        if (student.getClassId() == null) {
-            throw new BusinessException("班级ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(student.getUserId(), "用户ID");
+        EntityValidationUtil.validateStringNotBlank(student.getStudentNo(), "学号");
+        EntityValidationUtil.validateIdNotNull(student.getClassId(), "班级ID");
         if (student.getEnrollmentYear() == null) {
             throw new BusinessException("入学年份不能为空");
         }
@@ -116,10 +124,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
         
         // 设置默认值
-        if (student.getStatus() == null) {
-            student.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        student.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(student);
         
         // 保存
         this.save(student);
@@ -160,42 +165,38 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     }
     
     @Override
-    public Page<Student> getStudentPage(Page<Student> page, String studentNo, Long classId, 
-                                         Long majorId, Long collegeId, Long schoolId, Integer status, Integer enrollmentYear) {
+    public Page<Student> getStudentPage(Page<Student> page, StudentQueryDTO queryDTO) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
         
         // 条件查询
-        if (StringUtils.hasText(studentNo)) {
-            wrapper.like(Student::getStudentNo, studentNo);
-        }
-        if (classId != null) {
-            wrapper.eq(Student::getClassId, classId);
-        }
-        if (majorId != null) {
-            wrapper.eq(Student::getMajorId, majorId);
-        }
-        if (collegeId != null) {
-            wrapper.eq(Student::getCollegeId, collegeId);
-        }
-        if (schoolId != null) {
-            wrapper.eq(Student::getSchoolId, schoolId);
-        }
-        if (status != null) {
-            wrapper.eq(Student::getStatus, status);
-        }
-        if (enrollmentYear != null) {
-            wrapper.eq(Student::getEnrollmentYear, enrollmentYear);
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getStudentNo())) {
+                wrapper.like(Student::getStudentNo, queryDTO.getStudentNo());
+            }
+            if (queryDTO.getClassId() != null) {
+                wrapper.eq(Student::getClassId, queryDTO.getClassId());
+            }
+            if (queryDTO.getMajorId() != null) {
+                wrapper.eq(Student::getMajorId, queryDTO.getMajorId());
+            }
+            if (queryDTO.getCollegeId() != null) {
+                wrapper.eq(Student::getCollegeId, queryDTO.getCollegeId());
+            }
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(Student::getSchoolId, queryDTO.getSchoolId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(Student::getStatus, queryDTO.getStatus());
+            }
+            if (queryDTO.getEnrollmentYear() != null) {
+                wrapper.eq(Student::getEnrollmentYear, queryDTO.getEnrollmentYear());
+            }
         }
         
         // 数据权限过滤：根据用户角色自动添加查询条件
-        // 系统管理员：不添加过滤条件
-        // 学校管理员：添加 school_id = 当前用户学校ID
-        // 学院负责人：添加 college_id = 当前用户学院ID
-        // 班主任：添加 class_id IN 当前用户管理的班级ID列表（支持多班级）
-        // 学生：添加 user_id = 当前用户ID
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
@@ -547,7 +548,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
         
         // 只查询待审核的学生（status=0，禁用状态）
         wrapper.eq(Student::getStatus, UserStatus.DISABLED.getCode());

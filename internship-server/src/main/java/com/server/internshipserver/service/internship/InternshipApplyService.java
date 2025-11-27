@@ -3,6 +3,10 @@ package com.server.internshipserver.service.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.AuditApplyDTO;
+import com.server.internshipserver.domain.internship.dto.AuditUnbindDTO;
+import com.server.internshipserver.domain.internship.dto.FilterApplyDTO;
+import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
 
 /**
  * 实习申请管理Service接口
@@ -40,33 +44,26 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     /**
      * 分页查询申请列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param enterpriseId 企业ID（可选）
-     * @param postId 岗位ID（可选）
-     * @param applyType 申请类型（可选）
-     * @param status 状态（可选）
+     * @param queryDTO 查询条件
      * @return 申请列表
      */
-    Page<InternshipApply> getApplyPage(Page<InternshipApply> page, Long studentId, Long enterpriseId,
-                                       Long postId, Integer applyType, Integer status);
+    Page<InternshipApply> getApplyPage(Page<InternshipApply> page, InternshipApplyQueryDTO queryDTO);
     
     /**
      * 审核实习申请（自主实习）
      * @param applyId 申请ID
-     * @param auditStatus 审核状态（1-已通过，2-已拒绝）
-     * @param auditOpinion 审核意见
+     * @param auditDTO 审核信息
      * @return 是否成功
      */
-    boolean auditApply(Long applyId, Integer auditStatus, String auditOpinion);
+    boolean auditApply(Long applyId, AuditApplyDTO auditDTO);
     
     /**
      * 企业筛选操作
      * @param applyId 申请ID
-     * @param action 操作类型（1-标记感兴趣，2-安排面试，3-录用，4-拒绝）
-     * @param comment 备注
+     * @param filterDTO 筛选信息
      * @return 是否成功
      */
-    boolean filterApply(Long applyId, Integer action, String comment);
+    boolean filterApply(Long applyId, FilterApplyDTO filterDTO);
     
     /**
      * 取消申请
@@ -118,11 +115,10 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     /**
      * 审核解绑申请（班主任/学院负责人）
      * @param applyId 申请ID
-     * @param auditStatus 审核状态（2-已解绑，3-解绑被拒绝）
-     * @param auditOpinion 审核意见
+     * @param auditDTO 审核信息
      * @return 是否成功
      */
-    boolean auditUnbind(Long applyId, Integer auditStatus, String auditOpinion);
+    boolean auditUnbind(Long applyId, AuditUnbindDTO auditDTO);
     
     /**
      * 获取当前学生的实习申请（已确认上岗的）

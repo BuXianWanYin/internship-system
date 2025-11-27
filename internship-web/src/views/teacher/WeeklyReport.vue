@@ -403,6 +403,23 @@ const handlePageChange = () => {
   loadData()
 }
 
+// 获取内容预览（用于表格显示，去除HTML标签，只显示纯文本）
+const getContentPreview = (htmlContent) => {
+  if (!htmlContent) return '-'
+  // 创建一个临时div来解析HTML
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = htmlContent
+  // 获取纯文本内容
+  let text = tempDiv.textContent || tempDiv.innerText || ''
+  // 去除多余的空白字符
+  text = text.replace(/\s+/g, ' ').trim()
+  // 限制长度，最多显示100个字符
+  if (text.length > 100) {
+    text = text.substring(0, 100) + '...'
+  }
+  return text
+}
+
 // 合并周报内容用于显示
 const getMergedReportContent = (data) => {
   if (!data) return '-'

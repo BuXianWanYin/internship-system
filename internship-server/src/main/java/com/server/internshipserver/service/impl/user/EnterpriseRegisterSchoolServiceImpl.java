@@ -3,9 +3,12 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.AuditStatus;
+import com.server.internshipserver.common.enums.CooperationStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.user.Enterprise;
@@ -50,14 +53,13 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         if (enterpriseId == null) {
             throw new BusinessException("企业ID不能为空");
         }
-        if (schoolIds == null || schoolIds.isEmpty()) {
+        if (EntityValidationUtil.isEmpty(schoolIds)) {
             throw new BusinessException("至少选择一个意向合作院校");
         }
         
         // 删除该企业之前的注册申请记录（如果有）
-        LambdaQueryWrapper<EnterpriseRegisterSchool> deleteWrapper = new LambdaQueryWrapper<>();
-        deleteWrapper.eq(EnterpriseRegisterSchool::getEnterpriseId, enterpriseId)
-                    .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<EnterpriseRegisterSchool> deleteWrapper = QueryWrapperUtil.buildNotDeletedWrapper(EnterpriseRegisterSchool::getDeleteFlag);
+        deleteWrapper.eq(EnterpriseRegisterSchool::getEnterpriseId, enterpriseId);
         List<EnterpriseRegisterSchool> existingRecords = this.list(deleteWrapper);
         if (!existingRecords.isEmpty()) {
             existingRecords.forEach(record -> {
@@ -73,7 +75,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                     record.setEnterpriseId(enterpriseId);
                     record.setSchoolId(schoolId);
                     record.setAuditStatus(AuditStatus.PENDING.getCode()); // 待审核
-                    record.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+                    EntityDefaultValueUtil.setDefaultValues(record);
                     return record;
                 })
                 .collect(Collectors.toList());
@@ -158,7 +160,7 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                 cooperation.setEnterpriseId(record.getEnterpriseId());
                 cooperation.setSchoolId(record.getSchoolId());
                 cooperation.setCooperationType("实习基地");
-                cooperation.setCooperationStatus(1); // 进行中
+                cooperation.setCooperationStatus(CooperationStatus.IN_PROGRESS.getCode());
                 cooperation.setStartTime(LocalDateTime.now());
                 cooperationService.addCooperation(cooperation);
             }

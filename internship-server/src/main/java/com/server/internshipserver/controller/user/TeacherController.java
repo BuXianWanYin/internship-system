@@ -63,22 +63,7 @@ public class TeacherController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> addTeacher(@RequestBody TeacherAddDTO teacherAddDTO) {
-        // 如果提供了userId，使用原有方法（兼容已有接口，通过Teacher对象）
-        // 这里统一使用新方法，自动创建用户
-        Teacher result = teacherService.addTeacherWithUser(
-                teacherAddDTO.getTeacherNo(),
-                teacherAddDTO.getRealName(),
-                teacherAddDTO.getIdCard(),
-                teacherAddDTO.getPhone(),
-                teacherAddDTO.getEmail(),
-                teacherAddDTO.getCollegeId(),
-                teacherAddDTO.getSchoolId(),
-                teacherAddDTO.getTitle(),
-                teacherAddDTO.getDepartment(),
-                teacherAddDTO.getRoleCode(),
-                teacherAddDTO.getPassword(),
-                teacherAddDTO.getStatus()
-        );
+        Teacher result = teacherService.addTeacherWithUser(teacherAddDTO);
         return Result.success("添加成功", result);
     }
     
@@ -86,21 +71,7 @@ public class TeacherController {
     @PutMapping
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<Teacher> updateTeacher(@RequestBody TeacherUpdateDTO teacherUpdateDTO) {
-        Teacher result = teacherService.updateTeacherWithUser(
-                teacherUpdateDTO.getTeacherId(),
-                teacherUpdateDTO.getUserId(),
-                teacherUpdateDTO.getTeacherNo(),
-                teacherUpdateDTO.getRealName(),
-                teacherUpdateDTO.getIdCard(),
-                teacherUpdateDTO.getPhone(),
-                teacherUpdateDTO.getEmail(),
-                teacherUpdateDTO.getCollegeId(),
-                teacherUpdateDTO.getSchoolId(),
-                teacherUpdateDTO.getTitle(),
-                teacherUpdateDTO.getDepartment(),
-                teacherUpdateDTO.getRoleCode(),
-                teacherUpdateDTO.getStatus()
-        );
+        Teacher result = teacherService.updateTeacherWithUser(teacherUpdateDTO);
         return Result.success("更新成功", result);
     }
     

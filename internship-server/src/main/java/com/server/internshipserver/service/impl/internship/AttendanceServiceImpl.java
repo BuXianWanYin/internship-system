@@ -10,7 +10,9 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.StudentConfirmStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.Attendance;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -105,17 +107,15 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         // 设置考勤信息
         attendance.setUserId(apply.getUserId());
         attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode()); // 待确认
-        attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(attendance);
         
         // 设置确认人ID
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user != null) {
-                attendance.setConfirmUserId(user.getUserId());
-                attendance.setConfirmStatus(1); // 已确认
-                attendance.setConfirmTime(LocalDateTime.now());
-            }
+            attendance.setConfirmUserId(user.getUserId());
+            attendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+            attendance.setConfirmTime(LocalDateTime.now());
         }
-        
         // 保存
         this.save(attendance);
         return attendance;
@@ -221,7 +221,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Attendance::getDeleteFlag);
         
         // 数据权限过滤
         // 系统管理员不添加限制
@@ -304,8 +304,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                     }
                 }
             }
-        }
-        
+
         // 条件查询
         if (studentId != null) {
             wrapper.eq(Attendance::getStudentId, studentId);
@@ -398,7 +397,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         if (user != null) {
                 attendance.setConfirmUserId(user.getUserId());
             }
-        }
+
         
         return this.updateById(attendance);
     }
@@ -434,7 +433,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     public AttendanceStatistics getAttendanceStatistics(Long studentId, Long applyId, 
                                                          java.time.LocalDate startDate, java.time.LocalDate endDate) {
         LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Attendance::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Attendance::getDeleteFlag);
         
         // 数据权限过滤
         String username = UserUtil.getCurrentUsername();
@@ -485,25 +484,18 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         for (Attendance attendance : attendanceList) {
             Integer type = attendance.getAttendanceType();
             if (type != null) {
-                switch (type) {
-                    case 1: // 正常
-                        normalDays++;
-                        break;
-                    case 2: // 迟到
-                        lateDays++;
-                        break;
-                    case 3: // 早退
-                        earlyLeaveDays++;
-                        break;
-                    case 4: // 请假
-                        leaveDays++;
-                        break;
-                    case 5: // 缺勤
-                        absentDays++;
-                        break;
-                    case 6: // 休息
-                        restDays++;
-                        break;
+                if (type.equals(AttendanceType.ATTENDANCE.getCode())) {
+                    normalDays++;
+                } else if (type.equals(AttendanceType.LATE.getCode())) {
+                    lateDays++;
+                } else if (type.equals(AttendanceType.EARLY_LEAVE.getCode())) {
+                    earlyLeaveDays++;
+                } else if (type.equals(AttendanceType.LEAVE.getCode())) {
+                    leaveDays++;
+                } else if (type.equals(AttendanceType.ABSENT.getCode())) {
+                    absentDays++;
+                } else if (type.equals(AttendanceType.REST.getCode())) {
+                    restDays++;
                 }
             }
             // 累计工作时长
@@ -593,15 +585,15 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             existAttendance.setCheckInTime(now);
             // 如果考勤类型是缺勤，改为出勤
             if (existAttendance.getAttendanceType() != null && existAttendance.getAttendanceType().equals(AttendanceType.ABSENT.getCode())) {
-                existAttendance.setAttendanceType(1); // 改为出勤
+                existAttendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
             } else if (existAttendance.getAttendanceType() == null) {
                 // 判断是否迟到（假设9:00为上班时间）
                 LocalTime checkInTime = now.toLocalTime();
                 LocalTime workStartTime = LocalTime.of(9, 0);
                 if (checkInTime.isAfter(workStartTime)) {
-                    existAttendance.setAttendanceType(2); // 迟到
+                    existAttendance.setAttendanceType(AttendanceType.LATE.getCode());
                 } else {
-                    existAttendance.setAttendanceType(1); // 正常
+                    existAttendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
                 }
             }
             this.updateById(existAttendance);
@@ -614,16 +606,16 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setApplyId(apply.getApplyId());
             attendance.setAttendanceDate(attendanceDate);
             attendance.setCheckInTime(now);
-            attendance.setConfirmStatus(0); // 待确认
-            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            EntityDefaultValueUtil.setDefaultValues(attendance);
             
             // 判断是否迟到（假设9:00为上班时间）
             LocalTime checkInTime = now.toLocalTime();
             LocalTime workStartTime = LocalTime.of(9, 0);
             if (checkInTime.isAfter(workStartTime)) {
-                attendance.setAttendanceType(2); // 迟到
+                attendance.setAttendanceType(AttendanceType.LATE.getCode());
             } else {
-                attendance.setAttendanceType(1); // 正常
+                attendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
             }
             
             this.save(attendance);
@@ -697,7 +689,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             LocalTime checkOutTime = now.toLocalTime();
             LocalTime workEndTime = LocalTime.of(18, 0);
             if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() != null && attendance.getAttendanceType().equals(AttendanceType.ATTENDANCE.getCode())) {
-                attendance.setAttendanceType(3); // 早退
+                attendance.setAttendanceType(AttendanceType.EARLY_LEAVE.getCode());
             }
         }
         
@@ -766,10 +758,10 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus().equals(ConfirmStatus.CONFIRMED.getCode())) {
                 throw new BusinessException("该日期考勤已确认，无法修改为请假");
             }
-            existAttendance.setAttendanceType(4); // 请假
+            existAttendance.setAttendanceType(AttendanceType.LEAVE.getCode());
             existAttendance.setLeaveType(leaveType);
             existAttendance.setLeaveReason(leaveReason);
-            existAttendance.setConfirmStatus(0); // 待确认
+            existAttendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
             this.updateById(existAttendance);
             return existAttendance;
         } else {
@@ -779,11 +771,11 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setUserId(userId);
             attendance.setApplyId(apply.getApplyId());
             attendance.setAttendanceDate(attendanceDate);
-            attendance.setAttendanceType(4); // 请假
+            attendance.setAttendanceType(AttendanceType.LEAVE.getCode());
             attendance.setLeaveType(leaveType);
             attendance.setLeaveReason(leaveReason);
-            attendance.setConfirmStatus(0); // 待确认
-            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            EntityDefaultValueUtil.setDefaultValues(attendance);
             
             this.save(attendance);
             return attendance;
@@ -845,8 +837,8 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             if (existAttendance.getConfirmStatus() != null && existAttendance.getConfirmStatus().equals(ConfirmStatus.CONFIRMED.getCode())) {
                 throw new BusinessException("该日期考勤已确认，无法修改为休息");
             }
-            existAttendance.setAttendanceType(6); // 休息
-            existAttendance.setConfirmStatus(0); // 待确认
+            existAttendance.setAttendanceType(AttendanceType.REST.getCode());
+            existAttendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
             this.updateById(existAttendance);
             return existAttendance;
         } else {
@@ -856,9 +848,9 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setUserId(userId);
             attendance.setApplyId(apply.getApplyId());
             attendance.setAttendanceDate(attendanceDate);
-            attendance.setAttendanceType(6); // 休息
-            attendance.setConfirmStatus(0); // 待确认
-            attendance.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            attendance.setAttendanceType(AttendanceType.REST.getCode());
+            attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            EntityDefaultValueUtil.setDefaultValues(attendance);
             
             this.save(attendance);
             return attendance;

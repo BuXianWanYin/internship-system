@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
-import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.system.Major;
@@ -53,31 +55,16 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
     @Transactional(rollbackFor = Exception.class)
     public College addCollege(College college) {
         // 参数校验
-        if (!StringUtils.hasText(college.getCollegeName())) {
-            throw new BusinessException("学院名称不能为空");
-        }
-        if (!StringUtils.hasText(college.getCollegeCode())) {
-            throw new BusinessException("学院代码不能为空");
-        }
-        if (college.getSchoolId() == null) {
-            throw new BusinessException("所属学校ID不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(college.getCollegeName(), "学院名称");
+        EntityValidationUtil.validateStringNotBlank(college.getCollegeCode(), "学院代码");
+        EntityValidationUtil.validateIdNotNull(college.getSchoolId(), "所属学校ID");
         
         // 检查学院代码在同一学校内是否已存在
-        LambdaQueryWrapper<College> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(College::getCollegeCode, college.getCollegeCode())
-               .eq(College::getSchoolId, college.getSchoolId())
-               .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        College existCollege = this.getOne(wrapper);
-        if (existCollege != null) {
-            throw new BusinessException("该学校下学院代码已存在");
-        }
+        UniquenessValidationUtil.validateUniqueInScope(this, College::getCollegeCode, college.getCollegeCode(),
+                College::getSchoolId, college.getSchoolId(), College::getDeleteFlag, "学院代码", "学校");
         
         // 设置默认值
-        if (college.getStatus() == null) {
-            college.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        college.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(college);
         
         // 如果指定了院长用户ID，填充院长姓名
         if (college.getDeanUserId() != null) {
@@ -162,7 +149,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         LambdaQueryWrapper<College> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, College::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(collegeName)) {

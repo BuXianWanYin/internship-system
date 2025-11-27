@@ -3,6 +3,8 @@ package com.server.internshipserver.service.user;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.Teacher;
+import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
+import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
 
 import java.util.List;
 
@@ -34,23 +36,10 @@ public interface TeacherService extends IService<Teacher> {
     
     /**
      * 添加教师（自动创建用户）
-     * @param teacherNo 工号
-     * @param realName 真实姓名
-     * @param idCard 身份证号
-     * @param phone 手机号
-     * @param email 邮箱
-     * @param collegeId 所属学院ID
-     * @param schoolId 所属学校ID
-     * @param title 职称
-     * @param department 所属学院
-     * @param roleCode 角色代码（可选，如：ROLE_CLASS_TEACHER、ROLE_COLLEGE_LEADER）
-     * @param password 初始密码
-     * @param status 状态
+     * @param addDTO 教师添加信息
      * @return 添加的教师信息
      */
-    Teacher addTeacherWithUser(String teacherNo, String realName, String idCard, String phone, 
-                                String email, Long collegeId, Long schoolId, String title, 
-                                String department, String roleCode, String password, Integer status);
+    Teacher addTeacherWithUser(TeacherAddDTO addDTO);
     
     /**
      * 更新教师信息
@@ -61,24 +50,10 @@ public interface TeacherService extends IService<Teacher> {
     
     /**
      * 更新教师信息（同时更新用户信息）
-     * @param teacherId 教师ID
-     * @param userId 用户ID
-     * @param teacherNo 工号
-     * @param realName 真实姓名
-     * @param idCard 身份证号
-     * @param phone 手机号
-     * @param email 邮箱
-     * @param collegeId 所属学院ID
-     * @param schoolId 所属学校ID
-     * @param title 职称
-     * @param department 所属学院
-     * @param roleCode 角色代码（可选，如：ROLE_CLASS_TEACHER、ROLE_COLLEGE_LEADER）
-     * @param status 状态
+     * @param updateDTO 教师更新信息
      * @return 更新后的教师信息
      */
-    Teacher updateTeacherWithUser(Long teacherId, Long userId, String teacherNo, String realName,
-                                  String idCard, String phone, String email, Long collegeId,
-                                  Long schoolId, String title, String department, String roleCode, Integer status);
+    Teacher updateTeacherWithUser(TeacherUpdateDTO updateDTO);
     
     /**
      * 根据ID查询教师详情

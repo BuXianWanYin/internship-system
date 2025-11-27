@@ -9,10 +9,13 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.InternshipWeeklyReportQueryDTO;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
@@ -92,9 +95,6 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 获取当前登录学生信息
         UserInfo user = UserUtil.getCurrentUser(userMapper);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
         
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
@@ -123,8 +123,8 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         // 设置周报信息
         report.setStudentId(student.getStudentId());
         report.setUserId(user.getUserId());
-        report.setReviewStatus(0); // 未批阅
-        report.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        report.setReviewStatus(ReviewStatus.PENDING.getCode()); // 未批阅
+        EntityDefaultValueUtil.setDefaultValues(report);
         
         // 保存
         this.save(report);
@@ -144,10 +144,8 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 数据权限：学生只能修改自己的周报
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(existReport.getUserId())) {
-                throw new BusinessException("无权修改该周报");
-            }
+        if (user != null && !user.getUserId().equals(existReport.getUserId())) {
+            throw new BusinessException("无权修改该周报");
         }
         
         // 只有未批阅的周报才能修改
@@ -188,28 +186,29 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
     }
     
     @Override
-    public Page<InternshipWeeklyReport> getReportPage(Page<InternshipWeeklyReport> page, Long studentId, Long applyId,
-                                                       Integer weekNumber, Integer reviewStatus) {
+    public Page<InternshipWeeklyReport> getReportPage(Page<InternshipWeeklyReport> page, InternshipWeeklyReportQueryDTO queryDTO) {
         LambdaQueryWrapper<InternshipWeeklyReport> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, InternshipWeeklyReport::getDeleteFlag);
         
         // 数据权限过滤
         applyDataPermissionFilter(wrapper);
         
         // 条件查询
-        if (studentId != null) {
-            wrapper.eq(InternshipWeeklyReport::getStudentId, studentId);
-        }
-        if (applyId != null) {
-            wrapper.eq(InternshipWeeklyReport::getApplyId, applyId);
-        }
-        if (weekNumber != null) {
-            wrapper.eq(InternshipWeeklyReport::getWeekNumber, weekNumber);
-        }
-        if (reviewStatus != null) {
-            wrapper.eq(InternshipWeeklyReport::getReviewStatus, reviewStatus);
+        if (queryDTO != null) {
+            if (queryDTO.getStudentId() != null) {
+                wrapper.eq(InternshipWeeklyReport::getStudentId, queryDTO.getStudentId());
+            }
+            if (queryDTO.getApplyId() != null) {
+                wrapper.eq(InternshipWeeklyReport::getApplyId, queryDTO.getApplyId());
+            }
+            if (queryDTO.getWeekNumber() != null) {
+                wrapper.eq(InternshipWeeklyReport::getWeekNumber, queryDTO.getWeekNumber());
+            }
+            if (queryDTO.getReviewStatus() != null) {
+                wrapper.eq(InternshipWeeklyReport::getReviewStatus, queryDTO.getReviewStatus());
+            }
         }
         
         // 按周次倒序
@@ -238,12 +237,12 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 验证评分范围
-        if (reviewScore != null && (reviewScore.compareTo(BigDecimal.ZERO) < 0 || reviewScore.compareTo(new BigDecimal("100")) > 0)) {
-            throw new BusinessException("评分必须在0-100之间");
+        if (reviewScore != null && (reviewScore.compareTo(new BigDecimal(Constants.SCORE_MIN)) < 0 || reviewScore.compareTo(new BigDecimal(Constants.SCORE_MAX)) > 0)) {
+            throw new BusinessException("评分必须在" + Constants.SCORE_MIN + "-" + Constants.SCORE_MAX + "之间");
         }
         
         // 设置批阅信息
-        report.setReviewStatus(1); // 已批阅
+        report.setReviewStatus(ReviewStatus.APPROVED.getCode());
         report.setReviewTime(LocalDateTime.now());
         report.setReviewComment(reviewComment);
         report.setReviewScore(reviewScore);
@@ -251,9 +250,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         // 设置批阅人ID（指导教师）
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user != null) {
-            if (user != null) {
-                report.setInstructorId(user.getUserId());
-            }
+            report.setInstructorId(user.getUserId());
         }
         
         return this.updateById(report);
@@ -271,10 +268,8 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 数据权限：学生只能删除自己的周报
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(report.getUserId())) {
-                throw new BusinessException("无权删除该周报");
-            }
+        if (user != null && !user.getUserId().equals(report.getUserId())) {
+            throw new BusinessException("无权删除该周报");
         }
         
         // 软删除

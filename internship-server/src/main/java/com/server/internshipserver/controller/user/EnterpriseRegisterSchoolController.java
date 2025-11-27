@@ -1,5 +1,6 @@
 package com.server.internshipserver.controller.user;
 
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.user.UserInfo;
@@ -53,11 +54,17 @@ public class EnterpriseRegisterSchoolController {
             @ApiParam(value = "关联ID", required = true) @PathVariable Long id,
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
+        // 将Integer转换为枚举
+        AuditStatus status = AuditStatus.getByCode(auditStatus);
+        if (status == null) {
+            throw new com.server.internshipserver.common.exception.BusinessException("审核状态无效");
+        }
         // 获取当前登录用户ID作为审核人
         UserInfo user = userService.getCurrentUser();
         
+        // 注意：Service接口还未优化，暂时传递Integer，待Service接口优化后改为传递枚举
         boolean success = enterpriseRegisterSchoolService.auditEnterpriseRegister(
-            id, auditStatus, auditOpinion, user.getUserId());
+            id, status.getCode(), auditOpinion, user.getUserId());
         return success ? Result.success("审核成功") : Result.error("审核失败");
     }
 }

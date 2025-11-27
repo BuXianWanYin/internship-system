@@ -2,8 +2,10 @@ package com.server.internshipserver.controller.internship;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.InternshipPostQueryDTO;
 import com.server.internshipserver.service.internship.InternshipPostService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -52,7 +54,12 @@ public class InternshipPostController {
             @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status,
             @ApiParam(value = "仅显示合作企业岗位（学生端使用）", required = false) @RequestParam(required = false) Boolean cooperationOnly) {
         Page<InternshipPost> page = new Page<>(current, size);
-        Page<InternshipPost> result = internshipPostService.getPostPage(page, postName, enterpriseId, status, cooperationOnly);
+        InternshipPostQueryDTO queryDTO = new InternshipPostQueryDTO();
+        queryDTO.setPostName(postName);
+        queryDTO.setEnterpriseId(enterpriseId);
+        queryDTO.setStatus(status);
+        queryDTO.setCooperationOnly(cooperationOnly);
+        Page<InternshipPost> result = internshipPostService.getPostPage(page, queryDTO);
         return Result.success(result);
     }
     
@@ -72,7 +79,13 @@ public class InternshipPostController {
             @ApiParam(value = "岗位ID", required = true) @PathVariable Long postId,
             @ApiParam(value = "审核状态（1-已通过，2-已拒绝）", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
-        internshipPostService.auditPost(postId, auditStatus, auditOpinion);
+        // 将Integer转换为枚举
+        AuditStatus status = AuditStatus.getByCode(auditStatus);
+        if (status == null) {
+            throw new com.server.internshipserver.common.exception.BusinessException("审核状态无效");
+        }
+        // 注意：Service接口还未优化，暂时传递Integer，待Service接口优化后改为传递枚举
+        internshipPostService.auditPost(postId, status.getCode(), auditOpinion);
         return Result.success("审核成功");
     }
     

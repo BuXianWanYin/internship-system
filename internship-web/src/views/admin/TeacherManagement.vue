@@ -600,6 +600,35 @@ const resetFormData = () => {
   formRef.value?.clearValidate()
 }
 
+// 学校变化时加载学院列表
+const handleSchoolChange = async (schoolId) => {
+  // 清空学院选择
+  searchForm.collegeId = null
+  
+  if (schoolId) {
+    // 加载该学校下的学院列表
+    try {
+      const res = await collegeApi.getCollegePage({ 
+        current: 1, 
+        size: 1000,
+        schoolId: schoolId 
+      })
+      if (res.code === 200) {
+        collegeList.value = res.data.records || []
+        // 构建学院Map
+        collegeList.value.forEach(college => {
+          collegeMap.value[college.collegeId] = college
+        })
+      }
+    } catch (error) {
+      console.error('加载学院列表失败:', error)
+    }
+  } else {
+    // 如果没有选择学校，加载所有学院
+    await loadCollegeList()
+  }
+}
+
 // 学院变化时更新学校
 const handleCollegeChange = (collegeId) => {
   const college = collegeList.value.find(c => c.collegeId === collegeId)

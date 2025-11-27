@@ -7,7 +7,9 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
@@ -51,15 +53,9 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
                                                          String phone, String email, 
                                                          String password, Integer status) {
         // 参数校验
-        if (!StringUtils.hasText(mentorName)) {
-            throw new BusinessException("导师姓名不能为空");
-        }
-        if (enterpriseId == null) {
-            throw new BusinessException("所属企业ID不能为空");
-        }
-        if (!StringUtils.hasText(password)) {
-            throw new BusinessException("初始密码不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(mentorName, "导师姓名");
+        EntityValidationUtil.validateIdNotNull(enterpriseId, "所属企业ID");
+        EntityValidationUtil.validateStringNotBlank(password, "初始密码");
         
         // 数据权限检查：只有系统管理员或企业管理员可以添加企业导师
         // 企业管理员只能添加自己企业的导师
@@ -111,11 +107,11 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         mentor.setPhone(phone);
         mentor.setEmail(email);
         if (status == null) {
-            mentor.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
+            EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(mentor);
         } else {
             mentor.setStatus(status);
+            EntityDefaultValueUtil.setDefaultValues(mentor);
         }
-        mentor.setDeleteFlag(DeleteFlag.NORMAL.getCode());
         
         // 保存企业导师
         this.save(mentor);
@@ -229,7 +225,7 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         LambdaQueryWrapper<EnterpriseMentor> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(EnterpriseMentor::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, EnterpriseMentor::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(mentorName)) {

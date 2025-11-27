@@ -552,9 +552,12 @@ export default {
       handlePageChange,
       getTeacherName,
       handleSchoolChange,
+      schoolList,
       schoolMap,
       collegeMap,
-      majorMap
+      majorMap,
+      Search,
+      Refresh
     }
   }
 }

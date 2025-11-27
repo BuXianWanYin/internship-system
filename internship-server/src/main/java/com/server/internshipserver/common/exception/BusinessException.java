@@ -1,5 +1,7 @@
 package com.server.internshipserver.common.exception;
 
+import com.server.internshipserver.common.result.ResultCode;
+
 /**
  * 业务异常类
  */
@@ -13,7 +15,7 @@ public class BusinessException extends RuntimeException {
     public BusinessException(String message) {
         super(message);
         this.message = message;
-        this.code = 1000; // 默认业务错误码
+        this.code = ResultCode.BUSINESS_ERROR.getCode(); // 默认业务错误码
     }
 
     public BusinessException(int code, String message) {
@@ -25,7 +27,7 @@ public class BusinessException extends RuntimeException {
     public BusinessException(String message, Throwable cause) {
         super(message, cause);
         this.message = message;
-        this.code = 1000;
+        this.code = ResultCode.BUSINESS_ERROR.getCode();
     }
 
     public BusinessException(int code, String message, Throwable cause) {

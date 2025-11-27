@@ -2,8 +2,10 @@ package com.server.internshipserver.service.impl.cooperation;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.enums.CooperationStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.system.School;
@@ -50,7 +52,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
             }
         }
         
-        // 检查合作关系是否已存在
+        // 检查合作关系是否已存在（企业+学校的组合唯一）
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, cooperation.getEnterpriseId())
                .eq(EnterpriseSchoolCooperation::getSchoolId, cooperation.getSchoolId())
@@ -62,9 +64,9 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         
         // 设置默认值
         if (cooperation.getCooperationStatus() == null) {
-            cooperation.setCooperationStatus(1); // 默认进行中
+            cooperation.setCooperationStatus(CooperationStatus.IN_PROGRESS.getCode());
         }
-        cooperation.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(cooperation);
         
         // 保存
         this.save(cooperation);
@@ -148,7 +150,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         // 查询合作关系
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
-               .eq(EnterpriseSchoolCooperation::getCooperationStatus, 1) // 只查询进行中的合作
+               .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤：学校管理员只能看到自己学校的合作关系
@@ -187,7 +189,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         // 查询合作关系
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getSchoolId, schoolId)
-               .eq(EnterpriseSchoolCooperation::getCooperationStatus, 1) // 只查询进行中的合作
+               .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         List<EnterpriseSchoolCooperation> cooperations = this.list(wrapper);
         
@@ -206,7 +208,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         // 查询合作关系
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
-               .eq(EnterpriseSchoolCooperation::getCooperationStatus, 1) // 只查询进行中的合作
+               .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         List<EnterpriseSchoolCooperation> cooperations = this.list(wrapper);
         
@@ -225,7 +227,7 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
                .eq(EnterpriseSchoolCooperation::getSchoolId, schoolId)
-               .eq(EnterpriseSchoolCooperation::getCooperationStatus, 1) // 只查询进行中的合作
+               .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         return this.count(wrapper) > 0;
     }

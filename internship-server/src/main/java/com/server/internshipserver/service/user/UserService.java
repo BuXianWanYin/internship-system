@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.domain.user.dto.UserQueryDTO;
 
 import java.util.List;
 
@@ -43,18 +44,10 @@ public interface UserService extends IService<UserInfo> {
     /**
      * 分页查询用户列表
      * @param page 分页参数
-     * @param username 用户名（可选）
-     * @param realName 真实姓名（可选）
-     * @param phone 手机号（可选）
-     * @param status 状态：1-启用，0-禁用（可选）
-     * @param roleCodes 角色代码（可选，多个用逗号分隔）
-     * @param schoolId 学校ID（可选）
-     * @param collegeId 学院ID（可选）
-     * @param classId 班级ID（可选）
+     * @param queryDTO 查询条件
      * @return 用户列表
      */
-    Page<UserInfo> getUserPage(Page<UserInfo> page, String username, String realName, String phone, 
-                               Integer status, String roleCodes, Long schoolId, Long collegeId, Long classId);
+    Page<UserInfo> getUserPage(Page<UserInfo> page, UserQueryDTO queryDTO);
     
     /**
      * 停用用户（软删除）

@@ -36,11 +36,11 @@ export const menuItems = [
     roles: ['*'] // * 表示所有角色
   },
   
-  // ========== 系统管理 ==========
+  // ========== 学校管理（系统管理员、学校管理员） ==========
   {
-    index: 'system',
-    title: '系统管理',
-    icon: Setting,
+    index: 'school-management',
+    title: '学校管理',
+    icon: School,
     roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
     children: [
       {
@@ -80,16 +80,26 @@ export const menuItems = [
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       },
       {
-        index: '/admin/system/config',
-        title: '系统配置',
-        icon: Tools,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
-      },
-      {
         index: '/admin/system/class-teacher',
         title: '班主任任命',
         icon: UserFilled,
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER']
+      }
+    ]
+  },
+  
+  // ========== 系统管理（系统配置） ==========
+  {
+    index: 'system',
+    title: '系统管理',
+    icon: Setting,
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
+    children: [
+      {
+        index: '/admin/system/config',
+        title: '系统配置',
+        icon: Tools,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       }
     ]
   },
@@ -118,26 +128,56 @@ export const menuItems = [
         title: '教师管理',
         icon: UserFilled,
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
-      },
+      }
+    ]
+  },
+  
+  // ========== 企业管理（系统管理员） ==========
+  {
+    index: 'enterprise-management',
+    title: '企业管理',
+    icon: OfficeBuilding,
+    roles: ['ROLE_SYSTEM_ADMIN'],
+    children: [
       {
         index: '/admin/enterprise',
         title: '企业管理',
         icon: OfficeBuilding,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
-        titleMap: {
-          'ROLE_SYSTEM_ADMIN': '企业管理',
-          'ROLE_SCHOOL_ADMIN': '合作企业管理'
-        }
+        roles: ['ROLE_SYSTEM_ADMIN']
       },
       {
         index: '/admin/enterprise-mentor',
         title: '企业导师管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
-        titleMap: {
-          'ROLE_SYSTEM_ADMIN': '企业导师管理',
-          'ROLE_SCHOOL_ADMIN': '企业导师详情'
-        }
+        roles: ['ROLE_SYSTEM_ADMIN']
+      },
+      {
+        index: '/admin/internship/post',
+        title: '岗位管理',
+        icon: Briefcase,
+        roles: ['ROLE_SYSTEM_ADMIN']
+      }
+    ]
+  },
+  
+  // ========== 企业管理（学校管理员） ==========
+  {
+    index: 'enterprise-cooperation',
+    title: '合作企业管理',
+    icon: OfficeBuilding,
+    roles: ['ROLE_SCHOOL_ADMIN'],
+    children: [
+      {
+        index: '/admin/enterprise',
+        title: '合作企业管理',
+        icon: OfficeBuilding,
+        roles: ['ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/enterprise-mentor',
+        title: '企业导师详情',
+        icon: User,
+        roles: ['ROLE_SCHOOL_ADMIN']
       }
     ]
   },
@@ -170,6 +210,12 @@ export const menuItems = [
         title: '实习计划管理',
         icon: Document,
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      },
+      {
+        index: '/admin/internship/post',
+        title: '岗位管理',
+        icon: Briefcase,
+        roles: ['ROLE_SCHOOL_ADMIN']
       },
       {
         index: '/admin/internship/apply/audit',

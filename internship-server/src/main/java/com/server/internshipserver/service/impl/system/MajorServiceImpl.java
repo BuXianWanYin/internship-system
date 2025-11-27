@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
-import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
-import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
 import com.server.internshipserver.mapper.system.CollegeMapper;
@@ -37,31 +39,16 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     @Transactional(rollbackFor = Exception.class)
     public Major addMajor(Major major) {
         // 参数校验
-        if (!StringUtils.hasText(major.getMajorName())) {
-            throw new BusinessException("专业名称不能为空");
-        }
-        if (!StringUtils.hasText(major.getMajorCode())) {
-            throw new BusinessException("专业代码不能为空");
-        }
-        if (major.getCollegeId() == null) {
-            throw new BusinessException("所属学院ID不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(major.getMajorName(), "专业名称");
+        EntityValidationUtil.validateStringNotBlank(major.getMajorCode(), "专业代码");
+        EntityValidationUtil.validateIdNotNull(major.getCollegeId(), "所属学院ID");
         
         // 检查专业代码在同一学院内是否已存在
-        LambdaQueryWrapper<Major> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Major::getMajorCode, major.getMajorCode())
-               .eq(Major::getCollegeId, major.getCollegeId())
-               .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        Major existMajor = this.getOne(wrapper);
-        if (existMajor != null) {
-            throw new BusinessException("该学院下专业代码已存在");
-        }
+        UniquenessValidationUtil.validateUniqueInScope(this, Major::getMajorCode, major.getMajorCode(),
+                Major::getCollegeId, major.getCollegeId(), Major::getDeleteFlag, "专业代码", "学院");
         
         // 设置默认值
-        if (major.getStatus() == null) {
-            major.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        major.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(major);
         
         // 保存
         this.save(major);
@@ -111,7 +98,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         LambdaQueryWrapper<Major> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Major::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(majorName)) {

@@ -40,6 +40,18 @@ public class Constants {
     public static final String DEFAULT_PASSWORD = "123456";
     
     /**
+     * 密码长度限制
+     */
+    public static final int PASSWORD_MIN_LENGTH = 6;
+    public static final int PASSWORD_MAX_LENGTH = 20;
+    
+    /**
+     * 评分范围
+     */
+    public static final int SCORE_MIN = 0;
+    public static final int SCORE_MAX = 100;
+    
+    /**
      * 日期时间格式
      */
     public static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";

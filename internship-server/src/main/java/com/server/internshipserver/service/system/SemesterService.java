@@ -3,6 +3,7 @@ package com.server.internshipserver.service.system;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.Semester;
+import com.server.internshipserver.domain.system.dto.SemesterQueryDTO;
 
 /**
  * 学期管理Service接口
@@ -33,15 +34,10 @@ public interface SemesterService extends IService<Semester> {
     /**
      * 分页查询学期列表
      * @param page 分页参数
-     * @param semesterName 学期名称（可选）
-     * @param year 年份（可选）
-     * @param isCurrent 是否当前学期：1-是，0-否（可选）
-     * @param startDate 开始日期（可选）
-     * @param endDate 结束日期（可选）
-     * @param schoolId 学校ID（可选）
+     * @param queryDTO 查询条件
      * @return 学期列表
      */
-    Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate, Long schoolId);
+    Page<Semester> getSemesterPage(Page<Semester> page, SemesterQueryDTO queryDTO);
     
     /**
      * 设置当前学期

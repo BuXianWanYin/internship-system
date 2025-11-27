@@ -605,7 +605,9 @@ const handleSubmit = async () => {
         const data = {
           ...formData,
           reportTitle: reportTitle || '实习周报',
-          attachmentUrls: attachmentUrlsStr || undefined
+          attachmentUrls: attachmentUrlsStr || undefined,
+          // 将weekStartDate映射为reportDate（后端需要reportDate字段）
+          reportDate: formData.weekStartDate || null
         }
         
         // 在测试模式下，如果富文本编辑器内容为空，但formData.workContent有值，则使用formData.workContent

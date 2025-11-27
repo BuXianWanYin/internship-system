@@ -9,7 +9,9 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipLog;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -30,7 +32,6 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -81,9 +82,6 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 获取当前登录学生信息
         UserInfo user = UserUtil.getCurrentUser(userMapper);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
         
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
@@ -102,8 +100,8 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         // 设置日志信息
         log.setStudentId(student.getStudentId());
         log.setUserId(user.getUserId());
-        log.setReviewStatus(0); // 未批阅
-        log.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        log.setReviewStatus(ReviewStatus.PENDING.getCode()); // 未批阅
+        EntityDefaultValueUtil.setDefaultValues(log);
         
         // 保存
         this.save(log);
@@ -123,10 +121,8 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 数据权限：学生只能修改自己的日志
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(existLog.getUserId())) {
-                throw new BusinessException("无权修改该日志");
-            }
+        if (user != null && !user.getUserId().equals(existLog.getUserId())) {
+            throw new BusinessException("无权修改该日志");
         }
         
         // 只有未批阅的日志才能修改
@@ -165,7 +161,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         LambdaQueryWrapper<InternshipLog> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, InternshipLog::getDeleteFlag);
         
         // 数据权限过滤
         applyDataPermissionFilter(wrapper);
@@ -210,12 +206,12 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 验证评分范围
-        if (reviewScore != null && (reviewScore.compareTo(BigDecimal.ZERO) < 0 || reviewScore.compareTo(new BigDecimal("100")) > 0)) {
-            throw new BusinessException("评分必须在0-100之间");
+        if (reviewScore != null && (reviewScore.compareTo(new BigDecimal(Constants.SCORE_MIN)) < 0 || reviewScore.compareTo(new BigDecimal(Constants.SCORE_MAX)) > 0)) {
+            throw new BusinessException("评分必须在" + Constants.SCORE_MIN + "-" + Constants.SCORE_MAX + "之间");
         }
         
         // 设置批阅信息
-        log.setReviewStatus(1); // 已批阅
+        log.setReviewStatus(ReviewStatus.APPROVED.getCode());
         log.setReviewTime(LocalDateTime.now());
         log.setReviewComment(reviewComment);
         log.setReviewScore(reviewScore);
@@ -223,9 +219,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         // 设置批阅人ID（指导教师）
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user != null) {
-            if (user != null) {
-                log.setInstructorId(user.getUserId());
-            }
+            log.setInstructorId(user.getUserId());
         }
         
         return this.updateById(log);
@@ -243,10 +237,8 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 数据权限：学生只能删除自己的日志
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(log.getUserId())) {
-                throw new BusinessException("无权删除该日志");
-            }
+        if (user != null && !user.getUserId().equals(log.getUserId())) {
+            throw new BusinessException("无权删除该日志");
         }
         
         // 软删除

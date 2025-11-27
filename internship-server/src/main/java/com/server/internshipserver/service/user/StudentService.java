@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.dto.StudentImportDTO;
 import com.server.internshipserver.domain.user.dto.StudentImportResult;
+import com.server.internshipserver.domain.user.dto.StudentQueryDTO;
 
 import java.util.List;
 
@@ -51,17 +52,10 @@ public interface StudentService extends IService<Student> {
     /**
      * 分页查询学生列表
      * @param page 分页参数
-     * @param studentNo 学号（可选）
-     * @param classId 班级ID（可选）
-     * @param majorId 专业ID（可选）
-     * @param collegeId 学院ID（可选）
-     * @param schoolId 学校ID（可选）
-     * @param status 状态：1-已审核，0-待审核（可选）
-     * @param enrollmentYear 入学年份（可选）
+     * @param queryDTO 查询条件
      * @return 学生列表
      */
-    Page<Student> getStudentPage(Page<Student> page, String studentNo, Long classId, 
-                                  Long majorId, Long collegeId, Long schoolId, Integer status, Integer enrollmentYear);
+    Page<Student> getStudentPage(Page<Student> page, StudentQueryDTO queryDTO);
     
     /**
      * 停用学生（软删除）

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.InternshipPostQueryDTO;
 
 import java.util.List;
 
@@ -36,14 +37,10 @@ public interface InternshipPostService extends IService<InternshipPost> {
     /**
      * 分页查询岗位列表
      * @param page 分页参数
-     * @param postName 岗位名称（可选）
-     * @param enterpriseId 企业ID（可选）
-     * @param status 状态（可选）
-     * @param cooperationOnly 仅显示合作企业岗位（学生端使用）
+     * @param queryDTO 查询条件
      * @return 岗位列表
      */
-    Page<InternshipPost> getPostPage(Page<InternshipPost> page, String postName, Long enterpriseId, 
-                                     Integer status, Boolean cooperationOnly);
+    Page<InternshipPost> getPostPage(Page<InternshipPost> page, InternshipPostQueryDTO queryDTO);
     
     /**
      * 审核岗位

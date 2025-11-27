@@ -7,12 +7,19 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.InterviewStatus;
 import com.server.internshipserver.common.enums.InterviewType;
+import com.server.internshipserver.common.enums.InterviewResult;
 import com.server.internshipserver.common.enums.StudentConfirmStatus;
-import com.server.internshipserver.common.utils.EntityValidationUtil;
-import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.enums.ConfirmStatus;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
+import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.domain.internship.Interview;
+import com.server.internshipserver.domain.internship.dto.ConfirmInterviewDTO;
+import com.server.internshipserver.domain.internship.dto.InterviewQueryDTO;
+import com.server.internshipserver.domain.internship.dto.SubmitInterviewResultDTO;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.user.Enterprise;
@@ -120,24 +127,18 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         // 根据面试类型验证必填字段
         if (interview.getInterviewType() != null) {
             if (interview.getInterviewType().equals(InterviewType.ON_SITE.getCode())) { // 现场面试
-                if (!StringUtils.hasText(interview.getInterviewLocation())) {
-                    throw new BusinessException("现场面试必须填写面试地点");
-                }
+                EntityValidationUtil.validateStringNotBlank(interview.getInterviewLocation(), "面试地点");
             } else if (interview.getInterviewType().equals(InterviewType.VIDEO.getCode())) { // 视频面试
-                if (!StringUtils.hasText(interview.getInterviewLink())) {
-                    throw new BusinessException("视频面试必须填写面试链接");
-                }
+                EntityValidationUtil.validateStringNotBlank(interview.getInterviewLink(), "面试链接");
             } else if (interview.getInterviewType().equals(InterviewType.PHONE.getCode())) { // 电话面试
-                if (!StringUtils.hasText(interview.getInterviewPhone())) {
-                    throw new BusinessException("电话面试必须填写面试电话");
-                }
+                EntityValidationUtil.validateStringNotBlank(interview.getInterviewPhone(), "面试电话");
             }
         }
         
         // 设置默认值
         interview.setStatus(InterviewStatus.PENDING.getCode()); // 待确认
         interview.setStudentConfirm(StudentConfirmStatus.NOT_CONFIRMED.getCode()); // 未确认
-        interview.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(interview);
         
         // 保存
         this.save(interview);
@@ -205,28 +206,29 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
     }
     
     @Override
-    public Page<Interview> getInterviewPage(Page<Interview> page, Long applyId, Long enterpriseId,
-                                            Long studentId, Integer status) {
+    public Page<Interview> getInterviewPage(Page<Interview> page, InterviewQueryDTO queryDTO) {
         LambdaQueryWrapper<Interview> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Interview::getDeleteFlag);
         
         // 数据权限过滤
         applyDataPermissionFilter(wrapper);
         
         // 条件查询
-        if (applyId != null) {
-            wrapper.eq(Interview::getApplyId, applyId);
-        }
-        if (enterpriseId != null) {
-            wrapper.eq(Interview::getEnterpriseId, enterpriseId);
-        }
-        if (studentId != null) {
-            wrapper.eq(Interview::getStudentId, studentId);
-        }
-        if (status != null) {
-            wrapper.eq(Interview::getStatus, status);
+        if (queryDTO != null) {
+            if (queryDTO.getApplyId() != null) {
+                wrapper.eq(Interview::getApplyId, queryDTO.getApplyId());
+            }
+            if (queryDTO.getEnterpriseId() != null) {
+                wrapper.eq(Interview::getEnterpriseId, queryDTO.getEnterpriseId());
+            }
+            if (queryDTO.getStudentId() != null) {
+                wrapper.eq(Interview::getStudentId, queryDTO.getStudentId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(Interview::getStatus, queryDTO.getStatus());
+            }
         }
         
         // 按面试时间倒序
@@ -296,11 +298,10 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean confirmInterview(Long interviewId, Integer confirm) {
+    public boolean confirmInterview(Long interviewId, ConfirmInterviewDTO confirmDTO) {
         EntityValidationUtil.validateIdNotNull(interviewId, "面试ID");
-        if (confirm == null || 
-                (!confirm.equals(StudentConfirmStatus.CONFIRMED.getCode()) && !confirm.equals(StudentConfirmStatus.REJECTED.getCode()))) {
-            throw new BusinessException("确认状态无效");
+        if (confirmDTO == null || confirmDTO.getConfirm() == null) {
+            throw new BusinessException("确认信息不能为空");
         }
         
         Interview interview = this.getById(interviewId);
@@ -308,33 +309,32 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         
         // 数据权限：学生只能确认自己的面试
         UserInfo user = UserUtil.getCurrentUser(userMapper);
-            // 验证学生身份和面试的学生ID匹配
-            if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
-                Student student = studentMapper.selectOne(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getUserId, user.getUserId())
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (student == null) {
-                    throw new BusinessException("学生信息不存在");
-                }
-                if (!student.getStudentId().equals(interview.getStudentId())) {
-                    throw new BusinessException("无权确认该面试，只能确认自己的面试");
-                }
-            } else {
-                throw new BusinessException("只有学生可以确认面试");
+        // 验证学生身份和面试的学生ID匹配
+        if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, user.getUserId())
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (student == null) {
+                throw new BusinessException("学生信息不存在");
             }
+            if (!student.getStudentId().equals(interview.getStudentId())) {
+                throw new BusinessException("无权确认该面试，只能确认自己的面试");
+            }
+        } else {
+            throw new BusinessException("只有学生可以确认面试");
         }
-        
+
         // 只有待确认状态才能确认
         if (interview.getStatus() == null || !interview.getStatus().equals(InterviewStatus.PENDING.getCode())) {
             throw new BusinessException("只有待确认状态的面试才能确认");
         }
         
         // 更新确认信息
-        interview.setStudentConfirm(confirm);
+        interview.setStudentConfirm(confirmDTO.getConfirm().getCode());
         interview.setStudentConfirmTime(LocalDateTime.now());
-        if (confirm.equals(StudentConfirmStatus.CONFIRMED.getCode())) {
+        if (confirmDTO.getConfirm() == ConfirmStatus.CONFIRMED) {
             interview.setStatus(InterviewStatus.CONFIRMED.getCode()); // 已确认
         } else {
             interview.setStatus(InterviewStatus.CANCELLED.getCode()); // 已取消
@@ -345,10 +345,10 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean submitInterviewResult(Long interviewId, Integer interviewResult, String interviewComment) {
+    public boolean submitInterviewResult(Long interviewId, SubmitInterviewResultDTO resultDTO) {
         EntityValidationUtil.validateIdNotNull(interviewId, "面试ID");
-        if (interviewResult == null || (interviewResult < 1 || interviewResult > 3)) {
-            throw new BusinessException("面试结果无效");
+        if (resultDTO == null || resultDTO.getInterviewResult() == null) {
+            throw new BusinessException("面试结果信息不能为空");
         }
         
         Interview interview = this.getById(interviewId);
@@ -366,8 +366,8 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         }
         
         // 更新面试结果
-        interview.setInterviewResult(interviewResult);
-        interview.setInterviewComment(interviewComment);
+        interview.setInterviewResult(resultDTO.getInterviewResult().getCode());
+        interview.setInterviewComment(resultDTO.getInterviewComment());
         interview.setInterviewFeedbackTime(LocalDateTime.now());
         if (interview.getStatus().equals(InterviewStatus.CONFIRMED.getCode())) {
             interview.setStatus(InterviewStatus.COMPLETED.getCode()); // 已完成

@@ -7,9 +7,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.IsCurrent;
 import com.server.internshipserver.common.exception.BusinessException;
-import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.DateValidationUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
+import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.domain.system.Semester;
+import com.server.internshipserver.domain.system.dto.SemesterQueryDTO;
 import com.server.internshipserver.mapper.system.SemesterMapper;
 import com.server.internshipserver.service.system.SemesterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,37 +35,25 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     @Transactional(rollbackFor = Exception.class)
     public Semester addSemester(Semester semester) {
         // 参数校验
-        if (!StringUtils.hasText(semester.getSemesterName())) {
-            throw new BusinessException("学期名称不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(semester.getSemesterName(), "学期名称");
         if (semester.getStartDate() == null) {
             throw new BusinessException("开始日期不能为空");
         }
         if (semester.getEndDate() == null) {
             throw new BusinessException("结束日期不能为空");
         }
-        if (semester.getStartDate().isAfter(semester.getEndDate())) {
-            throw new BusinessException("开始日期不能晚于结束日期");
-        }
-        if (semester.getSchoolId() == null) {
-            throw new BusinessException("所属学校ID不能为空");
-        }
+        DateValidationUtil.validateDateRange(semester.getStartDate(), semester.getEndDate(), "学期");
+        EntityValidationUtil.validateIdNotNull(semester.getSchoolId(), "所属学校ID");
         
         // 检查学期名称在同一学校内是否已存在
-        LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Semester::getSemesterName, semester.getSemesterName())
-               .eq(Semester::getSchoolId, semester.getSchoolId())
-               .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        Semester existSemester = this.getOne(wrapper);
-        if (existSemester != null) {
-            throw new BusinessException("该学校下学期名称已存在");
-        }
+        UniquenessValidationUtil.validateUniqueInScope(this, Semester::getSemesterName, semester.getSemesterName(),
+                Semester::getSchoolId, semester.getSchoolId(), Semester::getDeleteFlag, "学期名称", "学校");
         
         // 设置默认值
         if (semester.getIsCurrent() == null) {
             semester.setIsCurrent(IsCurrent.NO.getCode()); // 默认不是当前学期
         }
-        semester.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(semester);
         
         // 如果设置为当前学期，需要先取消该学校的其他当前学期
         if (semester.getIsCurrent() != null && semester.getIsCurrent().equals(IsCurrent.YES.getCode())) {
@@ -135,20 +128,41 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     }
     
     @Override
-    public Page<Semester> getSemesterPage(Page<Semester> page, String semesterName, Integer year, Integer isCurrent, String startDate, String endDate, Long schoolId) {
-        LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
-        
-        // 只查询未删除的数据
-        wrapper.eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+    public Page<Semester> getSemesterPage(Page<Semester> page, SemesterQueryDTO queryDTO) {
+        LambdaQueryWrapper<Semester> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Semester::getDeleteFlag);
         
         // 条件查询
-        if (StringUtils.hasText(semesterName)) {
-            wrapper.like(Semester::getSemesterName, semesterName);
-        }
-        
-        // 学校ID筛选
-        if (schoolId != null) {
-            wrapper.eq(Semester::getSchoolId, schoolId);
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getSemesterName())) {
+                wrapper.like(Semester::getSemesterName, queryDTO.getSemesterName());
+            }
+            
+            // 学校ID筛选
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(Semester::getSchoolId, queryDTO.getSchoolId());
+            }
+            
+            // 年份筛选
+            if (queryDTO.getYear() != null) {
+                wrapper.and(w -> w
+                    .apply("YEAR(start_date) = {0}", queryDTO.getYear())
+                    .or()
+                    .apply("YEAR(end_date) = {0}", queryDTO.getYear())
+                );
+            }
+            
+            // 是否当前学期筛选
+            if (queryDTO.getIsCurrent() != null) {
+                wrapper.eq(Semester::getIsCurrent, queryDTO.getIsCurrent());
+            }
+            
+            // 日期范围筛选
+            if (StringUtils.hasText(queryDTO.getStartDate())) {
+                wrapper.ge(Semester::getStartDate, queryDTO.getStartDate());
+            }
+            if (StringUtils.hasText(queryDTO.getEndDate())) {
+                wrapper.le(Semester::getEndDate, queryDTO.getEndDate());
+            }
         }
         
         // 数据权限过滤
@@ -156,28 +170,6 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         if (currentUserSchoolId != null) {
             // 学校管理员：只能查看本校的学期
             wrapper.eq(Semester::getSchoolId, currentUserSchoolId);
-        }
-        
-        // 年份筛选
-        if (year != null) {
-            wrapper.and(w -> w
-                .apply("YEAR(start_date) = {0}", year)
-                .or()
-                .apply("YEAR(end_date) = {0}", year)
-            );
-        }
-        
-        // 是否当前学期筛选
-        if (isCurrent != null) {
-            wrapper.eq(Semester::getIsCurrent, isCurrent);
-        }
-        
-        // 日期范围筛选
-        if (StringUtils.hasText(startDate)) {
-            wrapper.ge(Semester::getStartDate, startDate);
-        }
-        if (StringUtils.hasText(endDate)) {
-            wrapper.le(Semester::getEndDate, endDate);
         }
         
         // 按创建时间倒序
@@ -212,7 +204,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
     private void setCurrentSemesterForSchool(Long schoolId, Long semesterId) {
         // 先取消该学校的所有当前学期
         LambdaUpdateWrapper<Semester> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.set(Semester::getIsCurrent, 0)
+        updateWrapper.set(Semester::getIsCurrent, IsCurrent.NO.getCode())
                      .eq(Semester::getSchoolId, schoolId)
                      .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         this.update(updateWrapper);
@@ -220,7 +212,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         // 如果指定了学期ID，设置为当前学期
         if (semesterId != null) {
             Semester semester = getSemesterById(semesterId);
-            semester.setIsCurrent(1);
+            semester.setIsCurrent(IsCurrent.YES.getCode());
             this.updateById(semester);
         }
     }
@@ -231,7 +223,7 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         
         LambdaQueryWrapper<Semester> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Semester::getIsCurrent, 1)
+        wrapper.eq(Semester::getIsCurrent, IsCurrent.YES.getCode())
                .eq(Semester::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 如果有学校ID，只查询该学校的当前学期

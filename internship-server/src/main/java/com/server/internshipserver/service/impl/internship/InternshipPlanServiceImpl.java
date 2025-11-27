@@ -11,9 +11,13 @@ import com.server.internshipserver.common.enums.InternshipPlanStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.AuditUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.DateValidationUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipPlan;
+import com.server.internshipserver.domain.internship.dto.InternshipPlanQueryDTO;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Semester;
 import com.server.internshipserver.domain.system.School;
@@ -36,7 +40,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.ArrayList;
 
 /**
  * 实习计划管理Service实现类
@@ -75,8 +78,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         UserInfo currentUser = getCurrentUser();
         
         // 权限和数据权限处理
-        List<String> roles = currentUser != null ? 
-            userMapper.selectRoleCodesByUserId(currentUser.getUserId()) : new ArrayList<>();
+        List<String> roles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
         
         // 根据角色设置组织架构信息
         setOrgInfoByRole(plan, roles);
@@ -99,18 +101,12 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
      * 验证计划参数
      */
     private void validatePlanParams(InternshipPlan plan) {
-        if (!StringUtils.hasText(plan.getPlanName())) {
-            throw new BusinessException("实习计划名称不能为空");
-        }
-        if (!StringUtils.hasText(plan.getPlanCode())) {
-            throw new BusinessException("实习计划编号不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(plan.getPlanName(), "实习计划名称");
+        EntityValidationUtil.validateStringNotBlank(plan.getPlanCode(), "实习计划编号");
         if (plan.getStartDate() == null || plan.getEndDate() == null) {
             throw new BusinessException("实习开始日期和结束日期不能为空");
         }
-        if (plan.getStartDate().isAfter(plan.getEndDate())) {
-            throw new BusinessException("实习开始日期不能晚于结束日期");
-        }
+        DateValidationUtil.validateDateRange(plan.getStartDate(), plan.getEndDate(), "实习计划");
     }
     
     /**
@@ -168,7 +164,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
      * 设置学校管理员的组织架构信息
      */
     private void setOrgInfoForSchoolAdmin(InternshipPlan plan) {
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         if (currentUserSchoolId == null) {
             throw new BusinessException("学校管理员必须关联学校");
         }
@@ -277,12 +273,10 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (plan.getStatus() == null) {
             plan.setStatus(InternshipPlanStatus.DRAFT.getCode()); // 默认草稿
         }
-        plan.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(plan);
         
         // 设置创建人ID
-        if (currentUser != null) {
-            plan.setCreateUserId(currentUser.getUserId());
-        }
+        plan.setCreateUserId(currentUser.getUserId());
     }
     
     @Override
@@ -340,14 +334,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         // 验证计划范围的一致性
-        // 如果collegeId为NULL，majorId也必须为NULL（不能只有专业没有学院）
-        if (plan.getCollegeId() == null && plan.getMajorId() != null) {
-            throw new BusinessException("专业计划必须指定所属学院");
-        }
-        // 如果majorId不为NULL，collegeId也不能为NULL（专业必须属于某个学院）
-        if (plan.getMajorId() != null && plan.getCollegeId() == null) {
-            throw new BusinessException("专业计划必须指定所属学院");
-        }
+        validatePlanScope(plan);
         
         // 使用 UpdateWrapper 确保 null 值也能更新
         LambdaUpdateWrapper<InternshipPlan> updateWrapper = new LambdaUpdateWrapper<>();
@@ -380,7 +367,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         EntityValidationUtil.validateEntityExists(plan, "实习计划");
         
         // 数据权限过滤
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         
         if (currentUserSchoolId != null && !currentUserSchoolId.equals(plan.getSchoolId())) {
@@ -398,15 +385,14 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
     }
     
     @Override
-    public Page<InternshipPlan> getPlanPage(Page<InternshipPlan> page, String planName, Long semesterId,
-                                            Long schoolId, Long collegeId, Long majorId, Integer status) {
+    public Page<InternshipPlan> getPlanPage(Page<InternshipPlan> page, InternshipPlanQueryDTO queryDTO) {
         LambdaQueryWrapper<InternshipPlan> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(InternshipPlan::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, InternshipPlan::getDeleteFlag);
         
         // 数据权限过滤
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         
         if (currentUserSchoolId != null) {
@@ -417,23 +403,25 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         }
         
         // 条件查询
-        if (StringUtils.hasText(planName)) {
-            wrapper.like(InternshipPlan::getPlanName, planName);
-        }
-        if (semesterId != null) {
-            wrapper.eq(InternshipPlan::getSemesterId, semesterId);
-        }
-        if (schoolId != null) {
-            wrapper.eq(InternshipPlan::getSchoolId, schoolId);
-        }
-        if (collegeId != null) {
-            wrapper.eq(InternshipPlan::getCollegeId, collegeId);
-        }
-        if (majorId != null) {
-            wrapper.eq(InternshipPlan::getMajorId, majorId);
-        }
-        if (status != null) {
-            wrapper.eq(InternshipPlan::getStatus, status);
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getPlanName())) {
+                wrapper.like(InternshipPlan::getPlanName, queryDTO.getPlanName());
+            }
+            if (queryDTO.getSemesterId() != null) {
+                wrapper.eq(InternshipPlan::getSemesterId, queryDTO.getSemesterId());
+            }
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(InternshipPlan::getSchoolId, queryDTO.getSchoolId());
+            }
+            if (queryDTO.getCollegeId() != null) {
+                wrapper.eq(InternshipPlan::getCollegeId, queryDTO.getCollegeId());
+            }
+            if (queryDTO.getMajorId() != null) {
+                wrapper.eq(InternshipPlan::getMajorId, queryDTO.getMajorId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(InternshipPlan::getStatus, queryDTO.getStatus());
+            }
         }
         
         // 按创建时间倒序
@@ -597,7 +585,7 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         LambdaQueryWrapper<InternshipPlan> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询已发布的计划
-        wrapper.eq(InternshipPlan::getStatus, 4)  // 4-已发布
+        wrapper.eq(InternshipPlan::getStatus, InternshipPlanStatus.PUBLISHED.getCode())
                .eq(InternshipPlan::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 组织架构匹配

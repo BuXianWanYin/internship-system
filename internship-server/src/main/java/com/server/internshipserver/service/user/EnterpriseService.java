@@ -43,14 +43,10 @@ public interface EnterpriseService extends IService<Enterprise> {
     
     /**
      * 添加企业（包含企业管理员账号）
-     * @param enterprise 企业信息
-     * @param adminName 企业管理员姓名
-     * @param adminPhone 企业管理员手机号
-     * @param adminEmail 企业管理员邮箱
-     * @param adminPassword 企业管理员初始密码
+     * @param addDTO 企业添加信息
      * @return 添加的企业信息
      */
-    Enterprise addEnterpriseWithAdmin(Enterprise enterprise, String adminName, String adminPhone, String adminEmail, String adminPassword);
+    Enterprise addEnterpriseWithAdmin(com.server.internshipserver.domain.user.dto.EnterpriseAddDTO addDTO);
     
     /**
      * 更新企业信息
@@ -62,11 +58,10 @@ public interface EnterpriseService extends IService<Enterprise> {
     /**
      * 审核企业（自动获取当前登录用户作为审核人）
      * @param enterpriseId 企业ID
-     * @param auditStatus 审核状态：1-通过，2-拒绝
-     * @param auditOpinion 审核意见
+     * @param auditDTO 审核信息
      * @return 是否成功
      */
-    boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion);
+    boolean auditEnterprise(Long enterpriseId, com.server.internshipserver.domain.user.dto.AuditEnterpriseDTO auditDTO);
     
     /**
      * 根据ID查询企业详情

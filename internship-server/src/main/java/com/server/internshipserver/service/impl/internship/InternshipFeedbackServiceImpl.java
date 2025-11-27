@@ -7,10 +7,13 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.FeedbackStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.enums.ReplyUserType;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.InternshipFeedback;
 import com.server.internshipserver.domain.internship.InternshipApply;
@@ -76,9 +79,6 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 获取当前登录学生信息
         UserInfo user = UserUtil.getCurrentUser(userMapper);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
         
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
@@ -97,8 +97,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         // 设置反馈信息
         feedback.setStudentId(student.getStudentId());
         feedback.setUserId(user.getUserId());
-        feedback.setFeedbackStatus(0); // 待处理
-        feedback.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        feedback.setFeedbackStatus(FeedbackStatus.PENDING.getCode()); // 待处理
+        EntityDefaultValueUtil.setDefaultValues(feedback);
         
         // 保存
         this.save(feedback);
@@ -118,10 +118,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 数据权限：学生只能修改自己的反馈
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(existFeedback.getUserId())) {
-                throw new BusinessException("无权修改该反馈");
-            }
+        if (user != null && !user.getUserId().equals(existFeedback.getUserId())) {
+            throw new BusinessException("无权修改该反馈");
         }
         
         // 只有待处理状态的反馈才能修改
@@ -155,7 +153,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         LambdaQueryWrapper<InternshipFeedback> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, InternshipFeedback::getDeleteFlag);
         
         // 数据权限过滤
         applyDataPermissionFilter(wrapper);
@@ -209,14 +207,12 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         feedback.setReplyContent(replyContent);
         feedback.setReplyTime(LocalDateTime.now());
         feedback.setReplyUserType(replyUserType);
-        feedback.setFeedbackStatus(1); // 处理中
+        feedback.setFeedbackStatus(FeedbackStatus.REPLIED.getCode());
         
         // 设置回复人ID
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
         if (user != null) {
-            if (user != null) {
-                feedback.setReplyUserId(user.getUserId());
-            }
+            feedback.setReplyUserId(user.getUserId());
         }
         
         return this.updateById(feedback);
@@ -270,10 +266,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 数据权限：学生只能删除自己的反馈
         UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            if (user == null || !user.getUserId().equals(feedback.getUserId())) {
-                throw new BusinessException("无权删除该反馈");
-            }
+        if (user != null && !user.getUserId().equals(feedback.getUserId())) {
+            throw new BusinessException("无权删除该反馈");
         }
         
         // 软删除
@@ -360,7 +354,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                 List<InternshipApply> applies = internshipApplyMapper.selectList(
                         new LambdaQueryWrapper<InternshipApply>()
                                 .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
-                                .eq(InternshipApply::getStatus, 1) // 已通过的申请
+                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(InternshipApply::getStudentId)
                 );

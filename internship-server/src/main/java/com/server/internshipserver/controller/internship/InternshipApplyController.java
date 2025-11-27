@@ -3,6 +3,12 @@ package com.server.internshipserver.controller.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.AuditApplyDTO;
+import com.server.internshipserver.domain.internship.dto.AuditUnbindDTO;
+import com.server.internshipserver.domain.internship.dto.FilterApplyDTO;
+import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
+import com.server.internshipserver.common.enums.AuditStatus;
+import com.server.internshipserver.common.enums.FilterAction;
 import com.server.internshipserver.service.internship.InternshipApplyService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -58,7 +64,13 @@ public class InternshipApplyController {
             @ApiParam(value = "申请类型", required = false) @RequestParam(required = false) Integer applyType,
             @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status) {
         Page<InternshipApply> page = new Page<>(current, size);
-        Page<InternshipApply> result = internshipApplyService.getApplyPage(page, studentId, enterpriseId, postId, applyType, status);
+        InternshipApplyQueryDTO queryDTO = new InternshipApplyQueryDTO();
+        queryDTO.setStudentId(studentId);
+        queryDTO.setEnterpriseId(enterpriseId);
+        queryDTO.setPostId(postId);
+        queryDTO.setApplyType(applyType);
+        queryDTO.setStatus(status);
+        Page<InternshipApply> result = internshipApplyService.getApplyPage(page, queryDTO);
         return Result.success(result);
     }
     
@@ -78,7 +90,10 @@ public class InternshipApplyController {
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
             @ApiParam(value = "审核状态（1-已通过，2-已拒绝）", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
-        internshipApplyService.auditApply(applyId, auditStatus, auditOpinion);
+        AuditApplyDTO auditDTO = new AuditApplyDTO();
+        auditDTO.setAuditStatus(AuditStatus.getByCode(auditStatus));
+        auditDTO.setAuditOpinion(auditOpinion);
+        internshipApplyService.auditApply(applyId, auditDTO);
         return Result.success("审核成功");
     }
     
@@ -89,7 +104,10 @@ public class InternshipApplyController {
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
             @ApiParam(value = "操作类型（1-标记感兴趣，2-安排面试，3-录用，4-拒绝）", required = true) @RequestParam Integer action,
             @ApiParam(value = "备注", required = false) @RequestParam(required = false) String comment) {
-        internshipApplyService.filterApply(applyId, action, comment);
+        FilterApplyDTO filterDTO = new FilterApplyDTO();
+        filterDTO.setAction(FilterAction.getByCode(action));
+        filterDTO.setComment(comment);
+        internshipApplyService.filterApply(applyId, filterDTO);
         return Result.success("操作成功");
     }
     
@@ -161,7 +179,10 @@ public class InternshipApplyController {
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
             @ApiParam(value = "审核状态（2-已解绑，3-解绑被拒绝）", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
-        internshipApplyService.auditUnbind(applyId, auditStatus, auditOpinion);
+        AuditUnbindDTO auditDTO = new AuditUnbindDTO();
+        auditDTO.setAuditStatus(AuditStatus.getByCode(auditStatus));
+        auditDTO.setAuditOpinion(auditOpinion);
+        internshipApplyService.auditUnbind(applyId, auditDTO);
         return Result.success("审核成功");
     }
     

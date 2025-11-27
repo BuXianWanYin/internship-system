@@ -3,9 +3,11 @@ package com.server.internshipserver.common.utils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * 实体验证工具类
@@ -123,6 +125,72 @@ public class EntityValidationUtil {
      */
     public static <T> boolean hasRecords(Page<T> page) {
         return page != null && isNotEmpty(page.getRecords());
+    }
+    
+    /**
+     * 验证字符串非空
+     * @param value 字符串值
+     * @param fieldName 字段名称（用于错误消息）
+     * @throws BusinessException 如果字符串为空或null
+     */
+    public static void validateStringNotBlank(String value, String fieldName) {
+        if (!StringUtils.hasText(value)) {
+            throw new BusinessException(fieldName + "不能为空");
+        }
+    }
+    
+    /**
+     * 检查实体的状态是否不等于指定值
+     * @param entity 实体对象
+     * @param forbiddenStatus 禁止的状态值
+     * @param entityName 实体名称（用于错误消息）
+     * @param errorMessage 错误消息
+     * @param <T> 实体类型
+     * @throws BusinessException 如果状态等于禁止值
+     */
+    public static <T> void validateStatusNotEquals(T entity, Integer forbiddenStatus, String entityName, String errorMessage) {
+        if (entity == null) {
+            throw new BusinessException(entityName + "不存在");
+        }
+        
+        try {
+            Method getStatusMethod = entity.getClass().getMethod("getStatus");
+            Integer status = (Integer) getStatusMethod.invoke(entity);
+            if (status != null && status.equals(forbiddenStatus)) {
+                throw new BusinessException(errorMessage);
+            }
+        } catch (Exception e) {
+            throw new BusinessException("实体类型不支持状态检查");
+        }
+    }
+    
+    /**
+     * 检查实体的状态是否在允许的列表中
+     * @param entity 实体对象
+     * @param allowedStatuses 允许的状态值列表
+     * @param entityName 实体名称（用于错误消息）
+     * @param errorMessage 错误消息
+     * @param <T> 实体类型
+     * @throws BusinessException 如果状态不在允许列表中
+     */
+    public static <T> void validateStatusIn(T entity, List<Integer> allowedStatuses, String entityName, String errorMessage) {
+        if (entity == null) {
+            throw new BusinessException(entityName + "不存在");
+        }
+        
+        if (isEmpty(allowedStatuses)) {
+            throw new BusinessException("允许的状态列表不能为空");
+        }
+        
+        try {
+            Method getStatusMethod = entity.getClass().getMethod("getStatus");
+            Integer status = (Integer) getStatusMethod.invoke(entity);
+            if (status == null || !allowedStatuses.contains(status)) {
+                throw new BusinessException(errorMessage);
+            }
+        } catch (Exception e) {
+            throw new BusinessException("实体类型不支持状态检查");
+        }
     }
 }
 

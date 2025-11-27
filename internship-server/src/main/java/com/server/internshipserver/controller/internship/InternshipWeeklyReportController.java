@@ -3,6 +3,7 @@ package com.server.internshipserver.controller.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
+import com.server.internshipserver.domain.internship.dto.InternshipWeeklyReportQueryDTO;
 import com.server.internshipserver.service.internship.InternshipWeeklyReportService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -51,7 +52,12 @@ public class InternshipWeeklyReportController {
             @ApiParam(value = "周次", required = false) @RequestParam(required = false) Integer weekNumber,
             @ApiParam(value = "批阅状态", required = false) @RequestParam(required = false) Integer reviewStatus) {
         Page<InternshipWeeklyReport> page = new Page<>(current, size);
-        Page<InternshipWeeklyReport> result = internshipWeeklyReportService.getReportPage(page, studentId, applyId, weekNumber, reviewStatus);
+        InternshipWeeklyReportQueryDTO queryDTO = new InternshipWeeklyReportQueryDTO();
+        queryDTO.setStudentId(studentId);
+        queryDTO.setApplyId(applyId);
+        queryDTO.setWeekNumber(weekNumber);
+        queryDTO.setReviewStatus(reviewStatus);
+        Page<InternshipWeeklyReport> result = internshipWeeklyReportService.getReportPage(page, queryDTO);
         return Result.success(result);
     }
     

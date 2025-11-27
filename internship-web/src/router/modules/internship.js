@@ -23,6 +23,16 @@ export default [
     }
   },
   {
+    path: '/admin/internship/post',
+    name: 'AdminInternshipPostManagement',
+    component: () => import('@/views/enterprise/InternshipPostManagement.vue'),
+    meta: {
+      title: '岗位管理',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+    }
+  },
+  {
     path: '/student/internship/post',
     name: 'InternshipPostList',
     component: () => import('@/views/student/InternshipPostList.vue'),

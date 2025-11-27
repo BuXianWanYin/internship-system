@@ -3,6 +3,7 @@ package com.server.internshipserver.controller.system;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.system.Semester;
+import com.server.internshipserver.domain.system.dto.SemesterQueryDTO;
 import com.server.internshipserver.service.system.SemesterService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -63,7 +64,14 @@ public class SemesterController {
             @ApiParam(value = "结束日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String endDate,
             @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId) {
         Page<Semester> page = new Page<>(current, size);
-        Page<Semester> result = semesterService.getSemesterPage(page, semesterName, year, isCurrent, startDate, endDate, schoolId);
+        SemesterQueryDTO queryDTO = new SemesterQueryDTO();
+        queryDTO.setSemesterName(semesterName);
+        queryDTO.setYear(year);
+        queryDTO.setIsCurrent(isCurrent);
+        queryDTO.setStartDate(startDate);
+        queryDTO.setEndDate(endDate);
+        queryDTO.setSchoolId(schoolId);
+        Page<Semester> result = semesterService.getSemesterPage(page, queryDTO);
         return Result.success(result);
     }
     

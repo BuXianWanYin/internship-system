@@ -3,6 +3,7 @@ package com.server.internshipserver.service.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
+import com.server.internshipserver.domain.internship.dto.InternshipWeeklyReportQueryDTO;
 
 /**
  * 周报管理Service接口
@@ -33,14 +34,10 @@ public interface InternshipWeeklyReportService extends IService<InternshipWeekly
     /**
      * 分页查询周报列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param applyId 申请ID（可选）
-     * @param weekNumber 周次（可选）
-     * @param reviewStatus 批阅状态（可选）
+     * @param queryDTO 查询条件
      * @return 周报列表
      */
-    Page<InternshipWeeklyReport> getReportPage(Page<InternshipWeeklyReport> page, Long studentId, Long applyId,
-                                                Integer weekNumber, Integer reviewStatus);
+    Page<InternshipWeeklyReport> getReportPage(Page<InternshipWeeklyReport> page, InternshipWeeklyReportQueryDTO queryDTO);
     
     /**
      * 批阅周报

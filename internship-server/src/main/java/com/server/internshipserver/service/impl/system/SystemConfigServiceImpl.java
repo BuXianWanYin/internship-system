@@ -5,7 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.domain.system.SystemConfig;
 import com.server.internshipserver.mapper.system.SystemConfigMapper;
 import com.server.internshipserver.service.system.SystemConfigService;
@@ -23,21 +26,14 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     @Transactional(rollbackFor = Exception.class)
     public SystemConfig addConfig(SystemConfig config) {
         // 参数校验
-        if (!StringUtils.hasText(config.getConfigKey())) {
-            throw new BusinessException("配置键不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(config.getConfigKey(), "配置键");
         
         // 检查配置键是否已存在
-        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigKey, config.getConfigKey())
-               .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        SystemConfig existConfig = this.getOne(wrapper);
-        if (existConfig != null) {
-            throw new BusinessException("配置键已存在");
-        }
+        UniquenessValidationUtil.validateUnique(this, SystemConfig::getConfigKey, config.getConfigKey(),
+                SystemConfig::getDeleteFlag, "配置键");
         
         // 设置默认值
-        config.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(config);
         
         // 保存
         this.save(config);
@@ -58,14 +54,8 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         // 如果修改了配置键，检查新键是否已存在
         if (StringUtils.hasText(config.getConfigKey()) 
                 && !config.getConfigKey().equals(existConfig.getConfigKey())) {
-            LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(SystemConfig::getConfigKey, config.getConfigKey())
-                   .ne(SystemConfig::getConfigId, config.getConfigId())
-                   .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            SystemConfig keyExistConfig = this.getOne(wrapper);
-            if (keyExistConfig != null) {
-                throw new BusinessException("配置键已存在");
-            }
+            UniquenessValidationUtil.validateUniqueExcludeId(this, SystemConfig::getConfigKey, config.getConfigKey(),
+                    SystemConfig::getConfigId, config.getConfigId(), SystemConfig::getDeleteFlag, "配置键");
         }
         
         // 更新
@@ -100,7 +90,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, SystemConfig::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(configKey)) {

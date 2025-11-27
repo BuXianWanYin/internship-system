@@ -9,9 +9,13 @@ import com.server.internshipserver.common.enums.InternshipPostStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.AuditUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.domain.internship.InternshipPost;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.dto.InternshipPostQueryDTO;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.mapper.internship.InternshipPostMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
@@ -48,28 +52,14 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
     @Transactional(rollbackFor = Exception.class)
     public InternshipPost addPost(InternshipPost post) {
         // 参数校验
-        if (!StringUtils.hasText(post.getPostName())) {
-            throw new BusinessException("岗位名称不能为空");
-        }
-        if (!StringUtils.hasText(post.getPostCode())) {
-            throw new BusinessException("岗位编号不能为空");
-        }
-        if (post.getEnterpriseId() == null) {
-            throw new BusinessException("企业ID不能为空");
-        }
-        if (!StringUtils.hasText(post.getWorkLocation())) {
-            throw new BusinessException("工作地点不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(post.getPostName(), "岗位名称");
+        EntityValidationUtil.validateStringNotBlank(post.getPostCode(), "岗位编号");
+        EntityValidationUtil.validateIdNotNull(post.getEnterpriseId(), "企业ID");
+        EntityValidationUtil.validateStringNotBlank(post.getWorkLocation(), "工作地点");
         
         // 检查岗位编号是否已存在（同一企业内唯一）
-        LambdaQueryWrapper<InternshipPost> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(InternshipPost::getEnterpriseId, post.getEnterpriseId())
-               .eq(InternshipPost::getPostCode, post.getPostCode())
-               .eq(InternshipPost::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        InternshipPost existPost = this.getOne(wrapper);
-        if (existPost != null) {
-            throw new BusinessException("该企业下岗位编号已存在");
-        }
+        UniquenessValidationUtil.validateUniqueInScope(this, InternshipPost::getPostCode, post.getPostCode(),
+                InternshipPost::getEnterpriseId, post.getEnterpriseId(), InternshipPost::getDeleteFlag, "岗位编号", "企业");
         
         // 设置默认值
         if (post.getStatus() == null) {
@@ -84,7 +74,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         if (post.getAcceptedCount() == null) {
             post.setAcceptedCount(0);
         }
-        post.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(post);
         
         // 保存
         this.save(post);
@@ -146,12 +136,11 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
     }
     
     @Override
-    public Page<InternshipPost> getPostPage(Page<InternshipPost> page, String postName, Long enterpriseId,
-                                           Integer status, Boolean cooperationOnly) {
+    public Page<InternshipPost> getPostPage(Page<InternshipPost> page, InternshipPostQueryDTO queryDTO) {
         LambdaQueryWrapper<InternshipPost> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(InternshipPost::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, InternshipPost::getDeleteFlag);
         
         // 数据权限过滤
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
@@ -162,7 +151,7 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
         }
         // 学生端：只显示合作企业的岗位
-        else if (cooperationOnly != null && cooperationOnly && cooperationEnterpriseIds != null) {
+        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly() && cooperationEnterpriseIds != null) {
             if (cooperationEnterpriseIds.isEmpty()) {
                 // 如果没有合作关系，返回空列表
                 return page;
@@ -175,14 +164,16 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         }
         
         // 条件查询
-        if (StringUtils.hasText(postName)) {
-            wrapper.like(InternshipPost::getPostName, postName);
-        }
-        if (enterpriseId != null) {
-            wrapper.eq(InternshipPost::getEnterpriseId, enterpriseId);
-        }
-        if (status != null) {
-            wrapper.eq(InternshipPost::getStatus, status);
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getPostName())) {
+                wrapper.like(InternshipPost::getPostName, queryDTO.getPostName());
+            }
+            if (queryDTO.getEnterpriseId() != null) {
+                wrapper.eq(InternshipPost::getEnterpriseId, queryDTO.getEnterpriseId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(InternshipPost::getStatus, queryDTO.getStatus());
+            }
         }
         
         // 按创建时间倒序

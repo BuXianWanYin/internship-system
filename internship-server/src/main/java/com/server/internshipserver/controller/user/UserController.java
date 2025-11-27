@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.domain.user.dto.UserQueryDTO;
 import com.server.internshipserver.service.user.UserService;
 
 import java.util.List;
@@ -40,7 +41,16 @@ public class UserController {
             @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
             @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId) {
         Page<UserInfo> page = new Page<>(current, size);
-        Page<UserInfo> result = userService.getUserPage(page, username, realName, phone, status, roleCodes, schoolId, collegeId, classId);
+        UserQueryDTO queryDTO = new UserQueryDTO();
+        queryDTO.setUsername(username);
+        queryDTO.setRealName(realName);
+        queryDTO.setPhone(phone);
+        queryDTO.setStatus(status);
+        queryDTO.setRoleCodes(roleCodes);
+        queryDTO.setSchoolId(schoolId);
+        queryDTO.setCollegeId(collegeId);
+        queryDTO.setClassId(classId);
+        Page<UserInfo> result = userService.getUserPage(page, queryDTO);
         return Result.success("查询成功", result);
     }
     

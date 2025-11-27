@@ -152,27 +152,49 @@
           </el-col>
         </el-row>
         <el-form-item label="成果描述" prop="achievementDescription">
-          <el-input
+          <RichTextEditor
             v-model="formData.achievementDescription"
-            type="textarea"
-            :rows="6"
-            placeholder="请详细描述成果内容、技术要点、创新点等"
+            placeholder="请详细描述成果内容、技术要点、创新点等（支持富文本编辑，包括图片、文档、表格等）"
+            height="400px"
           />
         </el-form-item>
-        <el-form-item label="成果附件" prop="achievementAttachment">
-          <el-input
-            v-model="formData.achievementAttachment"
-            placeholder="请输入附件URL或上传附件"
-          />
-          <div style="margin-top: 5px; color: #909399; font-size: 12px">
-            支持上传文件后填写文件URL，或直接填写附件链接
+        <el-form-item label="成果附件" prop="fileUrls">
+          <el-upload
+            ref="uploadRef"
+            :action="uploadAction"
+            :headers="uploadHeaders"
+            :file-list="fileList"
+            :before-upload="beforeUpload"
+            :on-success="handleUploadSuccess"
+            :on-remove="handleRemove"
+            :on-error="handleUploadError"
+            :limit="10"
+            multiple
+            :accept="allowedFileTypes"
+          >
+            <el-button type="primary" :icon="Plus">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                <div>支持上传的文件类型：{{ allowedFileTypesText }}</div>
+                <div>单个文件大小不超过10MB，最多可上传10个文件</div>
+              </div>
+            </template>
+          </el-upload>
+          <div v-if="attachmentUrls.length > 0" class="attachment-preview">
+            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
+              <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+                {{ getFileName(url) }}
+              </el-link>
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="handleRemoveAttachment(index)"
+              >
+                删除
+              </el-button>
+            </div>
           </div>
-        </el-form-item>
-        <el-form-item label="成果展示链接" prop="achievementLink">
-          <el-input
-            v-model="formData.achievementLink"
-            placeholder="请输入成果展示链接（可选）"
-          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -202,17 +224,21 @@
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
         <el-descriptions-item label="成果描述" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.achievementDescription || '-' }}</div>
+          <div 
+            v-if="detailData.achievementDescription"
+            v-html="detailData.achievementDescription"
+            class="rich-content achievement-description"
+          ></div>
+          <span v-else>-</span>
         </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.achievementAttachment" label="成果附件" :span="2">
-          <el-link :href="detailData.achievementAttachment" target="_blank" type="primary">
-            {{ detailData.achievementAttachment }}
-          </el-link>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.achievementLink" label="成果展示链接" :span="2">
-          <el-link :href="detailData.achievementLink" target="_blank" type="primary">
-            {{ detailData.achievementLink }}
-          </el-link>
+        <el-descriptions-item v-if="detailData.fileUrls" label="成果附件" :span="2">
+          <div class="attachment-list">
+            <div v-for="(url, index) in (detailData.fileUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+              <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+                {{ getFileName(url) }}
+              </el-link>
+            </div>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.reviewComment" label="审核意见" :span="2">
           <div style="white-space: pre-wrap; color: #606266">{{ detailData.reviewComment }}</div>
@@ -229,13 +255,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Document } from '@element-plus/icons-vue'
 import { achievementApi } from '@/api/internship/achievement'
 import { applyApi } from '@/api/internship/apply'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
+import { getToken } from '@/utils/auth'
 import PageLayout from '@/components/common/PageLayout.vue'
+import RichTextEditor from '@/components/common/RichTextEditor.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -258,6 +287,9 @@ const pagination = reactive({
 const tableData = ref([])
 const detailData = ref({})
 const currentApply = ref(null)
+const uploadRef = ref(null)
+const fileList = ref([])
+const attachmentUrls = ref([])
 
 const formData = reactive({
   achievementId: null,
@@ -266,8 +298,69 @@ const formData = reactive({
   achievementTitle: '',
   achievementType: '',
   achievementDescription: '',
-  achievementAttachment: '',
-  achievementLink: ''
+  fileUrls: ''
+})
+
+// 文件上传配置
+const uploadAction = computed(() => {
+  // 使用相对路径，request会自动添加baseURL
+  return '/file/upload'
+})
+
+const uploadHeaders = computed(() => {
+  const token = getToken()
+  return {
+    Authorization: token ? `Bearer ${token}` : ''
+  }
+})
+
+// 根据成果类型获取允许的文件类型
+const allowedFileTypes = computed(() => {
+  const type = formData.achievementType
+  const allTypes = '.doc,.docx,.pdf,.txt,.rtf,.jpg,.jpeg,.png,.gif,.bmp,.xls,.xlsx,.zip,.rar,.7z'
+  
+  if (!type) {
+    return allTypes
+  }
+  
+  switch (type) {
+    case '项目文档':
+      return '.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.zip,.rar,.7z'
+    case '技术文档':
+      return '.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx'
+    case '学习笔记':
+      return '.doc,.docx,.pdf,.txt,.rtf,.xls,.xlsx,.jpg,.jpeg,.png,.gif'
+    case '作品展示':
+      return '.jpg,.jpeg,.png,.gif,.bmp,.pdf,.zip,.rar,.7z'
+    case '项目成果':
+    case '工作成果':
+    case '其他':
+    default:
+      return allTypes
+  }
+})
+
+const allowedFileTypesText = computed(() => {
+  const type = formData.achievementType
+  if (!type) {
+    return '所有类型（文档、图片、表格、压缩文件）'
+  }
+  
+  switch (type) {
+    case '项目文档':
+      return '文档、表格、压缩文件（doc, docx, pdf, txt, rtf, xls, xlsx, zip, rar, 7z）'
+    case '技术文档':
+      return '文档、表格（doc, docx, pdf, txt, rtf, xls, xlsx）'
+    case '学习笔记':
+      return '文档、表格、图片（doc, docx, pdf, txt, rtf, xls, xlsx, jpg, jpeg, png, gif）'
+    case '作品展示':
+      return '图片、PDF、压缩文件（jpg, jpeg, png, gif, bmp, pdf, zip, rar, 7z）'
+    case '项目成果':
+    case '工作成果':
+    case '其他':
+    default:
+      return '所有类型（文档、图片、表格、压缩文件）'
+  }
 })
 
 const formRules = {
@@ -351,9 +444,24 @@ const handleEdit = async (row) => {
         achievementTitle: res.data.achievementTitle,
         achievementType: res.data.achievementType,
         achievementDescription: res.data.achievementDescription || '',
-        achievementAttachment: res.data.achievementAttachment || '',
-        achievementLink: res.data.achievementLink || ''
+        fileUrls: res.data.fileUrls || ''
       })
+      
+      // 加载附件列表
+      if (res.data.fileUrls) {
+        attachmentUrls.value = res.data.fileUrls.split(',').filter(url => url.trim())
+        // 构建fileList用于显示
+        fileList.value = attachmentUrls.value.map((url, index) => ({
+          uid: index,
+          name: getFileName(url),
+          url: fileApi.getDownloadUrl(url),
+          status: 'success'
+        }))
+      } else {
+        attachmentUrls.value = []
+        fileList.value = []
+      }
+      
       dialogVisible.value = true
     }
   } catch (error) {
@@ -395,6 +503,97 @@ const handleDelete = async (row) => {
   }
 }
 
+// 文件上传前验证
+const beforeUpload = (file) => {
+  // 检查文件类型
+  const fileName = file.name
+  const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
+  const allowedExtensions = allowedFileTypes.value.split(',').map(ext => ext.replace('.', '').toLowerCase())
+  
+  if (!allowedExtensions.includes(fileExtension)) {
+    ElMessage.error(`不支持的文件类型：${fileExtension}，允许的类型：${allowedFileTypesText.value}`)
+    return false
+  }
+  
+  // 检查文件大小（10MB）
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  
+  return true
+}
+
+// 文件上传成功
+const handleUploadSuccess = (response, file) => {
+  if (response.code === 200) {
+    if (Array.isArray(response.data)) {
+      // 多个文件上传
+      response.data.forEach(url => {
+        if (!attachmentUrls.value.includes(url)) {
+          attachmentUrls.value.push(url)
+        }
+      })
+    } else if (typeof response.data === 'string') {
+      // 单个文件上传
+      if (!attachmentUrls.value.includes(response.data)) {
+        attachmentUrls.value.push(response.data)
+      }
+    }
+    ElMessage.success('文件上传成功')
+  } else {
+    ElMessage.error(response.message || '文件上传失败')
+  }
+}
+
+// 文件上传失败
+const handleUploadError = (error) => {
+  console.error('文件上传失败:', error)
+  ElMessage.error('文件上传失败')
+}
+
+// 移除文件
+const handleRemove = (file) => {
+  // 从attachmentUrls中移除对应的URL
+  if (file.response && file.response.data) {
+    const url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
+    const index = attachmentUrls.value.indexOf(url)
+    if (index > -1) {
+      attachmentUrls.value.splice(index, 1)
+    }
+  }
+}
+
+// 移除附件
+const handleRemoveAttachment = (index) => {
+  attachmentUrls.value.splice(index, 1)
+  // 同时从fileList中移除
+  if (uploadRef.value) {
+    const fileList = uploadRef.value.fileList
+    if (fileList[index]) {
+      uploadRef.value.handleRemove(fileList[index])
+    }
+  }
+}
+
+// 下载文件
+const handleDownloadFile = async (url) => {
+  try {
+    await fileApi.downloadFile(url)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败')
+  }
+}
+
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
 // 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -402,11 +601,22 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 设置提交日期为当前日期
+        const today = new Date()
+        const submitDate = today.toISOString().split('T')[0] // 格式：YYYY-MM-DD
+        
+        // 合并附件URL（逗号分隔）
+        const fileUrlsStr = attachmentUrls.value.length > 0 ? attachmentUrls.value.join(',') : ''
+        
         const data = {
           ...formData,
-          achievementAttachment: formData.achievementAttachment || undefined,
-          achievementLink: formData.achievementLink || undefined
+          achievementName: formData.achievementTitle, // 将achievementTitle映射到achievementName
+          submitDate: submitDate, // 设置提交日期
+          fileUrls: fileUrlsStr || undefined // 文件URL（多个用逗号分隔）
         }
+        // 删除achievementTitle，因为后端使用achievementName
+        delete data.achievementTitle
+        
         if (formData.achievementId) {
           data.achievementId = formData.achievementId
           const res = await achievementApi.updateAchievement(data)
@@ -442,11 +652,15 @@ const resetForm = () => {
     achievementTitle: '',
     achievementType: '',
     achievementDescription: '',
-    achievementAttachment: '',
-    achievementLink: ''
+    fileUrls: ''
   })
+  fileList.value = []
+  attachmentUrls.value = []
   if (formRef.value) {
     formRef.value.clearValidate()
+  }
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
   }
 }
 
@@ -505,6 +719,55 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.attachment-preview {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rich-content {
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+.achievement-description {
+  line-height: 1.6;
+}
+
+.achievement-description :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.achievement-description :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.achievement-description :deep(table td),
+.achievement-description :deep(table th) {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.achievement-description :deep(table th) {
+  background-color: #f5f7fa;
+  font-weight: bold;
 }
 </style>
 

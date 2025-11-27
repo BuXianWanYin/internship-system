@@ -8,9 +8,13 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
+import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -34,21 +38,32 @@ import java.util.List;
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
     
-    @Autowired
-    private DataPermissionUtil dataPermissionUtil;
+    private final DataPermissionUtil dataPermissionUtil;
+    private final UserService userService;
+    private final UserMapper userMapper;
+    private final SchoolAdminMapper schoolAdminMapper;
+    private final CollegeMapper collegeMapper;
     
-    @Autowired
-    @Lazy
-    private UserService userService;
-    
-    @Autowired
-    private UserMapper userMapper;
-    
-    @Autowired
-    private SchoolAdminMapper schoolAdminMapper;
-    
-    @Autowired
-    private CollegeMapper collegeMapper;
+    /**
+     * 构造函数注入，使用@Lazy解决循环依赖
+     * @param dataPermissionUtil 数据权限工具
+     * @param userService 用户服务（延迟加载，解决循环依赖）
+     * @param userMapper 用户Mapper
+     * @param schoolAdminMapper 学校管理员Mapper
+     * @param collegeMapper 学院Mapper
+     */
+    public TeacherServiceImpl(
+            DataPermissionUtil dataPermissionUtil,
+            @Lazy UserService userService,
+            UserMapper userMapper,
+            SchoolAdminMapper schoolAdminMapper,
+            CollegeMapper collegeMapper) {
+        this.dataPermissionUtil = dataPermissionUtil;
+        this.userService = userService;
+        this.userMapper = userMapper;
+        this.schoolAdminMapper = schoolAdminMapper;
+        this.collegeMapper = collegeMapper;
+    }
     
     @Override
     public Teacher getTeacherByUserId(Long userId) {
@@ -76,9 +91,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             return null;
         }
         
-        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Teacher::getTeacherNo, teacherNo)
-               .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<Teacher> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Teacher::getDeleteFlag);
+        wrapper.eq(Teacher::getTeacherNo, teacherNo);
         return this.getOne(wrapper);
     }
     
@@ -86,12 +100,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     @Transactional(rollbackFor = Exception.class)
     public Teacher addTeacher(Teacher teacher) {
         // 参数校验
-        if (teacher.getUserId() == null) {
-            throw new BusinessException("用户ID不能为空");
-        }
-        if (!StringUtils.hasText(teacher.getTeacherNo())) {
-            throw new BusinessException("工号不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(teacher.getUserId(), "用户ID");
+        EntityValidationUtil.validateStringNotBlank(teacher.getTeacherNo(), "工号");
         
         // 检查工号是否已存在
         Teacher existTeacher = getTeacherByTeacherNo(teacher.getTeacherNo());
@@ -106,10 +116,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         // 设置默认值
-        if (teacher.getStatus() == null) {
-            teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        teacher.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(teacher);
         
         // 保存
         this.save(teacher);
@@ -173,7 +180,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Teacher::getDeleteFlag);
         
         // 数据权限过滤：根据用户角色自动添加查询条件（先应用数据权限，再应用前端条件）
         // 系统管理员：不添加过滤条件
@@ -255,31 +262,21 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Teacher addTeacherWithUser(String teacherNo, String realName, String idCard, String phone,
-                                      String email, Long collegeId, Long schoolId, String title,
-                                      String department, String roleCode, String password, Integer status) {
+    public Teacher addTeacherWithUser(TeacherAddDTO addDTO) {
         // 参数校验
-        if (!StringUtils.hasText(teacherNo)) {
-            throw new BusinessException("工号不能为空");
-        }
-        if (!StringUtils.hasText(realName)) {
-            throw new BusinessException("真实姓名不能为空");
-        }
-        if (!StringUtils.hasText(password)) {
-            throw new BusinessException("初始密码不能为空");
-        }
-        if (collegeId == null) {
-            throw new BusinessException("所属学院ID不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(addDTO.getTeacherNo(), "工号");
+        EntityValidationUtil.validateStringNotBlank(addDTO.getRealName(), "真实姓名");
+        EntityValidationUtil.validateStringNotBlank(addDTO.getPassword(), "初始密码");
+        EntityValidationUtil.validateIdNotNull(addDTO.getCollegeId(), "所属学院ID");
         
         // 检查工号是否已存在
-        Teacher existTeacher = getTeacherByTeacherNo(teacherNo);
+        Teacher existTeacher = getTeacherByTeacherNo(addDTO.getTeacherNo());
         if (existTeacher != null) {
             throw new BusinessException("工号已存在");
         }
         
         // 生成用户名（使用工号）
-        String username = teacherNo;
+        String username = addDTO.getTeacherNo();
         UserInfo existUser = userService.getUserByUsername(username);
         if (existUser != null) {
             throw new BusinessException("用户名（工号）已存在");
@@ -288,50 +285,50 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         // 创建用户
         UserInfo user = new UserInfo();
         user.setUsername(username);
-        user.setPassword(password); // UserService会自动加密
-        user.setRealName(realName);
-        user.setIdCard(idCard);
-        user.setPhone(phone);
-        user.setEmail(email);
-        if (status == null) {
+        user.setPassword(addDTO.getPassword()); // UserService会自动加密
+        user.setRealName(addDTO.getRealName());
+        user.setIdCard(addDTO.getIdCard());
+        user.setPhone(addDTO.getPhone());
+        user.setEmail(addDTO.getEmail());
+        if (addDTO.getStatus() == null) {
             user.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
-            user.setStatus(status);
+            user.setStatus(addDTO.getStatus());
         }
         user = userService.addUser(user);
         
         // 创建教师记录
         Teacher teacher = new Teacher();
         teacher.setUserId(user.getUserId());
-        teacher.setTeacherNo(teacherNo);
-        teacher.setCollegeId(collegeId);
-        teacher.setSchoolId(schoolId);
-        teacher.setTitle(title);
+        teacher.setTeacherNo(addDTO.getTeacherNo());
+        teacher.setCollegeId(addDTO.getCollegeId());
+        teacher.setSchoolId(addDTO.getSchoolId());
+        teacher.setTitle(addDTO.getTitle());
         
         // 如果department为空，自动填充为学院名称
-        if (!StringUtils.hasText(department) && collegeId != null) {
-            College college = collegeMapper.selectById(collegeId);
+        if (!StringUtils.hasText(addDTO.getDepartment()) && addDTO.getCollegeId() != null) {
+            College college = collegeMapper.selectById(addDTO.getCollegeId());
             if (college != null) {
                 teacher.setDepartment(college.getCollegeName());
             } else {
-                teacher.setDepartment(department);
+                teacher.setDepartment(addDTO.getDepartment());
             }
         } else {
-            teacher.setDepartment(department);
+            teacher.setDepartment(addDTO.getDepartment());
         }
         
-        if (status == null) {
+        if (addDTO.getStatus() == null) {
             teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         } else {
-            teacher.setStatus(status);
+            teacher.setStatus(addDTO.getStatus());
         }
-        teacher.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(teacher);
         
         // 保存教师
         this.save(teacher);
         
         // 分配角色：如果指定了角色代码，使用指定的角色，否则默认分配班主任角色
-        String finalRoleCode = StringUtils.hasText(roleCode) ? roleCode : Constants.ROLE_CLASS_TEACHER;
+        String finalRoleCode = StringUtils.hasText(addDTO.getRoleCode()) ? addDTO.getRoleCode() : Constants.ROLE_CLASS_TEACHER;
         
         // 权限检查：检查当前用户是否可以分配该角色
         if (!dataPermissionUtil.canAssignRole(finalRoleCode)) {
@@ -341,7 +338,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         userService.assignRoleToUser(teacher.getUserId(), finalRoleCode);
         
         // 如果分配的是学校管理员角色，需要创建SchoolAdmin记录
-        if (Constants.ROLE_SCHOOL_ADMIN.equals(finalRoleCode) && schoolId != null) {
+        if (Constants.ROLE_SCHOOL_ADMIN.equals(finalRoleCode) && addDTO.getSchoolId() != null) {
             // 检查是否已经存在SchoolAdmin记录
             SchoolAdmin existSchoolAdmin = schoolAdminMapper.selectOne(
                     new LambdaQueryWrapper<SchoolAdmin>()
@@ -352,9 +349,9 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
                 // 创建SchoolAdmin记录
                 SchoolAdmin schoolAdmin = new SchoolAdmin();
                 schoolAdmin.setUserId(teacher.getUserId());
-                schoolAdmin.setSchoolId(schoolId);
-                schoolAdmin.setStatus(status != null ? status : 1);
-                schoolAdmin.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+                schoolAdmin.setSchoolId(addDTO.getSchoolId());
+                schoolAdmin.setStatus(addDTO.getStatus() != null ? addDTO.getStatus() : UserStatus.ENABLED.getCode());
+                EntityDefaultValueUtil.setDefaultValues(schoolAdmin);
                 schoolAdminMapper.insert(schoolAdmin);
             }
         }
@@ -364,18 +361,12 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Teacher updateTeacherWithUser(Long teacherId, Long userId, String teacherNo, String realName,
-                                         String idCard, String phone, String email, Long collegeId,
-                                         Long schoolId, String title, String department, String roleCode, Integer status) {
-        if (teacherId == null) {
-            throw new BusinessException("教师ID不能为空");
-        }
-        if (userId == null) {
-            throw new BusinessException("用户ID不能为空");
-        }
+    public Teacher updateTeacherWithUser(TeacherUpdateDTO updateDTO) {
+        EntityValidationUtil.validateIdNotNull(updateDTO.getTeacherId(), "教师ID");
+        EntityValidationUtil.validateIdNotNull(updateDTO.getUserId(), "用户ID");
         
         // 检查教师是否存在
-        Teacher existTeacher = this.getById(teacherId);
+        Teacher existTeacher = this.getById(updateDTO.getTeacherId());
         EntityValidationUtil.validateEntityExists(existTeacher, "教师");
         
         // 权限检查：检查当前用户是否可以编辑该教师对应的用户
@@ -384,82 +375,80 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         // 如果修改了工号，检查新工号是否已存在
-        if (StringUtils.hasText(teacherNo) && !teacherNo.equals(existTeacher.getTeacherNo())) {
-            Teacher teacherNoExist = getTeacherByTeacherNo(teacherNo);
+        if (StringUtils.hasText(updateDTO.getTeacherNo()) && !updateDTO.getTeacherNo().equals(existTeacher.getTeacherNo())) {
+            Teacher teacherNoExist = getTeacherByTeacherNo(updateDTO.getTeacherNo());
             if (teacherNoExist != null) {
                 throw new BusinessException("工号已存在");
             }
         }
         
         // 更新用户信息
-        UserInfo user = userService.getUserById(userId);
+        UserInfo user = userService.getUserById(updateDTO.getUserId());
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
-        if (StringUtils.hasText(realName)) {
-            user.setRealName(realName);
+        if (StringUtils.hasText(updateDTO.getRealName())) {
+            user.setRealName(updateDTO.getRealName());
         }
-        if (StringUtils.hasText(idCard)) {
-            user.setIdCard(idCard);
+        if (StringUtils.hasText(updateDTO.getIdCard())) {
+            user.setIdCard(updateDTO.getIdCard());
         }
-        if (StringUtils.hasText(phone)) {
-            user.setPhone(phone);
+        if (StringUtils.hasText(updateDTO.getPhone())) {
+            user.setPhone(updateDTO.getPhone());
         }
-        if (StringUtils.hasText(email)) {
-            user.setEmail(email);
+        if (StringUtils.hasText(updateDTO.getEmail())) {
+            user.setEmail(updateDTO.getEmail());
         }
-        if (status != null) {
-            user.setStatus(status);
+        if (updateDTO.getStatus() != null) {
+            user.setStatus(updateDTO.getStatus());
         }
         userService.updateUser(user);
         
         // 更新教师信息
         Teacher teacher = new Teacher();
-        teacher.setTeacherId(teacherId);
-        if (StringUtils.hasText(teacherNo)) {
-            teacher.setTeacherNo(teacherNo);
+        teacher.setTeacherId(updateDTO.getTeacherId());
+        if (StringUtils.hasText(updateDTO.getTeacherNo())) {
+            teacher.setTeacherNo(updateDTO.getTeacherNo());
         }
-        if (collegeId != null) {
-            teacher.setCollegeId(collegeId);
+        if (updateDTO.getCollegeId() != null) {
+            teacher.setCollegeId(updateDTO.getCollegeId());
             // 如果修改了学院，自动更新部门为学院名称
-            College college = collegeMapper.selectById(collegeId);
+            College college = collegeMapper.selectById(updateDTO.getCollegeId());
             if (college != null) {
                 teacher.setDepartment(college.getCollegeName());
             }
         }
-        if (schoolId != null) {
-            teacher.setSchoolId(schoolId);
+        if (updateDTO.getSchoolId() != null) {
+            teacher.setSchoolId(updateDTO.getSchoolId());
         }
-        if (StringUtils.hasText(title)) {
-            teacher.setTitle(title);
+        if (StringUtils.hasText(updateDTO.getTitle())) {
+            teacher.setTitle(updateDTO.getTitle());
         }
         // 如果department为空且collegeId不为空，自动填充为学院名称
-        if (!StringUtils.hasText(department) && collegeId != null) {
-            College college = collegeMapper.selectById(collegeId);
+        if (!StringUtils.hasText(updateDTO.getDepartment()) && updateDTO.getCollegeId() != null) {
+            College college = collegeMapper.selectById(updateDTO.getCollegeId());
             if (college != null) {
                 teacher.setDepartment(college.getCollegeName());
             }
-        } else if (StringUtils.hasText(department)) {
-            teacher.setDepartment(department);
+        } else if (StringUtils.hasText(updateDTO.getDepartment())) {
+            teacher.setDepartment(updateDTO.getDepartment());
         }
-        if (status != null) {
-            teacher.setStatus(status);
+        if (updateDTO.getStatus() != null) {
+            teacher.setStatus(updateDTO.getStatus());
         }
         this.updateById(teacher);
         
-
-        if (StringUtils.hasText(roleCode)) {
-            userService.assignRoleToUser(userId, roleCode);
+        if (StringUtils.hasText(updateDTO.getRoleCode())) {
+            userService.assignRoleToUser(updateDTO.getUserId(), updateDTO.getRoleCode());
         }
         
-        return this.getById(teacherId);
+        return this.getById(updateDTO.getTeacherId());
     }
     
     @Override
     public List<Teacher> getTeacherListBySchool(Long schoolId, Long collegeId) {
-        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-               .eq(Teacher::getStatus, 1); // 只查询启用的教师
+        LambdaQueryWrapper<Teacher> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Teacher::getDeleteFlag);
+        wrapper.eq(Teacher::getStatus, UserStatus.ENABLED.getCode()); // 只查询启用的教师
         
         if (schoolId != null) {
             wrapper.eq(Teacher::getSchoolId, schoolId);

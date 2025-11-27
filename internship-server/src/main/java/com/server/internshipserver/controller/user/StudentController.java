@@ -5,6 +5,7 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.utils.ExcelUtil;
 import com.server.internshipserver.domain.user.dto.StudentImportDTO;
 import com.server.internshipserver.domain.user.dto.StudentImportResult;
+import com.server.internshipserver.domain.user.dto.StudentQueryDTO;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.service.user.StudentService;
 import io.swagger.annotations.Api;
@@ -44,7 +45,15 @@ public class StudentController {
             @ApiParam(value = "状态：1-已审核，0-待审核（可选）") @RequestParam(required = false) Integer status,
             @ApiParam(value = "入学年份（可选）") @RequestParam(required = false) Integer enrollmentYear) {
         Page<Student> page = new Page<>(current, size);
-        Page<Student> result = studentService.getStudentPage(page, studentNo, classId, majorId, collegeId, schoolId, status, enrollmentYear);
+        StudentQueryDTO queryDTO = new StudentQueryDTO();
+        queryDTO.setStudentNo(studentNo);
+        queryDTO.setClassId(classId);
+        queryDTO.setMajorId(majorId);
+        queryDTO.setCollegeId(collegeId);
+        queryDTO.setSchoolId(schoolId);
+        queryDTO.setStatus(status);
+        queryDTO.setEnrollmentYear(enrollmentYear);
+        Page<Student> result = studentService.getStudentPage(page, queryDTO);
         return Result.success("查询成功", result);
     }
     

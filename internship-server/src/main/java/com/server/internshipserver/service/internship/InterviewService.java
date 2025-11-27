@@ -3,6 +3,9 @@ package com.server.internshipserver.service.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.Interview;
+import com.server.internshipserver.domain.internship.dto.ConfirmInterviewDTO;
+import com.server.internshipserver.domain.internship.dto.InterviewQueryDTO;
+import com.server.internshipserver.domain.internship.dto.SubmitInterviewResultDTO;
 
 /**
  * 面试管理Service接口
@@ -33,31 +36,26 @@ public interface InterviewService extends IService<Interview> {
     /**
      * 分页查询面试列表
      * @param page 分页参数
-     * @param applyId 申请ID（可选）
-     * @param enterpriseId 企业ID（可选）
-     * @param studentId 学生ID（可选）
-     * @param status 状态（可选）
+     * @param queryDTO 查询条件
      * @return 面试列表
      */
-    Page<Interview> getInterviewPage(Page<Interview> page, Long applyId, Long enterpriseId,
-                                     Long studentId, Integer status);
+    Page<Interview> getInterviewPage(Page<Interview> page, InterviewQueryDTO queryDTO);
     
     /**
      * 学生确认面试
      * @param interviewId 面试ID
-     * @param confirm 确认（1-已确认，2-已拒绝）
+     * @param confirmDTO 确认信息
      * @return 是否成功
      */
-    boolean confirmInterview(Long interviewId, Integer confirm);
+    boolean confirmInterview(Long interviewId, ConfirmInterviewDTO confirmDTO);
     
     /**
      * 提交面试结果
      * @param interviewId 面试ID
-     * @param interviewResult 面试结果（1-通过，2-不通过，3-待定）
-     * @param interviewComment 面试评价
+     * @param resultDTO 面试结果信息
      * @return 是否成功
      */
-    boolean submitInterviewResult(Long interviewId, Integer interviewResult, String interviewComment);
+    boolean submitInterviewResult(Long interviewId, SubmitInterviewResultDTO resultDTO);
     
     /**
      * 取消面试

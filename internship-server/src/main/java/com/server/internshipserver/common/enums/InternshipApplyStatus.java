@@ -27,7 +27,12 @@ public enum InternshipApplyStatus {
     /**
      * 已拒绝录用
      */
-    REJECTED_ACCEPTANCE(4, "已拒绝录用");
+    REJECTED_ACCEPTANCE(4, "已拒绝录用"),
+    
+    /**
+     * 已取消
+     */
+    CANCELLED(5, "已取消");
 
     private final int code;
     private final String desc;

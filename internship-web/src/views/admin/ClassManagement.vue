@@ -369,6 +369,16 @@ const isCollegeDisabledForAdd = computed(() => {
   return hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
 })
 
+// 计算属性：搜索表单中学校下拉框是否禁用
+const isSchoolDisabled = computed(() => {
+  return hasAnyRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
+
+// 计算属性：搜索表单中学院下拉框是否禁用
+const isCollegeDisabled = computed(() => {
+  return hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
+
 // 当前用户组织信息
 const currentOrgInfo = ref({
   schoolId: null,

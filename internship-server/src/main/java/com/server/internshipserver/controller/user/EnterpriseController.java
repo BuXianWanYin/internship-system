@@ -5,6 +5,8 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.dto.EnterpriseRegisterDTO;
 import com.server.internshipserver.domain.user.dto.EnterpriseAddDTO;
+import com.server.internshipserver.domain.user.dto.AuditEnterpriseDTO;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.service.user.EnterpriseService;
 import java.util.List;
@@ -69,13 +71,7 @@ public class EnterpriseController {
     @PostMapping
     @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     public Result<Enterprise> addEnterprise(@RequestBody EnterpriseAddDTO addDTO) {
-        Enterprise result = enterpriseService.addEnterpriseWithAdmin(
-            addDTO.getEnterprise(),
-            addDTO.getAdminName(),
-            addDTO.getAdminPhone(),
-            addDTO.getAdminEmail(),
-            addDTO.getAdminPassword()
-        );
+        Enterprise result = enterpriseService.addEnterpriseWithAdmin(addDTO);
         return Result.success("添加成功", result);
     }
     
@@ -94,7 +90,10 @@ public class EnterpriseController {
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId,
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
-        boolean success = enterpriseService.auditEnterprise(enterpriseId, auditStatus, auditOpinion);
+        AuditEnterpriseDTO auditDTO = new AuditEnterpriseDTO();
+        auditDTO.setAuditStatus(AuditStatus.getByCode(auditStatus));
+        auditDTO.setAuditOpinion(auditOpinion);
+        boolean success = enterpriseService.auditEnterprise(enterpriseId, auditDTO);
         return success ? Result.success("审核成功") : Result.error("审核失败");
     }
     

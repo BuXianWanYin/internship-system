@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.common.utils.UserUtil;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.domain.internship.InternshipPlan;
+import com.server.internshipserver.domain.internship.dto.InternshipPlanQueryDTO;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.StudentMapper;
@@ -64,8 +66,14 @@ public class InternshipPlanController {
             @ApiParam(value = "专业ID", required = false) @RequestParam(required = false) Long majorId,
             @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status) {
         Page<InternshipPlan> page = new Page<>(current, size);
-        Page<InternshipPlan> result = internshipPlanService.getPlanPage(page, planName, semesterId, 
-                schoolId, collegeId, majorId, status);
+        InternshipPlanQueryDTO queryDTO = new InternshipPlanQueryDTO();
+        queryDTO.setPlanName(planName);
+        queryDTO.setSemesterId(semesterId);
+        queryDTO.setSchoolId(schoolId);
+        queryDTO.setCollegeId(collegeId);
+        queryDTO.setMajorId(majorId);
+        queryDTO.setStatus(status);
+        Page<InternshipPlan> result = internshipPlanService.getPlanPage(page, queryDTO);
         return Result.success(result);
     }
     
@@ -92,9 +100,16 @@ public class InternshipPlanController {
     @PostMapping("/{planId}/audit")
     public Result<?> auditPlan(
             @ApiParam(value = "计划ID", required = true) @PathVariable Long planId,
-            @ApiParam(value = "审核状态（2-已通过，3-已拒绝）", required = true) @RequestParam Integer auditStatus,
+            @ApiParam(value = "审核状态（1-已通过，2-已拒绝）", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
-        internshipPlanService.auditPlan(planId, auditStatus, auditOpinion);
+        // 将Integer转换为枚举
+        // 注意：Service实现中使用AuditStatus枚举的code值（1-已通过，2-已拒绝）
+        AuditStatus status = AuditStatus.getByCode(auditStatus);
+        if (status == null || (status != AuditStatus.APPROVED && status != AuditStatus.REJECTED)) {
+            throw new com.server.internshipserver.common.exception.BusinessException("审核状态无效，应为1（已通过）或2（已拒绝）");
+        }
+        // 注意：Service接口还未优化，暂时传递Integer，待Service接口优化后改为传递枚举
+        internshipPlanService.auditPlan(planId, status.getCode(), auditOpinion);
         return Result.success("审核成功");
     }
     
@@ -121,10 +136,7 @@ public class InternshipPlanController {
     @GetMapping("/available")
     public Result<java.util.List<InternshipPlan>> getAvailablePlans() {
         // 获取当前登录学生信息
-        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user == null) {
-            return Result.error("用户不存在");
-        }
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
         
         Student student = studentMapper.selectOne(
             new LambdaQueryWrapper<Student>()

@@ -10,10 +10,15 @@ import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.AuditUtil;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.dto.EnterpriseAddDTO;
+import com.server.internshipserver.domain.user.dto.AuditEnterpriseDTO;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -67,9 +72,8 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
             return null;
         }
         
-        LambdaQueryWrapper<Enterprise> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Enterprise::getEnterpriseCode, enterpriseCode)
-               .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<Enterprise> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Enterprise::getDeleteFlag);
+        wrapper.eq(Enterprise::getEnterpriseCode, enterpriseCode);
         return this.getOne(wrapper);
     }
     
@@ -77,31 +81,21 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     @Transactional(rollbackFor = Exception.class)
     public Enterprise registerEnterprise(Enterprise enterprise, List<Long> schoolIds) {
         // 参数校验
-        if (!StringUtils.hasText(enterprise.getEnterpriseName())) {
-            throw new BusinessException("企业名称不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(enterprise.getEnterpriseName(), "企业名称");
         
-        if (schoolIds == null || schoolIds.isEmpty()) {
+        if (EntityValidationUtil.isEmpty(schoolIds)) {
             throw new BusinessException("至少选择一个意向合作院校");
         }
         
         // 检查统一社会信用代码是否已存在
         if (StringUtils.hasText(enterprise.getUnifiedSocialCreditCode())) {
-            LambdaQueryWrapper<Enterprise> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Enterprise::getUnifiedSocialCreditCode, enterprise.getUnifiedSocialCreditCode())
-                   .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            Enterprise existEnterprise = this.getOne(wrapper);
-            if (existEnterprise != null) {
-                throw new BusinessException("统一社会信用代码已存在");
-            }
+            UniquenessValidationUtil.validateUnique(this, Enterprise::getUnifiedSocialCreditCode, 
+                    enterprise.getUnifiedSocialCreditCode(), Enterprise::getDeleteFlag, "统一社会信用代码");
         }
         
         // 设置默认值
         enterprise.setAuditStatus(AuditStatus.PENDING.getCode()); // 待审核
-        if (enterprise.getStatus() == null) {
-            enterprise.setStatus(UserStatus.DISABLED.getCode()); // 注册时默认禁用，审核通过后激活
-        }
-        enterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(enterprise, UserStatus.DISABLED.getCode());
         
         // 保存企业信息
         this.save(enterprise);
@@ -116,9 +110,7 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     @Transactional(rollbackFor = Exception.class)
     public Enterprise addEnterprise(Enterprise enterprise) {
         // 参数校验
-        if (!StringUtils.hasText(enterprise.getEnterpriseName())) {
-            throw new BusinessException("企业名称不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(enterprise.getEnterpriseName(), "企业名称");
         
         // 检查企业代码是否已存在
         if (StringUtils.hasText(enterprise.getEnterpriseCode())) {
@@ -130,23 +122,15 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         
         // 检查统一社会信用代码是否已存在
         if (StringUtils.hasText(enterprise.getUnifiedSocialCreditCode())) {
-            LambdaQueryWrapper<Enterprise> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Enterprise::getUnifiedSocialCreditCode, enterprise.getUnifiedSocialCreditCode())
-                   .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            Enterprise existEnterprise = this.getOne(wrapper);
-            if (existEnterprise != null) {
-                throw new BusinessException("统一社会信用代码已存在");
-            }
+            UniquenessValidationUtil.validateUnique(this, Enterprise::getUnifiedSocialCreditCode, 
+                    enterprise.getUnifiedSocialCreditCode(), Enterprise::getDeleteFlag, "统一社会信用代码");
         }
         
         // 设置默认值
         if (enterprise.getAuditStatus() == null) {
             enterprise.setAuditStatus(AuditStatus.APPROVED.getCode()); // 默认已通过
         }
-        if (enterprise.getStatus() == null) {
-            enterprise.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        enterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(enterprise);
         
         // 保存
         this.save(enterprise);
@@ -155,20 +139,13 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Enterprise addEnterpriseWithAdmin(Enterprise enterprise, String adminName, String adminPhone, String adminEmail, String adminPassword) {
+    public Enterprise addEnterpriseWithAdmin(EnterpriseAddDTO addDTO) {
+        Enterprise enterprise = addDTO.getEnterprise();
         // 参数校验
-        if (!StringUtils.hasText(enterprise.getEnterpriseName())) {
-            throw new BusinessException("企业名称不能为空");
-        }
-        if (!StringUtils.hasText(adminName)) {
-            throw new BusinessException("企业管理员姓名不能为空");
-        }
-        if (!StringUtils.hasText(adminPhone)) {
-            throw new BusinessException("企业管理员手机号不能为空");
-        }
-        if (!StringUtils.hasText(adminPassword)) {
-            throw new BusinessException("企业管理员初始密码不能为空");
-        }
+        EntityValidationUtil.validateStringNotBlank(enterprise.getEnterpriseName(), "企业名称");
+        EntityValidationUtil.validateStringNotBlank(addDTO.getAdminName(), "企业管理员姓名");
+        EntityValidationUtil.validateStringNotBlank(addDTO.getAdminPhone(), "企业管理员手机号");
+        EntityValidationUtil.validateStringNotBlank(addDTO.getAdminPassword(), "企业管理员初始密码");
         
         // 检查企业代码是否已存在
         if (StringUtils.hasText(enterprise.getEnterpriseCode())) {
@@ -191,10 +168,10 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         
         // 生成用户名（使用手机号或邮箱）
         String username;
-        if (StringUtils.hasText(adminPhone)) {
-            username = adminPhone;
-        } else if (StringUtils.hasText(adminEmail)) {
-            username = adminEmail.split("@")[0];
+        if (StringUtils.hasText(addDTO.getAdminPhone())) {
+            username = addDTO.getAdminPhone();
+        } else if (StringUtils.hasText(addDTO.getAdminEmail())) {
+            username = addDTO.getAdminEmail().split("@")[0];
         } else {
             username = "ENT_ADMIN_" + System.currentTimeMillis();
         }
@@ -209,10 +186,10 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         // 创建企业管理员用户
         UserInfo adminUser = new UserInfo();
         adminUser.setUsername(username);
-        adminUser.setPassword(adminPassword); // UserService会自动加密
-        adminUser.setRealName(adminName);
-        adminUser.setPhone(adminPhone);
-        adminUser.setEmail(adminEmail);
+        adminUser.setPassword(addDTO.getAdminPassword()); // UserService会自动加密
+        adminUser.setRealName(addDTO.getAdminName());
+        adminUser.setPhone(addDTO.getAdminPhone());
+        adminUser.setEmail(addDTO.getAdminEmail());
         adminUser.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         adminUser = userService.addUser(adminUser);
         
@@ -227,7 +204,7 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         if (enterprise.getStatus() == null) {
             enterprise.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
         }
-        enterprise.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValues(enterprise);
         
         // 保存企业
         this.save(enterprise);
@@ -292,26 +269,25 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion) {
+    public boolean auditEnterprise(Long enterpriseId, AuditEnterpriseDTO auditDTO) {
         // 获取当前登录用户ID作为审核人
         UserInfo user = UserUtil.getCurrentUser(userMapper);
         Long auditorId = user.getUserId();
-        return auditEnterprise(enterpriseId, auditStatus, auditOpinion, auditorId);
+        return auditEnterprise(enterpriseId, auditDTO, auditorId);
     }
     
     /**
      * 审核企业（内部方法，包含审核人ID）
      * @param enterpriseId 企业ID
-     * @param auditStatus 审核状态：1-通过，2-拒绝（使用AuditStatus枚举）
-     * @param auditOpinion 审核意见
+     * @param auditDTO 审核信息
      * @param auditorId 审核人ID
      * @return 是否成功
      */
     @Transactional(rollbackFor = Exception.class)
-    public boolean auditEnterprise(Long enterpriseId, Integer auditStatus, String auditOpinion, Long auditorId) {
+    private boolean auditEnterprise(Long enterpriseId, AuditEnterpriseDTO auditDTO, Long auditorId) {
         EntityValidationUtil.validateIdNotNull(enterpriseId, "企业ID");
-        if (auditStatus == null || (!auditStatus.equals(AuditStatus.APPROVED.getCode()) && !auditStatus.equals(AuditStatus.REJECTED.getCode()))) {
-            throw new BusinessException("审核状态无效");
+        if (auditDTO == null || auditDTO.getAuditStatus() == null) {
+            throw new BusinessException("审核信息不能为空");
         }
         EntityValidationUtil.validateIdNotNull(auditorId, "审核人ID");
         
@@ -319,10 +295,10 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         EntityValidationUtil.validateEntityExists(enterprise, "企业");
         
         // 更新审核信息
-        AuditUtil.setAuditInfo(enterprise, auditStatus, auditOpinion, auditorId);
+        AuditUtil.setAuditInfo(enterprise, auditDTO.getAuditStatus().getCode(), auditDTO.getAuditOpinion(), auditorId);
         
         // 如果审核通过，激活企业管理员账号
-        if (auditStatus.equals(AuditStatus.APPROVED.getCode()) && enterprise.getUserId() != null) {
+        if (auditDTO.getAuditStatus() == AuditStatus.APPROVED && enterprise.getUserId() != null) {
             UserInfo user = userMapper.selectById(enterprise.getUserId());
             if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
                 // 激活账号：设置状态为启用
@@ -356,10 +332,8 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
                 } else {
                     // 学校管理员或班主任：只能查看有合作关系的企业
                     List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
-                    if (cooperationEnterpriseIds != null) {
-                        if (!cooperationEnterpriseIds.contains(enterpriseId)) {
-                            throw new BusinessException("无权查看该企业信息");
-                        }
+                    if (cooperationEnterpriseIds != null && !cooperationEnterpriseIds.contains(enterpriseId)) {
+                        throw new BusinessException("无权查看该企业信息");
                     }
                 }
             }
@@ -374,7 +348,7 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         LambdaQueryWrapper<Enterprise> wrapper = new LambdaQueryWrapper<>();
         
         // 只查询未删除的数据
-        wrapper.eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        QueryWrapperUtil.notDeleted(wrapper, Enterprise::getDeleteFlag);
         
         // 条件查询
         if (StringUtils.hasText(enterpriseName)) {

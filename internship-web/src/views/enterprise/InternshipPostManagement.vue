@@ -96,6 +96,24 @@
             查看
           </el-button>
           <el-button
+            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            link
+            type="success"
+            size="small"
+            @click="handleAudit(row, 1)"
+          >
+            通过
+          </el-button>
+          <el-button
+            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            link
+            type="danger"
+            size="small"
+            @click="handleAudit(row, 2)"
+          >
+            拒绝
+          </el-button>
+          <el-button
             v-if="row.status !== 3 && row.status !== 4 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
             type="primary"
@@ -202,7 +220,7 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="招聘人数" prop="recruitCount">
               <el-input-number
                 v-model="formData.recruitCount"
@@ -212,7 +230,7 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="12">
             <el-form-item label="薪资类型" prop="salaryType">
               <el-select v-model="formData.salaryType" placeholder="请选择薪资类型" style="width: 100%">
                 <el-option label="月薪" value="月薪" />
@@ -222,23 +240,27 @@
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8" v-if="formData.salaryType && formData.salaryType !== '面议'">
+        </el-row>
+        <el-row :gutter="20" v-if="formData.salaryType && formData.salaryType !== '面议'">
+          <el-col :span="24">
             <el-form-item label="薪资范围">
-              <el-input-number
-                v-model="formData.salaryMin"
-                :min="0"
-                :precision="2"
-                placeholder="最低"
-                style="width: 48%"
-              />
-              <span style="margin: 0 4px">-</span>
-              <el-input-number
-                v-model="formData.salaryMax"
-                :min="0"
-                :precision="2"
-                placeholder="最高"
-                style="width: 48%"
-              />
+              <div style="display: flex; align-items: center; gap: 12px; width: 100%">
+                <el-input-number
+                  v-model="formData.salaryMin"
+                  :min="0"
+                  :precision="2"
+                  placeholder="最低薪资"
+                  style="flex: 1; max-width: 300px"
+                />
+                <span style="color: #909399; font-size: 14px; white-space: nowrap">-</span>
+                <el-input-number
+                  v-model="formData.salaryMax"
+                  :min="0"
+                  :precision="2"
+                  placeholder="最高薪资"
+                  style="flex: 1; max-width: 300px"
+                />
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -339,6 +361,59 @@
           <div style="white-space: pre-wrap">{{ detailData.skillRequirements || '-' }}</div>
         </el-descriptions-item>
       </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button
+          v-if="detailData.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+          type="success"
+          @click="handleAuditFromDetail(1)"
+        >
+          通过
+        </el-button>
+        <el-button
+          v-if="detailData.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+          type="danger"
+          @click="handleAuditFromDetail(2)"
+        >
+          拒绝
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 审核对话框 -->
+    <el-dialog
+      v-model="auditDialogVisible"
+      :title="auditDialogTitle"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="auditFormRef"
+        :model="auditForm"
+        :rules="auditFormRules"
+        label-width="100px"
+      >
+        <el-form-item label="岗位信息">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            <div><strong>岗位名称：</strong>{{ currentPost.postName }}</div>
+            <div style="margin-top: 5px"><strong>岗位编号：</strong>{{ currentPost.postCode }}</div>
+            <div style="margin-top: 5px"><strong>企业：</strong>{{ currentPost.enterpriseName || '-' }}</div>
+            <div style="margin-top: 5px"><strong>工作地点：</strong>{{ currentPost.workLocation || '-' }}</div>
+          </div>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="auditOpinion">
+          <el-input
+            v-model="auditForm.auditOpinion"
+            type="textarea"
+            :rows="6"
+            :placeholder="auditForm.auditStatus === 1 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="auditDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="auditLoading" @click="handleSubmitAudit">确定</el-button>
+      </template>
     </el-dialog>
   </PageLayout>
 </template>
@@ -351,6 +426,8 @@ import { hasAnyRole } from '@/utils/permission'
 import { postApi } from '@/api/internship/post'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
+import { enterpriseApi } from '@/api/user/enterprise'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -374,6 +451,7 @@ const tableData = ref([])
 
 const formData = reactive({
   postId: null,
+  enterpriseId: null,
   postName: '',
   postCode: '',
   postDescription: '',
@@ -393,6 +471,33 @@ const formData = reactive({
 })
 
 const detailData = ref({})
+
+// 审核相关
+const auditDialogVisible = ref(false)
+const auditDialogTitle = ref('审核岗位')
+const auditLoading = ref(false)
+const auditFormRef = ref(null)
+const currentPost = ref({})
+
+const auditForm = reactive({
+  auditStatus: 1, // 1-通过，2-拒绝
+  auditOpinion: ''
+})
+
+const auditFormRules = {
+  auditOpinion: [
+    {
+      validator: (rule, value, callback) => {
+        if (auditForm.auditStatus === 2 && (!value || value.trim() === '')) {
+          callback(new Error('拒绝时必须填写拒绝原因'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
+}
 
 const formRules = {
   postName: [{ required: true, message: '请输入岗位名称', trigger: 'blur' }],
@@ -448,6 +553,7 @@ const handleEdit = (row) => {
   dialogTitle.value = '编辑岗位'
   Object.assign(formData, {
     postId: row.postId,
+    enterpriseId: row.enterpriseId || null,
     postName: row.postName,
     postCode: row.postCode,
     postDescription: row.postDescription || '',
@@ -539,6 +645,52 @@ const handleDelete = async (row) => {
   }
 }
 
+// 审核岗位
+const handleAudit = (row, auditStatus) => {
+  currentPost.value = { ...row }
+  auditForm.auditStatus = auditStatus
+  auditForm.auditOpinion = ''
+  auditDialogTitle.value = auditStatus === 1 ? '审核通过' : '审核拒绝'
+  auditDialogVisible.value = true
+}
+
+// 从详情对话框审核
+const handleAuditFromDetail = (auditStatus) => {
+  currentPost.value = { ...detailData.value }
+  auditForm.auditStatus = auditStatus
+  auditForm.auditOpinion = ''
+  auditDialogTitle.value = auditStatus === 1 ? '审核通过' : '审核拒绝'
+  detailDialogVisible.value = false
+  auditDialogVisible.value = true
+}
+
+// 提交审核
+const handleSubmitAudit = async () => {
+  if (!auditFormRef.value) return
+  await auditFormRef.value.validate(async (valid) => {
+    if (valid) {
+      auditLoading.value = true
+      try {
+        const res = await postApi.auditPost(
+          currentPost.value.postId,
+          auditForm.auditStatus,
+          auditForm.auditOpinion || undefined
+        )
+        if (res.code === 200) {
+          ElMessage.success(auditForm.auditStatus === 1 ? '审核通过' : '审核拒绝')
+          auditDialogVisible.value = false
+          loadData()
+        }
+      } catch (error) {
+        console.error('审核失败:', error)
+        ElMessage.error(error.response?.data?.message || '审核失败')
+      } finally {
+        auditLoading.value = false
+      }
+    }
+  })
+}
+
 // 提交表单
 const handleSubmitForm = async () => {
   if (!formRef.value) return
@@ -546,6 +698,27 @@ const handleSubmitForm = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 如果是新增岗位，需要获取当前用户的企业ID
+        if (!formData.postId) {
+          const authStore = useAuthStore()
+          const userId = authStore.userInfo?.userId
+          if (!userId) {
+            ElMessage.error('无法获取当前用户信息')
+            submitLoading.value = false
+            return
+          }
+          
+          // 获取当前用户的企业信息
+          const enterpriseRes = await enterpriseApi.getEnterpriseByUserId(userId)
+          if (enterpriseRes.code === 200 && enterpriseRes.data) {
+            formData.enterpriseId = enterpriseRes.data.enterpriseId
+          } else {
+            ElMessage.error('无法获取企业信息，请确认您已关联企业')
+            submitLoading.value = false
+            return
+          }
+        }
+        
         let res
         if (formData.postId) {
           res = await postApi.updatePost(formData)
@@ -571,6 +744,7 @@ const handleSubmitForm = async () => {
 const resetFormData = () => {
   Object.assign(formData, {
     postId: null,
+    enterpriseId: null,
     postName: '',
     postCode: '',
     postDescription: '',

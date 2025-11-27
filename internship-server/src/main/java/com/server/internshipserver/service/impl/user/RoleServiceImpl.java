@@ -39,7 +39,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Override
     public List<Role> getAllEnabledRoles() {
         LambdaQueryWrapper<Role> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Role::getStatus, 1)
+        wrapper.eq(Role::getStatus, com.server.internshipserver.common.enums.UserStatus.ENABLED.getCode())
                .eq(Role::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                .orderByAsc(Role::getRoleId);
         return this.list(wrapper);

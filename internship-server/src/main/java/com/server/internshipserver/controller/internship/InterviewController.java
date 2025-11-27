@@ -3,6 +3,11 @@ package com.server.internshipserver.controller.internship;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.internship.Interview;
+import com.server.internshipserver.domain.internship.dto.ConfirmInterviewDTO;
+import com.server.internshipserver.domain.internship.dto.InterviewQueryDTO;
+import com.server.internshipserver.domain.internship.dto.SubmitInterviewResultDTO;
+import com.server.internshipserver.common.enums.ConfirmStatus;
+import com.server.internshipserver.common.enums.InterviewResult;
 import com.server.internshipserver.service.internship.InterviewService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -49,7 +54,12 @@ public class InterviewController {
             @ApiParam(value = "学生ID", required = false) @RequestParam(required = false) Long studentId,
             @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status) {
         Page<Interview> page = new Page<>(current, size);
-        Page<Interview> result = interviewService.getInterviewPage(page, applyId, enterpriseId, studentId, status);
+        InterviewQueryDTO queryDTO = new InterviewQueryDTO();
+        queryDTO.setApplyId(applyId);
+        queryDTO.setEnterpriseId(enterpriseId);
+        queryDTO.setStudentId(studentId);
+        queryDTO.setStatus(status);
+        Page<Interview> result = interviewService.getInterviewPage(page, queryDTO);
         return Result.success(result);
     }
     
@@ -68,7 +78,9 @@ public class InterviewController {
     public Result<?> confirmInterview(
             @ApiParam(value = "面试ID", required = true) @PathVariable Long interviewId,
             @ApiParam(value = "确认（1-已确认，2-已拒绝）", required = true) @RequestParam Integer confirm) {
-        interviewService.confirmInterview(interviewId, confirm);
+        ConfirmInterviewDTO confirmDTO = new ConfirmInterviewDTO();
+        confirmDTO.setConfirm(ConfirmStatus.fromCode(confirm));
+        interviewService.confirmInterview(interviewId, confirmDTO);
         return Result.success("确认成功");
     }
     
@@ -79,7 +91,10 @@ public class InterviewController {
             @ApiParam(value = "面试ID", required = true) @PathVariable Long interviewId,
             @ApiParam(value = "面试结果（1-通过，2-不通过，3-待定）", required = true) @RequestParam Integer interviewResult,
             @ApiParam(value = "面试评价", required = false) @RequestParam(required = false) String interviewComment) {
-        interviewService.submitInterviewResult(interviewId, interviewResult, interviewComment);
+        SubmitInterviewResultDTO resultDTO = new SubmitInterviewResultDTO();
+        resultDTO.setInterviewResult(InterviewResult.getByCode(interviewResult));
+        resultDTO.setInterviewComment(interviewComment);
+        interviewService.submitInterviewResult(interviewId, resultDTO);
         return Result.success("提交成功");
     }
     

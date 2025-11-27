@@ -3,9 +3,10 @@ package com.server.internshipserver.service.impl.user;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
-import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
+import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.domain.user.SchoolAdmin;
 import com.server.internshipserver.mapper.user.SchoolAdminMapper;
 import com.server.internshipserver.service.user.SchoolAdminService;
@@ -24,9 +25,8 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
             return null;
         }
         
-        LambdaQueryWrapper<SchoolAdmin> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SchoolAdmin::getUserId, userId)
-               .eq(SchoolAdmin::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        LambdaQueryWrapper<SchoolAdmin> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(SchoolAdmin::getDeleteFlag);
+        wrapper.eq(SchoolAdmin::getUserId, userId);
         return this.getOne(wrapper);
     }
     
@@ -34,12 +34,8 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
     @Transactional(rollbackFor = Exception.class)
     public SchoolAdmin addSchoolAdmin(SchoolAdmin schoolAdmin) {
         // 参数校验
-        if (schoolAdmin.getUserId() == null) {
-            throw new BusinessException("用户ID不能为空");
-        }
-        if (schoolAdmin.getSchoolId() == null) {
-            throw new BusinessException("学校ID不能为空");
-        }
+        EntityValidationUtil.validateIdNotNull(schoolAdmin.getUserId(), "用户ID");
+        EntityValidationUtil.validateIdNotNull(schoolAdmin.getSchoolId(), "学校ID");
         
         // 检查用户ID是否已被使用
         SchoolAdmin existAdmin = getSchoolAdminByUserId(schoolAdmin.getUserId());
@@ -48,10 +44,7 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
         }
         
         // 设置默认值
-        if (schoolAdmin.getStatus() == null) {
-            schoolAdmin.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
-        }
-        schoolAdmin.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(schoolAdmin);
         
         // 保存
         this.save(schoolAdmin);
