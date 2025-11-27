@@ -27,6 +27,8 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 周报管理Service实现类
@@ -338,16 +340,16 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getSchoolId, schoolId)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
                 } else {
                     wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
@@ -361,16 +363,16 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
                 // 查询本学院的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getCollegeId, collegeId)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
                 } else {
                     wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
@@ -380,18 +382,18 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         // 班主任：只能查看管理的班级的学生的周报
-        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            java.util.List<Student> students = studentMapper.selectList(
+            List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                             .select(Student::getStudentId)
             );
             if (students != null && !students.isEmpty()) {
-                java.util.List<Long> studentIds = students.stream()
+                List<Long> studentIds = students.stream()
                         .map(Student::getStudentId)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
             } else {
                 wrapper.eq(InternshipWeeklyReport::getReportId, -1L);

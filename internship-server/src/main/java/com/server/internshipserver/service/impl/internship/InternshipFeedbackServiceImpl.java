@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 问题反馈管理Service实现类
@@ -338,18 +341,18 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         // 班主任：只能查看管理的班级的学生的反馈
-        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            java.util.List<Student> students = studentMapper.selectList(
+            List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                             .select(Student::getStudentId)
             );
             if (students != null && !students.isEmpty()) {
-                java.util.List<Long> studentIds = students.stream()
+                List<Long> studentIds = students.stream()
                         .map(Student::getStudentId)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 wrapper.in(InternshipFeedback::getStudentId, studentIds);
             } else {
                 wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
@@ -366,16 +369,16 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                 Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
                 if (currentUserCollegeId != null) {
                     // 查找该学院的所有学生
-                    java.util.List<Student> students = studentMapper.selectList(
+                    List<Student> students = studentMapper.selectList(
                             new LambdaQueryWrapper<Student>()
                                     .eq(Student::getCollegeId, currentUserCollegeId)
                                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                     .select(Student::getStudentId)
                     );
                     if (students != null && !students.isEmpty()) {
-                        java.util.List<Long> studentIds = students.stream()
+                        List<Long> studentIds = students.stream()
                                 .map(Student::getStudentId)
-                                .collect(java.util.stream.Collectors.toList());
+                                .collect(Collectors.toList());
                         wrapper.in(InternshipFeedback::getStudentId, studentIds);
                     } else {
                         wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
@@ -390,7 +393,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
             if (currentUserEnterpriseId != null) {
                 // 查找该企业的所有实习申请
-                java.util.List<InternshipApply> applies = internshipApplyMapper.selectList(
+                List<InternshipApply> applies = internshipApplyMapper.selectList(
                         new LambdaQueryWrapper<InternshipApply>()
                                 .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
                                 .eq(InternshipApply::getStatus, 1) // 已通过的申请
@@ -398,10 +401,10 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                                 .select(InternshipApply::getStudentId)
                 );
                 if (applies != null && !applies.isEmpty()) {
-                    java.util.List<Long> studentIds = applies.stream()
+                    List<Long> studentIds = applies.stream()
                             .map(InternshipApply::getStudentId)
                             .distinct()
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipFeedback::getStudentId, studentIds);
                 } else {
                     wrapper.eq(InternshipFeedback::getFeedbackId, -1L);

@@ -117,9 +117,27 @@
       <el-table-column prop="planName" label="计划名称" min-width="200" show-overflow-tooltip />
       <el-table-column prop="planCode" label="计划编号" min-width="120" />
       <el-table-column prop="semesterName" label="学期" min-width="150" />
+      <el-table-column label="计划范围" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.planScopeType === '全校计划'" type="primary" size="small">全校计划</el-tag>
+          <el-tag v-else-if="row.planScopeType === '全院计划'" type="warning" size="small">全院计划</el-tag>
+          <el-tag v-else-if="row.planScopeType === '专业计划'" type="success" size="small">专业计划</el-tag>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="schoolName" label="所属学校" min-width="150" />
-      <el-table-column prop="collegeName" label="所属学院" min-width="150" />
-      <el-table-column prop="majorName" label="所属专业" min-width="150" />
+      <el-table-column prop="collegeName" label="所属学院" min-width="150">
+        <template #default="{ row }">
+          <span v-if="row.collegeName">{{ row.collegeName }}</span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="majorName" label="所属专业" min-width="150">
+        <template #default="{ row }">
+          <span v-if="row.majorName">{{ row.majorName }}</span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="planType" label="实习类型" min-width="100" />
       <el-table-column prop="startDate" label="开始日期" width="120">
         <template #default="{ row }">

@@ -134,5 +134,9 @@ public class InternshipPlan implements Serializable {
     @ApiModelProperty(value = "所属专业名称")
     @TableField(exist = false)
     private String majorName;
+    
+    @ApiModelProperty(value = "计划范围类型（全校计划/全院计划/专业计划）")
+    @TableField(exist = false)
+    private String planScopeType;
 }
 

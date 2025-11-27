@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
@@ -63,6 +64,36 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
     @Transactional(rollbackFor = Exception.class)
     public InternshipPlan addPlan(InternshipPlan plan) {
         // 参数校验
+        validatePlanParams(plan);
+        
+        // 获取当前登录用户信息
+        UserInfo currentUser = getCurrentUser();
+        
+        // 权限和数据权限处理
+        List<String> roles = currentUser != null ? 
+            userMapper.selectRoleCodesByUserId(currentUser.getUserId()) : new ArrayList<>();
+        
+        // 根据角色设置组织架构信息
+        setOrgInfoByRole(plan, roles);
+        
+        // 验证计划范围的一致性
+        validatePlanScope(plan);
+        
+        // 检查计划编号是否已存在
+        validatePlanCode(plan);
+        
+        // 设置默认值和创建人
+        setDefaultValues(plan, currentUser);
+        
+        // 保存
+        this.save(plan);
+        return plan;
+    }
+    
+    /**
+     * 验证计划参数
+     */
+    private void validatePlanParams(InternshipPlan plan) {
         if (!StringUtils.hasText(plan.getPlanName())) {
             throw new BusinessException("实习计划名称不能为空");
         }
@@ -75,120 +106,155 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (plan.getStartDate().isAfter(plan.getEndDate())) {
             throw new BusinessException("实习开始日期不能晚于结束日期");
         }
-        
-        // 获取当前登录用户信息
+    }
+    
+    /**
+     * 获取当前登录用户
+     */
+    private UserInfo getCurrentUser() {
         String username = SecurityUtil.getCurrentUsername();
-        UserInfo currentUser = null;
-        if (username != null) {
-            currentUser = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (currentUser == null) {
-                throw new BusinessException("用户不存在");
-            }
+        if (username == null) {
+            return null;
         }
         
-        // 权限和数据权限处理
-        List<String> roles = currentUser != null ? 
-            userMapper.selectRoleCodesByUserId(currentUser.getUserId()) : new ArrayList<>();
-        
-        // 根据角色设置组织架构信息
+        UserInfo currentUser = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (currentUser == null) {
+            throw new BusinessException("用户不存在");
+        }
+        return currentUser;
+    }
+    
+    /**
+     * 根据角色设置组织架构信息
+     */
+    private void setOrgInfoByRole(InternshipPlan plan, List<String> roles) {
         if (roles.contains("ROLE_COLLEGE_LEADER")) {
-            // 学院负责人：只能创建本学院的计划
-            Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-            if (currentUserCollegeId == null) {
-                throw new BusinessException("学院负责人必须关联学院");
-            }
-            
-            // 自动设置学院ID，不允许修改
-            plan.setCollegeId(currentUserCollegeId);
-            
-            // 自动设置学校ID（从学院获取）
-            College college = collegeMapper.selectById(currentUserCollegeId);
-            if (college == null) {
-                throw new BusinessException("学院信息不存在");
-            }
-            plan.setSchoolId(college.getSchoolId());
-            
-            // 学院负责人创建的计划，专业ID可以为NULL（表示全院）或指定专业
-            // 如果指定了专业，需要验证专业是否属于本学院
-            if (plan.getMajorId() != null) {
-                Major major = majorMapper.selectById(plan.getMajorId());
-                if (major == null || !major.getCollegeId().equals(currentUserCollegeId)) {
-                    throw new BusinessException("专业不属于当前学院");
-                }
-            }
+            setOrgInfoForCollegeLeader(plan);
         } else if (roles.contains("ROLE_SCHOOL_ADMIN")) {
-            // 学校管理员：可以创建全校性或指定学院/专业的计划
-            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
-            if (currentUserSchoolId == null) {
-                throw new BusinessException("学校管理员必须关联学校");
-            }
-            
-            // 自动设置学校ID
-            plan.setSchoolId(currentUserSchoolId);
-            
-            // 如果指定了学院，需要验证学院是否属于本校
-            if (plan.getCollegeId() != null) {
-                College college = collegeMapper.selectById(plan.getCollegeId());
-                if (college == null || !college.getSchoolId().equals(currentUserSchoolId)) {
-                    throw new BusinessException("学院不属于当前学校");
-                }
-            }
-            
-            // 如果指定了专业，需要验证专业是否属于指定的学院
-            if (plan.getMajorId() != null) {
-                Major major = majorMapper.selectById(plan.getMajorId());
-                if (major == null) {
-                    throw new BusinessException("专业不存在");
-                }
-                if (plan.getCollegeId() != null && !major.getCollegeId().equals(plan.getCollegeId())) {
-                    throw new BusinessException("专业不属于指定的学院");
-                }
-                if (plan.getCollegeId() == null) {
-                    // 如果学院为NULL，需要验证专业所属学院是否属于本校
-                    College majorCollege = collegeMapper.selectById(major.getCollegeId());
-                    if (majorCollege == null || !majorCollege.getSchoolId().equals(currentUserSchoolId)) {
-                        throw new BusinessException("专业所属学院不属于当前学校");
-                    }
-                }
-            }
+            setOrgInfoForSchoolAdmin(plan);
         } else if (roles.contains("ROLE_SYSTEM_ADMIN")) {
-            // 系统管理员：可以创建任意学校的计划
-            if (plan.getSchoolId() == null) {
-                throw new BusinessException("所属学校ID不能为空");
-            }
-            // 验证学校是否存在
-            School school = schoolMapper.selectById(plan.getSchoolId());
-            if (school == null) {
-                throw new BusinessException("学校不存在");
-            }
-            
-            // 如果指定了学院，验证学院是否属于指定的学校
-            if (plan.getCollegeId() != null) {
-                College college = collegeMapper.selectById(plan.getCollegeId());
-                if (college == null || !college.getSchoolId().equals(plan.getSchoolId())) {
-                    throw new BusinessException("学院不属于指定的学校");
-                }
-            }
-            
-            // 如果指定了专业，验证专业是否属于指定的学院
-            if (plan.getMajorId() != null) {
-                Major major = majorMapper.selectById(plan.getMajorId());
-                if (major == null) {
-                    throw new BusinessException("专业不存在");
-                }
-                if (plan.getCollegeId() != null && !major.getCollegeId().equals(plan.getCollegeId())) {
-                    throw new BusinessException("专业不属于指定的学院");
-                }
-            }
+            setOrgInfoForSystemAdmin(plan);
         } else {
             throw new BusinessException("无权限创建实习计划");
         }
+    }
+    
+    /**
+     * 设置学院负责人的组织架构信息
+     */
+    private void setOrgInfoForCollegeLeader(InternshipPlan plan) {
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (currentUserCollegeId == null) {
+            throw new BusinessException("学院负责人必须关联学院");
+        }
         
-        // 验证计划范围的一致性
+        // 自动设置学院ID，不允许修改
+        plan.setCollegeId(currentUserCollegeId);
+        
+        // 自动设置学校ID（从学院获取）
+        College college = collegeMapper.selectById(currentUserCollegeId);
+        if (college == null) {
+            throw new BusinessException("学院信息不存在");
+        }
+        plan.setSchoolId(college.getSchoolId());
+        
+        // 学院负责人创建的计划，专业ID可以为NULL（表示全院）或指定专业
+        // 如果指定了专业，需要验证专业是否属于本学院
+        if (plan.getMajorId() != null) {
+            Major major = majorMapper.selectById(plan.getMajorId());
+            if (major == null || !major.getCollegeId().equals(currentUserCollegeId)) {
+                throw new BusinessException("专业不属于当前学院");
+            }
+        }
+    }
+    
+    /**
+     * 设置学校管理员的组织架构信息
+     */
+    private void setOrgInfoForSchoolAdmin(InternshipPlan plan) {
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserInfoSchoolId();
+        if (currentUserSchoolId == null) {
+            throw new BusinessException("学校管理员必须关联学校");
+        }
+        
+        // 自动设置学校ID
+        plan.setSchoolId(currentUserSchoolId);
+        
+        // 如果指定了学院，需要验证学院是否属于本校
+        if (plan.getCollegeId() != null) {
+            College college = collegeMapper.selectById(plan.getCollegeId());
+            if (college == null || !college.getSchoolId().equals(currentUserSchoolId)) {
+                throw new BusinessException("学院不属于当前学校");
+            }
+        }
+        
+        // 如果指定了专业，需要验证专业是否属于指定的学院
+        if (plan.getMajorId() != null) {
+            validateMajorForSchoolAdmin(plan, currentUserSchoolId);
+        }
+    }
+    
+    /**
+     * 验证学校管理员指定的专业
+     */
+    private void validateMajorForSchoolAdmin(InternshipPlan plan, Long schoolId) {
+        Major major = majorMapper.selectById(plan.getMajorId());
+        if (major == null) {
+            throw new BusinessException("专业不存在");
+        }
+        if (plan.getCollegeId() != null && !major.getCollegeId().equals(plan.getCollegeId())) {
+            throw new BusinessException("专业不属于指定的学院");
+        }
+        if (plan.getCollegeId() == null) {
+            // 如果学院为NULL，需要验证专业所属学院是否属于本校
+            College majorCollege = collegeMapper.selectById(major.getCollegeId());
+            if (majorCollege == null || !majorCollege.getSchoolId().equals(schoolId)) {
+                throw new BusinessException("专业所属学院不属于当前学校");
+            }
+        }
+    }
+    
+    /**
+     * 设置系统管理员的组织架构信息
+     */
+    private void setOrgInfoForSystemAdmin(InternshipPlan plan) {
+        if (plan.getSchoolId() == null) {
+            throw new BusinessException("所属学校ID不能为空");
+        }
+        // 验证学校是否存在
+        School school = schoolMapper.selectById(plan.getSchoolId());
+        if (school == null) {
+            throw new BusinessException("学校不存在");
+        }
+        
+        // 如果指定了学院，验证学院是否属于指定的学校
+        if (plan.getCollegeId() != null) {
+            College college = collegeMapper.selectById(plan.getCollegeId());
+            if (college == null || !college.getSchoolId().equals(plan.getSchoolId())) {
+                throw new BusinessException("学院不属于指定的学校");
+            }
+        }
+        
+        // 如果指定了专业，验证专业是否属于指定的学院
+        if (plan.getMajorId() != null) {
+            Major major = majorMapper.selectById(plan.getMajorId());
+            if (major == null) {
+                throw new BusinessException("专业不存在");
+            }
+            if (plan.getCollegeId() != null && !major.getCollegeId().equals(plan.getCollegeId())) {
+                throw new BusinessException("专业不属于指定的学院");
+            }
+        }
+    }
+    
+    /**
+     * 验证计划范围的一致性
+     */
+    private void validatePlanScope(InternshipPlan plan) {
         // 如果collegeId为NULL，majorId也必须为NULL（不能只有专业没有学院）
         if (plan.getCollegeId() == null && plan.getMajorId() != null) {
             throw new BusinessException("专业计划必须指定所属学院");
@@ -197,8 +263,12 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (plan.getMajorId() != null && plan.getCollegeId() == null) {
             throw new BusinessException("专业计划必须指定所属学院");
         }
-        
-        // 检查计划编号是否已存在
+    }
+    
+    /**
+     * 验证计划编号是否已存在
+     */
+    private void validatePlanCode(InternshipPlan plan) {
         LambdaQueryWrapper<InternshipPlan> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InternshipPlan::getPlanCode, plan.getPlanCode())
                .eq(InternshipPlan::getDeleteFlag, DeleteFlag.NORMAL.getCode());
@@ -206,8 +276,12 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (existPlan != null) {
             throw new BusinessException("实习计划编号已存在");
         }
-        
-        // 设置默认值
+    }
+    
+    /**
+     * 设置默认值和创建人
+     */
+    private void setDefaultValues(InternshipPlan plan, UserInfo currentUser) {
         if (plan.getStatus() == null) {
             plan.setStatus(0); // 默认草稿
         }
@@ -217,10 +291,6 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         if (currentUser != null) {
             plan.setCreateUserId(currentUser.getUserId());
         }
-        
-        // 保存
-        this.save(plan);
-        return plan;
     }
     
     @Override
@@ -287,8 +357,34 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             }
         }
         
+        // 验证计划范围的一致性
+        // 如果collegeId为NULL，majorId也必须为NULL（不能只有专业没有学院）
+        if (plan.getCollegeId() == null && plan.getMajorId() != null) {
+            throw new BusinessException("专业计划必须指定所属学院");
+        }
+        // 如果majorId不为NULL，collegeId也不能为NULL（专业必须属于某个学院）
+        if (plan.getMajorId() != null && plan.getCollegeId() == null) {
+            throw new BusinessException("专业计划必须指定所属学院");
+        }
+        
+        // 使用 UpdateWrapper 确保 null 值也能更新
+        LambdaUpdateWrapper<InternshipPlan> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipPlan::getPlanId, plan.getPlanId())
+                    .set(InternshipPlan::getPlanName, plan.getPlanName())
+                    .set(InternshipPlan::getPlanCode, plan.getPlanCode())
+                    .set(InternshipPlan::getSemesterId, plan.getSemesterId())
+                    .set(InternshipPlan::getSchoolId, plan.getSchoolId())
+                    .set(InternshipPlan::getCollegeId, plan.getCollegeId())  // 允许设置为null
+                    .set(InternshipPlan::getMajorId, plan.getMajorId())  // 允许设置为null
+                    .set(InternshipPlan::getPlanType, plan.getPlanType())
+                    .set(InternshipPlan::getStartDate, plan.getStartDate())
+                    .set(InternshipPlan::getEndDate, plan.getEndDate())
+                    .set(InternshipPlan::getPlanOutline, plan.getPlanOutline())
+                    .set(InternshipPlan::getTaskRequirements, plan.getTaskRequirements())
+                    .set(InternshipPlan::getAssessmentStandards, plan.getAssessmentStandards());
+        
         // 更新
-        this.updateById(plan);
+        this.update(updateWrapper);
         return this.getById(plan.getPlanId());
     }
     
@@ -409,6 +505,15 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
             if (major != null) {
                 plan.setMajorName(major.getMajorName());
             }
+        }
+        
+        // 设置计划类型标识（用于前端显示）
+        if (plan.getMajorId() != null) {
+            plan.setPlanScopeType("专业计划");
+        } else if (plan.getCollegeId() != null) {
+            plan.setPlanScopeType("全院计划");
+        } else {
+            plan.setPlanScopeType("全校计划");
         }
     }
     

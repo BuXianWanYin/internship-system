@@ -214,41 +214,7 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         wrapper.eq(Interview::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
         // 数据权限过滤
-        // 系统管理员不添加限制
-        if (dataPermissionUtil.isSystemAdmin()) {
-            // 系统管理员可以查看所有面试，不添加过滤条件
-        } else {
-            String username = SecurityUtil.getCurrentUsername();
-            if (username != null) {
-                UserInfo user = userMapper.selectOne(
-                        new LambdaQueryWrapper<UserInfo>()
-                                .eq(UserInfo::getUsername, username)
-                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (user != null) {
-                    // 学生只能查看自己的面试
-                    if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
-                        Student student = studentMapper.selectOne(
-                                new LambdaQueryWrapper<Student>()
-                                        .eq(Student::getUserId, user.getUserId())
-                                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        );
-                        if (student != null) {
-                            wrapper.eq(Interview::getStudentId, student.getStudentId());
-                        } else {
-                            // 如果没有学生信息，返回空结果
-                            wrapper.eq(Interview::getInterviewId, -1L);
-                        }
-                    } else {
-                        // 企业管理员只能查看自己企业的面试
-                        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                        if (currentUserEnterpriseId != null) {
-                            wrapper.eq(Interview::getEnterpriseId, currentUserEnterpriseId);
-                        }
-                    }
-                }
-            }
-        }
+        applyDataPermissionFilter(wrapper);
         
         // 条件查询
         if (applyId != null) {
@@ -277,6 +243,65 @@ public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview
         }
         
         return result;
+    }
+    
+    /**
+     * 应用数据权限过滤
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<Interview> wrapper) {
+        // 系统管理员可以查看所有面试，不添加过滤条件
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            return;
+        }
+        
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (user == null) {
+            return;
+        }
+        
+        // 学生只能查看自己的面试
+        if (dataPermissionUtil.hasRole("ROLE_STUDENT")) {
+            applyStudentFilter(wrapper, user.getUserId());
+        } else {
+            // 企业管理员只能查看自己企业的面试
+            applyEnterpriseFilter(wrapper);
+        }
+    }
+    
+    /**
+     * 应用学生权限过滤
+     */
+    private void applyStudentFilter(LambdaQueryWrapper<Interview> wrapper, Long userId) {
+        Student student = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getUserId, userId)
+                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (student != null) {
+            wrapper.eq(Interview::getStudentId, student.getStudentId());
+        } else {
+            // 如果没有学生信息，返回空结果
+            wrapper.eq(Interview::getInterviewId, -1L);
+        }
+    }
+    
+    /**
+     * 应用企业权限过滤
+     */
+    private void applyEnterpriseFilter(LambdaQueryWrapper<Interview> wrapper) {
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null) {
+            wrapper.eq(Interview::getEnterpriseId, currentUserEnterpriseId);
+        }
     }
     
     @Override

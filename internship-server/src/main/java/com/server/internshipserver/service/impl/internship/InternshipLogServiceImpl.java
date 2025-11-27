@@ -26,6 +26,9 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 实习日志管理Service实现类
@@ -309,16 +312,16 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getSchoolId, schoolId)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipLog::getStudentId, studentIds);
                 } else {
                     // 如果没有学生，返回空结果
@@ -333,16 +336,16 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
                 // 查询本学院的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getCollegeId, collegeId)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipLog::getStudentId, studentIds);
                 } else {
                     // 如果没有学生，返回空结果
@@ -354,19 +357,19 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 班主任：只能查看管理的班级的学生的日志
         if (dataPermissionUtil.hasRole("ROLE_CLASS_TEACHER")) {
-            java.util.List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+            List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
             if (classIds != null && !classIds.isEmpty()) {
                 // 查询管理的班级的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .in(Student::getClassId, classIds)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipLog::getStudentId, studentIds);
                 } else {
                     // 如果没有学生，返回空结果

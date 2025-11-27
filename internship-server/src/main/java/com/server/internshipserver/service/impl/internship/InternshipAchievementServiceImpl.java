@@ -24,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 阶段性成果管理Service实现类
@@ -304,16 +306,16 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
                 // 查询本学校的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
+                List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getSchoolId, schoolId)
                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(Student::getStudentId)
                 );
                 if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
+                    List<Long> studentIds = students.stream()
                             .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
+                            .collect(Collectors.toList());
                     wrapper.in(InternshipAchievement::getStudentId, studentIds);
                 } else {
                     wrapper.eq(InternshipAchievement::getAchievementId, -1L);
@@ -346,18 +348,18 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         // 班主任：只能查看管理的班级的学生的成果
-        java.util.List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            java.util.List<Student> students = studentMapper.selectList(
+            List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                             .select(Student::getStudentId)
             );
             if (students != null && !students.isEmpty()) {
-                java.util.List<Long> studentIds = students.stream()
+                List<Long> studentIds = students.stream()
                         .map(Student::getStudentId)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 wrapper.in(InternshipAchievement::getStudentId, studentIds);
             } else {
                 wrapper.eq(InternshipAchievement::getAchievementId, -1L);

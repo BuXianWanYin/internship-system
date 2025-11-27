@@ -25,9 +25,11 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.stream.Collectors;
 
 /**
  * 考勤管理Service实现类
@@ -259,7 +261,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
                         if (currentUserEnterpriseId != null) {
                             // 方式1：通过applyId关联查询，过滤企业ID（查询本企业的所有申请ID）
-                            java.util.List<InternshipApply> applies = internshipApplyMapper.selectList(
+                            List<InternshipApply> applies = internshipApplyMapper.selectList(
                                     new LambdaQueryWrapper<InternshipApply>()
                                             .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
                                             .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
@@ -267,7 +269,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                             );
                             
                             // 方式2：通过student.current_enterprise_id查询（查询当前实习企业为本企业的学生）
-                            java.util.List<Student> students = studentMapper.selectList(
+                            List<Student> students = studentMapper.selectList(
                                     new LambdaQueryWrapper<Student>()
                                             .eq(Student::getCurrentEnterpriseId, currentUserEnterpriseId)
                                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
@@ -275,21 +277,21 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                             );
                             
                             // 合并两种方式的查询结果
-                            java.util.List<Long> applyIds = new java.util.ArrayList<>();
+                            List<Long> applyIds = new ArrayList<>();
                             
                             // 添加方式1的申请ID
                             if (applies != null && !applies.isEmpty()) {
                                 applyIds.addAll(applies.stream()
                                         .map(InternshipApply::getApplyId)
-                                        .collect(java.util.stream.Collectors.toList()));
+                                        .collect(Collectors.toList()));
                             }
                             
                             // 添加方式2的申请ID（通过学生ID查询其当前申请）
                             if (students != null && !students.isEmpty()) {
-                                java.util.List<Long> studentIds = students.stream()
+                                List<Long> studentIds = students.stream()
                                         .map(Student::getStudentId)
-                                        .collect(java.util.stream.Collectors.toList());
-                                java.util.List<InternshipApply> studentApplies = internshipApplyMapper.selectList(
+                                        .collect(Collectors.toList());
+                                List<InternshipApply> studentApplies = internshipApplyMapper.selectList(
                                         new LambdaQueryWrapper<InternshipApply>()
                                                 .in(InternshipApply::getStudentId, studentIds)
                                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())

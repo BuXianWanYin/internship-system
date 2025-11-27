@@ -401,71 +401,104 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 填充关联字段
         fillApplyRelatedFields(apply);
         
-        // 数据权限过滤
-        String username = SecurityUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
-                
-                // 系统管理员和学校管理员可以查看所有申请
-                if (roleCodes != null && (roleCodes.contains("ROLE_SYSTEM_ADMIN") || roleCodes.contains("ROLE_SCHOOL_ADMIN"))) {
-                    // 构建状态流转历史和下一步操作提示
-                    buildStatusHistory(apply);
-                    buildNextActionTip(apply);
-                    return apply;
-                }
-                
-                // 学生只能查看自己的申请
-                if (apply.getUserId().equals(user.getUserId())) {
-                    // 构建状态流转历史和下一步操作提示
-                    buildStatusHistory(apply);
-                    buildNextActionTip(apply);
-                    return apply;
-                }
-                
-                // 企业管理员只能查看自己企业的申请
-                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                if (currentUserEnterpriseId != null && apply.getEnterpriseId() != null
-                        && currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-                    // 构建状态流转历史和下一步操作提示
-                    buildStatusHistory(apply);
-                    buildNextActionTip(apply);
-                    return apply;
-                }
-                
-                // 班主任和学院负责人可以查看自己管理的学生的申请
-                if (roleCodes != null && (roleCodes.contains("ROLE_CLASS_TEACHER") || roleCodes.contains("ROLE_COLLEGE_LEADER"))) {
-                    // 检查申请的学生是否属于当前用户管理的班级
-                    if (apply.getStudentId() != null) {
-                        Student student = studentMapper.selectById(apply.getStudentId());
-                        if (student != null && student.getClassId() != null) {
-                            List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
-                            if (managedClassIds != null && !managedClassIds.isEmpty() 
-                                    && managedClassIds.contains(student.getClassId())) {
-                                // 构建状态流转历史和下一步操作提示
-                                buildStatusHistory(apply);
-                                buildNextActionTip(apply);
-                                return apply;
-                            }
-                        }
-                    }
-                }
-                
-                // 如果没有匹配的权限，抛出异常
-                throw new BusinessException("无权查看该申请");
-            }
-        }
+        // 数据权限检查
+        checkApplyPermission(apply);
         
         // 构建状态流转历史和下一步操作提示
         buildStatusHistory(apply);
         buildNextActionTip(apply);
         
         return apply;
+    }
+    
+    /**
+     * 检查申请查看权限
+     */
+    private void checkApplyPermission(InternshipApply apply) {
+        String username = SecurityUtil.getCurrentUsername();
+        if (username == null) {
+            return;
+        }
+        
+        UserInfo user = userMapper.selectOne(
+                new LambdaQueryWrapper<UserInfo>()
+                        .eq(UserInfo::getUsername, username)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (user == null) {
+            return;
+        }
+        
+        List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+        
+        // 系统管理员和学校管理员可以查看所有申请
+        if (hasAdminRole(roleCodes)) {
+            return;
+        }
+        
+        // 学生只能查看自己的申请
+        if (isStudentOwnApply(apply, user)) {
+            return;
+        }
+        
+        // 企业管理员只能查看自己企业的申请
+        if (isEnterpriseAdminOwnApply(apply)) {
+            return;
+        }
+        
+        // 班主任和学院负责人可以查看自己管理的学生的申请
+        if (isTeacherOwnStudentApply(apply, roleCodes)) {
+            return;
+        }
+        
+        // 如果没有匹配的权限，抛出异常
+        throw new BusinessException("无权查看该申请");
+    }
+    
+    /**
+     * 检查是否为管理员角色
+     */
+    private boolean hasAdminRole(List<String> roleCodes) {
+        return roleCodes != null && (roleCodes.contains("ROLE_SYSTEM_ADMIN") || roleCodes.contains("ROLE_SCHOOL_ADMIN"));
+    }
+    
+    /**
+     * 检查是否为学生自己的申请
+     */
+    private boolean isStudentOwnApply(InternshipApply apply, UserInfo user) {
+        return apply.getUserId().equals(user.getUserId());
+    }
+    
+    /**
+     * 检查是否为企业管理员自己的企业申请
+     */
+    private boolean isEnterpriseAdminOwnApply(InternshipApply apply) {
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        return currentUserEnterpriseId != null && apply.getEnterpriseId() != null
+                && currentUserEnterpriseId.equals(apply.getEnterpriseId());
+    }
+    
+    /**
+     * 检查是否为班主任/学院负责人管理的学生的申请
+     */
+    private boolean isTeacherOwnStudentApply(InternshipApply apply, List<String> roleCodes) {
+        if (roleCodes == null || (!roleCodes.contains("ROLE_CLASS_TEACHER") && !roleCodes.contains("ROLE_COLLEGE_LEADER"))) {
+            return false;
+        }
+        
+        // 检查申请的学生是否属于当前用户管理的班级
+        if (apply.getStudentId() == null) {
+            return false;
+        }
+        
+        Student student = studentMapper.selectById(apply.getStudentId());
+        if (student == null || student.getClassId() == null) {
+            return false;
+        }
+        
+        List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        return managedClassIds != null && !managedClassIds.isEmpty() 
+                && managedClassIds.contains(student.getClassId());
     }
     
     /**

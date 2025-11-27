@@ -308,7 +308,12 @@
               :value="plan.planId"
             >
               <div>
-                <div>{{ plan.planName }}</div>
+                <div>
+                  {{ plan.planName }}
+                  <el-tag v-if="plan.planScopeType" :type="getPlanScopeTypeTag(plan.planScopeType)" size="small" style="margin-left: 8px;">
+                    {{ plan.planScopeType }}
+                  </el-tag>
+                </div>
                 <div style="font-size: 12px; color: #999;">
                   {{ formatDate(plan.startDate) }} ~ {{ formatDate(plan.endDate) }}
                 </div>
@@ -480,7 +485,12 @@
               :value="plan.planId"
             >
               <div>
-                <div>{{ plan.planName }}</div>
+                <div>
+                  {{ plan.planName }}
+                  <el-tag v-if="plan.planScopeType" :type="getPlanScopeTypeTag(plan.planScopeType)" size="small" style="margin-left: 8px;">
+                    {{ plan.planScopeType }}
+                  </el-tag>
+                </div>
                 <div style="font-size: 12px; color: #999;">
                   {{ formatDate(plan.startDate) }} ~ {{ formatDate(plan.endDate) }}
                 </div>
@@ -712,6 +722,18 @@ import { planApi } from '@/api/internship/plan'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+
+// 获取计划范围类型标签类型
+const getPlanScopeTypeTag = (planScopeType) => {
+  if (planScopeType === '全校计划') {
+    return 'info'
+  } else if (planScopeType === '全院计划') {
+    return 'warning'
+  } else if (planScopeType === '专业计划') {
+    return 'success'
+  }
+  return 'info'
+}
 
 const activeTab = ref('cooperation')
 const cooperationSubTab = ref('postList')

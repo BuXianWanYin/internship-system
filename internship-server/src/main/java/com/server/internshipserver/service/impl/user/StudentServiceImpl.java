@@ -300,96 +300,24 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         for (StudentImportDTO dto : importList) {
             try {
                 // 参数校验
-                if (!StringUtils.hasText(dto.getStudentNo())) {
-                    dto.setErrorMessage("学号不能为空");
-                    failList.add(dto);
-                    continue;
-                }
-                if (!StringUtils.hasText(dto.getRealName())) {
-                    dto.setErrorMessage("姓名不能为空");
-                    failList.add(dto);
-                    continue;
-                }
-                if (dto.getEnrollmentYear() == null) {
-                    dto.setErrorMessage("入学年份不能为空");
-                    failList.add(dto);
+                if (!validateImportDto(dto, classId, failList)) {
                     continue;
                 }
                 
-                // 使用传入的classId或DTO中的classId
-                Long finalClassId = (dto.getClassId() != null) ? dto.getClassId() : classId;
-                if (finalClassId == null) {
-                    dto.setErrorMessage("班级ID不能为空");
-                    failList.add(dto);
-                    continue;
-                }
-                
-                // 验证班级是否存在
-                Class classInfo = classService.getClassById(finalClassId);
+                // 获取班级ID并验证
+                Long finalClassId = getFinalClassId(dto, classId);
+                Class classInfo = validateClass(finalClassId, dto, failList);
                 if (classInfo == null) {
-                    dto.setErrorMessage("班级不存在");
-                    failList.add(dto);
                     continue;
                 }
                 
-                // 检查学号是否已存在
-                Student existStudent = getStudentByStudentNo(dto.getStudentNo());
-                if (existStudent != null) {
-                    dto.setErrorMessage("学号已存在");
-                    failList.add(dto);
+                // 检查学号和用户名是否已存在
+                if (!validateStudentNoAndUsername(dto, failList)) {
                     continue;
                 }
                 
-                // 生成用户名（使用学号）
-                String username = dto.getStudentNo();
-                UserInfo existUser = userService.getUserByUsername(username);
-                if (existUser != null) {
-                    dto.setErrorMessage("用户名（学号）已存在");
-                    failList.add(dto);
-                    continue;
-                }
-                
-                // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码123456）
-                String password = StringUtils.hasText(dto.getPassword()) 
-                        ? dto.getPassword() 
-                        : "123456";
-                
-                // 创建用户
-                UserInfo user = new UserInfo();
-                user.setUsername(username);
-                user.setPassword(password); // UserService会自动加密
-                user.setRealName(dto.getRealName());
-                user.setIdCard(dto.getIdCard());
-                user.setPhone(dto.getPhone());
-                user.setEmail(dto.getEmail());
-                user.setStatus(0); // 待审核状态
-                user = userService.addUser(user);
-                
-                // 获取专业信息以获取collegeId
-                Major major = majorService.getById(classInfo.getMajorId());
-                Long collegeId = null;
-                Long schoolId = null;
-                if (major != null) {
-                    collegeId = major.getCollegeId();
-                    // 获取学院信息以获取schoolId
-                    College college = collegeService.getById(collegeId);
-                    if (college != null) {
-                        schoolId = college.getSchoolId();
-                    }
-                }
-                
-                // 创建学生记录
-                Student student = new Student();
-                student.setUserId(user.getUserId());
-                student.setStudentNo(dto.getStudentNo());
-                student.setClassId(finalClassId);
-                student.setEnrollmentYear(dto.getEnrollmentYear());
-                // 设置冗余字段
-                student.setMajorId(classInfo.getMajorId());
-                student.setCollegeId(collegeId);
-                student.setSchoolId(schoolId);
-                student.setStatus(0); // 待审核状态
-                this.addStudent(student);
+                // 创建用户和学生记录
+                createStudentFromDto(dto, finalClassId, classInfo);
                 
                 result.setSuccessCount(result.getSuccessCount() + 1);
             } catch (Exception e) {
@@ -401,6 +329,143 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         result.setFailCount(failList.size());
         result.setFailList(failList);
         return result;
+    }
+    
+    /**
+     * 验证导入DTO参数
+     */
+    private boolean validateImportDto(StudentImportDTO dto, Long classId, List<StudentImportDTO> failList) {
+        if (!StringUtils.hasText(dto.getStudentNo())) {
+            dto.setErrorMessage("学号不能为空");
+            failList.add(dto);
+            return false;
+        }
+        if (!StringUtils.hasText(dto.getRealName())) {
+            dto.setErrorMessage("姓名不能为空");
+            failList.add(dto);
+            return false;
+        }
+        if (dto.getEnrollmentYear() == null) {
+            dto.setErrorMessage("入学年份不能为空");
+            failList.add(dto);
+            return false;
+        }
+        return true;
+    }
+    
+    /**
+     * 获取最终的班级ID
+     */
+    private Long getFinalClassId(StudentImportDTO dto, Long classId) {
+        return (dto.getClassId() != null) ? dto.getClassId() : classId;
+    }
+    
+    /**
+     * 验证班级是否存在
+     */
+    private Class validateClass(Long finalClassId, StudentImportDTO dto, List<StudentImportDTO> failList) {
+        if (finalClassId == null) {
+            dto.setErrorMessage("班级ID不能为空");
+            failList.add(dto);
+            return null;
+        }
+        
+        try {
+            return classService.getClassById(finalClassId);
+        } catch (Exception e) {
+            dto.setErrorMessage("班级不存在");
+            failList.add(dto);
+            return null;
+        }
+    }
+    
+    /**
+     * 验证学号和用户名是否已存在
+     */
+    private boolean validateStudentNoAndUsername(StudentImportDTO dto, List<StudentImportDTO> failList) {
+        // 检查学号是否已存在
+        Student existStudent = getStudentByStudentNo(dto.getStudentNo());
+        if (existStudent != null) {
+            dto.setErrorMessage("学号已存在");
+            failList.add(dto);
+            return false;
+        }
+        
+        // 检查用户名（学号）是否已存在
+        String username = dto.getStudentNo();
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            dto.setErrorMessage("用户名（学号）已存在");
+            failList.add(dto);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * 从DTO创建学生记录
+     */
+    private void createStudentFromDto(StudentImportDTO dto, Long finalClassId, Class classInfo) {
+        // 创建用户
+        UserInfo user = createUserFromDto(dto);
+        user = userService.addUser(user);
+        
+        // 获取组织架构信息
+        Long collegeId = getCollegeId(classInfo);
+        Long schoolId = getSchoolId(collegeId);
+        
+        // 创建学生记录
+        Student student = new Student();
+        student.setUserId(user.getUserId());
+        student.setStudentNo(dto.getStudentNo());
+        student.setClassId(finalClassId);
+        student.setEnrollmentYear(dto.getEnrollmentYear());
+        // 设置冗余字段
+        student.setMajorId(classInfo.getMajorId());
+        student.setCollegeId(collegeId);
+        student.setSchoolId(schoolId);
+        student.setStatus(0); // 待审核状态
+        this.addStudent(student);
+    }
+    
+    /**
+     * 从DTO创建用户对象
+     */
+    private UserInfo createUserFromDto(StudentImportDTO dto) {
+        String username = dto.getStudentNo();
+        String password = StringUtils.hasText(dto.getPassword()) 
+                ? dto.getPassword() 
+                : "123456";
+        
+        UserInfo user = new UserInfo();
+        user.setUsername(username);
+        user.setPassword(password); // UserService会自动加密
+        user.setRealName(dto.getRealName());
+        user.setIdCard(dto.getIdCard());
+        user.setPhone(dto.getPhone());
+        user.setEmail(dto.getEmail());
+        user.setStatus(0); // 待审核状态
+        return user;
+    }
+    
+    /**
+     * 获取学院ID
+     */
+    private Long getCollegeId(Class classInfo) {
+        Major major = majorService.getById(classInfo.getMajorId());
+        return major != null ? major.getCollegeId() : null;
+    }
+    
+    /**
+     * 获取学校ID
+     */
+    private Long getSchoolId(Long collegeId) {
+        if (collegeId == null) {
+            return null;
+        }
+        College college = collegeService.getById(collegeId);
+        return college != null ? college.getSchoolId() : null;
     }
     
     @Override

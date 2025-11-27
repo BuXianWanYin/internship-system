@@ -27,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -442,7 +444,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     }
     
     @Override
-    public java.util.Map<String, Object> getShareCodeInfo(Long classId) {
+    public Map<String, Object> getShareCodeInfo(Long classId) {
         Class classInfo = getClassById(classId);
         if (classInfo == null) {
             throw new BusinessException("班级不存在");
@@ -462,7 +464,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             );
         }
         
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        Map<String, Object> data = new HashMap<>();
         data.put("shareCode", classInfo.getShareCode());
         data.put("generateTime", classInfo.getShareCodeGenerateTime());
         data.put("expireTime", classInfo.getShareCodeExpireTime());
