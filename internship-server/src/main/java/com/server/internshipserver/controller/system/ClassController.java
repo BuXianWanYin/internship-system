@@ -71,11 +71,29 @@ public class ClassController {
     
     @ApiOperation("停用班级")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @PutMapping("/{id}/disable")
+    public Result<?> disableClass(
+            @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
+        classService.disableClass(id);
+        return Result.success("停用班级成功");
+    }
+    
+    @ApiOperation("启用班级")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @PutMapping("/{id}/enable")
+    public Result<?> enableClass(
+            @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
+        classService.enableClass(id);
+        return Result.success("启用班级成功");
+    }
+    
+    @ApiOperation("删除班级")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     @DeleteMapping("/{id}")
     public Result<?> deleteClass(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
         classService.deleteClass(id);
-        return Result.success("停用班级成功");
+        return Result.success("删除班级成功");
     }
     
     @ApiOperation("生成班级分享码")

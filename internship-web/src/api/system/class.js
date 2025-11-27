@@ -22,6 +22,14 @@ export const classApi = {
     return request.get('/system/class/page', { params })
   },
   // 停用班级
+  disableClass(id) {
+    return request.put(`/system/class/${id}/disable`)
+  },
+  // 启用班级
+  enableClass(id) {
+    return request.put(`/system/class/${id}/enable`)
+  },
+  // 删除班级
   deleteClass(id) {
     return request.delete(`/system/class/${id}`)
   },

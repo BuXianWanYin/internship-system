@@ -6,14 +6,17 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.SecurityUtil;
 import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.Teacher;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.system.ClassService;
 import com.server.internshipserver.service.system.MajorService;
 import com.server.internshipserver.service.user.TeacherService;
@@ -51,6 +54,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     
     @Autowired
     private StudentMapper studentMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
     
     private static final int SHARE_CODE_LENGTH = 8;
     private static final int SHARE_CODE_EXPIRE_DAYS = 30;
@@ -203,17 +209,43 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
      * 应用数据权限过滤
      */
     private void applyDataPermissionFilter(LambdaQueryWrapper<Class> wrapper) {
+        // 先检查用户角色，如果是班主任，必须严格按班级ID过滤
+        String username = SecurityUtil.getCurrentUsername();
+        if (username != null) {
+            UserInfo user = userMapper.selectOne(
+                    new LambdaQueryWrapper<UserInfo>()
+                            .eq(UserInfo::getUsername, username)
+                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (user != null) {
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+                // 如果用户是班主任角色，必须通过班级ID过滤
+                if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
+                    List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                    // 班主任：只能查看管理的班级信息（支持多班级）
+                    // 如果没有管理的班级，返回空结果
+                    if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                        wrapper.in(Class::getClassId, currentUserClassIds);
+                    } else {
+                        wrapper.eq(Class::getClassId, -1L); // 返回空结果
+                    }
+                    return;
+                }
+            }
+        }
+        
+        // 非班主任角色的数据权限过滤
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         
-        // 班主任：只能查看管理的班级信息（支持多班级）
+        // 学生：只能查看自己的班级
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
             wrapper.in(Class::getClassId, currentUserClassIds);
             return;
         }
         
-            // 学院负责人：只能查看本院的班级（通过专业关联）
+        // 学院负责人：只能查看本院的班级（通过专业关联）
         if (currentUserCollegeId != null) {
             List<Long> majorIds = getMajorIdsByCollegeId(currentUserCollegeId);
             if (majorIds != null && !majorIds.isEmpty()) {
@@ -224,7 +256,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             return;
         }
         
-            // 学校管理员：只能查看本校的班级（通过专业和学院关联）
+        // 学校管理员：只能查看本校的班级（通过专业和学院关联）
         if (currentUserSchoolId != null) {
             List<Long> majorIds = getMajorIdsBySchoolId(currentUserSchoolId);
             if (majorIds != null && !majorIds.isEmpty()) {
@@ -290,6 +322,40 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public boolean disableClass(Long classId) {
+        if (classId == null) {
+            throw new BusinessException("班级ID不能为空");
+        }
+        
+        Class classInfo = this.getById(classId);
+        if (classInfo == null || classInfo.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("班级不存在");
+        }
+        
+        // 只设置停用状态，不删除数据
+        classInfo.setStatus(0);
+        return this.updateById(classInfo);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean enableClass(Long classId) {
+        if (classId == null) {
+            throw new BusinessException("班级ID不能为空");
+        }
+        
+        Class classInfo = this.getById(classId);
+        if (classInfo == null || classInfo.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new BusinessException("班级不存在");
+        }
+        
+        // 设置启用状态
+        classInfo.setStatus(1);
+        return this.updateById(classInfo);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteClass(Long classId) {
         if (classId == null) {
             throw new BusinessException("班级ID不能为空");
@@ -300,8 +366,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             throw new BusinessException("班级不存在");
         }
         
-        // 软删除
+        // 软删除：同时设置删除标志和停用状态
         classInfo.setDeleteFlag(DeleteFlag.DELETED.getCode());
+        classInfo.setStatus(0);
         return this.updateById(classInfo);
     }
     
@@ -492,8 +559,13 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             throw new BusinessException("该教师不属于本学院");
         }
         
-        // 设置班主任（使用teacherId，因为class_teacher_id存储的是teacher_id）
-        classInfo.setClassTeacherId(teacherId);
+        // 检查教师是否有用户ID
+        if (teacher.getUserId() == null) {
+            throw new BusinessException("该教师未关联用户账号");
+        }
+        
+        // 设置班主任（使用userId，因为class_teacher_id外键引用user_info.user_id）
+        classInfo.setClassTeacherId(teacher.getUserId());
         
         // 更新班级信息
         this.updateById(classInfo);

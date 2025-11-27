@@ -12,6 +12,8 @@ import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.UserRole;
 import com.server.internshipserver.domain.user.Role;
+import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.system.School;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Class;
@@ -20,6 +22,7 @@ import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.UserRoleMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
@@ -29,6 +32,7 @@ import com.server.internshipserver.service.user.RoleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,6 +86,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     
     @Autowired
     private ClassMapper classMapper;
+    
+    @Autowired
+    @Lazy
+    private com.server.internshipserver.service.user.StudentService studentService;
+    
+    @Autowired
+    @Lazy
+    private com.server.internshipserver.service.user.TeacherService teacherService;
+    
+    @Autowired
+    @Lazy
+    private com.server.internshipserver.service.user.EnterpriseService enterpriseService;
+    
+    @Autowired
+    private EnterpriseMentorMapper enterpriseMentorMapper;
     
     @Override
     public UserInfo getUserByUsername(String username) {
@@ -138,10 +157,97 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         // 保存
         this.save(user);
         
-        // 如果指定了角色，分配角色
+        // 如果指定了角色，分配角色并创建对应的实体
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            for (String roleCode : user.getRoles()) {
-                assignRoleToUser(user.getUserId(), roleCode);
+            String roleCode = user.getRoles().get(0); // 只取第一个角色（单选）
+            assignRoleToUser(user.getUserId(), roleCode);
+            
+            // 根据角色创建对应的实体
+            if ("ROLE_STUDENT".equals(roleCode)) {
+                // 创建学生信息
+                if (user.getStudentNo() == null || user.getClassId() == null || user.getEnrollmentYear() == null) {
+                    throw new BusinessException("学生角色需要提供学号、班级ID和入学年份");
+                }
+                Student student = new Student();
+                student.setUserId(user.getUserId());
+                student.setStudentNo(user.getStudentNo());
+                student.setClassId(user.getClassId());
+                student.setEnrollmentYear(user.getEnrollmentYear());
+                student.setSchoolId(user.getSchoolId());
+                student.setCollegeId(user.getCollegeId());
+                student.setMajorId(user.getMajorId());
+                student.setStatus(1); // 默认启用
+                studentService.addStudent(student);
+            } else if ("ROLE_SCHOOL_ADMIN".equals(roleCode)) {
+                // 创建学校管理员信息
+                if (user.getSchoolId() == null) {
+                    throw new BusinessException("学校管理员角色需要提供学校ID");
+                }
+                SchoolAdmin admin = new SchoolAdmin();
+                admin.setUserId(user.getUserId());
+                admin.setSchoolId(user.getSchoolId());
+                schoolAdminMapper.insert(admin);
+            } else if ("ROLE_COLLEGE_LEADER".equals(roleCode)) {
+                // 创建学院负责人信息（通过Teacher表）
+                if (user.getSchoolId() == null || user.getCollegeId() == null) {
+                    throw new BusinessException("学院负责人角色需要提供学校ID和学院ID");
+                }
+                Teacher teacher = new Teacher();
+                teacher.setUserId(user.getUserId());
+                teacher.setCollegeId(user.getCollegeId());
+                teacher.setSchoolId(user.getSchoolId());
+                teacher.setStatus(1); // 默认启用
+                // 生成工号（使用用户名）
+                teacher.setTeacherNo(user.getUsername());
+                teacherService.addTeacher(teacher);
+            } else if ("ROLE_CLASS_TEACHER".equals(roleCode)) {
+                // 创建班主任信息（通过Teacher表）
+                if (user.getSchoolId() == null || user.getCollegeId() == null) {
+                    throw new BusinessException("班主任角色需要提供学校ID和学院ID");
+                }
+                Teacher teacher = new Teacher();
+                teacher.setUserId(user.getUserId());
+                teacher.setCollegeId(user.getCollegeId());
+                teacher.setSchoolId(user.getSchoolId());
+                teacher.setStatus(1); // 默认启用
+                // 生成工号（使用用户名）
+                teacher.setTeacherNo(user.getUsername());
+                teacherService.addTeacher(teacher);
+                // 设置管理的班级（如果有）
+                if (user.getClassIds() != null && !user.getClassIds().isEmpty()) {
+                    // TODO: 关联班级逻辑（如果需要）
+                }
+            } else if ("ROLE_ENTERPRISE_ADMIN".equals(roleCode)) {
+                // 创建企业管理员信息（通过Enterprise表）
+                if (user.getEnterpriseId() == null) {
+                    throw new BusinessException("企业管理员角色需要提供企业ID");
+                }
+                // 检查企业是否存在
+                Enterprise enterprise = enterpriseService.getById(user.getEnterpriseId());
+                if (enterprise == null || enterprise.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    throw new BusinessException("企业不存在");
+                }
+                // 更新企业的userId字段
+                enterprise.setUserId(user.getUserId());
+                enterpriseService.updateById(enterprise);
+            } else if ("ROLE_ENTERPRISE_MENTOR".equals(roleCode)) {
+                // 创建企业导师信息
+                if (user.getEnterpriseId() == null) {
+                    throw new BusinessException("企业导师角色需要提供企业ID");
+                }
+                // 检查企业是否存在
+                Enterprise enterprise = enterpriseService.getById(user.getEnterpriseId());
+                if (enterprise == null || enterprise.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    throw new BusinessException("企业不存在");
+                }
+                EnterpriseMentor mentor = new EnterpriseMentor();
+                mentor.setUserId(user.getUserId());
+                mentor.setEnterpriseId(user.getEnterpriseId());
+                mentor.setMentorName(user.getRealName());
+                mentor.setPhone(user.getPhone());
+                mentor.setEmail(user.getEmail());
+                mentor.setStatus(1); // 默认启用
+                enterpriseMentorMapper.insert(mentor);
             }
         }
         

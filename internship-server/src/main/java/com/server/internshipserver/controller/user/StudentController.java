@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * 学生管理控制器
@@ -141,6 +142,14 @@ public class StudentController {
         boolean success = studentService.approveStudentRegistration(studentId, approved, auditOpinion);
         String message = approved ? "审核通过，学生账号已激活" : "审核已拒绝";
         return success ? Result.success(message) : Result.error("审核失败");
+    }
+    
+    @ApiOperation("获取所有入学年份")
+    @GetMapping("/enrollment-years")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    public Result<List<Integer>> getEnrollmentYears() {
+        List<Integer> years = studentService.getDistinctEnrollmentYears();
+        return Result.success(years);
     }
 }
 

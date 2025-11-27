@@ -66,6 +66,10 @@ export const studentApi = {
         auditOpinion
       }
     })
+  },
+  // 获取所有入学年份
+  getEnrollmentYears() {
+    return request.get('/user/student/enrollment-years')
   }
 }
 

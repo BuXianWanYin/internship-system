@@ -65,7 +65,13 @@ export const menuItems = [
         index: '/admin/system/class',
         title: '班级管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+        titleMap: {
+          'ROLE_SYSTEM_ADMIN': '班级管理',
+          'ROLE_SCHOOL_ADMIN': '班级管理',
+          'ROLE_COLLEGE_LEADER': '班级管理',
+          'ROLE_CLASS_TEACHER': '我管理的班级'
+        }
       },
       {
         index: '/admin/system/semester',

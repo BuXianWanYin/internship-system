@@ -241,7 +241,21 @@
           </el-col>
         </el-row>
         <el-form-item label="职称">
-          <el-input v-model="formData.title" placeholder="请输入职称（如：教授、副教授）" />
+          <el-select
+            v-model="formData.title"
+            placeholder="请选择职称"
+            style="width: 100%"
+            filterable
+            allow-create
+            default-first-option
+          >
+            <el-option
+              v-for="title in titleOptions"
+              :key="title"
+              :label="title"
+              :value="title"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item v-if="!isEdit" label="初始密码" prop="password">
           <el-input
@@ -299,6 +313,21 @@ const schoolMap = ref({})
 // 学院列表和学校列表（用于下拉选择）
 const collegeList = ref([])
 const schoolList = ref([])
+
+// 职称选项
+const titleOptions = [
+  '教授',
+  '副教授',
+  '讲师',
+  '助教',
+  '研究员',
+  '副研究员',
+  '助理研究员',
+  '高级工程师',
+  '工程师',
+  '助理工程师',
+  '其他'
+]
 
 // 当前用户组织信息
 const currentOrgInfo = ref({

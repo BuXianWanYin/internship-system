@@ -42,7 +42,21 @@ public interface ClassService extends IService<Class> {
     Page<Class> getClassPage(Page<Class> page, String className, Long majorId, Long collegeId, Long schoolId);
     
     /**
-     * 停用班级（软删除）
+     * 停用班级（不删除数据）
+     * @param classId 班级ID
+     * @return 是否成功
+     */
+    boolean disableClass(Long classId);
+    
+    /**
+     * 启用班级
+     * @param classId 班级ID
+     * @return 是否成功
+     */
+    boolean enableClass(Long classId);
+    
+    /**
+     * 删除班级（软删除）
      * @param classId 班级ID
      * @return 是否成功
      */

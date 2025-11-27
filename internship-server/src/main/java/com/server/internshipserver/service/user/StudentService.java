@@ -117,5 +117,11 @@ public interface StudentService extends IService<Student> {
      * @return 是否成功
      */
     boolean approveStudentRegistration(Long studentId, boolean approved, String auditOpinion);
+    
+    /**
+     * 获取所有不重复的入学年份（降序排列）
+     * @return 入学年份列表
+     */
+    List<Integer> getDistinctEnrollmentYears();
 }
 

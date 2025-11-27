@@ -24,6 +24,7 @@ import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -38,6 +39,7 @@ import java.util.List;
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
     
     @Autowired
+    @Lazy
     private UserService userService;
     
     @Autowired
@@ -591,6 +593,23 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         this.updateById(student);
         
         return true;
+    }
+    
+    @Override
+    public List<Integer> getDistinctEnrollmentYears() {
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
+        wrapper.select(Student::getEnrollmentYear)
+               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+               .isNotNull(Student::getEnrollmentYear)
+               .groupBy(Student::getEnrollmentYear)
+               .orderByDesc(Student::getEnrollmentYear);
+        
+        List<Student> students = this.list(wrapper);
+        return students.stream()
+                       .map(Student::getEnrollmentYear)
+                       .distinct()
+                       .sorted((a, b) -> b.compareTo(a)) // 降序排列
+                       .collect(java.util.stream.Collectors.toList());
     }
 }
 

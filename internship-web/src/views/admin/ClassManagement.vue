@@ -1,7 +1,14 @@
 <template>
-  <PageLayout title="班级管理">
+  <PageLayout :title="pageTitle">
     <template #actions>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">添加班级</el-button>
+      <el-button 
+        v-if="canAddClass"
+        type="primary" 
+        :icon="Plus" 
+        @click="handleAdd"
+      >
+        添加班级
+      </el-button>
     </template>
 
     <!-- 搜索栏 -->
@@ -127,7 +134,24 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
           <el-button link type="primary" size="small" @click="handleShareCode(row)">分享码</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button
+            v-if="row.status === 1"
+            link
+            type="danger"
+            size="small"
+            @click="handleDisable(row)"
+          >
+            停用
+          </el-button>
+          <el-button
+            v-if="row.status === 0"
+            link
+            type="success"
+            size="small"
+            @click="handleEnable(row)"
+          >
+            启用
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -257,6 +281,7 @@ import { userApi } from '@/api/user/user'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { formatDateTime } from '@/utils/dateUtils'
 import { hasAnyRole } from '@/utils/permission'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -274,6 +299,21 @@ const collegeList = ref([])
 const collegeMap = ref({})
 const majorList = ref([])
 const majorMap = ref({})
+
+// 页面标题（根据角色动态显示）
+const pageTitle = computed(() => {
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  if (currentRoles.includes('ROLE_CLASS_TEACHER')) {
+    return '我管理的班级'
+  }
+  return '班级管理'
+})
+
+// 是否可以添加班级（只有系统管理员、学校管理员、学院负责人可以添加）
+const canAddClass = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
 
 // 当前用户组织信息
 const currentOrgInfo = ref({
@@ -535,19 +575,42 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = async (row) => {
+const handleDisable = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要停用该班级吗？', '提示', {
-      type: 'warning'
+    await ElMessageBox.confirm(`确定要停用班级 "${row.className}" 吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
     })
-    const res = await classApi.deleteClass(row.classId)
+    const res = await classApi.disableClass(row.classId)
     if (res.code === 200) {
       ElMessage.success('停用成功')
       loadData()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('停用失败:', error)
+      const errorMessage = error.response?.data?.message || error.message || '停用失败'
+      ElMessage.error(errorMessage)
+    }
+  }
+}
+
+const handleEnable = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要启用班级 "${row.className}" 吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    const res = await classApi.enableClass(row.classId)
+    if (res.code === 200) {
+      ElMessage.success('启用成功')
+      loadData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      const errorMessage = error.response?.data?.message || error.message || '启用失败'
+      ElMessage.error(errorMessage)
     }
   }
 }

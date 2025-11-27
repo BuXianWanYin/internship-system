@@ -34,8 +34,8 @@
         <template #default="{ row }">
           <div v-if="row.classTeacherId && teacherMap[row.classTeacherId]">
             <div>{{ teacherMap[row.classTeacherId].teacherNo }}</div>
-            <div v-if="teacherMap[row.classTeacherId].userId && userInfoMap[teacherMap[row.classTeacherId].userId]" style="font-size: 12px; color: #909399;">
-              {{ userInfoMap[teacherMap[row.classTeacherId].userId].realName }}
+            <div v-if="userInfoMap[row.classTeacherId]" style="font-size: 12px; color: #909399;">
+              {{ userInfoMap[row.classTeacherId].realName }}
             </div>
           </div>
           <el-tag v-else type="info" size="small">未任命</el-tag>
@@ -182,12 +182,12 @@ export default {
           tableData.value = res.data.records || []
           pagination.total = res.data.total || 0
 
-          // 加载班主任信息（classTeacherId存储的是teacherId）
-          const teacherIds = tableData.value
+          // 加载班主任信息（classTeacherId存储的是userId）
+          const userIds = tableData.value
             .filter(item => item.classTeacherId)
             .map(item => item.classTeacherId)
-          if (teacherIds.length > 0) {
-            await loadTeacherInfo(teacherIds)
+          if (userIds.length > 0) {
+            await loadTeacherInfoByUserIds(userIds)
           }
         } else {
           ElMessage.error(res.message || '加载失败')
@@ -199,7 +199,7 @@ export default {
       }
     }
 
-    // 加载教师信息（通过teacherId）
+    // 加载教师信息（通过teacherId，用于教师列表选择）
     const loadTeacherInfo = async (teacherIds) => {
       try {
         // 加载教师信息（通过teacherId查询）
@@ -223,6 +223,40 @@ export default {
               }
             } catch (error) {
               console.warn(`教师 ${teacherId} 查询失败:`, error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载教师信息失败：', error)
+      }
+    }
+
+    // 加载教师信息（通过userId，用于显示班级的班主任信息）
+    const loadTeacherInfoByUserIds = async (userIds) => {
+      try {
+        // 加载教师信息（通过userId查询）
+        for (const userId of userIds) {
+          // 使用userId作为key存储教师信息（因为classTeacherId存储的是userId）
+          if (!teacherMap.value[userId]) {
+            try {
+              // 先加载用户信息
+              if (!userInfoMap.value[userId]) {
+                try {
+                  const userRes = await userApi.getUserById(userId)
+                  if (userRes.code === 200 && userRes.data) {
+                    userInfoMap.value[userId] = userRes.data
+                  }
+                } catch (error) {
+                  console.warn(`用户 ${userId} 查询失败:`, error)
+                }
+              }
+              // 再通过userId查询教师信息
+              const res = await teacherApi.getTeacherByUserId(userId)
+              if (res.code === 200 && res.data) {
+                teacherMap.value[userId] = res.data
+              }
+            } catch (error) {
+              console.warn(`通过用户ID ${userId} 查询教师信息失败:`, error)
             }
           }
         }

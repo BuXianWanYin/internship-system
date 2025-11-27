@@ -63,7 +63,7 @@
             collapse-tags-tooltip
           >
             <el-option
-              v-for="role in roleList"
+              v-for="role in filteredRoleListForSearch"
               :key="role.roleCode"
               :label="role.roleName"
               :value="role.roleCode"
@@ -104,13 +104,30 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="所属专业">
+          <el-select
+            v-model="searchForm.majorId"
+            placeholder="请选择专业"
+            clearable
+            style="width: 200px"
+            :disabled="!searchForm.collegeId"
+            @change="handleMajorChange"
+          >
+            <el-option
+              v-for="major in majorList"
+              :key="major.majorId"
+              :label="major.majorName"
+              :value="major.majorId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="所属班级">
           <el-select
             v-model="searchForm.classId"
             placeholder="请选择班级"
             clearable
             style="width: 200px"
-            :disabled="!searchForm.collegeId"
+            :disabled="!searchForm.majorId"
             :multiple="isClassMultiple"
           >
             <el-option
@@ -118,6 +135,21 @@
               :key="classItem.classId"
               :label="classItem.className"
               :value="classItem.classId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="入学年份">
+          <el-select
+            v-model="searchForm.enrollmentYear"
+            placeholder="请选择入学年份"
+            clearable
+            style="width: 200px"
+          >
+            <el-option
+              v-for="year in enrollmentYearOptions"
+              :key="year"
+              :label="`${year}年`"
+              :value="year"
             />
           </el-select>
         </el-form-item>
@@ -233,14 +265,12 @@
             <el-radio :label="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="角色" prop="roles" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
+        <el-form-item label="角色" prop="roleCode" v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])">
           <el-select
-            v-model="formData.roles"
+            v-model="formData.roleCode"
             placeholder="请选择角色"
-            multiple
             style="width: 100%"
-            collapse-tags
-            collapse-tags-tooltip
+            @change="handleRoleChange"
           >
             <el-option
               v-for="role in filteredRoleList"
@@ -253,6 +283,238 @@
             当前角色：{{ rowRoles.map(r => getRoleName(r)).join('、') }}
           </div>
         </el-form-item>
+        
+        <!-- 学生角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_STUDENT'">
+          <el-form-item label="学号" prop="studentNo">
+            <el-input v-model="formData.studentNo" placeholder="请输入学号" />
+          </el-form-item>
+          <el-form-item label="所属学校" prop="schoolId">
+            <el-select
+              v-model="formData.schoolId"
+              placeholder="请选择学校"
+              style="width: 100%"
+              :disabled="isSchoolDisabledForAdd"
+              @change="handleSchoolChangeForAdd"
+            >
+              <el-option
+                v-for="school in schoolList"
+                :key="school.schoolId"
+                :label="school.schoolName"
+                :value="school.schoolId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属学院" prop="collegeId">
+            <el-select
+              v-model="formData.collegeId"
+              placeholder="请选择学院"
+              style="width: 100%"
+              :disabled="isCollegeDisabledForAdd || !formData.schoolId"
+              @change="handleCollegeChangeForAdd"
+            >
+              <el-option
+                v-for="college in collegeListForAdd"
+                :key="college.collegeId"
+                :label="college.collegeName"
+                :value="college.collegeId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属专业" prop="majorId">
+            <el-select
+              v-model="formData.majorId"
+              placeholder="请选择专业"
+              style="width: 100%"
+              :disabled="!formData.collegeId"
+              @change="handleMajorChangeForAdd"
+            >
+              <el-option
+                v-for="major in majorListForAdd"
+                :key="major.majorId"
+                :label="major.majorName"
+                :value="major.majorId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属班级" prop="classId">
+            <el-select
+              v-model="formData.classId"
+              placeholder="请选择班级"
+              style="width: 100%"
+              :disabled="!formData.majorId"
+            >
+              <el-option
+                v-for="classItem in filteredClassListForAdd"
+                :key="classItem.classId"
+                :label="classItem.className"
+                :value="classItem.classId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="入学年份" prop="enrollmentYear">
+            <el-select
+              v-model="formData.enrollmentYear"
+              placeholder="请选择入学年份"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="year in enrollmentYearOptions"
+                :key="year"
+                :label="`${year}年`"
+                :value="year"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <!-- 学校管理员角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_SCHOOL_ADMIN'">
+          <el-form-item label="所属学校" prop="schoolId">
+            <el-select
+              v-model="formData.schoolId"
+              placeholder="请选择学校"
+              style="width: 100%"
+              :disabled="isSchoolDisabledForAdd"
+              @change="handleSchoolChangeForAdd"
+            >
+              <el-option
+                v-for="school in schoolList"
+                :key="school.schoolId"
+                :label="school.schoolName"
+                :value="school.schoolId"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <!-- 学院负责人角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_COLLEGE_LEADER'">
+          <el-form-item label="所属学校" prop="schoolId">
+            <el-select
+              v-model="formData.schoolId"
+              placeholder="请选择学校"
+              style="width: 100%"
+              :disabled="isSchoolDisabledForAdd"
+              @change="handleSchoolChangeForAdd"
+            >
+              <el-option
+                v-for="school in schoolList"
+                :key="school.schoolId"
+                :label="school.schoolName"
+                :value="school.schoolId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属学院" prop="collegeId">
+            <el-select
+              v-model="formData.collegeId"
+              placeholder="请选择学院"
+              style="width: 100%"
+              :disabled="isCollegeDisabledForAdd || !formData.schoolId"
+              @change="handleCollegeChangeForAdd"
+            >
+              <el-option
+                v-for="college in collegeListForAdd"
+                :key="college.collegeId"
+                :label="college.collegeName"
+                :value="college.collegeId"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <!-- 班主任角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_CLASS_TEACHER'">
+          <el-form-item label="所属学校" prop="schoolId">
+            <el-select
+              v-model="formData.schoolId"
+              placeholder="请选择学校"
+              style="width: 100%"
+              :disabled="isSchoolDisabledForAdd"
+              @change="handleSchoolChangeForAdd"
+            >
+              <el-option
+                v-for="school in schoolList"
+                :key="school.schoolId"
+                :label="school.schoolName"
+                :value="school.schoolId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="所属学院" prop="collegeId">
+            <el-select
+              v-model="formData.collegeId"
+              placeholder="请选择学院"
+              style="width: 100%"
+              :disabled="isCollegeDisabledForAdd || !formData.schoolId"
+              @change="handleCollegeChangeForAdd"
+            >
+              <el-option
+                v-for="college in collegeListForAdd"
+                :key="college.collegeId"
+                :label="college.collegeName"
+                :value="college.collegeId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="管理班级" prop="classIds">
+            <el-select
+              v-model="formData.classIds"
+              placeholder="请选择管理的班级（可多选）"
+              style="width: 100%"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              :disabled="!formData.collegeId"
+            >
+              <el-option
+                v-for="classItem in classListForAdd"
+                :key="classItem.classId"
+                :label="classItem.className"
+                :value="classItem.classId"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <!-- 企业管理员角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_ENTERPRISE_ADMIN'">
+          <el-form-item label="所属企业" prop="enterpriseId">
+            <el-select
+              v-model="formData.enterpriseId"
+              placeholder="请选择企业"
+              style="width: 100%"
+              filterable
+            >
+              <el-option
+                v-for="enterprise in enterpriseList"
+                :key="enterprise.enterpriseId"
+                :label="enterprise.enterpriseName"
+                :value="enterprise.enterpriseId"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
+        
+        <!-- 企业导师角色字段 -->
+        <template v-if="formData.roleCode === 'ROLE_ENTERPRISE_MENTOR'">
+          <el-form-item label="所属企业" prop="enterpriseId">
+            <el-select
+              v-model="formData.enterpriseId"
+              placeholder="请选择企业"
+              style="width: 100%"
+              filterable
+            >
+              <el-option
+                v-for="enterprise in enterpriseList"
+                :key="enterprise.enterpriseId"
+                :label="enterprise.enterpriseName"
+                :value="enterprise.enterpriseId"
+              />
+            </el-select>
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -305,11 +567,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, canEditUser, canAssignRole } from '@/utils/permission'
+import { useAuthStore } from '@/store/modules/auth'
 import { userApi } from '@/api/user/user'
 import { roleApi } from '@/api/user/role'
 import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
+import { majorApi } from '@/api/system/major'
 import { classApi } from '@/api/system/class'
+import { studentApi } from '@/api/user/student'
+import { enterpriseApi } from '@/api/user/enterprise'
 import request from '@/utils/request'
 
 // 搜索表单
@@ -321,14 +587,28 @@ const searchForm = reactive({
   roleCodes: null,
   schoolId: null,
   collegeId: null,
-  classId: null
+  majorId: null,
+  classId: null,
+  enrollmentYear: null
 })
 
 // 筛选选项
 const roleList = ref([])
 const schoolList = ref([])
 const collegeList = ref([])
+const majorList = ref([])
 const classList = ref([])
+
+// 添加/编辑表单用的组织架构列表
+const collegeListForAdd = ref([])
+const majorListForAdd = ref([])
+const classListForAdd = ref([])
+
+// 企业列表（用于企业管理员和企业导师选择）
+const enterpriseList = ref([])
+
+// 入学年份选项（动态加载）
+const enrollmentYearOptions = ref([])
 
 // 当前用户组织信息
 const currentOrgInfo = ref({
@@ -372,7 +652,18 @@ const formData = reactive({
   phone: '',
   email: '',
   status: 1,
-  roles: []  // 新增：角色列表
+  roleCode: null,  // 改为单选，使用roleCode
+  // 学生相关字段
+  studentNo: '',
+  schoolId: null,
+  collegeId: null,
+  majorId: null,
+  classId: null,
+  enrollmentYear: null,
+  // 班主任相关字段
+  classIds: [],  // 班主任可以管理多个班级
+  // 企业相关字段
+  enterpriseId: null  // 企业管理员和企业导师需要关联企业
 })
 
 // 表单验证规则
@@ -396,6 +687,73 @@ const formRules = {
   ],
   status: [
     { required: true, message: '请选择状态', trigger: 'change' }
+  ],
+  roleCode: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ],
+  // 学生相关验证
+  studentNo: [
+    { required: true, message: '请输入学号', trigger: 'blur', validator: (rule, value, callback) => {
+      if (formData.roleCode === 'ROLE_STUDENT' && !value) {
+        callback(new Error('请输入学号'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  schoolId: [
+    { required: true, message: '请选择学校', trigger: 'change', validator: (rule, value, callback) => {
+      if (['ROLE_STUDENT', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'].includes(formData.roleCode) && !value) {
+        callback(new Error('请选择学校'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  collegeId: [
+    { required: true, message: '请选择学院', trigger: 'change', validator: (rule, value, callback) => {
+      if (['ROLE_STUDENT', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'].includes(formData.roleCode) && !value) {
+        callback(new Error('请选择学院'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  majorId: [
+    { required: true, message: '请选择专业', trigger: 'change', validator: (rule, value, callback) => {
+      if (formData.roleCode === 'ROLE_STUDENT' && !value) {
+        callback(new Error('请选择专业'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  classId: [
+    { required: true, message: '请选择班级', trigger: 'change', validator: (rule, value, callback) => {
+      if (formData.roleCode === 'ROLE_STUDENT' && !value) {
+        callback(new Error('请选择班级'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  enrollmentYear: [
+    { required: true, message: '请选择入学年份', trigger: 'change', validator: (rule, value, callback) => {
+      if (formData.roleCode === 'ROLE_STUDENT' && !value) {
+        callback(new Error('请选择入学年份'))
+      } else {
+        callback()
+      }
+    }}
+  ],
+  enterpriseId: [
+    { required: true, message: '请选择企业', trigger: 'change', validator: (rule, value, callback) => {
+      if (['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'].includes(formData.roleCode) && !value) {
+        callback(new Error('请选择企业'))
+      } else {
+        callback()
+      }
+    }}
   ]
 }
 
@@ -444,12 +802,153 @@ const isClassMultiple = computed(() => {
   return hasAnyRole(['ROLE_CLASS_TEACHER'])
 })
 
+// 计算属性：学校字段是否禁用（添加时）
+const isSchoolDisabledForAdd = computed(() => {
+  if (!formData.roleCode) return false
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  
+  // 系统管理员：不禁用，可以自由选择
+  if (currentRoles.includes('ROLE_SYSTEM_ADMIN')) {
+    return false
+  }
+  
+  // 学校管理员添加学校管理员、学院负责人、班主任：禁用（绑定自己的学校）
+  if (currentRoles.includes('ROLE_SCHOOL_ADMIN') && 
+      ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(formData.roleCode)) {
+    return true
+  }
+  
+  // 学院负责人添加学院负责人、班主任、学生：禁用（绑定自己的学校）
+  if (currentRoles.includes('ROLE_COLLEGE_LEADER') && 
+      ['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(formData.roleCode)) {
+    return true
+  }
+  
+  // 班主任添加学生：禁用（绑定自己的学校）
+  if (currentRoles.includes('ROLE_CLASS_TEACHER') && 
+      formData.roleCode === 'ROLE_STUDENT') {
+    return true
+  }
+  
+  return false
+})
+
+// 计算属性：学院字段是否禁用（添加时）
+const isCollegeDisabledForAdd = computed(() => {
+  if (!formData.roleCode) return false
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  
+  // 系统管理员：不禁用，可以自由选择
+  if (currentRoles.includes('ROLE_SYSTEM_ADMIN')) {
+    return false
+  }
+  
+  // 学校管理员添加学院负责人、班主任、学生：不禁用，可以选择学院
+  if (currentRoles.includes('ROLE_SCHOOL_ADMIN') && 
+      ['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(formData.roleCode)) {
+    return false
+  }
+  
+  // 学院负责人添加学院负责人、班主任、学生：禁用（绑定自己的学院）
+  if (currentRoles.includes('ROLE_COLLEGE_LEADER') && 
+      ['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(formData.roleCode)) {
+    return true
+  }
+  
+  // 班主任添加学生：禁用（绑定自己的学院）
+  if (currentRoles.includes('ROLE_CLASS_TEACHER') && 
+      formData.roleCode === 'ROLE_STUDENT') {
+    return true
+  }
+  
+  return false
+})
+
 // 计算属性：过滤后的班级列表（班主任只能看到管理的班级）
 const filteredClassList = computed(() => {
   if (hasAnyRole(['ROLE_CLASS_TEACHER']) && currentOrgInfo.value.classIds && currentOrgInfo.value.classIds.length > 0) {
     return classList.value.filter(c => currentOrgInfo.value.classIds.includes(c.classId))
   }
-  return classList.value.filter(c => !searchForm.collegeId || c.collegeId === searchForm.collegeId)
+  return classList.value.filter(c => !searchForm.majorId || c.majorId === searchForm.majorId)
+})
+
+// 计算属性：添加表单中过滤后的班级列表（班主任只能选择管理的班级）
+const filteredClassListForAdd = computed(() => {
+  if (hasAnyRole(['ROLE_CLASS_TEACHER']) && currentOrgInfo.value.classIds && currentOrgInfo.value.classIds.length > 0) {
+    // 班主任只能选择自己管理的班级
+    return classListForAdd.value.filter(c => currentOrgInfo.value.classIds.includes(c.classId))
+  }
+  // 其他角色可以选择所有班级
+  return classListForAdd.value
+})
+
+// 加载入学年份（方案A：前端兜底）
+const loadEnrollmentYears = async () => {
+  try {
+    const res = await studentApi.getEnrollmentYears()
+    const currentYear = new Date().getFullYear()
+    
+    if (res.code === 200) {
+      let years = res.data || []
+      
+      // 如果数据库中没有年份，或者不包含当前年份，添加默认年份
+      if (years.length === 0 || !years.includes(currentYear)) {
+        const defaultYears = [currentYear, currentYear - 1, currentYear - 2]
+        // 合并并去重
+        years = [...new Set([...defaultYears, ...years])].sort((a, b) => b - a)
+      } else {
+        // 降序排列
+        years = years.sort((a, b) => b - a)
+      }
+      
+      enrollmentYearOptions.value = years
+    }
+  } catch (error) {
+    console.error('加载入学年份失败:', error)
+    // 失败时使用固定范围
+    const currentYear = new Date().getFullYear()
+    enrollmentYearOptions.value = []
+    for (let i = currentYear; i >= currentYear - 10; i--) {
+      enrollmentYearOptions.value.push(i)
+    }
+  }
+}
+
+// 计算属性：用于筛选的角色列表（排除不能筛选的角色）
+const filteredRoleListForSearch = computed(() => {
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  if (!currentRoles || currentRoles.length === 0) {
+    return []
+  }
+  
+  // 系统管理员：可以筛选所有角色
+  if (currentRoles.includes('ROLE_SYSTEM_ADMIN')) {
+    return roleList.value
+  }
+  
+  // 学校管理员：不能筛选系统管理员
+  if (currentRoles.includes('ROLE_SCHOOL_ADMIN')) {
+    return roleList.value.filter(role => role.roleCode !== 'ROLE_SYSTEM_ADMIN')
+  }
+  
+  // 学院负责人：不能筛选系统管理员、学校管理员
+  if (currentRoles.includes('ROLE_COLLEGE_LEADER')) {
+    return roleList.value.filter(role => 
+      role.roleCode !== 'ROLE_SYSTEM_ADMIN' && 
+      role.roleCode !== 'ROLE_SCHOOL_ADMIN'
+    )
+  }
+  
+  // 班主任：只能添加学生角色
+  if (currentRoles.includes('ROLE_CLASS_TEACHER')) {
+    return roleList.value.filter(role => role.roleCode === 'ROLE_STUDENT')
+  }
+  
+  // 其他角色：不能筛选任何角色
+  return []
 })
 
 // 加载数据
@@ -466,7 +965,9 @@ const loadData = async () => {
       roleCodes: searchForm.roleCodes && searchForm.roleCodes.length > 0 ? searchForm.roleCodes.join(',') : undefined,
       schoolId: searchForm.schoolId || undefined,
       collegeId: searchForm.collegeId || undefined,
-      classId: searchForm.classId || undefined
+      majorId: searchForm.majorId || undefined,
+      classId: searchForm.classId || undefined,
+      enrollmentYear: searchForm.enrollmentYear || undefined
     }
     const res = await userApi.getUserPage(params)
     if (res.code === 200) {
@@ -552,21 +1053,23 @@ const handleReset = () => {
     searchForm.collegeId = null
   }
   
+  searchForm.majorId = null
   searchForm.classId = null
+  searchForm.enrollmentYear = null
   
-  // 重新加载学院和班级列表
+  // 重新加载学院、专业和班级列表
   if (searchForm.schoolId) {
     loadCollegeList(searchForm.schoolId)
   } else {
     collegeList.value = []
+    majorList.value = []
+    classList.value = []
   }
   
   if (searchForm.collegeId) {
-    loadClassList(searchForm.collegeId, null)
-  } else if (searchForm.schoolId && hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
-    // 学校管理员：即使没有选择学院，也可以根据学校加载班级
-    loadClassList(null, searchForm.schoolId)
+    loadMajorList(searchForm.collegeId)
   } else {
+    majorList.value = []
     classList.value = []
   }
   
@@ -600,6 +1103,7 @@ const handleEdit = async (row) => {
   try {
     const res = await userApi.getUserById(row.userId)
     if (res.code === 200) {
+      const roles = res.data.roles || []
       Object.assign(formData, {
         userId: res.data.userId,
         username: res.data.username,
@@ -609,9 +1113,75 @@ const handleEdit = async (row) => {
         phone: res.data.phone || '',
         email: res.data.email || '',
         status: res.data.status,
-        roles: res.data.roles || []  // 加载用户角色
+        roleCode: roles.length > 0 ? roles[0] : null,  // 取第一个角色
+        // 学生相关字段（需要从学生信息中获取）
+        studentNo: '',
+        schoolId: null,
+        collegeId: null,
+        majorId: null,
+        classId: null,
+        enrollmentYear: null,
+        // 班主任相关字段
+        classIds: [],
+        // 企业相关字段
+        enterpriseId: null
       })
-      rowRoles.value = res.data.roles || []  // 保存原始角色用于显示
+      rowRoles.value = roles  // 保存原始角色用于显示
+      
+      // 如果用户是企业管理员，加载企业信息
+      if (roles.includes('ROLE_ENTERPRISE_ADMIN')) {
+        try {
+          const enterpriseRes = await enterpriseApi.getEnterpriseByUserId(row.userId)
+          if (enterpriseRes.code === 200 && enterpriseRes.data) {
+            formData.enterpriseId = enterpriseRes.data.enterpriseId || null
+          }
+        } catch (error) {
+          console.error('获取企业信息失败:', error)
+        }
+      }
+      
+      // 如果用户是企业导师，加载企业导师信息
+      if (roles.includes('ROLE_ENTERPRISE_MENTOR')) {
+        try {
+          // 需要调用企业导师API获取信息
+          const mentorRes = await request.get(`/user/enterprise-mentor/user/${row.userId}`)
+          if (mentorRes.code === 200 && mentorRes.data) {
+            formData.enterpriseId = mentorRes.data.enterpriseId || null
+          }
+        } catch (error) {
+          console.error('获取企业导师信息失败:', error)
+        }
+      }
+      
+      // 如果用户是学生，加载学生信息
+      if (roles.includes('ROLE_STUDENT')) {
+        try {
+          const studentRes = await studentApi.getStudentByUserId(row.userId)
+          if (studentRes.code === 200 && studentRes.data) {
+            formData.studentNo = studentRes.data.studentNo || ''
+            formData.schoolId = studentRes.data.schoolId || null
+            formData.collegeId = studentRes.data.collegeId || null
+            formData.majorId = studentRes.data.majorId || null
+            formData.classId = studentRes.data.classId || null
+            formData.enrollmentYear = studentRes.data.enrollmentYear || null
+            
+            // 加载组织架构列表
+            if (formData.schoolId) {
+              await loadCollegeListForAdd(formData.schoolId)
+            }
+            if (formData.collegeId) {
+              await loadMajorListForAdd(formData.collegeId)
+              await loadClassListForAdd(null, null, null, formData.collegeId)
+            }
+            if (formData.majorId) {
+              await loadClassListForAdd(null, null, formData.majorId, null)
+            }
+          }
+        } catch (error) {
+          console.error('获取学生信息失败:', error)
+        }
+      }
+      
       dialogVisible.value = true
     }
   } catch (error) {
@@ -630,10 +1200,228 @@ const resetFormData = () => {
     phone: '',
     email: '',
     status: 1,
-    roles: []  // 重置角色列表
+    roleCode: null,
+    // 学生相关字段
+    studentNo: '',
+    schoolId: null,
+    collegeId: null,
+    majorId: null,
+    classId: null,
+    enrollmentYear: null,
+    // 班主任相关字段
+    classIds: [],
+    // 企业相关字段
+    enterpriseId: null
   })
-  rowRoles.value = []  // 重置原始角色
+  rowRoles.value = []
+  collegeListForAdd.value = []
+  majorListForAdd.value = []
+  classListForAdd.value = []
   formRef.value?.clearValidate()
+}
+
+// 角色改变时的处理
+const handleRoleChange = (roleCode) => {
+  // 清空角色相关的字段
+  formData.studentNo = ''
+  formData.schoolId = null
+  formData.collegeId = null
+  formData.majorId = null
+  formData.classId = null
+  formData.classIds = []
+  formData.enrollmentYear = null
+  formData.enterpriseId = null
+  collegeListForAdd.value = []
+  majorListForAdd.value = []
+  classListForAdd.value = []
+  
+  const authStore = useAuthStore()
+  const currentRoles = authStore.roles || []
+  
+  // 系统管理员：不设置默认值，可以自由选择
+  if (currentRoles.includes('ROLE_SYSTEM_ADMIN')) {
+    // 根据角色加载相应的列表
+    if (roleCode === 'ROLE_COLLEGE_LEADER' || roleCode === 'ROLE_CLASS_TEACHER' || roleCode === 'ROLE_STUDENT') {
+      // 需要选择学院的角色，加载所有学校列表（如果还没有加载）
+      if (schoolList.value.length === 0) {
+        loadSchoolList()
+      }
+    }
+    if (roleCode === 'ROLE_ENTERPRISE_ADMIN' || roleCode === 'ROLE_ENTERPRISE_MENTOR') {
+      loadEnterpriseList()
+    }
+    return
+  }
+  
+  // 学校管理员：添加学校管理员、学院负责人、班主任、学生时，学校默认绑定
+  if (currentRoles.includes('ROLE_SCHOOL_ADMIN')) {
+    if (['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(roleCode)) {
+      if (currentOrgInfo.value.schoolId) {
+        formData.schoolId = currentOrgInfo.value.schoolId
+        // 需要选择学院的角色，加载该学校的学院列表
+        if (['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(roleCode)) {
+          loadCollegeListForAdd(currentOrgInfo.value.schoolId)
+        }
+      }
+    }
+  }
+  
+  // 学院负责人：添加学院负责人、班主任、学生时，学校和学院都默认绑定
+  if (currentRoles.includes('ROLE_COLLEGE_LEADER')) {
+    if (['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT'].includes(roleCode)) {
+      if (currentOrgInfo.value.schoolId) {
+        formData.schoolId = currentOrgInfo.value.schoolId
+        loadCollegeListForAdd(currentOrgInfo.value.schoolId)
+      }
+      if (currentOrgInfo.value.collegeId) {
+        formData.collegeId = currentOrgInfo.value.collegeId
+        // 需要选择专业/班级的角色，加载相应的列表
+        if (roleCode === 'ROLE_STUDENT') {
+          loadMajorListForAdd(currentOrgInfo.value.collegeId)
+        } else if (roleCode === 'ROLE_CLASS_TEACHER') {
+          loadClassListForAdd(null, null, null, currentOrgInfo.value.collegeId)
+        }
+      }
+    }
+  }
+  
+  // 班主任：只能添加学生，学校和学院都默认绑定，班级只能选择自己管理的班级
+  if (currentRoles.includes('ROLE_CLASS_TEACHER')) {
+    if (roleCode === 'ROLE_STUDENT') {
+      if (currentOrgInfo.value.schoolId) {
+        formData.schoolId = currentOrgInfo.value.schoolId
+        loadCollegeListForAdd(currentOrgInfo.value.schoolId)
+      }
+      if (currentOrgInfo.value.collegeId) {
+        formData.collegeId = currentOrgInfo.value.collegeId
+        // 加载专业列表
+        loadMajorListForAdd(currentOrgInfo.value.collegeId)
+        // 加载班主任管理的班级列表
+        if (currentOrgInfo.value.classIds && currentOrgInfo.value.classIds.length > 0) {
+          loadClassListForAdd(null, null, null, currentOrgInfo.value.collegeId)
+        }
+      }
+    }
+  }
+  
+  // 企业管理员和企业导师：加载企业列表
+  if (roleCode === 'ROLE_ENTERPRISE_ADMIN' || roleCode === 'ROLE_ENTERPRISE_MENTOR') {
+    loadEnterpriseList()
+  }
+}
+
+// 加载添加表单用的学院列表
+const loadCollegeListForAdd = async (schoolId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await collegeApi.getCollegePage(params)
+    if (res.code === 200) {
+      collegeListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载学院列表失败:', error)
+  }
+}
+
+// 加载添加表单用的专业列表
+const loadMajorListForAdd = async (collegeId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    if (collegeId) {
+      params.collegeId = collegeId
+    }
+    const res = await majorApi.getMajorPage(params)
+    if (res.code === 200) {
+      majorListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载专业列表失败:', error)
+  }
+}
+
+// 加载添加表单用的班级列表
+const loadClassListForAdd = async (collegeId, schoolId, majorId, collegeIdParam) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    // 优先级：majorId > collegeId > schoolId
+    if (majorId) {
+      params.majorId = majorId
+    } else if (collegeIdParam || collegeId) {
+      params.collegeId = collegeIdParam || collegeId
+    } else if (schoolId) {
+      params.schoolId = schoolId
+    }
+    const res = await classApi.getClassPage(params)
+    if (res.code === 200) {
+      classListForAdd.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载班级列表失败:', error)
+  }
+}
+
+// 学校改变时的处理（添加表单）
+const handleSchoolChangeForAdd = () => {
+  formData.collegeId = null
+  formData.majorId = null
+  formData.classId = null
+  formData.classIds = []
+  majorListForAdd.value = []
+  classListForAdd.value = []
+  if (formData.schoolId) {
+    loadCollegeListForAdd(formData.schoolId)
+  } else {
+    collegeListForAdd.value = []
+  }
+}
+
+// 学院改变时的处理（添加表单）
+const handleCollegeChangeForAdd = () => {
+  formData.majorId = null
+  formData.classId = null
+  formData.classIds = []
+  classListForAdd.value = []
+  if (formData.collegeId) {
+    // 学生角色需要加载专业列表
+    if (formData.roleCode === 'ROLE_STUDENT') {
+      loadMajorListForAdd(formData.collegeId)
+    }
+    // 班主任角色需要加载班级列表
+    if (formData.roleCode === 'ROLE_CLASS_TEACHER') {
+      loadClassListForAdd(null, null, null, formData.collegeId)
+    }
+  } else {
+    majorListForAdd.value = []
+    classListForAdd.value = []
+  }
+}
+
+// 专业改变时的处理（添加表单）
+const handleMajorChangeForAdd = () => {
+  formData.classId = null
+  formData.classIds = []
+  if (formData.majorId) {
+    loadClassListForAdd(null, null, formData.majorId, null)
+  } else if (formData.collegeId) {
+    loadClassListForAdd(null, null, null, formData.collegeId)
+  } else {
+    classListForAdd.value = []
+  }
+}
+
+// 加载企业列表
+const loadEnterpriseList = async () => {
+  try {
+    const res = await enterpriseApi.getEnterprisePage({ current: 1, size: 1000, status: 1 })
+    if (res.code === 200) {
+      enterpriseList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载企业列表失败:', error)
+  }
 }
 
 // 提交表单
@@ -645,9 +1433,44 @@ const handleSubmit = async () => {
     
     submitting.value = true
     try {
+      const userData = {
+        username: formData.username,
+        password: formData.password,
+        realName: formData.realName,
+        idCard: formData.idCard,
+        phone: formData.phone,
+        email: formData.email,
+        status: formData.status,
+        roles: formData.roleCode ? [formData.roleCode] : []  // 转换为数组格式
+      }
+      
+      // 根据角色添加额外字段
+      if (formData.roleCode === 'ROLE_STUDENT') {
+        userData.studentNo = formData.studentNo
+        userData.schoolId = formData.schoolId
+        userData.collegeId = formData.collegeId
+        userData.majorId = formData.majorId
+        userData.classId = formData.classId
+        userData.enrollmentYear = formData.enrollmentYear
+      } else if (formData.roleCode === 'ROLE_SCHOOL_ADMIN') {
+        userData.schoolId = formData.schoolId
+      } else if (formData.roleCode === 'ROLE_COLLEGE_LEADER') {
+        userData.schoolId = formData.schoolId
+        userData.collegeId = formData.collegeId
+      } else if (formData.roleCode === 'ROLE_CLASS_TEACHER') {
+        userData.schoolId = formData.schoolId
+        userData.collegeId = formData.collegeId
+        userData.classIds = formData.classIds
+      } else if (formData.roleCode === 'ROLE_ENTERPRISE_ADMIN') {
+        userData.enterpriseId = formData.enterpriseId
+      } else if (formData.roleCode === 'ROLE_ENTERPRISE_MENTOR') {
+        userData.enterpriseId = formData.enterpriseId
+      }
+      
       if (isEdit.value) {
         // 编辑时不需要密码
-        const { password, ...updateData } = formData
+        const { password, ...updateData } = userData
+        updateData.userId = formData.userId
         const res = await userApi.updateUser(updateData)
         if (res.code === 200) {
           ElMessage.success('更新成功')
@@ -658,11 +1481,13 @@ const handleSubmit = async () => {
         }
       } else {
         // 添加时需要密码
-        const res = await userApi.addUser(formData)
+        const res = await userApi.addUser(userData)
         if (res.code === 200) {
           ElMessage.success('添加成功')
           dialogVisible.value = false
           loadData()
+          // 重新加载入学年份列表（可能新增了年份）
+          await loadEnrollmentYears()
         } else {
           ElMessage.error(res.message || '添加失败')
         }
@@ -775,11 +1600,28 @@ const loadCollegeList = async (schoolId) => {
   }
 }
 
-const loadClassList = async (collegeId, schoolId) => {
+const loadMajorList = async (collegeId) => {
   try {
     const params = { current: 1, size: 1000 }
-    // 优先使用学院ID，如果没有则使用学校ID
     if (collegeId) {
+      params.collegeId = collegeId
+    }
+    const res = await majorApi.getMajorPage(params)
+    if (res.code === 200) {
+      majorList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载专业列表失败:', error)
+  }
+}
+
+const loadClassList = async (collegeId, schoolId, majorId) => {
+  try {
+    const params = { current: 1, size: 1000 }
+    // 优先级：majorId > collegeId > schoolId
+    if (majorId) {
+      params.majorId = majorId
+    } else if (collegeId) {
       params.collegeId = collegeId
     } else if (schoolId) {
       params.schoolId = schoolId
@@ -795,9 +1637,11 @@ const loadClassList = async (collegeId, schoolId) => {
 
 // 学校改变时的处理
 const handleSchoolChange = () => {
-  // 清空学院和班级选择
+  // 清空学院、专业和班级选择
   searchForm.collegeId = null
+  searchForm.majorId = null
   searchForm.classId = null
+  majorList.value = []
   classList.value = []
   // 加载该学校下的学院列表
   if (searchForm.schoolId) {
@@ -809,14 +1653,30 @@ const handleSchoolChange = () => {
 
 // 学院改变时的处理
 const handleCollegeChange = () => {
+  // 清空专业和班级选择
+  searchForm.majorId = null
+  searchForm.classId = null
+  classList.value = []
+  // 加载该学院下的专业列表
+  if (searchForm.collegeId) {
+    loadMajorList(searchForm.collegeId)
+  } else {
+    majorList.value = []
+  }
+}
+
+// 专业改变时的处理
+const handleMajorChange = () => {
   // 清空班级选择
   searchForm.classId = null
-  // 加载该学院下的班级列表
-  if (searchForm.collegeId) {
-    loadClassList(searchForm.collegeId, null)
+  // 加载该专业下的班级列表
+  if (searchForm.majorId) {
+    loadClassList(null, null, searchForm.majorId)
+  } else if (searchForm.collegeId) {
+    loadClassList(searchForm.collegeId, null, null)
   } else if (searchForm.schoolId && hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
     // 学校管理员：即使没有选择学院，也可以根据学校加载班级
-    loadClassList(null, searchForm.schoolId)
+    loadClassList(null, searchForm.schoolId, null)
   } else {
     classList.value = []
   }
@@ -878,13 +1738,13 @@ const loadCurrentUserOrgInfo = async () => {
       if (hasAnyRole(['ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])) {
         if (currentOrgInfo.value.collegeId) {
           searchForm.collegeId = currentOrgInfo.value.collegeId
-          // 加载该学院的班级列表
-          await loadClassList(currentOrgInfo.value.collegeId, null)
+          // 加载该学院的专业列表
+          await loadMajorList(currentOrgInfo.value.collegeId)
         }
       } else if (hasAnyRole(['ROLE_SCHOOL_ADMIN'])) {
         // 学校管理员：加载该学校的班级列表
         if (currentOrgInfo.value.schoolId) {
-          await loadClassList(null, currentOrgInfo.value.schoolId)
+          await loadClassList(null, currentOrgInfo.value.schoolId, null)
         }
       }
     }
@@ -896,13 +1756,15 @@ const loadCurrentUserOrgInfo = async () => {
 onMounted(async () => {
   loadRoleList()
   loadSchoolList()
+  await loadEnrollmentYears()  // 加载入学年份
+  await loadEnterpriseList()  // 加载企业列表
   await loadCurrentUserOrgInfo()
   // 如果没有组织信息，加载所有学院和班级（仅系统管理员）
   if (!currentOrgInfo.value.schoolId && hasAnyRole(['ROLE_SYSTEM_ADMIN'])) {
     loadCollegeList(null)
   }
   if (!currentOrgInfo.value.collegeId && !currentOrgInfo.value.schoolId && hasAnyRole(['ROLE_SYSTEM_ADMIN'])) {
-    loadClassList(null, null)
+    loadClassList(null, null, null)
   }
   loadData()
 })

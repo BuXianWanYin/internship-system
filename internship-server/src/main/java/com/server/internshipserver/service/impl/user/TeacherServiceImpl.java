@@ -17,6 +17,7 @@ import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.domain.user.SchoolAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,6 +35,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
     private DataPermissionUtil dataPermissionUtil;
     
     @Autowired
+    @Lazy
     private UserService userService;
     
     @Autowired

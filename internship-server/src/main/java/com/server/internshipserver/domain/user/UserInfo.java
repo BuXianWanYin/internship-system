@@ -92,5 +92,38 @@ public class UserInfo implements Serializable {
     @ApiModelProperty(value = "用户角色代码列表（非数据库字段）")
     @TableField(exist = false)
     private List<String> roles;
+    
+    // 角色化字段（非数据库字段，用于添加用户时传递数据）
+    @ApiModelProperty(value = "学号（学生角色）")
+    @TableField(exist = false)
+    private String studentNo;
+    
+    @ApiModelProperty(value = "学校ID")
+    @TableField(exist = false)
+    private Long schoolId;
+    
+    @ApiModelProperty(value = "学院ID")
+    @TableField(exist = false)
+    private Long collegeId;
+    
+    @ApiModelProperty(value = "专业ID")
+    @TableField(exist = false)
+    private Long majorId;
+    
+    @ApiModelProperty(value = "班级ID（学生角色）")
+    @TableField(exist = false)
+    private Long classId;
+    
+    @ApiModelProperty(value = "班级ID列表（班主任角色，可管理多个班级）")
+    @TableField(exist = false)
+    private List<Long> classIds;
+    
+    @ApiModelProperty(value = "入学年份（学生角色）")
+    @TableField(exist = false)
+    private Integer enrollmentYear;
+    
+    @ApiModelProperty(value = "企业ID（企业管理员和企业导师角色）")
+    @TableField(exist = false)
+    private Long enterpriseId;
 }
 

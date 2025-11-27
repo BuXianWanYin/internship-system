@@ -232,26 +232,18 @@ public class DataPermissionUtil {
         // 根据用户角色获取班级ID
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是teacher_id）
+        // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是user_id）
         if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
-            // 先通过user_id查询teacher_id
-            Teacher teacher = teacherMapper.selectOne(
-                    new LambdaQueryWrapper<Teacher>()
-                            .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            // 直接通过user_id查询所有管理的班级（支持多班级）
+            List<Class> classList = classMapper.selectList(
+                    new LambdaQueryWrapper<Class>()
+                            .eq(Class::getClassTeacherId, user.getUserId())
+                            .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .orderByAsc(Class::getCreateTime)
             );
-            if (teacher != null) {
-                // 再通过teacher_id查询所有管理的班级（支持多班级）
-                List<Class> classList = classMapper.selectList(
-                        new LambdaQueryWrapper<Class>()
-                                .eq(Class::getClassTeacherId, teacher.getTeacherId())
-                                .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .orderByAsc(Class::getCreateTime)
-                );
-                if (classList != null && !classList.isEmpty()) {
-                    // 返回第一个班级ID（保持向后兼容）
-                    return classList.get(0).getClassId();
-                }
+            if (classList != null && !classList.isEmpty()) {
+                // 返回第一个班级ID（保持向后兼容）
+                return classList.get(0).getClassId();
             }
         }
         
@@ -385,27 +377,19 @@ public class DataPermissionUtil {
         // 根据用户角色获取班级ID列表
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是teacher_id）
+        // 班主任：从Class表的class_teacher_id获取（class_teacher_id存储的是user_id）
         if (roleCodes != null && roleCodes.contains("ROLE_CLASS_TEACHER")) {
-            // 先通过user_id查询teacher_id
-            Teacher teacher = teacherMapper.selectOne(
-                    new LambdaQueryWrapper<Teacher>()
-                            .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            // 直接通过user_id查询所有管理的班级
+            List<Class> classList = classMapper.selectList(
+                    new LambdaQueryWrapper<Class>()
+                            .eq(Class::getClassTeacherId, user.getUserId())
+                            .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .orderByAsc(Class::getCreateTime)
             );
-            if (teacher != null) {
-                // 再通过teacher_id查询所有管理的班级
-                List<Class> classList = classMapper.selectList(
-                        new LambdaQueryWrapper<Class>()
-                                .eq(Class::getClassTeacherId, teacher.getTeacherId())
-                                .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .orderByAsc(Class::getCreateTime)
-                );
-                if (classList != null && !classList.isEmpty()) {
-                    return classList.stream()
-                            .map(Class::getClassId)
-                            .collect(Collectors.toList());
-                }
+            if (classList != null && !classList.isEmpty()) {
+                return classList.stream()
+                        .map(Class::getClassId)
+                        .collect(Collectors.toList());
             }
         }
         
@@ -504,11 +488,15 @@ public class DataPermissionUtil {
             return null;
         }
         
-        // 根据用户角色获取教师ID
-        List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
-        
-        // 班主任：从Teacher表获取（已合并到 ROLE_CLASS_TEACHER）
-        // 此逻辑已在上面的 ROLE_CLASS_TEACHER 判断中处理
+        // 从Teacher表获取教师ID
+        Teacher teacher = teacherMapper.selectOne(
+                new LambdaQueryWrapper<Teacher>()
+                        .eq(Teacher::getUserId, user.getUserId())
+                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (teacher != null) {
+            return teacher.getTeacherId();
+        }
         
         return null;
     }
