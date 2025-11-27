@@ -259,6 +259,39 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         }
         
         // 学生只能查看自己的成果
+        if (applyStudentFilter(wrapper)) {
+            return;
+        }
+        
+        // 学校管理员：只能查看本学校学生的成果
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
+            applySchoolAdminFilter(wrapper);
+            return;
+        }
+        
+        // 学院负责人：只能查看本学院学生的成果
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
+            applyCollegeLeaderFilter(wrapper);
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的成果
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            applyClassTeacherFilter(wrapper);
+            return;
+        }
+        
+        // 企业管理员和企业导师：只能查看本企业实习学生的成果
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            applyEnterpriseFilter(wrapper);
+            return;
+        }
+    }
+    
+    /**
+     * 应用学生过滤：学生只能查看自己的成果
+     */
+    private boolean applyStudentFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
         if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
@@ -269,104 +302,93 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             if (student != null) {
                 wrapper.eq(InternshipAchievement::getStudentId, student.getStudentId());
             }
-            return;
+            return true;
         }
-        
-        // 学校管理员：只能查看本学校学生的成果
-        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
-            Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
-            if (schoolId != null) {
-                // 查询本学校的所有学生
-                List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getSchoolId, schoolId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipAchievement::getStudentId, studentIds);
-                } else {
-                    wrapper.eq(InternshipAchievement::getAchievementId, -1L);
-                }
-            }
-            return;
-        }
-        
-        // 学院负责人：只能查看本学院学生的成果
-        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
-            Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
-            if (collegeId != null) {
-                // 查询本学院的所有学生
-                java.util.List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getCollegeId, collegeId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    java.util.List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(java.util.stream.Collectors.toList());
-                    wrapper.in(InternshipAchievement::getStudentId, studentIds);
-                } else {
-                    wrapper.eq(InternshipAchievement::getAchievementId, -1L);
-                }
-            }
-            return;
-        }
-        
-        // 班主任：只能查看管理的班级的学生的成果
-        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
-            List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
-            if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-                List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .in(Student::getClassId, currentUserClassIds)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipAchievement::getStudentId, studentIds);
-                } else {
-                    wrapper.eq(InternshipAchievement::getAchievementId, -1L);
-                }
+        return false;
+    }
+    
+    /**
+     * 应用学校管理员过滤：只能查看本学校学生的成果
+     */
+    private void applySchoolAdminFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
+        Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        if (schoolId != null) {
+            // 查询本学校的所有学生
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getSchoolId, schoolId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipAchievement::getStudentId, studentIds);
             } else {
                 wrapper.eq(InternshipAchievement::getAchievementId, -1L);
             }
-            return;
         }
-        
-        // 企业管理员和企业导师：只能查看本企业实习学生的成果
-        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
-            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-            if (currentUserEnterpriseId != null) {
-                // 查找该企业的所有已通过实习申请
-                List<InternshipApply> applies = internshipApplyMapper.selectList(
-                        new LambdaQueryWrapper<InternshipApply>()
-                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
-                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
-                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(InternshipApply::getStudentId)
-                );
-                if (applies != null && !applies.isEmpty()) {
-                    List<Long> studentIds = applies.stream()
-                            .map(InternshipApply::getStudentId)
-                            .distinct()
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipAchievement::getStudentId, studentIds);
-                } else {
-                    wrapper.eq(InternshipAchievement::getAchievementId, -1L);
-                }
+    }
+    
+    /**
+     * 应用学院负责人过滤：只能查看本学院学生的成果
+     */
+    private void applyCollegeLeaderFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
+        Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (collegeId != null) {
+            // 查询本学院的所有学生
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getCollegeId, collegeId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipAchievement::getStudentId, studentIds);
             } else {
                 wrapper.eq(InternshipAchievement::getAchievementId, -1L);
             }
-            return;
+        }
+    }
+    
+    /**
+     * 应用班主任过滤：只能查看管理的班级的学生的成果
+     */
+    private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, currentUserClassIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipAchievement::getStudentId, studentIds);
+            } else {
+                wrapper.eq(InternshipAchievement::getAchievementId, -1L);
+            }
+        } else {
+            wrapper.eq(InternshipAchievement::getAchievementId, -1L);
+        }
+    }
+    
+    /**
+     * 应用企业过滤：企业管理员和企业导师只能查看本企业实习学生的成果
+     */
+    private void applyEnterpriseFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
+        List<Long> studentIds = dataPermissionUtil.getEnterpriseStudentIds();
+        if (studentIds != null && !studentIds.isEmpty()) {
+            wrapper.in(InternshipAchievement::getStudentId, studentIds);
+        } else {
+            wrapper.eq(InternshipAchievement::getAchievementId, -1L);
         }
     }
     

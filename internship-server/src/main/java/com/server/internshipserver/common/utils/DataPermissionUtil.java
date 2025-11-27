@@ -13,13 +13,16 @@ import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
+import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
+import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.CooperationStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -62,6 +65,9 @@ public class DataPermissionUtil {
     
     @Autowired
     private ClassMapper classMapper;
+    
+    @Autowired
+    private InternshipApplyMapper internshipApplyMapper;
     
     /**
      * 判断当前用户是否为系统管理员
@@ -418,6 +424,94 @@ public class DataPermissionUtil {
         );
         if (teacher != null) {
             return teacher.getTeacherId();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取当前用户的企业导师ID
+     * @return 企业导师ID，如果当前用户不是企业导师则返回null
+     */
+    public Long getCurrentUserMentorId() {
+        if (isSystemAdmin()) {
+            return null; // 系统管理员不限制
+        }
+        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user == null) {
+            return null;
+        }
+        
+        // 从EnterpriseMentor表获取企业导师ID
+        EnterpriseMentor mentor = enterpriseMentorMapper.selectOne(
+                new LambdaQueryWrapper<EnterpriseMentor>()
+                        .eq(EnterpriseMentor::getUserId, user.getUserId())
+                        .eq(EnterpriseMentor::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+        );
+        if (mentor != null) {
+            return mentor.getMentorId();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取企业管理员或企业导师的学生ID列表
+     * @return 学生ID列表，如果无法获取则返回null或空列表
+     */
+    public List<Long> getEnterpriseStudentIds() {
+        if (isSystemAdmin()) {
+            return null; // 系统管理员不限制
+        }
+        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user == null) {
+            return null;
+        }
+        
+        List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+        
+        // 企业管理员：获取本企业的所有实习学生ID
+        if (hasRole(roleCodes, Constants.ROLE_ENTERPRISE_ADMIN)) {
+            Long enterpriseId = getCurrentUserEnterpriseId();
+            if (enterpriseId != null) {
+                List<InternshipApply> applies = internshipApplyMapper.selectList(
+                        new LambdaQueryWrapper<InternshipApply>()
+                                .eq(InternshipApply::getEnterpriseId, enterpriseId)
+                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
+                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(InternshipApply::getStudentId)
+                );
+                if (applies != null && !applies.isEmpty()) {
+                    return applies.stream()
+                            .map(InternshipApply::getStudentId)
+                            .distinct()
+                            .collect(Collectors.toList());
+                }
+            }
+            return Collections.emptyList();
+        }
+        
+        // 企业导师：获取分配给自己的学生ID
+        if (hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR)) {
+            Long mentorId = getCurrentUserMentorId();
+            if (mentorId != null) {
+                List<InternshipApply> applies = internshipApplyMapper.selectList(
+                        new LambdaQueryWrapper<InternshipApply>()
+                                .eq(InternshipApply::getMentorId, mentorId)
+                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
+                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(InternshipApply::getStudentId)
+                );
+                if (applies != null && !applies.isEmpty()) {
+                    return applies.stream()
+                            .map(InternshipApply::getStudentId)
+                            .distinct()
+                            .collect(Collectors.toList());
+                }
+            }
+            return Collections.emptyList();
         }
         
         return null;

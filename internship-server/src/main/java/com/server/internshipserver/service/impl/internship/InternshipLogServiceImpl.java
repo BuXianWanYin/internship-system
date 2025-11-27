@@ -257,6 +257,39 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         }
         
         // 学生只能查看自己的日志
+        if (applyStudentFilter(wrapper)) {
+            return;
+        }
+        
+        // 学校管理员：只能查看本学校学生的日志
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
+            applySchoolAdminFilter(wrapper);
+            return;
+        }
+        
+        // 学院负责人：只能查看本学院学生的日志
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
+            applyCollegeLeaderFilter(wrapper);
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的日志
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            applyClassTeacherFilter(wrapper);
+            return;
+        }
+        
+        // 企业管理员和企业导师：只能查看本企业实习学生的日志
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            applyEnterpriseFilter(wrapper);
+            return;
+        }
+    }
+    
+    /**
+     * 应用学生过滤：学生只能查看自己的日志
+     */
+    private boolean applyStudentFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
         if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
@@ -267,111 +300,99 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             if (student != null) {
                 wrapper.eq(InternshipLog::getStudentId, student.getStudentId());
             }
-            return;
+            return true;
         }
-        
-        // 学校管理员：只能查看本学校学生的日志
-        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
-            Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
-            if (schoolId != null) {
-                // 查询本学校的所有学生
-                List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getSchoolId, schoolId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipLog::getStudentId, studentIds);
-                } else {
-                    // 如果没有学生，返回空结果
-                    wrapper.eq(InternshipLog::getLogId, -1L);
-                }
-            }
-            return;
-        }
-        
-        // 学院负责人：只能查看本学院学生的日志
-        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
-            Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
-            if (collegeId != null) {
-                // 查询本学院的所有学生
-                List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .eq(Student::getCollegeId, collegeId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipLog::getStudentId, studentIds);
-                } else {
-                    // 如果没有学生，返回空结果
-                    wrapper.eq(InternshipLog::getLogId, -1L);
-                }
-            }
-            return;
-        }
-        
-        // 班主任：只能查看管理的班级的学生的日志
-        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
-            List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
-            if (classIds != null && !classIds.isEmpty()) {
-                // 查询管理的班级的所有学生
-                List<Student> students = studentMapper.selectList(
-                        new LambdaQueryWrapper<Student>()
-                                .in(Student::getClassId, classIds)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
-                );
-                if (students != null && !students.isEmpty()) {
-                    List<Long> studentIds = students.stream()
-                            .map(Student::getStudentId)
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipLog::getStudentId, studentIds);
-                } else {
-                    // 如果没有学生，返回空结果
-                    wrapper.eq(InternshipLog::getLogId, -1L);
-                }
+        return false;
+    }
+    
+    /**
+     * 应用学校管理员过滤：只能查看本学校学生的日志
+     */
+    private void applySchoolAdminFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
+        Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        if (schoolId != null) {
+            // 查询本学校的所有学生
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getSchoolId, schoolId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipLog::getStudentId, studentIds);
             } else {
-                // 如果没有管理的班级，返回空结果
+                // 如果没有学生，返回空结果
                 wrapper.eq(InternshipLog::getLogId, -1L);
             }
-            return;
         }
-        
-        // 企业管理员和企业导师：只能查看本企业实习学生的日志
-        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
-            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-            if (currentUserEnterpriseId != null) {
-                // 查找该企业的所有已通过实习申请
-                List<InternshipApply> applies = internshipApplyMapper.selectList(
-                        new LambdaQueryWrapper<InternshipApply>()
-                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
-                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
-                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(InternshipApply::getStudentId)
-                );
-                if (applies != null && !applies.isEmpty()) {
-                    List<Long> studentIds = applies.stream()
-                            .map(InternshipApply::getStudentId)
-                            .distinct()
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipLog::getStudentId, studentIds);
-                } else {
-                    // 如果没有学生，返回空结果
-                    wrapper.eq(InternshipLog::getLogId, -1L);
-                }
+    }
+    
+    /**
+     * 应用学院负责人过滤：只能查看本学院学生的日志
+     */
+    private void applyCollegeLeaderFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
+        Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        if (collegeId != null) {
+            // 查询本学院的所有学生
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getCollegeId, collegeId)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipLog::getStudentId, studentIds);
             } else {
-                // 如果无法获取企业ID，返回空结果
+                // 如果没有学生，返回空结果
                 wrapper.eq(InternshipLog::getLogId, -1L);
             }
-            return;
+        }
+    }
+    
+    /**
+     * 应用班主任过滤：只能查看管理的班级的学生的日志
+     */
+    private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
+        List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (classIds != null && !classIds.isEmpty()) {
+            // 查询管理的班级的所有学生
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, classIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
+            if (students != null && !students.isEmpty()) {
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                wrapper.in(InternshipLog::getStudentId, studentIds);
+            } else {
+                // 如果没有学生，返回空结果
+                wrapper.eq(InternshipLog::getLogId, -1L);
+            }
+        } else {
+            // 如果没有管理的班级，返回空结果
+            wrapper.eq(InternshipLog::getLogId, -1L);
+        }
+    }
+    
+    /**
+     * 应用企业过滤：企业管理员和企业导师只能查看本企业实习学生的日志
+     */
+    private void applyEnterpriseFilter(LambdaQueryWrapper<InternshipLog> wrapper) {
+        List<Long> studentIds = dataPermissionUtil.getEnterpriseStudentIds();
+        if (studentIds != null && !studentIds.isEmpty()) {
+            wrapper.in(InternshipLog::getStudentId, studentIds);
+        } else {
+            // 如果没有学生，返回空结果
+            wrapper.eq(InternshipLog::getLogId, -1L);
         }
     }
     

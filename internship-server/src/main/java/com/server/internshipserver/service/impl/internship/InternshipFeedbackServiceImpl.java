@@ -285,6 +285,27 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         }
         
         // 学生只能查看自己的反馈
+        if (applyStudentFilter(wrapper)) {
+            return;
+        }
+        
+        // 班主任：只能查看管理的班级的学生的反馈
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            applyClassTeacherFilter(wrapper);
+            return;
+        }
+        
+        // 企业管理员和企业导师：可以查看本企业实习学生的反馈
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            applyEnterpriseFilter(wrapper);
+            return;
+        }
+    }
+    
+    /**
+     * 应用学生过滤：学生只能查看自己的反馈
+     */
+    private boolean applyStudentFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
         Long currentUserId = dataPermissionUtil.getCurrentUserId();
         if (currentUserId != null && dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
             Student student = studentMapper.selectOne(
@@ -295,10 +316,15 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             if (student != null) {
                 wrapper.eq(InternshipFeedback::getStudentId, student.getStudentId());
             }
-            return;
+            return true;
         }
-        
-        // 班主任：只能查看管理的班级的学生的反馈
+        return false;
+    }
+    
+    /**
+     * 应用班主任过滤：只能查看管理的班级的学生的反馈
+     */
+    private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
             List<Student> students = studentMapper.selectList(
@@ -315,62 +341,20 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             } else {
                 wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
             }
+        } else {
+            wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
         }
-        // 班主任：可以查看分配的学生的反馈（通过日志/周报/成果中的instructor_id关联，已合并到 ROLE_CLASS_TEACHER）
-        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
-            Long currentUserTeacherId = dataPermissionUtil.getCurrentUserTeacherId();
-            if (currentUserTeacherId != null) {
-                // 通过实习申请关联，查找该教师指导的学生的反馈
-                // 先查找该教师指导的学生的申请（通过日志/周报/成果中的instructor_id反推）
-                // 由于反馈表没有instructor_id，需要通过apply_id关联到学生，再通过学生的日志/周报/成果中的instructor_id判断
-                // 简化方案：指导教师可以查看同学院学生的反馈
-                Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-                if (currentUserCollegeId != null) {
-                    // 查找该学院的所有学生
-                    List<Student> students = studentMapper.selectList(
-                            new LambdaQueryWrapper<Student>()
-                                    .eq(Student::getCollegeId, currentUserCollegeId)
-                                    .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                    .select(Student::getStudentId)
-                    );
-                    if (students != null && !students.isEmpty()) {
-                        List<Long> studentIds = students.stream()
-                                .map(Student::getStudentId)
-                                .collect(Collectors.toList());
-                        wrapper.in(InternshipFeedback::getStudentId, studentIds);
-                    } else {
-                        wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
-                    }
-                }
-            }
-            return;
-        }
-        
-        // 企业管理员和企业导师：可以查看本企业实习学生的反馈
-        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
-            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-            if (currentUserEnterpriseId != null) {
-                // 查找该企业的所有实习申请
-                List<InternshipApply> applies = internshipApplyMapper.selectList(
-                        new LambdaQueryWrapper<InternshipApply>()
-                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
-                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
-                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(InternshipApply::getStudentId)
-                );
-                if (applies != null && !applies.isEmpty()) {
-                    List<Long> studentIds = applies.stream()
-                            .map(InternshipApply::getStudentId)
-                            .distinct()
-                            .collect(Collectors.toList());
-                    wrapper.in(InternshipFeedback::getStudentId, studentIds);
-                } else {
-                    wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
-                }
-            } else {
-                wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
-            }
-            return;
+    }
+    
+    /**
+     * 应用企业过滤：企业管理员和企业导师只能查看本企业实习学生的反馈
+     */
+    private void applyEnterpriseFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
+        List<Long> studentIds = dataPermissionUtil.getEnterpriseStudentIds();
+        if (studentIds != null && !studentIds.isEmpty()) {
+            wrapper.in(InternshipFeedback::getStudentId, studentIds);
+        } else {
+            wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
         }
     }
     
