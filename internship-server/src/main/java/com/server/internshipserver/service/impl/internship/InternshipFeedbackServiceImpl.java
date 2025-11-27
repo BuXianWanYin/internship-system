@@ -346,8 +346,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             return;
         }
         
-        // 企业导师：可以查看本企业实习学生的反馈
-        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+        // 企业管理员和企业导师：可以查看本企业实习学生的反馈
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
             Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
             if (currentUserEnterpriseId != null) {
                 // 查找该企业的所有实习申请
@@ -367,6 +367,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                 } else {
                     wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
                 }
+            } else {
+                wrapper.eq(InternshipFeedback::getFeedbackId, -1L);
             }
             return;
         }

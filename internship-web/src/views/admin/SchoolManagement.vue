@@ -115,19 +115,26 @@
         <el-form-item v-if="formData.managerType === 'existing'" label="选择用户" prop="managerUserId">
           <el-select
             v-model="formData.managerUserId"
-            placeholder="请选择用户"
+            placeholder="请输入用户名、姓名或手机号搜索用户"
             filterable
             remote
             :remote-method="searchUsers"
             :loading="userSearchLoading"
+            clearable
             style="width: 100%"
+            @focus="handleUserSelectFocus"
           >
             <el-option
               v-for="user in availableUserList"
               :key="user.userId"
-              :label="`${user.realName} (${user.username}) - ${user.phone || '无手机号'}`"
+              :label="`${user.realName} (${user.username})${user.phone ? ' - ' + user.phone : ''}`"
               :value="user.userId"
-            />
+            >
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>{{ user.realName }} ({{ user.username }})</span>
+                <span style="color: #909399; font-size: 12px;">{{ user.phone || '无手机号' }}</span>
+              </div>
+            </el-option>
           </el-select>
         </el-form-item>
         <!-- 创建新用户 -->
@@ -337,6 +344,9 @@ const handleEdit = async (row) => {
       // 如果已有绑定的管理员，加载用户信息到下拉列表
       if (school.managerUserId) {
         await loadUserById(school.managerUserId)
+      } else {
+        // 如果没有绑定的管理员，清空用户列表
+        availableUserList.value = []
       }
     }
     dialogVisible.value = true
@@ -363,25 +373,72 @@ const loadUserById = async (userId) => {
   }
 }
 
-// 搜索用户（查询没有绑定学校管理员的用户）
-const searchUsers = async (query) => {
-  if (!query) {
-    availableUserList.value = []
-    return
+// 下拉框获得焦点时，如果没有输入，加载默认用户列表
+const handleUserSelectFocus = () => {
+  // 如果列表为空且没有正在加载，则加载默认列表
+  if (availableUserList.value.length === 0 && !userSearchLoading.value) {
+    loadDefaultUserList()
   }
+}
+
+// 加载默认用户列表（前20个启用的用户）
+const loadDefaultUserList = async () => {
   userSearchLoading.value = true
   try {
     const res = await userApi.getUserPage({
       current: 1,
       size: 20,
-      realName: query,
       status: 1
     })
     if (res.code === 200 && res.data) {
-      // 过滤掉已经是学校管理员的用户
-      const users = res.data.records || []
-      // 这里简化处理，直接显示所有用户，后端会在绑定时报错
-      availableUserList.value = users
+      availableUserList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载用户列表失败:', error)
+  } finally {
+    userSearchLoading.value = false
+  }
+}
+
+// 搜索用户（支持按用户名、真实姓名、手机号搜索）
+const searchUsers = async (query) => {
+  if (!query || query.trim() === '') {
+    // 如果查询为空，加载默认列表
+    loadDefaultUserList()
+    return
+  }
+  userSearchLoading.value = true
+  try {
+    // 尝试按真实姓名搜索
+    let res = await userApi.getUserPage({
+      current: 1,
+      size: 20,
+      realName: query.trim(),
+      status: 1
+    })
+    
+    // 如果按真实姓名没找到，尝试按用户名搜索
+    if (res.code === 200 && res.data && (res.data.records || []).length === 0) {
+      res = await userApi.getUserPage({
+        current: 1,
+        size: 20,
+        username: query.trim(),
+        status: 1
+      })
+    }
+    
+    // 如果按用户名也没找到，尝试按手机号搜索
+    if (res.code === 200 && res.data && (res.data.records || []).length === 0) {
+      res = await userApi.getUserPage({
+        current: 1,
+        size: 20,
+        phone: query.trim(),
+        status: 1
+      })
+    }
+    
+    if (res.code === 200 && res.data) {
+      availableUserList.value = res.data.records || []
     }
   } catch (error) {
     console.error('搜索用户失败:', error)

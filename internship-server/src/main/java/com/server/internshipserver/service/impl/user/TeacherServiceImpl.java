@@ -437,21 +437,69 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         LambdaQueryWrapper<Teacher> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Teacher::getDeleteFlag);
         wrapper.eq(Teacher::getStatus, UserStatus.ENABLED.getCode()); // 只查询启用的教师
         
-        if (schoolId != null) {
-            wrapper.eq(Teacher::getSchoolId, schoolId);
-        }
-        if (collegeId != null) {
-            wrapper.eq(Teacher::getCollegeId, collegeId);
-        }
-        
-        // 数据权限过滤
+        // 数据权限过滤（先应用数据权限，再应用前端条件）
         Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
         Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
         
         if (currentUserCollegeId != null) {
-            wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+            // 学院负责人：只能查看本院的教师
+            // 如果前端传入了collegeId参数，需要验证是否与当前用户的collegeId一致
+            if (collegeId != null && !collegeId.equals(currentUserCollegeId)) {
+                // 如果传入的collegeId与当前用户的collegeId不一致，返回空结果
+                wrapper.eq(Teacher::getCollegeId, -1L);
+            } else {
+                // 如果没有传入collegeId参数，或者传入的collegeId与当前用户的collegeId一致，则查询本学院的所有教师
+                wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+            }
+            // 如果前端传入了schoolId参数，需要验证是否与当前用户的schoolId一致（通过学院关联）
+            if (schoolId != null) {
+                // 查询当前用户学院所属的学校ID
+                Teacher currentUserTeacher = this.getOne(
+                        new LambdaQueryWrapper<Teacher>()
+                                .eq(Teacher::getCollegeId, currentUserCollegeId)
+                                .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .last("LIMIT 1")
+                );
+                if (currentUserTeacher != null && currentUserTeacher.getSchoolId() != null) {
+                    if (!schoolId.equals(currentUserTeacher.getSchoolId())) {
+                        // 如果传入的schoolId与当前用户学院的schoolId不一致，返回空结果
+                        wrapper.eq(Teacher::getSchoolId, -1L);
+                    }
+                }
+            }
         } else if (currentUserSchoolId != null) {
-            wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+            // 学校管理员：只能查看本校的教师
+            // 如果前端传入了schoolId参数，需要验证是否与当前用户的schoolId一致
+            if (schoolId != null && !schoolId.equals(currentUserSchoolId)) {
+                // 如果传入的schoolId与当前用户的schoolId不一致，返回空结果
+                wrapper.eq(Teacher::getSchoolId, -1L);
+            } else {
+                // 如果没有传入schoolId参数，或者传入的schoolId与当前用户的schoolId一致，则查询本校的所有教师
+                wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+            }
+            // 如果前端传入了collegeId参数，需要验证该学院是否属于当前用户的学校
+            if (collegeId != null) {
+                // 查询该学院所属的学校ID
+                College college = collegeMapper.selectById(collegeId);
+                if (college != null && college.getSchoolId() != null) {
+                    if (!college.getSchoolId().equals(currentUserSchoolId)) {
+                        // 如果传入的collegeId所属的学校与当前用户的schoolId不一致，返回空结果
+                        wrapper.eq(Teacher::getCollegeId, -1L);
+                    } else {
+                        wrapper.eq(Teacher::getCollegeId, collegeId);
+                    }
+                } else {
+                    wrapper.eq(Teacher::getCollegeId, -1L);
+                }
+            }
+        } else {
+            // 系统管理员：可以查看所有教师，应用前端传入的条件
+            if (schoolId != null) {
+                wrapper.eq(Teacher::getSchoolId, schoolId);
+            }
+            if (collegeId != null) {
+                wrapper.eq(Teacher::getCollegeId, collegeId);
+            }
         }
         
         wrapper.orderByDesc(Teacher::getCreateTime);

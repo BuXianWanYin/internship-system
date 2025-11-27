@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.ApplyType;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
@@ -339,6 +340,35 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
                 }
             } else {
                 // 如果没有管理的班级，返回空结果
+                wrapper.eq(InternshipLog::getLogId, -1L);
+            }
+            return;
+        }
+        
+        // 企业管理员和企业导师：只能查看本企业实习学生的日志
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId != null) {
+                // 查找该企业的所有已通过实习申请
+                List<InternshipApply> applies = internshipApplyMapper.selectList(
+                        new LambdaQueryWrapper<InternshipApply>()
+                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
+                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
+                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(InternshipApply::getStudentId)
+                );
+                if (applies != null && !applies.isEmpty()) {
+                    List<Long> studentIds = applies.stream()
+                            .map(InternshipApply::getStudentId)
+                            .distinct()
+                            .collect(Collectors.toList());
+                    wrapper.in(InternshipLog::getStudentId, studentIds);
+                } else {
+                    // 如果没有学生，返回空结果
+                    wrapper.eq(InternshipLog::getLogId, -1L);
+                }
+            } else {
+                // 如果无法获取企业ID，返回空结果
                 wrapper.eq(InternshipLog::getLogId, -1L);
             }
             return;

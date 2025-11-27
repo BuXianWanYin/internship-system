@@ -129,7 +129,7 @@ export default [
     meta: {
       title: '实习日志批阅',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -149,7 +149,7 @@ export default [
     meta: {
       title: '周报批阅',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -189,7 +189,7 @@ export default [
     meta: {
       title: '成果审核',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -209,7 +209,7 @@ export default [
     meta: {
       title: '问题反馈处理',
       requiresAuth: true,
-      roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   }
 ]

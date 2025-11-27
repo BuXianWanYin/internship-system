@@ -227,19 +227,19 @@ export const menuItems = [
         index: '/teacher/internship/log',
         title: '实习日志批阅',
         icon: Document,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/weekly-report',
         title: '周报批阅',
         icon: Files,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/achievement',
         title: '成果审核',
         icon: Files,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       }
     ]
   },
@@ -282,10 +282,28 @@ export const menuItems = [
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
+        index: '/teacher/internship/log',
+        title: '实习日志批阅',
+        icon: Document,
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
+        index: '/teacher/internship/weekly-report',
+        title: '周报批阅',
+        icon: Files,
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
+        index: '/teacher/internship/achievement',
+        title: '成果审核',
+        icon: Files,
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
         index: '/teacher/internship/feedback',
         title: '问题反馈处理',
         icon: ChatLineRound,
-        roles: ['ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       }
     ]
   },
@@ -383,7 +401,7 @@ export const menuItems = [
         index: '/teacher/internship/feedback',
         title: '问题反馈处理',
         icon: ChatLineRound,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       }
     ]
   }

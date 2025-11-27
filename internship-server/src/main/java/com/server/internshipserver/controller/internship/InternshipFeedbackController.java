@@ -47,7 +47,7 @@ public class InternshipFeedbackController {
     }
     
     @ApiOperation("分页查询问题反馈列表")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/page")
     public Result<Page<InternshipFeedback>> getFeedbackPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -62,7 +62,7 @@ public class InternshipFeedbackController {
     }
     
     @ApiOperation("查询问题反馈详情")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/{feedbackId}")
     public Result<InternshipFeedback> getFeedbackById(
             @ApiParam(value = "反馈ID", required = true) @PathVariable Long feedbackId) {
@@ -71,7 +71,7 @@ public class InternshipFeedbackController {
     }
     
     @ApiOperation("回复问题反馈")
-    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{feedbackId}/reply")
     public Result<?> replyFeedback(
             @ApiParam(value = "反馈ID", required = true) @PathVariable Long feedbackId,
@@ -82,7 +82,7 @@ public class InternshipFeedbackController {
     }
     
     @ApiOperation("标记问题已解决")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{feedbackId}/solve")
     public Result<?> solveFeedback(
             @ApiParam(value = "反馈ID", required = true) @PathVariable Long feedbackId) {
@@ -91,7 +91,7 @@ public class InternshipFeedbackController {
     }
     
     @ApiOperation("关闭问题反馈")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{feedbackId}/close")
     public Result<?> closeFeedback(
             @ApiParam(value = "反馈ID", required = true) @PathVariable Long feedbackId) {

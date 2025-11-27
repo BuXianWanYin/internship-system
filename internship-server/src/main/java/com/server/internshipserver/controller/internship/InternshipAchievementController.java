@@ -47,7 +47,7 @@ public class InternshipAchievementController {
     }
     
     @ApiOperation("分页查询阶段性成果列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/page")
     public Result<Page<InternshipAchievement>> getAchievementPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -62,7 +62,7 @@ public class InternshipAchievementController {
     }
     
     @ApiOperation("查询阶段性成果详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/{achievementId}")
     public Result<InternshipAchievement> getAchievementById(
             @ApiParam(value = "成果ID", required = true) @PathVariable Long achievementId) {

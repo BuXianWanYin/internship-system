@@ -308,10 +308,20 @@ export default {
       }
     }
 
-    // 加载教师列表（用于选择）
-    const loadTeacherList = async () => {
+    // 加载教师列表（用于选择，根据学校ID筛选）
+    const loadTeacherList = async (schoolId) => {
       try {
-        const res = await teacherApi.getTeacherPage({ current: 1, size: 1000 })
+        const params = {
+          current: 1,
+          size: 1000,
+          status: 1 // 只查询启用的教师
+        }
+        // 如果提供了学校ID，则按学校筛选
+        if (schoolId) {
+          params.schoolId = schoolId
+        }
+        
+        const res = await teacherApi.getTeacherPage(params)
         if (res.code === 200) {
           teacherList.value = res.data.records || []
           
@@ -446,8 +456,29 @@ export default {
       appointForm.teacherId = null
       selectedTeacher.value = null
       
-      // 加载教师列表
-      await loadTeacherList()
+      // 获取班级所属的学校ID
+      let classSchoolId = null
+      if (row.majorId && majorMap.value[row.majorId]) {
+        const major = majorMap.value[row.majorId]
+        if (major.collegeId && collegeMap.value[major.collegeId]) {
+          const college = collegeMap.value[major.collegeId]
+          classSchoolId = college.schoolId
+        }
+      }
+      
+      // 如果还没有加载专业/学院信息，先加载
+      if (!classSchoolId && row.majorId) {
+        await loadMajorInfo([row.majorId])
+        if (majorMap.value[row.majorId] && majorMap.value[row.majorId].collegeId) {
+          await loadCollegeInfo([majorMap.value[row.majorId].collegeId])
+          if (collegeMap.value[majorMap.value[row.majorId].collegeId]) {
+            classSchoolId = collegeMap.value[majorMap.value[row.majorId].collegeId].schoolId
+          }
+        }
+      }
+      
+      // 加载教师列表（根据班级所属学校筛选）
+      await loadTeacherList(classSchoolId)
       
       appointDialogVisible.value = true
     }

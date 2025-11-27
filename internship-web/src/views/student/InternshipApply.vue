@@ -415,15 +415,15 @@
         ref="selfApplyFormRef"
         :model="selfApplyForm"
         :rules="selfApplyFormRules"
-        label-width="120px"
+        label-width="140px"
       >
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="10">
             <el-form-item label="企业名称" prop="enterpriseName">
               <el-input v-model="selfApplyForm.enterpriseName" placeholder="请输入企业名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="14">
             <el-form-item label="统一社会信用代码" prop="unifiedSocialCreditCode">
               <el-input v-model="selfApplyForm.unifiedSocialCreditCode" placeholder="请输入统一社会信用代码" />
             </el-form-item>

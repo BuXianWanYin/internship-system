@@ -50,7 +50,7 @@ public class InternshipLogController {
     }
     
     @ApiOperation("分页查询实习日志列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/page")
     public Result<Page<InternshipLog>> getLogPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -65,7 +65,7 @@ public class InternshipLogController {
     }
     
     @ApiOperation("查询实习日志详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/{logId}")
     public Result<InternshipLog> getLogById(
             @ApiParam(value = "日志ID", required = true) @PathVariable Long logId) {
@@ -74,7 +74,7 @@ public class InternshipLogController {
     }
     
     @ApiOperation("批阅日志")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{logId}/review")
     public Result<?> reviewLog(
             @ApiParam(value = "日志ID", required = true) @PathVariable Long logId,

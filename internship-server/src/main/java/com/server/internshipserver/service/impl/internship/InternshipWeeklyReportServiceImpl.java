@@ -7,6 +7,7 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -347,22 +348,54 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         }
         
         // 班主任：只能查看管理的班级的学生的周报
-        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
-        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            List<Student> students = studentMapper.selectList(
-                    new LambdaQueryWrapper<Student>()
-                            .in(Student::getClassId, currentUserClassIds)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Student::getStudentId)
-            );
-            if (students != null && !students.isEmpty()) {
-                List<Long> studentIds = students.stream()
-                        .map(Student::getStudentId)
-                        .collect(Collectors.toList());
-                wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+            if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
+                                .in(Student::getClassId, currentUserClassIds)
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
+                if (students != null && !students.isEmpty()) {
+                    List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(Collectors.toList());
+                    wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
+                } else {
+                    wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
+                }
             } else {
                 wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
             }
+            return;
+        }
+        
+        // 企业管理员和企业导师：只能查看本企业实习学生的周报
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN) || dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId != null) {
+                // 查找该企业的所有已通过实习申请
+                List<InternshipApply> applies = internshipApplyMapper.selectList(
+                        new LambdaQueryWrapper<InternshipApply>()
+                                .eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId)
+                                .eq(InternshipApply::getStatus, InternshipApplyStatus.APPROVED.getCode())
+                                .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(InternshipApply::getStudentId)
+                );
+                if (applies != null && !applies.isEmpty()) {
+                    List<Long> studentIds = applies.stream()
+                            .map(InternshipApply::getStudentId)
+                            .distinct()
+                            .collect(Collectors.toList());
+                    wrapper.in(InternshipWeeklyReport::getStudentId, studentIds);
+                } else {
+                    wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
+                }
+            } else {
+                wrapper.eq(InternshipWeeklyReport::getReportId, -1L);
+            }
+            return;
         }
     }
     
