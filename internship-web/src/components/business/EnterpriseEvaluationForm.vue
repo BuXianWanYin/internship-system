@@ -1,10 +1,24 @@
 <template>
   <div class="enterprise-evaluation-form">
+    <!-- 学生信息 -->
+    <el-card class="student-info-card" shadow="never">
+      <el-descriptions :column="3" border>
+        <el-descriptions-item label="学生姓名">{{ student?.studentName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ student?.studentNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="企业名称">{{ student?.enterpriseName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="实习时间">
+          {{ formatDate(student?.startDate) }} 至 {{ formatDate(student?.endDate) }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
+
+    <!-- 评价表单 -->
     <el-form
       ref="formRef"
       :model="formData"
       :rules="formRules"
       label-width="150px"
+      style="margin-top: 20px"
     >
       <!-- 评价指标 -->
       <el-form-item label="工作态度" prop="workAttitudeScore">
@@ -94,6 +108,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDate } from '@/utils/dateUtils'
 
 const props = defineProps({
   student: {
@@ -163,22 +178,28 @@ const calculateTotalScore = () => {
 const handleSave = async () => {
   if (!formRef.value) return
   
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    
-    saving.value = true
-    try {
-      const data = {
-        ...formData,
-        evaluationStatus: 0 // 草稿
-      }
-      emit('save', data)
-    } catch (error) {
-      ElMessage.error('保存失败：' + (error.message || '未知错误'))
-    } finally {
-      saving.value = false
+  // 草稿保存时不强制验证所有字段
+  saving.value = true
+  try {
+    const data = {
+      evaluationId: formData.evaluationId,
+      applyId: formData.applyId,
+      enterpriseId: formData.enterpriseId,
+      workAttitudeScore: formData.workAttitudeScore,
+      knowledgeApplicationScore: formData.knowledgeApplicationScore,
+      professionalSkillScore: formData.professionalSkillScore,
+      teamworkScore: formData.teamworkScore,
+      innovationScore: formData.innovationScore,
+      totalScore: formData.totalScore ? parseFloat(formData.totalScore) : null,
+      evaluationComment: formData.evaluationComment,
+      evaluationStatus: 0 // 草稿
     }
-  })
+    emit('save', data)
+  } catch (error) {
+    ElMessage.error('保存失败：' + (error.message || '未知错误'))
+  } finally {
+    saving.value = false
+  }
 }
 
 // 提交评价
@@ -198,7 +219,16 @@ const handleSubmit = async () => {
       submitting.value = true
       try {
         const data = {
-          ...formData,
+          evaluationId: formData.evaluationId,
+          applyId: formData.applyId,
+          enterpriseId: formData.enterpriseId,
+          workAttitudeScore: formData.workAttitudeScore,
+          knowledgeApplicationScore: formData.knowledgeApplicationScore,
+          professionalSkillScore: formData.professionalSkillScore,
+          teamworkScore: formData.teamworkScore,
+          innovationScore: formData.innovationScore,
+          totalScore: formData.totalScore ? parseFloat(formData.totalScore) : null,
+          evaluationComment: formData.evaluationComment,
           evaluationStatus: 1 // 已提交
         }
         emit('save', data)
@@ -206,6 +236,8 @@ const handleSubmit = async () => {
         setTimeout(() => {
           if (formData.evaluationId) {
             emit('submit', formData.evaluationId)
+          } else if (data.evaluationId) {
+            emit('submit', data.evaluationId)
           }
         }, 500)
       } catch (error) {
@@ -225,8 +257,8 @@ const handleSubmit = async () => {
 watch(() => props.evaluation, (newVal) => {
   if (newVal) {
     formData.evaluationId = newVal.evaluationId
-    formData.applyId = newVal.applyId
-    formData.enterpriseId = newVal.enterpriseId
+    formData.applyId = newVal.applyId || formData.applyId
+    formData.enterpriseId = newVal.enterpriseId || formData.enterpriseId
     formData.workAttitudeScore = newVal.workAttitudeScore
     formData.knowledgeApplicationScore = newVal.knowledgeApplicationScore
     formData.professionalSkillScore = newVal.professionalSkillScore
@@ -234,14 +266,24 @@ watch(() => props.evaluation, (newVal) => {
     formData.innovationScore = newVal.innovationScore
     formData.totalScore = newVal.totalScore
     formData.evaluationComment = newVal.evaluationComment || ''
+  } else {
+    // 如果没有评价，重置表单
+    formData.evaluationId = null
+    formData.workAttitudeScore = null
+    formData.knowledgeApplicationScore = null
+    formData.professionalSkillScore = null
+    formData.teamworkScore = null
+    formData.innovationScore = null
+    formData.totalScore = null
+    formData.evaluationComment = ''
   }
 }, { immediate: true, deep: true })
 
-// 监听学生变化
+// 监听学生变化，初始化表单
 watch(() => props.student, (newVal) => {
   if (newVal) {
-    formData.applyId = newVal.applyId
-    formData.enterpriseId = newVal.enterpriseId
+    formData.applyId = newVal.applyId || formData.applyId
+    formData.enterpriseId = newVal.enterpriseId || formData.enterpriseId
   }
 }, { immediate: true })
 </script>
@@ -249,6 +291,10 @@ watch(() => props.student, (newVal) => {
 <style scoped>
 .enterprise-evaluation-form {
   padding: 20px 0;
+}
+
+.student-info-card {
+  margin-bottom: 20px;
 }
 </style>
 

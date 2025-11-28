@@ -30,10 +30,10 @@ import {
  * 菜单项定义
  */
 export const menuItems = [
-  // 首页 - 所有角色可见
+  // 仪表盘 - 所有角色可见
   {
     index: '/dashboard',
-    title: '首页',
+    title: '仪表盘',
     icon: House,
     roles: ['*'] // * 表示所有角色
   },

@@ -1,160 +1,563 @@
 <template>
   <div class="dashboard">
+    <!-- 页面标题 -->
     <div class="dashboard-header">
-      <h1 class="dashboard-title">高校实习管理系统</h1>
-      <p class="dashboard-subtitle">欢迎使用，请选择功能模块</p>
+      <h1 class="dashboard-title">仪表盘</h1>
+      <p class="dashboard-subtitle">数据统计与分析</p>
     </div>
 
-    <div class="dashboard-content">
-      <!-- 系统管理模块 -->
-      <div class="module-section">
-        <h2 class="section-title">
-          <el-icon class="section-icon"><Setting /></el-icon>
-          系统管理
-        </h2>
-        <div class="module-grid">
-          <el-card
-            v-for="item in systemModules"
-            :key="item.path"
-            class="module-card"
-            shadow="hover"
-            @click="navigateTo(item.path)"
-          >
-            <div class="card-content">
-              <el-icon class="card-icon" :size="32">
-                <component :is="item.icon" />
-              </el-icon>
-              <h3 class="card-title">{{ item.title }}</h3>
-              <p class="card-desc">{{ item.desc }}</p>
-            </div>
-          </el-card>
-        </div>
-      </div>
+    <!-- 筛选器 -->
+    <StatisticsFilter
+      v-if="showFilter"
+      :show-school-filter="hasRole(['ROLE_SYSTEM_ADMIN'])"
+      :show-college-filter="hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+      :show-major-filter="hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])"
+      :show-class-filter="hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])"
+      @filter-change="handleFilterChange"
+    />
 
-      <!-- 用户管理模块 -->
-      <div class="module-section">
-        <h2 class="section-title">
-          <el-icon class="section-icon"><UserFilled /></el-icon>
-          用户管理
-        </h2>
-        <div class="module-grid">
-          <el-card
-            v-for="item in userModules"
-            :key="item.path"
-            class="module-card"
-            shadow="hover"
-            @click="navigateTo(item.path)"
-          >
-            <div class="card-content">
-              <el-icon class="card-icon" :size="32">
-                <component :is="item.icon" />
+    <!-- 统计卡片区域 -->
+    <div class="statistics-cards">
+      <div class="cards-grid">
+        <StatisticsCard
+          v-for="card in statisticsCards"
+          :key="card.key"
+          :title="card.title"
+          :value="card.value"
+          :unit="card.unit"
+          :icon="card.icon"
+          :color="card.color"
+          :description="card.description"
+          :clickable="card.clickable"
+          @click="card.onClick"
+        />
+      </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="charts-section">
+      <div class="charts-grid">
+        <!-- 图表卡片将在这里动态渲染 -->
+        <el-card
+          v-for="chart in charts"
+          :key="chart.key"
+          class="chart-card"
+          shadow="hover"
+        >
+          <template #header>
+            <div class="chart-header">
+              <span class="chart-title">{{ chart.title }}</span>
+              <el-icon class="chart-icon" :size="16">
+                <component :is="chart.icon" />
               </el-icon>
-              <h3 class="card-title">{{ item.title }}</h3>
-              <p class="card-desc">{{ item.desc }}</p>
             </div>
-          </el-card>
-        </div>
+          </template>
+          <div class="chart-content" :id="'chart-' + chart.key" :style="{ height: chart.height + 'px' }">
+            <div v-if="loading" class="chart-loading">
+              <el-skeleton :rows="5" animated />
+            </div>
+            <div v-else-if="!chart.data" class="chart-empty">
+              <el-empty description="暂无数据" :image-size="80" />
+            </div>
+            <!-- 图表将在这里渲染（需要集成 ECharts） -->
+            <div v-else class="chart-placeholder">
+              {{ chart.title }} 图表（待集成 ECharts）
+            </div>
+          </div>
+        </el-card>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { Setting, School, OfficeBuilding, Reading, User, UserFilled, Calendar, Tools, Upload, DocumentChecked } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
+import StatisticsCard from '@/components/common/StatisticsCard.vue'
+import StatisticsFilter from '@/components/common/StatisticsFilter.vue'
+import { statisticsApi } from '@/api/statistics'
+import {
+  User,
+  UserFilled,
+  OfficeBuilding,
+  DataAnalysis,
+  Document,
+  Clock,
+  TrendCharts,
+  PieChart
+} from '@element-plus/icons-vue'
 
-const router = useRouter()
 const authStore = useAuthStore()
+const userRoles = computed(() => authStore.roles || [])
+const loading = ref(false)
+const filterParams = ref({})
 
-const systemModules = [
-  {
-    title: '学校管理',
-    desc: '管理学校基本信息',
-    path: '/admin/system/school',
-    icon: 'School'
-  },
-  {
-    title: '学院管理',
-    desc: '管理学院基本信息',
-    path: '/admin/system/college',
-    icon: 'OfficeBuilding'
-  },
-  {
-    title: '专业管理',
-    desc: '管理专业基本信息',
-    path: '/admin/system/major',
-    icon: 'Reading'
-  },
-  {
-    title: '班级管理',
-    desc: '管理班级信息及分享码',
-    path: '/admin/system/class',
-    icon: 'User'
-  },
-  {
-    title: '学期管理',
-    desc: '管理学期信息',
-    path: '/admin/system/semester',
-    icon: 'Calendar'
-  },
-  {
-    title: '系统配置',
-    desc: '管理系统配置参数',
-    path: '/admin/system/config',
-    icon: 'Tools'
-  },
-  {
-    title: '班主任任命',
-    desc: '任命班级班主任',
-    path: '/admin/system/class-teacher',
-    icon: 'UserFilled'
-  }
-]
+// 判断是否有指定角色
+const hasRole = (roles) => {
+  return hasAnyRole(roles)
+}
 
-const userModules = computed(() => {
-  const modules = [
-    {
-      title: '用户管理',
-      desc: '管理系统用户信息',
-      path: '/admin/user',
-      icon: 'UserFilled'
-    },
-    {
-      title: '学生注册审核',
-      desc: '审核学生注册申请',
-      path: '/admin/student/approval',
-      icon: 'DocumentChecked'
-    }
-  ]
-  
-  // 只有班主任才显示学生批量导入
-  if (hasAnyRole(['ROLE_CLASS_TEACHER'])) {
-    modules.splice(1, 0, {
-      title: '学生批量导入',
-      desc: 'Excel批量导入学生信息',
-      path: '/admin/student/import',
-      icon: 'Upload'
-    })
-  }
-  
-  return modules
+// 判断是否显示筛选器（学生不显示）
+const showFilter = computed(() => {
+  return !hasRole(['ROLE_STUDENT'])
 })
 
-const systemExtraModules = [
-  {
-    title: '班主任任命',
-    desc: '任命班级班主任',
-    path: '/admin/system/class-teacher',
-    icon: 'UserFilled'
-  }
-]
+// 统计卡片数据
+const statisticsCards = ref([])
 
-const navigateTo = (path) => {
-  router.push(path)
+// 图表数据
+const charts = ref([])
+
+// 加载统计数据
+const loadStatistics = async () => {
+  loading.value = true
+  try {
+    // 根据角色加载不同的统计数据
+    if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+      await loadSystemAdminStatistics()
+    } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+      await loadSchoolAdminStatistics()
+    } else if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+      await loadCollegeLeaderStatistics()
+    } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
+      await loadClassTeacherStatistics()
+    } else if (hasRole(['ROLE_ENTERPRISE_ADMIN'])) {
+      await loadEnterpriseAdminStatistics()
+    } else if (hasRole(['ROLE_STUDENT'])) {
+      await loadStudentStatistics()
+    }
+  } catch (error) {
+    ElMessage.error('加载统计数据失败：' + (error.message || '未知错误'))
+  } finally {
+    loading.value = false
+  }
 }
+
+// 系统管理员统计数据
+const loadSystemAdminStatistics = async () => {
+  try {
+    // TODO: 调用实际API
+    // const progressRes = await statisticsApi.getInternshipProgressStatistics(filterParams.value)
+    
+    // 模拟数据
+    statisticsCards.value = [
+      {
+        key: 'totalStudents',
+        title: '总学生数',
+        value: 500,
+        unit: '人',
+        icon: 'User',
+        color: '#409EFF'
+      },
+      {
+        key: 'inProgress',
+        title: '进行中',
+        value: 320,
+        unit: '人',
+        icon: 'Clock',
+        color: '#409EFF'
+      },
+      {
+        key: 'completed',
+        title: '已完成',
+        value: 150,
+        unit: '人',
+        icon: 'Document',
+        color: '#67C23A'
+      },
+      {
+        key: 'enterprises',
+        title: '合作企业',
+        value: 25,
+        unit: '家',
+        icon: 'OfficeBuilding',
+        color: '#409EFF'
+      }
+    ]
+
+    charts.value = [
+      {
+        key: 'progress',
+        title: '实习进度统计',
+        icon: 'PieChart',
+        height: 300,
+        data: null // 待填充
+      },
+      {
+        key: 'schoolComparison',
+        title: '各学校实习人数对比',
+        icon: 'TrendCharts',
+        height: 300,
+        data: null
+      },
+      {
+        key: 'scoreDistribution',
+        title: '评价分数分布',
+        icon: 'DataAnalysis',
+        height: 300,
+        data: null
+      },
+      {
+        key: 'postType',
+        title: '岗位类型分布',
+        icon: 'PieChart',
+        height: 300,
+        data: null
+      }
+    ]
+  } catch (error) {
+    console.error('加载系统管理员统计数据失败:', error)
+  }
+}
+
+// 学校管理员统计数据
+const loadSchoolAdminStatistics = async () => {
+  statisticsCards.value = [
+    {
+      key: 'totalStudents',
+      title: '本学校实习学生数',
+      value: 120,
+      unit: '人',
+      icon: 'User',
+      color: '#409EFF'
+    },
+    {
+      key: 'inProgress',
+      title: '进行中',
+      value: 80,
+      unit: '人',
+      icon: 'Clock',
+      color: '#409EFF'
+    },
+    {
+      key: 'completed',
+      title: '已完成',
+      value: 35,
+      unit: '人',
+      icon: 'Document',
+      color: '#67C23A'
+    },
+    {
+      key: 'averageScore',
+      title: '平均评价分数',
+      value: 82.5,
+      unit: '分',
+      icon: 'DataAnalysis',
+      color: '#409EFF'
+    }
+  ]
+
+  charts.value = [
+    {
+      key: 'progress',
+      title: '实习进度统计',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'collegeComparison',
+      title: '各学院实习人数对比',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'scoreDistribution',
+      title: '评价分数分布',
+      icon: 'DataAnalysis',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'duration',
+      title: '实习时长分布（按月份）',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    }
+  ]
+}
+
+// 学院负责人统计数据
+const loadCollegeLeaderStatistics = async () => {
+  statisticsCards.value = [
+    {
+      key: 'totalStudents',
+      title: '本院实习学生数',
+      value: 60,
+      unit: '人',
+      icon: 'User',
+      color: '#409EFF'
+    },
+    {
+      key: 'inProgress',
+      title: '进行中',
+      value: 40,
+      unit: '人',
+      icon: 'Clock',
+      color: '#409EFF'
+    },
+    {
+      key: 'completed',
+      title: '已完成',
+      value: 18,
+      unit: '人',
+      icon: 'Document',
+      color: '#67C23A'
+    },
+    {
+      key: 'averageScore',
+      title: '平均评价分数',
+      value: 83.2,
+      unit: '分',
+      icon: 'DataAnalysis',
+      color: '#409EFF'
+    }
+  ]
+
+  charts.value = [
+    {
+      key: 'progress',
+      title: '实习进度统计',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'majorComparison',
+      title: '各专业实习人数对比',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'scoreDistribution',
+      title: '评价分数分布',
+      icon: 'DataAnalysis',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'postType',
+      title: '岗位类型分布',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    }
+  ]
+}
+
+// 班主任统计数据
+const loadClassTeacherStatistics = async () => {
+  statisticsCards.value = [
+    {
+      key: 'totalStudents',
+      title: '本班级实习学生数',
+      value: 35,
+      unit: '人',
+      icon: 'User',
+      color: '#409EFF'
+    },
+    {
+      key: 'inProgress',
+      title: '进行中',
+      value: 20,
+      unit: '人',
+      icon: 'Clock',
+      color: '#409EFF'
+    },
+    {
+      key: 'completed',
+      title: '已完成',
+      value: 12,
+      unit: '人',
+      icon: 'Document',
+      color: '#67C23A'
+    },
+    {
+      key: 'averageScore',
+      title: '平均评价分数',
+      value: 85.2,
+      unit: '分',
+      icon: 'DataAnalysis',
+      color: '#409EFF'
+    }
+  ]
+
+  charts.value = [
+    {
+      key: 'progress',
+      title: '实习进度统计',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'studentRanking',
+      title: '学生评价分数排行榜',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'scoreDistribution',
+      title: '评价分数分布',
+      icon: 'DataAnalysis',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'postType',
+      title: '岗位类型分布',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    }
+  ]
+}
+
+// 企业管理员统计数据
+const loadEnterpriseAdminStatistics = async () => {
+  statisticsCards.value = [
+    {
+      key: 'totalStudents',
+      title: '本企业实习学生数',
+      value: 15,
+      unit: '人',
+      icon: 'User',
+      color: '#409EFF'
+    },
+    {
+      key: 'inProgress',
+      title: '进行中',
+      value: 10,
+      unit: '人',
+      icon: 'Clock',
+      color: '#409EFF'
+    },
+    {
+      key: 'completed',
+      title: '已完成',
+      value: 5,
+      unit: '人',
+      icon: 'Document',
+      color: '#67C23A'
+    },
+    {
+      key: 'pending',
+      title: '待评价',
+      value: 3,
+      unit: '人',
+      icon: 'Document',
+      color: '#F7BA2A'
+    }
+  ]
+
+  charts.value = [
+    {
+      key: 'progress',
+      title: '实习进度统计',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'scoreDistribution',
+      title: '学生评价分数分布',
+      icon: 'DataAnalysis',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'postType',
+      title: '岗位类型分布',
+      icon: 'PieChart',
+      height: 300,
+      data: null
+    },
+    {
+      key: 'duration',
+      title: '实习时长统计',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    }
+  ]
+}
+
+// 学生统计数据
+const loadStudentStatistics = async () => {
+  statisticsCards.value = [
+    {
+      key: 'status',
+      title: '实习状态',
+      value: '进行中',
+      icon: 'Clock',
+      color: '#409EFF'
+    },
+    {
+      key: 'score',
+      title: '评价分数',
+      value: 85.5,
+      unit: '分',
+      icon: 'DataAnalysis',
+      color: '#409EFF'
+    },
+    {
+      key: 'logs',
+      title: '已提交日志数',
+      value: 15,
+      unit: '篇',
+      icon: 'Document',
+      color: '#409EFF'
+    },
+    {
+      key: 'reports',
+      title: '已提交周报数',
+      value: 12,
+      unit: '篇',
+      icon: 'Document',
+      color: '#409EFF'
+    }
+  ]
+
+  charts.value = [
+    {
+      key: 'personalScore',
+      title: '个人评价分数（雷达图）',
+      icon: 'DataAnalysis',
+      height: 350,
+      data: null
+    },
+    {
+      key: 'progressTimeline',
+      title: '实习进度时间线',
+      icon: 'TrendCharts',
+      height: 250,
+      data: null
+    },
+    {
+      key: 'submission',
+      title: '日志/周报提交情况',
+      icon: 'TrendCharts',
+      height: 300,
+      data: null
+    }
+  ]
+}
+
+// 筛选器变化处理
+const handleFilterChange = (params) => {
+  filterParams.value = params
+  loadStatistics()
+}
+
+onMounted(() => {
+  loadStatistics()
+})
 </script>
 
 <style scoped>
@@ -165,16 +568,12 @@ const navigateTo = (path) => {
 }
 
 .dashboard-header {
-  margin-bottom: 32px;
-  padding: 24px;
-  background: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 24px;
 }
 
 .dashboard-title {
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   color: #303133;
   margin: 0 0 8px 0;
 }
@@ -185,73 +584,78 @@ const navigateTo = (path) => {
   margin: 0;
 }
 
-.dashboard-content {
-  max-width: 1400px;
-  margin: 0 auto;
+.statistics-cards {
+  margin-bottom: 24px;
 }
 
-.module-section {
-  margin-bottom: 32px;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  font-size: 18px;
-  font-weight: 500;
-  color: #303133;
-  margin: 0 0 20px 0;
-  padding: 0;
-}
-
-.section-icon {
-  margin-right: 8px;
-  color: #409eff;
-}
-
-.module-grid {
+.cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
 }
 
-.module-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
+.charts-section {
+  margin-top: 24px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
   border-radius: 8px;
   border: 1px solid #e4e7ed;
 }
 
-.module-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
-  border-color: #409eff;
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.card-content {
-  text-align: center;
-  padding: 8px;
-}
-
-.card-icon {
-  color: #409eff;
-  margin-bottom: 16px;
-}
-
-.card-title {
+.chart-title {
   font-size: 16px;
   font-weight: 500;
   color: #303133;
-  margin: 0 0 8px 0;
 }
 
-.card-desc {
-  font-size: 13px;
+.chart-icon {
+  color: #409eff;
+}
+
+.chart-content {
+  position: relative;
+}
+
+.chart-loading,
+.chart-empty,
+.chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.chart-placeholder {
   color: #909399;
-  margin: 0;
+  font-size: 14px;
+}
+
+:deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 :deep(.el-card__body) {
-  padding: 24px;
+  padding: 20px;
 }
 </style>
