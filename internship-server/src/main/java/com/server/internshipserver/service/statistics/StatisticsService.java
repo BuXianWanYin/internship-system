@@ -1,15 +1,15 @@
 package com.server.internshipserver.service.statistics;
 
 import com.server.internshipserver.domain.statistics.dto.ClassStatisticsDTO;
-import com.server.internshipserver.domain.statistics.dto.EvaluationScoreStatistics;
+import com.server.internshipserver.domain.statistics.dto.EvaluationScoreStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.EnterpriseStatisticsDTO;
-import com.server.internshipserver.domain.statistics.dto.InternshipDurationStatistics;
-import com.server.internshipserver.domain.statistics.dto.InternshipProgressStatistics;
+import com.server.internshipserver.domain.statistics.dto.InternshipDurationStatisticsDTO;
+import com.server.internshipserver.domain.statistics.dto.InternshipProgressStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.MajorStatisticsDTO;
-import com.server.internshipserver.domain.statistics.dto.PostTypeDistributionStatistics;
+import com.server.internshipserver.domain.statistics.dto.PostTypeDistributionStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.StatisticsQueryDTO;
 import com.server.internshipserver.domain.statistics.dto.StudentScoreRankingDTO;
-import com.server.internshipserver.domain.statistics.dto.PendingReviewStatistics;
+import com.server.internshipserver.domain.statistics.dto.PendingReviewStatisticsDTO;
 
 /**
  * 数据统计Service接口
@@ -21,28 +21,28 @@ public interface StatisticsService {
      * @param queryDTO 查询条件
      * @return 实习进度统计数据
      */
-    InternshipProgressStatistics getInternshipProgressStatistics(StatisticsQueryDTO queryDTO);
+    InternshipProgressStatisticsDTO getInternshipProgressStatistics(StatisticsQueryDTO queryDTO);
     
     /**
      * 获取评价分数统计
      * @param queryDTO 查询条件
      * @return 评价分数统计数据
      */
-    EvaluationScoreStatistics getEvaluationScoreStatistics(StatisticsQueryDTO queryDTO);
+    EvaluationScoreStatisticsDTO getEvaluationScoreStatistics(StatisticsQueryDTO queryDTO);
     
     /**
      * 获取实习时长统计
      * @param queryDTO 查询条件
      * @return 实习时长统计数据
      */
-    InternshipDurationStatistics getInternshipDurationStatistics(StatisticsQueryDTO queryDTO);
+    InternshipDurationStatisticsDTO getInternshipDurationStatistics(StatisticsQueryDTO queryDTO);
     
     /**
      * 获取岗位类型分布统计
      * @param queryDTO 查询条件
      * @return 岗位类型分布统计数据
      */
-    PostTypeDistributionStatistics getPostTypeDistributionStatistics(StatisticsQueryDTO queryDTO);
+    PostTypeDistributionStatisticsDTO getPostTypeDistributionStatistics(StatisticsQueryDTO queryDTO);
     
     /**
      * 获取专业维度统计
@@ -77,6 +77,6 @@ public interface StatisticsService {
      * @param queryDTO 查询条件
      * @return 待批阅统计数据
      */
-    PendingReviewStatistics getPendingReviewStatistics(StatisticsQueryDTO queryDTO);
+    PendingReviewStatisticsDTO getPendingReviewStatistics(StatisticsQueryDTO queryDTO);
 }
 

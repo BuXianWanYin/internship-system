@@ -13,7 +13,7 @@ import java.util.List;
  */
 @ApiModel(description = "实习时长统计数据")
 @Data
-public class InternshipDurationStatistics implements Serializable {
+public class InternshipDurationStatisticsDTO implements Serializable {
     
     private static final long serialVersionUID = 1L;
     

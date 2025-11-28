@@ -70,6 +70,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -277,17 +285,20 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Download } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, canEditUser } from '@/utils/permission'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import { collegeApi } from '@/api/system/college'
 import { schoolApi } from '@/api/system/school'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 
 // 加载状态
 const loading = ref(false)
 const submitting = ref(false)
+const exportLoading = ref(false)
 
 // 搜索表单
 const searchForm = reactive({
@@ -733,6 +744,31 @@ const loadCurrentUserOrgInfo = async () => {
     }
   } catch (error) {
     console.error('获取组织信息失败:', error)
+  }
+}
+
+// 导出教师列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      teacherNo: searchForm.teacherNo || undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined
+    }
+    
+    // 注意：需要后端提供 /user/teacher/export 接口
+    await exportExcel(
+      (params) => request.get('/user/teacher/export', { params, responseType: 'blob' }),
+      params,
+      '教师列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

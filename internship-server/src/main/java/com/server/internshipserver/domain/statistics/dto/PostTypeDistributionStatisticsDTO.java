@@ -12,7 +12,7 @@ import java.util.List;
  */
 @ApiModel(description = "岗位类型分布统计数据")
 @Data
-public class PostTypeDistributionStatistics implements Serializable {
+public class PostTypeDistributionStatisticsDTO implements Serializable {
     
     private static final long serialVersionUID = 1L;
     

@@ -156,6 +156,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -564,7 +572,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Upload } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Upload, Download } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, canEditUser, canAssignRole } from '@/utils/permission'
 import { useAuthStore } from '@/store/modules/auth'
@@ -576,6 +584,7 @@ import { majorApi } from '@/api/system/major'
 import { classApi } from '@/api/system/class'
 import { studentApi } from '@/api/user/student'
 import { enterpriseApi } from '@/api/user/enterprise'
+import { exportExcel } from '@/utils/exportUtils'
 import request from '@/utils/request'
 
 // 搜索表单
@@ -623,6 +632,7 @@ const currentOrgInfo = ref({
 // 表格数据
 const tableData = ref([])
 const loading = ref(false)
+const exportLoading = ref(false)
 // 用户是否可以停用的映射表
 const canDeleteMap = ref({})
 // 编辑时保存的原始角色（用于显示）
@@ -1750,6 +1760,36 @@ const loadCurrentUserOrgInfo = async () => {
     }
   } catch (error) {
     console.error('获取组织信息失败:', error)
+  }
+}
+
+// 导出用户列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      username: searchForm.username || undefined,
+      realName: searchForm.realName || undefined,
+      phone: searchForm.phone || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined,
+      roleCodes: searchForm.roleCodes && searchForm.roleCodes.length > 0 ? searchForm.roleCodes.join(',') : undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined,
+      classId: searchForm.classId || undefined
+    }
+    
+    // 注意：需要后端提供 /user/user/export 接口
+    await exportExcel(
+      (params) => request.get('/user/user/export', { params, responseType: 'blob' }),
+      params,
+      '用户列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

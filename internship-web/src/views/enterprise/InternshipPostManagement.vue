@@ -40,6 +40,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -421,16 +429,19 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download } from '@element-plus/icons-vue'
 import { hasAnyRole } from '@/utils/permission'
 import { postApi } from '@/api/internship/post'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
 import { enterpriseApi } from '@/api/user/enterprise'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const exportLoading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const dialogTitle = ref('发布岗位')
@@ -787,6 +798,29 @@ const getStatusText = (status) => {
     4: '已关闭'
   }
   return statusMap[status] || '未知'
+}
+
+// 导出岗位列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      postName: searchForm.postName || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined
+    }
+    
+    // 注意：需要后端提供 /internship/post/export 接口
+    await exportExcel(
+      (params) => request.get('/internship/post/export', { params, responseType: 'blob' }),
+      params,
+      '岗位列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 // 获取状态类型

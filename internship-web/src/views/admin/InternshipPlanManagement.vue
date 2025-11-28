@@ -102,6 +102,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -444,7 +452,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download } from '@element-plus/icons-vue'
 import { hasAnyRole } from '@/utils/permission'
 import { planApi } from '@/api/internship/plan'
 import { semesterApi } from '@/api/system/semester'
@@ -453,6 +461,8 @@ import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -970,6 +980,33 @@ const loadCurrentUserOrgInfo = async () => {
 }
 
 // 初始化
+// 导出实习计划列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      planName: searchForm.planName || undefined,
+      semesterId: searchForm.semesterId || undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined
+    }
+    
+    // 注意：需要后端提供 /internship/plan/export 接口
+    await exportExcel(
+      (params) => request.get('/internship/plan/export', { params, responseType: 'blob' }),
+      params,
+      '实习计划列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
+}
+
 onMounted(async () => {
   loadSemesterList()
   loadSchoolList()

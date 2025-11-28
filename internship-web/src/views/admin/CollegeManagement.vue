@@ -179,6 +179,7 @@ import { hasAnyRole } from '@/utils/permission'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const exportLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加学院')
 const formRef = ref(null)
@@ -473,6 +474,29 @@ const loadCurrentUserOrgInfo = async () => {
     }
   } catch (error) {
     console.error('获取组织信息失败:', error)
+  }
+}
+
+// 导出学院列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      collegeName: searchForm.collegeName || undefined,
+      schoolId: searchForm.schoolId || undefined
+    }
+    
+    // 注意：需要后端提供 /system/college/export 接口
+    await exportExcel(
+      (params) => request.get('/system/college/export', { params, responseType: 'blob' }),
+      params,
+      '学院列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

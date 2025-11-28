@@ -13,7 +13,7 @@ import java.util.List;
  */
 @ApiModel(description = "评价分数统计数据")
 @Data
-public class EvaluationScoreStatistics implements Serializable {
+public class EvaluationScoreStatisticsDTO implements Serializable {
     
     private static final long serialVersionUID = 1L;
     

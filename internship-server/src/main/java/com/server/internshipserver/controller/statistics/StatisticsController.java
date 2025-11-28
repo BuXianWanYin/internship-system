@@ -30,7 +30,7 @@ public class StatisticsController {
     @ApiOperation("获取实习进度统计")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_STUDENT')")
     @GetMapping("/internship-progress")
-    public Result<InternshipProgressStatistics> getInternshipProgressStatistics(
+    public Result<InternshipProgressStatisticsDTO> getInternshipProgressStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
@@ -47,14 +47,14 @@ public class StatisticsController {
         queryDTO.setClassId(classId);
         queryDTO.setEnterpriseId(enterpriseId);
         
-        InternshipProgressStatistics statistics = statisticsService.getInternshipProgressStatistics(queryDTO);
+        InternshipProgressStatisticsDTO statistics = statisticsService.getInternshipProgressStatistics(queryDTO);
         return Result.success(statistics);
     }
     
     @ApiOperation("获取评价分数统计")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
     @GetMapping("/evaluation-score")
-    public Result<EvaluationScoreStatistics> getEvaluationScoreStatistics(
+    public Result<EvaluationScoreStatisticsDTO> getEvaluationScoreStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
@@ -69,14 +69,14 @@ public class StatisticsController {
         queryDTO.setMajorId(majorId);
         queryDTO.setClassId(classId);
         
-        EvaluationScoreStatistics statistics = statisticsService.getEvaluationScoreStatistics(queryDTO);
+        EvaluationScoreStatisticsDTO statistics = statisticsService.getEvaluationScoreStatistics(queryDTO);
         return Result.success(statistics);
     }
     
     @ApiOperation("获取实习时长统计")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/internship-duration")
-    public Result<InternshipDurationStatistics> getInternshipDurationStatistics(
+    public Result<InternshipDurationStatisticsDTO> getInternshipDurationStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
@@ -89,14 +89,14 @@ public class StatisticsController {
         queryDTO.setCollegeId(collegeId);
         queryDTO.setEnterpriseId(enterpriseId);
         
-        InternshipDurationStatistics statistics = statisticsService.getInternshipDurationStatistics(queryDTO);
+        InternshipDurationStatisticsDTO statistics = statisticsService.getInternshipDurationStatistics(queryDTO);
         return Result.success(statistics);
     }
     
     @ApiOperation("获取岗位类型分布统计")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/post-type-distribution")
-    public Result<PostTypeDistributionStatistics> getPostTypeDistributionStatistics(
+    public Result<PostTypeDistributionStatisticsDTO> getPostTypeDistributionStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
@@ -109,7 +109,7 @@ public class StatisticsController {
         queryDTO.setCollegeId(collegeId);
         queryDTO.setEnterpriseId(enterpriseId);
         
-        PostTypeDistributionStatistics statistics = statisticsService.getPostTypeDistributionStatistics(queryDTO);
+        PostTypeDistributionStatisticsDTO statistics = statisticsService.getPostTypeDistributionStatistics(queryDTO);
         return Result.success(statistics);
     }
     
@@ -182,12 +182,12 @@ public class StatisticsController {
     @ApiOperation("获取待批阅统计（班主任和企业导师使用）")
     @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/pending-review")
-    public Result<PendingReviewStatistics> getPendingReviewStatistics(
+    public Result<PendingReviewStatisticsDTO> getPendingReviewStatistics(
             @ApiParam(value = "班级ID", required = false) @RequestParam(required = false) Long classId) {
         StatisticsQueryDTO queryDTO = new StatisticsQueryDTO();
         queryDTO.setClassId(classId);
         
-        PendingReviewStatistics statistics = statisticsService.getPendingReviewStatistics(queryDTO);
+        PendingReviewStatisticsDTO statistics = statisticsService.getPendingReviewStatistics(queryDTO);
         return Result.success(statistics);
     }
 }

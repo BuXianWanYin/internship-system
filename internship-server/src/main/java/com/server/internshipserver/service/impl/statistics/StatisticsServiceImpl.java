@@ -85,14 +85,14 @@ public class StatisticsServiceImpl implements StatisticsService {
     private static final String COLOR_PENDING = "#C0C4CC";
     
     @Override
-    public InternshipProgressStatistics getInternshipProgressStatistics(StatisticsQueryDTO queryDTO) {
+    public InternshipProgressStatisticsDTO getInternshipProgressStatistics(StatisticsQueryDTO queryDTO) {
         // 构建查询条件
         LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
         
         // 查询所有实习申请
         List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
         
-        InternshipProgressStatistics statistics = new InternshipProgressStatistics();
+        InternshipProgressStatisticsDTO statistics = new InternshipProgressStatisticsDTO();
         
         // 统计总数
         statistics.setTotalCount((long) applies.size());
@@ -126,17 +126,17 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 构建饼图数据
-        InternshipProgressStatistics.ProgressPieChartData pieChartData = new InternshipProgressStatistics.ProgressPieChartData();
-        pieChartData.setPending(new InternshipProgressStatistics.PieItem("待开始", pendingCount, COLOR_PENDING));
-        pieChartData.setInProgress(new InternshipProgressStatistics.PieItem("进行中", inProgressCount, COLOR_PRIMARY));
-        pieChartData.setCompleted(new InternshipProgressStatistics.PieItem("已完成", completedCount, COLOR_SUCCESS));
+        InternshipProgressStatisticsDTO.ProgressPieChartData pieChartData = new InternshipProgressStatisticsDTO.ProgressPieChartData();
+        pieChartData.setPending(new InternshipProgressStatisticsDTO.PieItem("待开始", pendingCount, COLOR_PENDING));
+        pieChartData.setInProgress(new InternshipProgressStatisticsDTO.PieItem("进行中", inProgressCount, COLOR_PRIMARY));
+        pieChartData.setCompleted(new InternshipProgressStatisticsDTO.PieItem("已完成", completedCount, COLOR_SUCCESS));
         statistics.setPieChartData(pieChartData);
         
         return statistics;
     }
     
     @Override
-    public EvaluationScoreStatistics getEvaluationScoreStatistics(StatisticsQueryDTO queryDTO) {
+    public EvaluationScoreStatisticsDTO getEvaluationScoreStatistics(StatisticsQueryDTO queryDTO) {
         // 构建查询条件
         LambdaQueryWrapper<ComprehensiveScore> scoreWrapper = new LambdaQueryWrapper<>();
         QueryWrapperUtil.notDeleted(scoreWrapper, ComprehensiveScore::getDeleteFlag);
@@ -158,7 +158,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             return createEmptyEvaluationScoreStatistics();
         }
         
-        EvaluationScoreStatistics statistics = new EvaluationScoreStatistics();
+        EvaluationScoreStatisticsDTO statistics = new EvaluationScoreStatisticsDTO();
         
         // 计算平均分、最高分、最低分
         BigDecimal total = scores.stream()
@@ -227,19 +227,19 @@ public class StatisticsServiceImpl implements StatisticsService {
         statistics.setFailCount(failCount);
         
         // 构建柱状图数据
-        List<EvaluationScoreStatistics.BarChartItem> barChartData = new ArrayList<>();
-        barChartData.add(new EvaluationScoreStatistics.BarChartItem("优秀", excellentCount, COLOR_SUCCESS));
-        barChartData.add(new EvaluationScoreStatistics.BarChartItem("良好", goodCount, COLOR_PRIMARY));
-        barChartData.add(new EvaluationScoreStatistics.BarChartItem("中等", mediumCount, COLOR_WARNING));
-        barChartData.add(new EvaluationScoreStatistics.BarChartItem("及格", passCount, COLOR_INFO));
-        barChartData.add(new EvaluationScoreStatistics.BarChartItem("不及格", failCount, "#FF7875"));
+        List<EvaluationScoreStatisticsDTO.BarChartItem> barChartData = new ArrayList<>();
+        barChartData.add(new EvaluationScoreStatisticsDTO.BarChartItem("优秀", excellentCount, COLOR_SUCCESS));
+        barChartData.add(new EvaluationScoreStatisticsDTO.BarChartItem("良好", goodCount, COLOR_PRIMARY));
+        barChartData.add(new EvaluationScoreStatisticsDTO.BarChartItem("中等", mediumCount, COLOR_WARNING));
+        barChartData.add(new EvaluationScoreStatisticsDTO.BarChartItem("及格", passCount, COLOR_INFO));
+        barChartData.add(new EvaluationScoreStatisticsDTO.BarChartItem("不及格", failCount, "#FF7875"));
         statistics.setBarChartData(barChartData);
         
         return statistics;
     }
     
     @Override
-    public InternshipDurationStatistics getInternshipDurationStatistics(StatisticsQueryDTO queryDTO) {
+    public InternshipDurationStatisticsDTO getInternshipDurationStatistics(StatisticsQueryDTO queryDTO) {
         // 构建查询条件
         LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
         wrapper.isNotNull(InternshipApply::getInternshipStartDate)
@@ -247,7 +247,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         
         List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
         
-        InternshipDurationStatistics statistics = new InternshipDurationStatistics();
+        InternshipDurationStatisticsDTO statistics = new InternshipDurationStatisticsDTO();
         
         if (applies.isEmpty()) {
             statistics.setAverageDuration(BigDecimal.ZERO);
@@ -290,15 +290,15 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
     
     @Override
-    public PostTypeDistributionStatistics getPostTypeDistributionStatistics(StatisticsQueryDTO queryDTO) {
+    public PostTypeDistributionStatisticsDTO getPostTypeDistributionStatistics(StatisticsQueryDTO queryDTO) {
         // 构建查询条件
         LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
         wrapper.isNotNull(InternshipApply::getPostId);
         
         List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
         
-        PostTypeDistributionStatistics statistics = new PostTypeDistributionStatistics();
-        List<PostTypeDistributionStatistics.PieChartItem> pieChartData = new ArrayList<>();
+        PostTypeDistributionStatisticsDTO statistics = new PostTypeDistributionStatisticsDTO();
+        List<PostTypeDistributionStatisticsDTO.PieChartItem> pieChartData = new ArrayList<>();
         
         if (applies.isEmpty()) {
             statistics.setPieChartData(pieChartData);
@@ -317,7 +317,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             InternshipPost post = internshipPostMapper.selectById(entry.getKey());
             if (post != null && post.getDeleteFlag() != null && post.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
                 String postTypeName = post.getPostName() != null ? post.getPostName() : "未知岗位";
-                pieChartData.add(new PostTypeDistributionStatistics.PieChartItem(
+                pieChartData.add(new PostTypeDistributionStatisticsDTO.PieChartItem(
                         postTypeName,
                         entry.getValue(),
                         colors[colorIndex % colors.length]
@@ -571,8 +571,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
     
     @Override
-    public PendingReviewStatistics getPendingReviewStatistics(StatisticsQueryDTO queryDTO) {
-        PendingReviewStatistics statistics = new PendingReviewStatistics();
+    public PendingReviewStatisticsDTO getPendingReviewStatistics(StatisticsQueryDTO queryDTO) {
+        PendingReviewStatisticsDTO statistics = new PendingReviewStatisticsDTO();
         
         // 构建查询条件
         LambdaQueryWrapper<InternshipApply> applyWrapper = buildApplyQueryWrapper(queryDTO);
@@ -839,8 +839,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     /**
      * 创建空的评价分数统计
      */
-    private EvaluationScoreStatistics createEmptyEvaluationScoreStatistics() {
-        EvaluationScoreStatistics statistics = new EvaluationScoreStatistics();
+    private EvaluationScoreStatisticsDTO createEmptyEvaluationScoreStatistics() {
+        EvaluationScoreStatisticsDTO statistics = new EvaluationScoreStatisticsDTO();
         statistics.setAverageScore(BigDecimal.ZERO);
         statistics.setMaxScore(BigDecimal.ZERO);
         statistics.setMinScore(BigDecimal.ZERO);

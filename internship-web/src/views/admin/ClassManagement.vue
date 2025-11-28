@@ -76,6 +76,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -314,12 +322,14 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, DocumentCopy } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, DocumentCopy, Download } from '@element-plus/icons-vue'
 import { classApi } from '@/api/system/class'
 import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { formatDateTime } from '@/utils/dateUtils'
 import { hasAnyRole } from '@/utils/permission'
@@ -328,6 +338,7 @@ import { useAuthStore } from '@/store/modules/auth'
 const loading = ref(false)
 const submitLoading = ref(false)
 const shareCodeLoading = ref(false)
+const exportLoading = ref(false)
 const dialogVisible = ref(false)
 const shareCodeDialogVisible = ref(false)
 const dialogTitle = ref('添加班级')
@@ -960,6 +971,31 @@ const loadCurrentUserOrgInfo = async () => {
     }
   } catch (error) {
     console.error('获取组织信息失败:', error)
+  }
+}
+
+// 导出班级列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      className: searchForm.className || undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined
+    }
+    
+    // 注意：需要后端提供 /system/class/export 接口
+    await exportExcel(
+      (params) => request.get('/system/class/export', { params, responseType: 'blob' }),
+      params,
+      '班级列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

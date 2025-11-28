@@ -67,6 +67,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -188,15 +196,18 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download } from '@element-plus/icons-vue'
 import { semesterApi } from '@/api/system/semester'
 import { schoolApi } from '@/api/system/school'
 import { userApi } from '@/api/user/user'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole } from '@/utils/permission'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const exportLoading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加学期')
 const formRef = ref(null)
@@ -478,6 +489,33 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   loadData()
+}
+
+// 导出学期列表
+const handleExport = async () => {
+  exportLoading.value = true
+  try {
+    const params = {
+      semesterName: searchForm.semesterName || undefined,
+      year: searchForm.year || undefined,
+      isCurrent: searchForm.isCurrent !== null ? searchForm.isCurrent : undefined,
+      schoolId: searchForm.schoolId || undefined,
+      startDate: searchForm.dateRange && searchForm.dateRange[0] ? searchForm.dateRange[0] : undefined,
+      endDate: searchForm.dateRange && searchForm.dateRange[1] ? searchForm.dateRange[1] : undefined
+    }
+    
+    // 注意：需要后端提供 /system/semester/export 接口
+    await exportExcel(
+      (params) => request.get('/system/semester/export', { params, responseType: 'blob' }),
+      params,
+      '学期列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 onMounted(async () => {

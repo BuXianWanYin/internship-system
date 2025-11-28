@@ -11,7 +11,7 @@ import java.io.Serializable;
  */
 @ApiModel(description = "待批阅统计数据")
 @Data
-public class PendingReviewStatistics implements Serializable {
+public class PendingReviewStatisticsDTO implements Serializable {
     
     private static final long serialVersionUID = 1L;
     

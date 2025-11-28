@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  */
 @ApiModel(description = "实习进度统计数据")
 @Data
-public class InternshipProgressStatistics implements Serializable {
+public class InternshipProgressStatisticsDTO implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
