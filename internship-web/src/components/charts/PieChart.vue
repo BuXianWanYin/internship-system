@@ -11,14 +11,14 @@
 import { computed } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart } from 'echarts/charts'
+import { PieChart as EChartsPieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
 // 注册ECharts组件
 use([
   CanvasRenderer,
-  PieChart,
+  EChartsPieChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent

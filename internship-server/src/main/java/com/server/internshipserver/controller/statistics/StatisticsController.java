@@ -28,7 +28,7 @@ public class StatisticsController {
     private StatisticsService statisticsService;
     
     @ApiOperation("获取实习进度统计")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR', 'ROLE_STUDENT')")
     @GetMapping("/internship-progress")
     public Result<InternshipProgressStatistics> getInternshipProgressStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
@@ -52,7 +52,7 @@ public class StatisticsController {
     }
     
     @ApiOperation("获取评价分数统计")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
     @GetMapping("/evaluation-score")
     public Result<EvaluationScoreStatistics> getEvaluationScoreStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
@@ -74,7 +74,7 @@ public class StatisticsController {
     }
     
     @ApiOperation("获取实习时长统计")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/internship-duration")
     public Result<InternshipDurationStatistics> getInternshipDurationStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
@@ -94,7 +94,7 @@ public class StatisticsController {
     }
     
     @ApiOperation("获取岗位类型分布统计")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/post-type-distribution")
     public Result<PostTypeDistributionStatistics> getPostTypeDistributionStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
@@ -179,8 +179,8 @@ public class StatisticsController {
         return Result.success(statistics);
     }
     
-    @ApiOperation("获取待批阅统计（班主任使用）")
-    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER')")
+    @ApiOperation("获取待批阅统计（班主任和企业导师使用）")
+    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/pending-review")
     public Result<PendingReviewStatistics> getPendingReviewStatistics(
             @ApiParam(value = "班级ID", required = false) @RequestParam(required = false) Long classId) {

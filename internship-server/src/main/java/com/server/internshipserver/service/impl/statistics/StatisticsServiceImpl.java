@@ -742,6 +742,17 @@ public class StatisticsServiceImpl implements StatisticsService {
             return;
         }
         
+        // 企业导师：只能查看本企业的数据（类似企业管理员）
+        if (roleCodes.contains("ROLE_ENTERPRISE_MENTOR")) {
+            Long enterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (enterpriseId != null) {
+                wrapper.eq(InternshipApply::getEnterpriseId, enterpriseId);
+            } else {
+                wrapper.eq(InternshipApply::getApplyId, -1L);
+            }
+            return;
+        }
+        
         // 学生：只能查看自己的数据
         if (roleCodes.contains("ROLE_STUDENT")) {
             Student student = studentMapper.selectOne(

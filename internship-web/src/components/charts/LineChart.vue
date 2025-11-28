@@ -11,14 +11,14 @@
 import { computed } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
+import { LineChart as EChartsLineChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
 // 注册ECharts组件
 use([
   CanvasRenderer,
-  LineChart,
+  EChartsLineChart,
   TitleComponent,
   TooltipComponent,
   LegendComponent,
