@@ -625,5 +625,60 @@ public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper,
         
         return plans;
     }
+    
+    @Override
+    public List<InternshipPlan> getAllPlans(InternshipPlanQueryDTO queryDTO) {
+        LambdaQueryWrapper<InternshipPlan> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, InternshipPlan::getDeleteFlag);
+        
+        // 数据权限过滤
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        
+        if (currentUserSchoolId != null) {
+            wrapper.eq(InternshipPlan::getSchoolId, currentUserSchoolId);
+        }
+        if (currentUserCollegeId != null) {
+            wrapper.eq(InternshipPlan::getCollegeId, currentUserCollegeId);
+        }
+        
+        // 条件查询
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getPlanName())) {
+                wrapper.like(InternshipPlan::getPlanName, queryDTO.getPlanName());
+            }
+            if (queryDTO.getSemesterId() != null) {
+                wrapper.eq(InternshipPlan::getSemesterId, queryDTO.getSemesterId());
+            }
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(InternshipPlan::getSchoolId, queryDTO.getSchoolId());
+            }
+            if (queryDTO.getCollegeId() != null) {
+                wrapper.eq(InternshipPlan::getCollegeId, queryDTO.getCollegeId());
+            }
+            if (queryDTO.getMajorId() != null) {
+                wrapper.eq(InternshipPlan::getMajorId, queryDTO.getMajorId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(InternshipPlan::getStatus, queryDTO.getStatus());
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(InternshipPlan::getCreateTime);
+        
+        List<InternshipPlan> plans = this.list(wrapper);
+        
+        // 填充关联字段
+        if (plans != null && !plans.isEmpty()) {
+            for (InternshipPlan plan : plans) {
+                fillPlanRelatedFields(plan);
+            }
+        }
+        
+        return plans;
+    }
 }
 

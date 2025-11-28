@@ -291,5 +291,46 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
         
         return true;
     }
+    
+    @Override
+    public List<EnterpriseMentor> getAllEnterpriseMentors(String mentorName, Long enterpriseId, Integer status) {
+        LambdaQueryWrapper<EnterpriseMentor> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, EnterpriseMentor::getDeleteFlag);
+        
+        // 条件查询
+        if (StringUtils.hasText(mentorName)) {
+            wrapper.like(EnterpriseMentor::getMentorName, mentorName);
+        }
+        if (enterpriseId != null) {
+            wrapper.eq(EnterpriseMentor::getEnterpriseId, enterpriseId);
+        }
+        if (status != null) {
+            wrapper.eq(EnterpriseMentor::getStatus, status);
+        }
+        
+        // 数据权限过滤
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null) {
+            // 企业管理员：只能查看本企业的导师
+            wrapper.eq(EnterpriseMentor::getEnterpriseId, currentUserEnterpriseId);
+        } else {
+            // 学校管理员或班主任：只能查看有合作关系的企业的导师
+            List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
+            if (cooperationEnterpriseIds != null) {
+                if (cooperationEnterpriseIds.isEmpty()) {
+                    wrapper.eq(EnterpriseMentor::getEnterpriseId, -1L);
+                } else {
+                    wrapper.in(EnterpriseMentor::getEnterpriseId, cooperationEnterpriseIds);
+                }
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(EnterpriseMentor::getCreateTime);
+        
+        return this.list(wrapper);
+    }
 }
 

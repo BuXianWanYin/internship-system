@@ -78,5 +78,12 @@ public interface InternshipPostService extends IService<InternshipPost> {
      * @return 申请列表
      */
     List<InternshipApply> getPostApplications(Long postId);
+    
+    /**
+     * 查询所有岗位列表（用于导出）
+     * @param queryDTO 查询条件
+     * @return 岗位列表
+     */
+    List<InternshipPost> getAllPosts(InternshipPostQueryDTO queryDTO);
 }
 

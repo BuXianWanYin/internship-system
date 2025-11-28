@@ -331,5 +331,60 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             }
         }
     }
+    
+    @Override
+    public List<InternshipPost> getAllPosts(InternshipPostQueryDTO queryDTO) {
+        LambdaQueryWrapper<InternshipPost> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, InternshipPost::getDeleteFlag);
+        
+        // 数据权限过滤
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
+        
+        // 企业管理员：只能查看自己企业的岗位
+        if (currentUserEnterpriseId != null) {
+            wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
+        }
+        // 学生端：只显示合作企业的岗位
+        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly() && cooperationEnterpriseIds != null) {
+            if (cooperationEnterpriseIds.isEmpty()) {
+                return new java.util.ArrayList<>();
+            }
+            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+        }
+        // 学校管理员和班主任：只显示合作企业的岗位
+        else if (EntityValidationUtil.isNotEmpty(cooperationEnterpriseIds)) {
+            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+        }
+        
+        // 条件查询
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getPostName())) {
+                wrapper.like(InternshipPost::getPostName, queryDTO.getPostName());
+            }
+            if (queryDTO.getEnterpriseId() != null) {
+                wrapper.eq(InternshipPost::getEnterpriseId, queryDTO.getEnterpriseId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(InternshipPost::getStatus, queryDTO.getStatus());
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(InternshipPost::getCreateTime);
+        
+        List<InternshipPost> posts = this.list(wrapper);
+        
+        // 填充关联字段
+        if (posts != null && !posts.isEmpty()) {
+            for (InternshipPost post : posts) {
+                fillPostRelatedFields(post);
+            }
+        }
+        
+        return posts;
+    }
 }
 

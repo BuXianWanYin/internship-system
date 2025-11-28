@@ -22,6 +22,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
+import com.server.internshipserver.service.system.SchoolService;
+import com.server.internshipserver.domain.system.College;
+import com.server.internshipserver.mapper.system.CollegeMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.domain.user.UserInfo;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
  * 教师管理控制器
@@ -33,6 +44,15 @@ public class TeacherController {
     
     @Autowired
     private TeacherService teacherService;
+    
+    @Autowired
+    private SchoolService schoolService;
+    
+    @Autowired
+    private CollegeMapper collegeMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
     
     @ApiOperation("分页查询教师列表")
     @GetMapping("/page")
@@ -100,6 +120,119 @@ public class TeacherController {
             @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId) {
         List<Teacher> list = teacherService.getTeacherListBySchool(schoolId, collegeId);
         return Result.success("查询成功", list);
+    }
+    
+    @ApiOperation("导出教师列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @GetMapping("/export")
+    public void exportTeachers(
+            @ApiParam(value = "工号", required = false) @RequestParam(required = false) String teacherNo,
+            @ApiParam(value = "学院ID", required = false) @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "状态：1-启用，0-禁用", required = false) @RequestParam(required = false) Integer status,
+            HttpServletResponse response) throws IOException {
+        List<Teacher> teachers = teacherService.getAllTeachers(teacherNo, collegeId, schoolId, status);
+        
+        // 填充关联信息
+        if (teachers != null && !teachers.isEmpty()) {
+            // 获取所有学院ID
+            List<Long> collegeIds = teachers.stream()
+                    .map(Teacher::getCollegeId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 查询学院信息
+            java.util.Map<Long, College> collegeMap = new java.util.HashMap<>();
+            if (!collegeIds.isEmpty()) {
+                List<College> colleges = collegeMapper.selectBatchIds(collegeIds);
+                if (colleges != null && !colleges.isEmpty()) {
+                    collegeMap = colleges.stream()
+                            .filter(c -> c != null && c.getCollegeId() != null)
+                            .collect(Collectors.toMap(College::getCollegeId, c -> c, (v1, v2) -> v1));
+                }
+            }
+            
+            // 获取所有学校ID
+            List<Long> schoolIds = teachers.stream()
+                    .map(Teacher::getSchoolId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 查询学校信息
+            java.util.Map<Long, String> schoolNameMap = new java.util.HashMap<>();
+            for (Long sid : schoolIds) {
+                try {
+                    com.server.internshipserver.domain.system.School school = schoolService.getSchoolById(sid);
+                    if (school != null) {
+                        schoolNameMap.put(sid, school.getSchoolName());
+                    }
+                } catch (Exception e) {
+                    // 忽略错误
+                }
+            }
+            
+            // 获取所有用户ID
+            List<Long> userIds = teachers.stream()
+                    .map(Teacher::getUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 查询用户信息
+            java.util.Map<Long, UserInfo> userMap = new java.util.HashMap<>();
+            if (!userIds.isEmpty()) {
+                List<UserInfo> users = userMapper.selectBatchIds(userIds);
+                if (users != null && !users.isEmpty()) {
+                    userMap = users.stream()
+                            .filter(u -> u != null && u.getUserId() != null)
+                            .collect(Collectors.toMap(UserInfo::getUserId, u -> u, (v1, v2) -> v1));
+                }
+            }
+            
+            // 填充信息
+            for (Teacher teacher : teachers) {
+                if (teacher.getCollegeId() != null) {
+                    College college = collegeMap.get(teacher.getCollegeId());
+                    if (college != null) {
+                        teacher.setCollegeName(college.getCollegeName());
+                    }
+                }
+                if (teacher.getSchoolId() != null) {
+                    teacher.setSchoolName(schoolNameMap.get(teacher.getSchoolId()));
+                }
+                if (teacher.getUserId() != null) {
+                    UserInfo user = userMap.get(teacher.getUserId());
+                    if (user != null) {
+                        teacher.setTeacherName(user.getRealName());
+                        teacher.setPhone(user.getPhone());
+                        teacher.setEmail(user.getEmail());
+                    }
+                }
+            }
+        }
+        
+        // 处理数据，转换状态和时间为文字
+        for (Teacher teacher : teachers) {
+            if (teacher.getStatus() != null) {
+                teacher.setStatusText(teacher.getStatus() == 1 ? "启用" : "禁用");
+            } else {
+                teacher.setStatusText("");
+            }
+            if (teacher.getCreateTime() != null) {
+                teacher.setCreateTimeText(teacher.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                teacher.setCreateTimeText("");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"教师ID", "工号", "姓名", "所属学院", "所属学校", "职称", "部门", "手机号", "邮箱", "状态", "创建时间"};
+        String[] fieldNames = {"teacherId", "teacherNo", "teacherName", "collegeName", "schoolName", "title", "department", "phone", "email", "statusText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, teachers, headers, fieldNames, "教师列表");
     }
 }
 

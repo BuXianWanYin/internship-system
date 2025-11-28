@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.internship.dto.InternshipPlanQueryDTO;
 
+import java.util.List;
+
 /**
  * 实习计划管理Service接口
  */
@@ -85,5 +87,12 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
      * @return 实习计划列表
      */
     java.util.List<InternshipPlan> getPublishedPlans(Long schoolId, Long collegeId, Long majorId, java.time.LocalDate currentDate);
+    
+    /**
+     * 查询所有实习计划列表（用于导出）
+     * @param queryDTO 查询条件
+     * @return 实习计划列表
+     */
+    List<InternshipPlan> getAllPlans(InternshipPlanQueryDTO queryDTO);
 }
 

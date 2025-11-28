@@ -21,7 +21,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -131,6 +134,98 @@ public class InternshipPostController {
             @ApiParam(value = "岗位ID", required = true) @PathVariable Long postId) {
         List<InternshipApply> applications = internshipPostService.getPostApplications(postId);
         return Result.success(applications);
+    }
+    
+    @ApiOperation("导出岗位列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @GetMapping("/export")
+    public void exportPosts(
+            @ApiParam(value = "岗位名称", required = false) @RequestParam(required = false) String postName,
+            @ApiParam(value = "企业ID", required = false) @RequestParam(required = false) Long enterpriseId,
+            @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status,
+            @ApiParam(value = "仅显示合作企业岗位（学生端使用）", required = false) @RequestParam(required = false) Boolean cooperationOnly,
+            HttpServletResponse response) throws IOException {
+        InternshipPostQueryDTO queryDTO = new InternshipPostQueryDTO();
+        queryDTO.setPostName(postName);
+        queryDTO.setEnterpriseId(enterpriseId);
+        queryDTO.setStatus(status);
+        queryDTO.setCooperationOnly(cooperationOnly);
+        
+        List<InternshipPost> posts = internshipPostService.getAllPosts(queryDTO);
+        
+        // 处理数据，转换状态和时间为文字
+        for (InternshipPost post : posts) {
+            // 转换状态
+            if (post.getStatus() != null) {
+                switch (post.getStatus()) {
+                    case 0:
+                        post.setStatusText("待审核");
+                        break;
+                    case 1:
+                        post.setStatusText("已通过");
+                        break;
+                    case 2:
+                        post.setStatusText("已拒绝");
+                        break;
+                    case 3:
+                        post.setStatusText("已发布");
+                        break;
+                    case 4:
+                        post.setStatusText("已关闭");
+                        break;
+                    default:
+                        post.setStatusText("");
+                }
+            } else {
+                post.setStatusText("");
+            }
+            // 转换日期
+            if (post.getInternshipStartDate() != null) {
+                post.setInternshipStartDateText(post.getInternshipStartDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                post.setInternshipStartDateText("");
+            }
+            if (post.getInternshipEndDate() != null) {
+                post.setInternshipEndDateText(post.getInternshipEndDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                post.setInternshipEndDateText("");
+            }
+            if (post.getPublishTime() != null) {
+                post.setPublishTimeText(post.getPublishTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                post.setPublishTimeText("");
+            }
+            if (post.getCreateTime() != null) {
+                post.setCreateTimeText(post.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                post.setCreateTimeText("");
+            }
+            // 转换薪资范围
+            if (post.getSalaryMin() != null || post.getSalaryMax() != null) {
+                String salaryType = post.getSalaryType() != null ? post.getSalaryType() : "月薪";
+                if (post.getSalaryMin() != null && post.getSalaryMax() != null) {
+                    post.setSalaryRangeText(post.getSalaryMin() + "-" + post.getSalaryMax() + "元/" + salaryType);
+                } else if (post.getSalaryMin() != null) {
+                    post.setSalaryRangeText(post.getSalaryMin() + "元/" + salaryType + "起");
+                } else if (post.getSalaryMax() != null) {
+                    post.setSalaryRangeText("最高" + post.getSalaryMax() + "元/" + salaryType);
+                } else {
+                    post.setSalaryRangeText("面议");
+                }
+            } else {
+                post.setSalaryRangeText("面议");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"岗位ID", "岗位名称", "岗位编号", "所属企业", "工作地点", "详细地址", "招聘人数", "已申请人数", "已录用人数", "薪资范围", "实习开始日期", "实习结束日期", "工作时间", "联系人", "联系电话", "联系邮箱", "状态", "发布时间", "创建时间"};
+        String[] fieldNames = {"postId", "postName", "postCode", "enterpriseName", "workLocation", "workAddress", "recruitCount", "appliedCount", "acceptedCount", "salaryRangeText", "internshipStartDateText", "internshipEndDateText", "workHours", "contactPerson", "contactPhone", "contactEmail", "statusText", "publishTimeText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, posts, headers, fieldNames, "岗位列表");
     }
 }
 

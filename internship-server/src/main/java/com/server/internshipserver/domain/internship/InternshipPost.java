@@ -152,5 +152,29 @@ public class InternshipPost implements Serializable {
     @ApiModelProperty(value = "企业名称")
     @TableField(exist = false)
     private String enterpriseName;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "开始日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String internshipStartDateText;
+    
+    @ApiModelProperty(value = "结束日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String internshipEndDateText;
+    
+    @ApiModelProperty(value = "发布时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String publishTimeText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
+    
+    @ApiModelProperty(value = "薪资范围文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String salaryRangeText;
 }
 

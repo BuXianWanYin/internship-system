@@ -1407,5 +1407,64 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         
         return orgInfo;
     }
+    
+    @Override
+    public List<UserInfo> getAllUsers(UserQueryDTO queryDTO) {
+        LambdaQueryWrapper<UserInfo> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, UserInfo::getDeleteFlag);
+        
+        // 条件查询
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getUsername())) {
+                wrapper.like(UserInfo::getUsername, queryDTO.getUsername());
+            }
+            if (StringUtils.hasText(queryDTO.getRealName())) {
+                wrapper.like(UserInfo::getRealName, queryDTO.getRealName());
+            }
+            if (StringUtils.hasText(queryDTO.getPhone())) {
+                wrapper.like(UserInfo::getPhone, queryDTO.getPhone());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(UserInfo::getStatus, queryDTO.getStatus());
+            }
+            
+            // 角色筛选：通过user_role表查询
+            List<Long> roleFilterUserIds = getRoleFilterUserIds(queryDTO.getRoleCodes());
+            
+            // 组织筛选：通过Student、Teacher表关联查询
+            List<Long> orgFilterUserIds = getOrgFilterUserIds(queryDTO.getClassId(), queryDTO.getCollegeId(), queryDTO.getSchoolId());
+            
+            // 数据权限过滤：根据用户角色自动添加查询条件
+            List<Long> dataPermissionUserIds = getDataPermissionUserIds();
+            
+            // 合并角色筛选、组织筛选和数据权限过滤的user_id列表
+            List<Long> finalUserIds = mergeFilterUserIds(roleFilterUserIds, orgFilterUserIds, dataPermissionUserIds);
+            
+            // 应用筛选结果
+            applyFilterToWrapper(wrapper, finalUserIds);
+        } else {
+            // 如果没有查询条件，只应用数据权限过滤
+            List<Long> dataPermissionUserIds = getDataPermissionUserIds();
+            applyFilterToWrapper(wrapper, dataPermissionUserIds);
+        }
+        // 系统管理员不添加限制
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(UserInfo::getCreateTime);
+        
+        List<UserInfo> users = this.list(wrapper);
+        
+        // 填充每个用户的角色信息
+        if (users != null && !users.isEmpty()) {
+            for (UserInfo user : users) {
+                List<String> userRoleCodes = this.baseMapper.selectRoleCodesByUserId(user.getUserId());
+                user.setRoles(userRoleCodes != null ? userRoleCodes : new ArrayList<>());
+            }
+        }
+        
+        return users;
+    }
 }
 

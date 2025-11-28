@@ -27,6 +27,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * 实习计划管理控制器
@@ -158,6 +163,81 @@ public class InternshipPlanController {
         
         java.util.List<InternshipPlan> plans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
         return Result.success(plans);
+    }
+    
+    @ApiOperation("导出实习计划列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_STUDENT')")
+    @GetMapping("/export")
+    public void exportPlans(
+            @ApiParam(value = "计划名称", required = false) @RequestParam(required = false) String planName,
+            @ApiParam(value = "学期ID", required = false) @RequestParam(required = false) Long semesterId,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID", required = false) @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "专业ID", required = false) @RequestParam(required = false) Long majorId,
+            @ApiParam(value = "状态", required = false) @RequestParam(required = false) Integer status,
+            HttpServletResponse response) throws IOException {
+        InternshipPlanQueryDTO queryDTO = new InternshipPlanQueryDTO();
+        queryDTO.setPlanName(planName);
+        queryDTO.setSemesterId(semesterId);
+        queryDTO.setSchoolId(schoolId);
+        queryDTO.setCollegeId(collegeId);
+        queryDTO.setMajorId(majorId);
+        queryDTO.setStatus(status);
+        
+        List<InternshipPlan> plans = internshipPlanService.getAllPlans(queryDTO);
+        
+        // 处理数据，转换状态和时间为文字
+        for (InternshipPlan plan : plans) {
+            // 转换状态
+            if (plan.getStatus() != null) {
+                switch (plan.getStatus()) {
+                    case 0:
+                        plan.setStatusText("草稿");
+                        break;
+                    case 1:
+                        plan.setStatusText("待审核");
+                        break;
+                    case 2:
+                        plan.setStatusText("已通过");
+                        break;
+                    case 3:
+                        plan.setStatusText("已拒绝");
+                        break;
+                    case 4:
+                        plan.setStatusText("已发布");
+                        break;
+                    default:
+                        plan.setStatusText("");
+                }
+            } else {
+                plan.setStatusText("");
+            }
+            // 转换日期
+            if (plan.getStartDate() != null) {
+                plan.setStartDateText(plan.getStartDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                plan.setStartDateText("");
+            }
+            if (plan.getEndDate() != null) {
+                plan.setEndDateText(plan.getEndDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                plan.setEndDateText("");
+            }
+            if (plan.getCreateTime() != null) {
+                plan.setCreateTimeText(plan.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                plan.setCreateTimeText("");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"计划ID", "计划名称", "计划编号", "学期", "所属学校", "所属学院", "所属专业", "实习类型", "开始日期", "结束日期", "状态", "创建时间"};
+        String[] fieldNames = {"planId", "planName", "planCode", "semesterName", "schoolName", "collegeName", "majorName", "planType", "startDateText", "endDateText", "statusText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, plans, headers, fieldNames, "实习计划列表");
     }
 }
 

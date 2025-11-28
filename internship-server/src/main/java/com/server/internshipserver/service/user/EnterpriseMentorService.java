@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
 
+import java.util.List;
+
 /**
  * 企业导师管理Service接口
  */
@@ -75,5 +77,14 @@ public interface EnterpriseMentorService extends IService<EnterpriseMentor> {
      * @return 是否成功
      */
     boolean deleteEnterpriseMentor(Long mentorId);
+    
+    /**
+     * 查询所有企业导师列表（用于导出）
+     * @param mentorName 导师姓名（可选）
+     * @param enterpriseId 企业ID（可选）
+     * @param status 状态：1-启用，0-禁用（可选）
+     * @return 企业导师列表
+     */
+    List<EnterpriseMentor> getAllEnterpriseMentors(String mentorName, Long enterpriseId, Integer status);
 }
 

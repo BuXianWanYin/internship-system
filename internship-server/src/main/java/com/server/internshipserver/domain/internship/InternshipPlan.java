@@ -138,5 +138,21 @@ public class InternshipPlan implements Serializable {
     @ApiModelProperty(value = "计划范围类型（全校计划/全院计划/专业计划）")
     @TableField(exist = false)
     private String planScopeType;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "开始日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String startDateText;
+    
+    @ApiModelProperty(value = "结束日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String endDateText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
 }
 

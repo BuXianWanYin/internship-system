@@ -96,6 +96,18 @@ public class UserInfo implements Serializable {
     @TableField(exist = false)
     private List<String> roles;
     
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
+    
+    @ApiModelProperty(value = "角色名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String roleNames;
+    
     // 角色化字段（非数据库字段，用于添加用户时传递数据）
     @ApiModelProperty(value = "学号（学生角色）")
     @TableField(exist = false)

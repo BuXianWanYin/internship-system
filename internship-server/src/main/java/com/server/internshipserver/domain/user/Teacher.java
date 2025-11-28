@@ -73,5 +73,33 @@ public class Teacher implements Serializable {
     @ApiModelProperty(value = "用户角色代码列表（非数据库字段）")
     @TableField(exist = false)
     private List<String> roles;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
+    
+    @ApiModelProperty(value = "所属学院名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String collegeName;
+    
+    @ApiModelProperty(value = "所属学校名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String schoolName;
+    
+    @ApiModelProperty(value = "教师姓名（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String teacherName;
+    
+    @ApiModelProperty(value = "联系电话（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String phone;
+    
+    @ApiModelProperty(value = "邮箱（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String email;
 }
 

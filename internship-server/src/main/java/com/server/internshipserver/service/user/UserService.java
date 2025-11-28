@@ -112,5 +112,12 @@ public interface UserService extends IService<UserInfo> {
      * @return 组织信息Map，包含schoolId、schoolName、collegeId、collegeName、classIds、classNames
      */
     java.util.Map<String, Object> getCurrentUserOrgInfo();
+    
+    /**
+     * 查询所有用户列表（用于导出）
+     * @param queryDTO 查询条件
+     * @return 用户列表
+     */
+    List<UserInfo> getAllUsers(UserQueryDTO queryDTO);
 }
 

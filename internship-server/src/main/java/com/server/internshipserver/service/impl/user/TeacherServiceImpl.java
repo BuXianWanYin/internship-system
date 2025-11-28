@@ -505,5 +505,63 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         wrapper.orderByDesc(Teacher::getCreateTime);
         return this.list(wrapper);
     }
+    
+    @Override
+    public List<Teacher> getAllTeachers(String teacherNo, Long collegeId, Long schoolId, Integer status) {
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, Teacher::getDeleteFlag);
+        
+        // 数据权限过滤
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            if (collegeId != null && !collegeId.equals(currentUserCollegeId)) {
+                wrapper.eq(Teacher::getCollegeId, -1L);
+            } else {
+                wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+            }
+        } else if (currentUserSchoolId != null) {
+            if (schoolId != null && !schoolId.equals(currentUserSchoolId)) {
+                wrapper.eq(Teacher::getSchoolId, -1L);
+            } else {
+                wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+            }
+        } else {
+            if (collegeId != null) {
+                wrapper.eq(Teacher::getCollegeId, collegeId);
+            }
+            if (schoolId != null) {
+                wrapper.eq(Teacher::getSchoolId, schoolId);
+            }
+        }
+        
+        // 其他条件查询
+        if (StringUtils.hasText(teacherNo)) {
+            wrapper.like(Teacher::getTeacherNo, teacherNo);
+        }
+        if (status != null) {
+            wrapper.eq(Teacher::getStatus, status);
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Teacher::getCreateTime);
+        
+        List<Teacher> teachers = this.list(wrapper);
+        
+        // 填充每个教师的角色信息
+        if (teachers != null && !teachers.isEmpty()) {
+            for (Teacher teacher : teachers) {
+                if (teacher.getUserId() != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
+                    teacher.setRoles(roleCodes != null ? roleCodes : new ArrayList<>());
+                }
+            }
+        }
+        
+        return teachers;
+    }
 }
 

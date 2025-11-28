@@ -87,5 +87,15 @@ public interface TeacherService extends IService<Teacher> {
      * @return 教师列表
      */
     List<Teacher> getTeacherListBySchool(Long schoolId, Long collegeId);
+    
+    /**
+     * 查询所有教师列表（用于导出）
+     * @param teacherNo 工号（可选）
+     * @param collegeId 学院ID（可选）
+     * @param schoolId 学校ID（可选）
+     * @param status 状态：1-启用，0-禁用（可选）
+     * @return 教师列表
+     */
+    List<Teacher> getAllTeachers(String teacherNo, Long collegeId, Long schoolId, Integer status);
 }
 
