@@ -82,5 +82,29 @@ public class Class implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
+    
+    @ApiModelProperty(value = "所属专业名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String majorName;
+    
+    @ApiModelProperty(value = "所属学院名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String collegeName;
+    
+    @ApiModelProperty(value = "所属学校名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String schoolName;
+    
+    @ApiModelProperty(value = "班主任姓名（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String classTeacherName;
 }
 

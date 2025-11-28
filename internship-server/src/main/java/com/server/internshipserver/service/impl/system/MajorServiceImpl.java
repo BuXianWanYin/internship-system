@@ -35,6 +35,9 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     @Autowired
     private CollegeMapper collegeMapper;
     
+    @Autowired
+    private com.server.internshipserver.mapper.system.SchoolMapper schoolMapper;
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Major addMajor(Major major) {
@@ -179,6 +182,129 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         // 软删除
         major.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(major);
+    }
+    
+    @Override
+    public List<Major> getAllMajors(String majorName, Long collegeId, Long schoolId) {
+        LambdaQueryWrapper<Major> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, Major::getDeleteFlag);
+        
+        // 条件查询
+        if (StringUtils.hasText(majorName)) {
+            wrapper.like(Major::getMajorName, majorName);
+        }
+        
+        // 筛选条件：学校ID（如果指定了schoolId，需要通过学院关联）
+        if (schoolId != null) {
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, schoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                wrapper.in(Major::getCollegeId, collegeIds);
+            } else {
+                wrapper.eq(Major::getMajorId, -1L);
+            }
+        }
+        
+        // 筛选条件：学院ID
+        if (collegeId != null) {
+            wrapper.eq(Major::getCollegeId, collegeId);
+        }
+        
+        // 数据权限过滤
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            wrapper.eq(Major::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            List<College> colleges = collegeMapper.selectList(
+                    new LambdaQueryWrapper<College>()
+                            .eq(College::getSchoolId, currentUserSchoolId)
+                            .eq(College::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(College::getCollegeId)
+            );
+            if (colleges != null && !colleges.isEmpty()) {
+                List<Long> collegeIds = colleges.stream()
+                        .map(College::getCollegeId)
+                        .collect(Collectors.toList());
+                wrapper.in(Major::getCollegeId, collegeIds);
+            } else {
+                wrapper.eq(Major::getMajorId, -1L);
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Major::getCreateTime);
+        
+        List<Major> majors = this.list(wrapper);
+        
+        // 填充学院名称和学校名称
+        if (majors != null && !majors.isEmpty()) {
+            List<Long> collegeIds = majors.stream()
+                    .map(Major::getCollegeId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!collegeIds.isEmpty()) {
+                List<College> colleges = collegeMapper.selectBatchIds(collegeIds);
+                if (colleges != null && !colleges.isEmpty()) {
+                    java.util.Map<Long, College> collegeMap = colleges.stream()
+                            .filter(c -> c != null && c.getCollegeId() != null)
+                            .collect(Collectors.toMap(College::getCollegeId, c -> c, (v1, v2) -> v1));
+                    
+                    // 获取学校ID列表
+                    List<Long> schoolIds = colleges.stream()
+                            .map(College::getSchoolId)
+                            .filter(java.util.Objects::nonNull)
+                            .distinct()
+                            .collect(Collectors.toList());
+                    
+                    // 查询学校信息
+                    if (!schoolIds.isEmpty() && schoolMapper != null) {
+                        List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
+                        if (schools != null && !schools.isEmpty()) {
+                            java.util.Map<Long, String> schoolNameMap = schools.stream()
+                                    .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
+                                    .collect(Collectors.toMap(
+                                            com.server.internshipserver.domain.system.School::getSchoolId,
+                                            com.server.internshipserver.domain.system.School::getSchoolName,
+                                            (v1, v2) -> v1
+                                    ));
+                            
+                            for (Major major : majors) {
+                                if (major.getCollegeId() != null) {
+                                    College college = collegeMap.get(major.getCollegeId());
+                                    if (college != null && college.getSchoolId() != null) {
+                                        major.setSchoolName(schoolNameMap.get(college.getSchoolId()));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    for (Major major : majors) {
+                        if (major.getCollegeId() != null) {
+                            College college = collegeMap.get(major.getCollegeId());
+                            if (college != null) {
+                                major.setCollegeName(college.getCollegeName());
+                                // schoolName将在Controller层通过SchoolService填充
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return majors;
     }
 }
 

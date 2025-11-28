@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+
 /**
  * 学期管理Service实现类
  */
@@ -252,6 +254,57 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
         // 软删除
         semester.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(semester);
+    }
+    
+    @Override
+    public List<Semester> getAllSemesters(SemesterQueryDTO queryDTO) {
+        LambdaQueryWrapper<Semester> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Semester::getDeleteFlag);
+        
+        // 条件查询
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getSemesterName())) {
+                wrapper.like(Semester::getSemesterName, queryDTO.getSemesterName());
+            }
+            
+            // 学校ID筛选
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(Semester::getSchoolId, queryDTO.getSchoolId());
+            }
+            
+            // 年份筛选
+            if (queryDTO.getYear() != null) {
+                wrapper.and(w -> w
+                    .apply("YEAR(start_date) = {0}", queryDTO.getYear())
+                    .or()
+                    .apply("YEAR(end_date) = {0}", queryDTO.getYear())
+                );
+            }
+            
+            // 是否当前学期筛选
+            if (queryDTO.getIsCurrent() != null) {
+                wrapper.eq(Semester::getIsCurrent, queryDTO.getIsCurrent());
+            }
+            
+            // 日期范围筛选
+            if (StringUtils.hasText(queryDTO.getStartDate())) {
+                wrapper.ge(Semester::getStartDate, queryDTO.getStartDate());
+            }
+            if (StringUtils.hasText(queryDTO.getEndDate())) {
+                wrapper.le(Semester::getEndDate, queryDTO.getEndDate());
+            }
+        }
+        
+        // 数据权限过滤
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的学期
+            wrapper.eq(Semester::getSchoolId, currentUserSchoolId);
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Semester::getCreateTime);
+        
+        return this.list(wrapper);
     }
 }
 

@@ -18,6 +18,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * 学校管理控制器
@@ -78,6 +83,39 @@ public class SchoolController {
             @ApiParam(value = "学校ID", required = true) @PathVariable Long id) {
         schoolService.deleteSchool(id);
         return Result.success("停用学校成功");
+    }
+    
+    @ApiOperation("导出学校列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @GetMapping("/export")
+    public void exportSchools(
+            @ApiParam(value = "学校名称", required = false) @RequestParam(required = false) String schoolName,
+            @ApiParam(value = "学校代码", required = false) @RequestParam(required = false) String schoolCode,
+            HttpServletResponse response) throws IOException {
+        List<School> schools = schoolService.getAllSchools(schoolName, schoolCode);
+        
+        // 处理数据，转换状态和时间为文字
+        for (School school : schools) {
+            // 转换状态
+            if (school.getStatus() != null) {
+                school.setStatusText(school.getStatus() == 1 ? "启用" : "禁用");
+            } else {
+                school.setStatusText("");
+            }
+            // 转换创建时间
+            if (school.getCreateTime() != null) {
+                school.setCreateTimeText(school.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                school.setCreateTimeText("");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"学校ID", "学校名称", "学校代码", "地址", "负责人", "负责人电话", "状态", "创建时间"};
+        String[] fieldNames = {"schoolId", "schoolName", "schoolCode", "address", "managerName", "managerPhone", "statusText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, schools, headers, fieldNames, "学校列表");
     }
 }
 

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.School;
 
+import java.util.List;
+
 /**
  * 学校管理Service接口
  */
@@ -45,5 +47,13 @@ public interface SchoolService extends IService<School> {
      * @return 是否成功
      */
     boolean deleteSchool(Long schoolId);
+    
+    /**
+     * 查询所有学校列表（用于导出）
+     * @param schoolName 学校名称（可选）
+     * @param schoolCode 学校代码（可选）
+     * @return 学校列表
+     */
+    List<School> getAllSchools(String schoolName, String schoolCode);
 }
 

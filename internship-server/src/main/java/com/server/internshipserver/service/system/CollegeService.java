@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.College;
 
+import java.util.List;
+
 /**
  * 学院管理Service接口
  */
@@ -45,5 +47,13 @@ public interface CollegeService extends IService<College> {
      * @return 是否成功
      */
     boolean deleteCollege(Long collegeId);
+    
+    /**
+     * 查询所有学院列表（用于导出）
+     * @param collegeName 学院名称（可选）
+     * @param schoolId 学校ID（可选）
+     * @return 学院列表
+     */
+    List<College> getAllColleges(String collegeName, Long schoolId);
 }
 

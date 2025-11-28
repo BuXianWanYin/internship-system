@@ -63,5 +63,25 @@ public class Semester implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    @ApiModelProperty(value = "是否当前学期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String isCurrentText;
+    
+    @ApiModelProperty(value = "开始日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String startDateText;
+    
+    @ApiModelProperty(value = "结束日期文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String endDateText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
+    
+    @ApiModelProperty(value = "所属学校名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String schoolName;
 }
 

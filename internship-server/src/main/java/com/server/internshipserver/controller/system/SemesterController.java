@@ -19,6 +19,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
+import com.server.internshipserver.service.system.SchoolService;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
  * 学期管理控制器
@@ -30,6 +38,9 @@ public class SemesterController {
     
     @Autowired
     private SemesterService semesterService;
+    
+    @Autowired
+    private SchoolService schoolService;
     
     @ApiOperation("添加学期")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
@@ -106,6 +117,86 @@ public class SemesterController {
             @ApiParam(value = "学期ID", required = true) @PathVariable Long id) {
         semesterService.deleteSemester(id);
         return Result.success("删除学期成功");
+    }
+    
+    @ApiOperation("导出学期列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @GetMapping("/export")
+    public void exportSemesters(
+            @ApiParam(value = "学期名称", required = false) @RequestParam(required = false) String semesterName,
+            @ApiParam(value = "年份", required = false) @RequestParam(required = false) Integer year,
+            @ApiParam(value = "是否当前学期：1-是，0-否", required = false) @RequestParam(required = false) Integer isCurrent,
+            @ApiParam(value = "开始日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String startDate,
+            @ApiParam(value = "结束日期（格式：yyyy-MM-dd）", required = false) @RequestParam(required = false) String endDate,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
+            HttpServletResponse response) throws IOException {
+        SemesterQueryDTO queryDTO = new SemesterQueryDTO();
+        queryDTO.setSemesterName(semesterName);
+        queryDTO.setYear(year);
+        queryDTO.setIsCurrent(isCurrent);
+        queryDTO.setStartDate(startDate);
+        queryDTO.setEndDate(endDate);
+        queryDTO.setSchoolId(schoolId);
+        
+        List<Semester> semesters = semesterService.getAllSemesters(queryDTO);
+        
+        // 填充学校名称
+        if (semesters != null && !semesters.isEmpty()) {
+            List<Long> schoolIds = semesters.stream()
+                    .map(Semester::getSchoolId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            for (Long sid : schoolIds) {
+                try {
+                    com.server.internshipserver.domain.system.School school = schoolService.getSchoolById(sid);
+                    if (school != null) {
+                        String schoolName = school.getSchoolName();
+                        for (Semester semester : semesters) {
+                            if (Objects.equals(semester.getSchoolId(), sid)) {
+                                semester.setSchoolName(schoolName);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // 忽略错误
+                }
+            }
+        }
+        
+        // 处理数据，转换字段为文字
+        for (Semester semester : semesters) {
+            if (semester.getIsCurrent() != null) {
+                semester.setIsCurrentText(semester.getIsCurrent() == 1 ? "是" : "否");
+            } else {
+                semester.setIsCurrentText("");
+            }
+            if (semester.getStartDate() != null) {
+                semester.setStartDateText(semester.getStartDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                semester.setStartDateText("");
+            }
+            if (semester.getEndDate() != null) {
+                semester.setEndDateText(semester.getEndDate().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            } else {
+                semester.setEndDateText("");
+            }
+            if (semester.getCreateTime() != null) {
+                semester.setCreateTimeText(semester.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                semester.setCreateTimeText("");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"学期ID", "学期名称", "所属学校", "开始日期", "结束日期", "是否当前学期", "创建时间"};
+        String[] fieldNames = {"semesterId", "semesterName", "schoolName", "startDateText", "endDateText", "isCurrentText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, semesters, headers, fieldNames, "学期列表");
     }
 }
 

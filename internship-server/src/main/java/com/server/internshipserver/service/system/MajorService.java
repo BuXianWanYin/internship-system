@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.Major;
 
+import java.util.List;
+
 /**
  * 专业管理Service接口
  */
@@ -46,5 +48,14 @@ public interface MajorService extends IService<Major> {
      * @return 是否成功
      */
     boolean deleteMajor(Long majorId);
+    
+    /**
+     * 查询所有专业列表（用于导出）
+     * @param majorName 专业名称（可选）
+     * @param collegeId 学院ID（可选）
+     * @param schoolId 学校ID（可选）
+     * @return 专业列表
+     */
+    List<Major> getAllMajors(String majorName, Long collegeId, Long schoolId);
 }
 

@@ -85,5 +85,13 @@ public class School implements Serializable {
     @ApiModelProperty(value = "新用户信息（非数据库字段，用于创建新管理员用户）")
     @TableField(exist = false)
     private UserInfo newUserInfo;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
 }
 

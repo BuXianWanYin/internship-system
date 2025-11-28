@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.Class;
 
+import java.util.List;
+
 /**
  * 班级管理Service接口
  */
@@ -110,5 +112,15 @@ public interface ClassService extends IService<Class> {
      * @return 是否成功
      */
     boolean removeClassTeacher(Long classId);
+    
+    /**
+     * 查询所有班级列表（用于导出）
+     * @param className 班级名称（可选）
+     * @param majorId 专业ID（可选）
+     * @param collegeId 学院ID（可选）
+     * @param schoolId 学校ID（可选）
+     * @return 班级列表
+     */
+    List<Class> getAllClasses(String className, Long majorId, Long collegeId, Long schoolId);
 }
 

@@ -18,6 +18,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.server.internshipserver.common.utils.ExcelUtil;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * 学院管理控制器
@@ -80,6 +85,37 @@ public class CollegeController {
             @ApiParam(value = "学院ID", required = true) @PathVariable Long id) {
         collegeService.deleteCollege(id);
         return Result.success("停用学院成功");
+    }
+    
+    @ApiOperation("导出学院列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @GetMapping("/export")
+    public void exportColleges(
+            @ApiParam(value = "学院名称", required = false) @RequestParam(required = false) String collegeName,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId,
+            HttpServletResponse response) throws IOException {
+        List<College> colleges = collegeService.getAllColleges(collegeName, schoolId);
+        
+        // 处理数据，转换状态和时间为文字
+        for (College college : colleges) {
+            if (college.getStatus() != null) {
+                college.setStatusText(college.getStatus() == 1 ? "启用" : "禁用");
+            } else {
+                college.setStatusText("");
+            }
+            if (college.getCreateTime() != null) {
+                college.setCreateTimeText(college.getCreateTime().format(
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } else {
+                college.setCreateTimeText("");
+            }
+        }
+        
+        // 定义表头和字段名
+        String[] headers = {"学院ID", "学院名称", "学院代码", "所属学校", "院长", "联系电话", "状态", "创建时间"};
+        String[] fieldNames = {"collegeId", "collegeName", "collegeCode", "schoolName", "deanName", "contactPhone", "statusText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, colleges, headers, fieldNames, "学院列表");
     }
 }
 

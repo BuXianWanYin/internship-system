@@ -22,7 +22,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -214,6 +219,146 @@ public class ExcelUtil {
             outputStream.flush();
         } finally {
             workbook.close();
+        }
+    }
+    
+    /**
+     * 通用导出方法：将数据列表导出为Excel文件
+     * @param response HTTP响应
+     * @param dataList 数据列表
+     * @param headers 表头数组
+     * @param fieldNames 字段名数组（对应数据对象的属性名）
+     * @param fileName 文件名（不含扩展名）
+     * @throws IOException IO异常
+     */
+    public static <T> void exportToExcel(HttpServletResponse response, 
+                                         List<T> dataList, 
+                                         String[] headers, 
+                                         String[] fieldNames, 
+                                         String fileName) throws IOException {
+        // 创建工作簿
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("数据导出");
+        
+        // 创建表头样式
+        CellStyle headerStyle = createHeaderStyle(workbook);
+        
+        // 创建数据样式
+        CellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setAlignment(HorizontalAlignment.LEFT);
+        dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+        
+        // 创建表头行
+        Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+            // 设置列宽（根据表头长度自动调整）
+            sheet.setColumnWidth(i, Math.max(headers[i].length() * 500, 3000));
+        }
+        
+        // 填充数据
+        if (dataList != null && !dataList.isEmpty()) {
+            int rowNum = 1;
+            for (T data : dataList) {
+                Row row = sheet.createRow(rowNum++);
+                for (int i = 0; i < fieldNames.length; i++) {
+                    Cell cell = row.createCell(i);
+                    Object value = getFieldValue(data, fieldNames[i]);
+                    setCellValue(cell, value);
+                    cell.setCellStyle(dataStyle);
+                }
+            }
+        }
+        
+        // 设置响应头
+        String encodedFileName = URLEncoder.encode(fileName + ".xlsx", StandardCharsets.UTF_8.toString());
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+        
+        // 写入响应流
+        try (OutputStream outputStream = response.getOutputStream()) {
+            workbook.write(outputStream);
+            outputStream.flush();
+        } finally {
+            workbook.close();
+        }
+    }
+    
+    /**
+     * 创建表头样式
+     */
+    private static CellStyle createHeaderStyle(Workbook workbook) {
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerFont.setFontHeightInPoints((short) 12);
+        headerStyle.setFont(headerFont);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        return headerStyle;
+    }
+    
+    /**
+     * 通过反射获取对象的字段值
+     */
+    private static Object getFieldValue(Object obj, String fieldName) {
+        if (obj == null || fieldName == null) {
+            return null;
+        }
+        try {
+            Field field = obj.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return field.get(obj);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            // 如果字段不存在，尝试通过getter方法获取
+            try {
+                String getterName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+                return obj.getClass().getMethod(getterName).invoke(obj);
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+    
+    /**
+     * 设置单元格值
+     */
+    private static void setCellValue(Cell cell, Object value) {
+        if (value == null) {
+            cell.setCellValue("");
+            return;
+        }
+        
+        if (value instanceof String) {
+            cell.setCellValue((String) value);
+        } else if (value instanceof Number) {
+            if (value instanceof Integer || value instanceof Long) {
+                cell.setCellValue(((Number) value).doubleValue());
+            } else {
+                cell.setCellValue(((Number) value).doubleValue());
+            }
+        } else if (value instanceof Boolean) {
+            cell.setCellValue((Boolean) value);
+        } else if (value instanceof Date) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            cell.setCellValue(sdf.format((Date) value));
+        } else if (value instanceof LocalDateTime) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            cell.setCellValue(((LocalDateTime) value).format(formatter));
+        } else {
+            cell.setCellValue(value.toString());
         }
     }
 }

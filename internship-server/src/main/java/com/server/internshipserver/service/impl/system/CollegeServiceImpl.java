@@ -51,6 +51,9 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
     @Autowired
     private MajorMapper majorMapper;
     
+    @Autowired
+    private com.server.internshipserver.mapper.system.SchoolMapper schoolMapper;
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public College addCollege(College college) {
@@ -243,6 +246,104 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         // 软删除
         college.setDeleteFlag(DeleteFlag.DELETED.getCode());
         return this.updateById(college);
+    }
+    
+    @Override
+    public List<College> getAllColleges(String collegeName, Long schoolId) {
+        LambdaQueryWrapper<College> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, College::getDeleteFlag);
+        
+        // 条件查询
+        if (StringUtils.hasText(collegeName)) {
+            wrapper.like(College::getCollegeName, collegeName);
+        }
+        
+        // 数据权限过滤（复用分页查询的逻辑）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            List<Class> classList = classMapper.selectList(
+                    new LambdaQueryWrapper<Class>()
+                            .in(Class::getClassId, currentUserClassIds)
+                            .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            if (classList != null && !classList.isEmpty()) {
+                List<Long> majorIds = classList.stream()
+                        .map(Class::getMajorId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+                if (!majorIds.isEmpty()) {
+                    List<Major> majors = majorMapper.selectList(
+                            new LambdaQueryWrapper<Major>()
+                                    .in(Major::getMajorId, majorIds)
+                                    .eq(Major::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(Major::getCollegeId)
+                    );
+                    if (majors != null && !majors.isEmpty()) {
+                        List<Long> collegeIds = majors.stream()
+                                .map(Major::getCollegeId)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .collect(Collectors.toList());
+                        if (!collegeIds.isEmpty()) {
+                            wrapper.in(College::getCollegeId, collegeIds);
+                        } else {
+                            wrapper.eq(College::getCollegeId, -1L);
+                        }
+                    } else {
+                        wrapper.eq(College::getCollegeId, -1L);
+                    }
+                } else {
+                    wrapper.eq(College::getCollegeId, -1L);
+                }
+            } else {
+                wrapper.eq(College::getCollegeId, -1L);
+            }
+        } else if (currentUserCollegeId != null) {
+            wrapper.eq(College::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            wrapper.eq(College::getSchoolId, currentUserSchoolId);
+        } else if (schoolId != null) {
+            wrapper.eq(College::getSchoolId, schoolId);
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(College::getCreateTime);
+        
+        List<College> colleges = this.list(wrapper);
+        
+        // 填充学校名称
+        if (colleges != null && !colleges.isEmpty()) {
+            List<Long> schoolIds = colleges.stream()
+                    .map(College::getSchoolId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!schoolIds.isEmpty() && schoolMapper != null) {
+                List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
+                if (schools != null && !schools.isEmpty()) {
+                    java.util.Map<Long, String> schoolNameMap = schools.stream()
+                            .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
+                            .collect(Collectors.toMap(
+                                    com.server.internshipserver.domain.system.School::getSchoolId,
+                                    com.server.internshipserver.domain.system.School::getSchoolName,
+                                    (v1, v2) -> v1
+                            ));
+                    for (College college : colleges) {
+                        if (college.getSchoolId() != null) {
+                            college.setSchoolName(schoolNameMap.get(college.getSchoolId()));
+                        }
+                    }
+                }
+            }
+        }
+        
+        return colleges;
     }
 }
 

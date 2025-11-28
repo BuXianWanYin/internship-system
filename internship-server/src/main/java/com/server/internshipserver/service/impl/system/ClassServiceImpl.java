@@ -567,5 +567,29 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         // 更新班级信息
         return this.updateById(classInfo);
     }
+    
+    @Override
+    public List<Class> getAllClasses(String className, Long majorId, Long collegeId, Long schoolId) {
+        LambdaQueryWrapper<Class> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, Class::getDeleteFlag);
+        
+        // 条件查询
+        if (StringUtils.hasText(className)) {
+            wrapper.like(Class::getClassName, className);
+        }
+        
+        // 筛选条件：学校ID、学院ID、专业ID
+        applyOrgFilter(wrapper, schoolId, collegeId, majorId);
+        
+        // 数据权限过滤
+        applyDataPermissionFilter(wrapper);
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Class::getCreateTime);
+        
+        return this.list(wrapper);
+    }
 }
 

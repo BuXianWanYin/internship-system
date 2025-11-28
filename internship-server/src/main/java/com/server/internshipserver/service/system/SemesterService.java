@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.Semester;
 import com.server.internshipserver.domain.system.dto.SemesterQueryDTO;
 
+import java.util.List;
+
 /**
  * 学期管理Service接口
  */
@@ -58,5 +60,12 @@ public interface SemesterService extends IService<Semester> {
      * @return 是否成功
      */
     boolean deleteSemester(Long semesterId);
+    
+    /**
+     * 查询所有学期列表（用于导出）
+     * @param queryDTO 查询条件
+     * @return 学期列表
+     */
+    List<Semester> getAllSemesters(SemesterQueryDTO queryDTO);
 }
 

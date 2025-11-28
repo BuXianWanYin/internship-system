@@ -277,5 +277,90 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         school.setStatus(UserStatus.DISABLED.getCode());
         return this.updateById(school);
     }
+    
+    @Override
+    public List<School> getAllSchools(String schoolName, String schoolCode) {
+        LambdaQueryWrapper<School> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(School::getDeleteFlag);
+        
+        // 条件查询
+        if (StringUtils.hasText(schoolName)) {
+            wrapper.like(School::getSchoolName, schoolName);
+        }
+        if (StringUtils.hasText(schoolCode)) {
+            wrapper.eq(School::getSchoolCode, schoolCode);
+        }
+        
+        // 数据权限过滤：学校管理员只能看到自己的学校
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+            if (currentUserSchoolId != null) {
+                wrapper.eq(School::getSchoolId, currentUserSchoolId);
+            } else {
+                // 如果没有学校ID，返回空结果
+                wrapper.eq(School::getSchoolId, -1L);
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(School::getCreateTime);
+        
+        List<School> schools = this.list(wrapper);
+        
+        // 填充负责人信息（从学校管理员中获取）
+        if (schools != null && !schools.isEmpty()) {
+            List<Long> schoolIds = schools.stream()
+                    .map(School::getSchoolId)
+                    .collect(Collectors.toList());
+            
+            // 查询所有学校的管理员
+            LambdaQueryWrapper<SchoolAdmin> adminWrapper = QueryWrapperUtil.buildNotDeletedWrapper(SchoolAdmin::getDeleteFlag);
+            adminWrapper.in(SchoolAdmin::getSchoolId, schoolIds)
+                    .eq(SchoolAdmin::getStatus, UserStatus.ENABLED.getCode());
+            List<SchoolAdmin> schoolAdmins = schoolAdminService.list(adminWrapper);
+            
+            // 获取所有管理员的用户ID
+            List<Long> userIds = schoolAdmins.stream()
+                    .map(SchoolAdmin::getUserId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            // 查询用户信息
+            List<UserInfo> users = null;
+            if (!userIds.isEmpty()) {
+                LambdaQueryWrapper<UserInfo> userWrapper = QueryWrapperUtil.buildNotDeletedWrapper(UserInfo::getDeleteFlag);
+                userWrapper.in(UserInfo::getUserId, userIds);
+                users = userMapper.selectList(userWrapper);
+            }
+            
+            // 构建用户ID到用户信息的映射
+            java.util.Map<Long, UserInfo> userMap = null;
+            if (users != null && !users.isEmpty()) {
+                userMap = users.stream()
+                        .collect(Collectors.toMap(UserInfo::getUserId, user -> user, (v1, v2) -> v1));
+            }
+            
+            // 构建学校ID到管理员的映射（取第一个启用的管理员）
+            java.util.Map<Long, SchoolAdmin> schoolAdminMap = schoolAdmins.stream()
+                    .collect(Collectors.toMap(
+                            SchoolAdmin::getSchoolId,
+                            admin -> admin,
+                            (v1, v2) -> v1  // 如果有多个管理员，取第一个
+                    ));
+            
+            // 填充负责人信息
+            for (School school : schools) {
+                SchoolAdmin admin = schoolAdminMap.get(school.getSchoolId());
+                if (admin != null && userMap != null) {
+                    UserInfo user = userMap.get(admin.getUserId());
+                    if (user != null) {
+                        school.setManagerName(user.getRealName());
+                        school.setManagerPhone(user.getPhone());
+                    }
+                }
+            }
+        }
+        
+        return schools;
+    }
 }
 
