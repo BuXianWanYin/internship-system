@@ -14,10 +14,18 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * Redis配置类
+ * 配置RedisTemplate，设置序列化方式为JSON格式
  */
 @Configuration
 public class RedisConfig {
 
+    /**
+     * 配置RedisTemplate
+     * 使用Jackson2JsonRedisSerializer序列化value，使用StringRedisSerializer序列化key
+     * 
+     * @param connectionFactory Redis连接工厂
+     * @return RedisTemplate Redis模板实例
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();

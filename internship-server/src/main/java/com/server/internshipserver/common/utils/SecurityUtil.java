@@ -6,6 +6,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 /**
  * 安全工具类
+ * 提供获取当前登录用户信息的方法，基于Spring Security的SecurityContext
  */
 public class SecurityUtil {
     

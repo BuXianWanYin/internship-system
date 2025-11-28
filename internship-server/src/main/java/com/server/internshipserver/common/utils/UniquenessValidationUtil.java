@@ -8,7 +8,7 @@ import com.server.internshipserver.common.exception.BusinessException;
 
 /**
  * 唯一性验证工具类
- * 用于封装检查字段唯一性的重复逻辑
+ * 提供字段唯一性验证的方法，支持单字段唯一性和组合字段唯一性验证
  */
 public final class UniquenessValidationUtil {
     

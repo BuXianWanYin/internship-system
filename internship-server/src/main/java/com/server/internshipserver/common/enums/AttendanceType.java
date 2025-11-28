@@ -2,6 +2,7 @@ package com.server.internshipserver.common.enums;
 
 /**
  * 考勤类型枚举
+ * 定义学生实习期间的考勤状态类型
  */
 public enum AttendanceType {
     /**
@@ -34,18 +35,41 @@ public enum AttendanceType {
      */
     REST(6, "休息");
 
+    /**
+     * 类型代码
+     */
     private final int code;
+    
+    /**
+     * 类型描述
+     */
     private final String desc;
 
+    /**
+     * 构造函数
+     * 
+     * @param code 类型代码
+     * @param desc 类型描述
+     */
     AttendanceType(int code, String desc) {
         this.code = code;
         this.desc = desc;
     }
 
+    /**
+     * 获取类型代码
+     * 
+     * @return 类型代码
+     */
     public int getCode() {
         return code;
     }
 
+    /**
+     * 获取类型描述
+     * 
+     * @return 类型描述
+     */
     public String getDesc() {
         return desc;
     }

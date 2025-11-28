@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 
 /**
  * 实体默认值设置工具类
- * 用于封装设置实体默认值的重复逻辑
+ * 通过反射机制为实体对象设置默认值，如删除标志、状态等
  */
 public final class EntityDefaultValueUtil {
     

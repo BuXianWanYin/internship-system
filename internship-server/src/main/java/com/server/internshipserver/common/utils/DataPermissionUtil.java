@@ -42,30 +42,57 @@ import java.util.stream.Collectors;
 @Component
 public class DataPermissionUtil {
     
+    /**
+     * 用户Mapper
+     */
     @Autowired
     private UserMapper userMapper;
     
+    /**
+     * 学生Mapper
+     */
     @Autowired
     private StudentMapper studentMapper;
     
+    /**
+     * 教师Mapper
+     */
     @Autowired
     private TeacherMapper teacherMapper;
     
+    /**
+     * 学校管理员Mapper
+     */
     @Autowired
     private SchoolAdminMapper schoolAdminMapper;
     
+    /**
+     * 企业Mapper
+     */
     @Autowired
     private EnterpriseMapper enterpriseMapper;
     
+    /**
+     * 企业导师Mapper
+     */
     @Autowired
     private EnterpriseMentorMapper enterpriseMentorMapper;
     
+    /**
+     * 校企合作Mapper
+     */
     @Autowired
     private EnterpriseSchoolCooperationMapper cooperationMapper;
     
+    /**
+     * 班级Mapper
+     */
     @Autowired
     private ClassMapper classMapper;
     
+    /**
+     * 实习申请Mapper
+     */
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
     

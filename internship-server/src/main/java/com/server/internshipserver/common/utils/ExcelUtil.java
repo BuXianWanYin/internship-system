@@ -27,6 +27,7 @@ import java.util.List;
 
 /**
  * Excel工具类
+ * 提供Excel文件的解析和生成功能，主要用于学生数据的导入导出
  */
 public class ExcelUtil {
     
@@ -110,7 +111,11 @@ public class ExcelUtil {
     }
     
     /**
-     * 获取单元格值（字符串）
+     * 获取单元格值（转换为字符串）
+     * 支持字符串、数字、日期、布尔值、公式等类型的单元格
+     * 
+     * @param cell Excel单元格对象
+     * @return 单元格值的字符串表示，如果单元格为空则返回null
      */
     private static String getCellValue(Cell cell) {
         if (cell == null) {

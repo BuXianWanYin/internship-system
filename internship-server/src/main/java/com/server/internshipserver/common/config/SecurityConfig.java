@@ -20,25 +20,46 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Spring Security配置类
+ * Spring Security安全配置类
+ * 配置JWT认证、权限控制、CORS等安全相关功能
  */
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
     
+    /**
+     * JWT认证过滤器
+     */
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
     
+    /**
+     * 自定义认证成功处理器
+     */
     @Autowired
     private CustomAuthenticationSuccessHandler authenticationSuccessHandler;
     
+    /**
+     * 自定义认证失败处理器
+     */
     @Autowired
     private CustomAuthenticationFailureHandler authenticationFailureHandler;
     
+    /**
+     * 自定义访问拒绝处理器
+     */
     @Autowired
     private CustomAccessDeniedHandler accessDeniedHandler;
 
+    /**
+     * 配置安全过滤器链
+     * 设置请求权限、JWT过滤器、异常处理等
+     * 
+     * @param http HttpSecurity对象
+     * @return SecurityFilterChain 安全过滤器链
+     * @throws Exception 配置异常
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -85,11 +106,24 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * 配置认证管理器
+     * 
+     * @param authConfig 认证配置
+     * @return AuthenticationManager 认证管理器
+     * @throws Exception 配置异常
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
+    /**
+     * 配置密码编码器
+     * 使用BCrypt算法对密码进行加密
+     * 
+     * @return PasswordEncoder 密码编码器实例
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

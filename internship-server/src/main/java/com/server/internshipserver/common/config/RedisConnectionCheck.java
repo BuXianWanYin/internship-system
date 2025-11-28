@@ -16,14 +16,30 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisConnectionCheck implements ApplicationListener<ApplicationReadyEvent> {
     
+    /**
+     * 日志记录器
+     */
     private static final Logger logger = LoggerFactory.getLogger(RedisConnectionCheck.class);
     
+    /**
+     * Redis模板
+     */
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
     
+    /**
+     * Redis连接工厂
+     */
     @Autowired
     private RedisConnectionFactory redisConnectionFactory;
     
+    /**
+     * 应用启动完成事件处理
+     * 在应用启动完成后检查Redis连接是否正常
+     * 
+     * @param event 应用启动完成事件
+     * @throws RuntimeException 如果Redis连接失败
+     */
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
         logger.info("开始检查Redis连接...");

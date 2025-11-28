@@ -14,16 +14,26 @@ import java.util.function.Function;
 
 /**
  * JWT工具类
+ * 提供JWT Token的生成、解析、验证和刷新功能
  */
 @Component
 public class JwtUtil {
     
+    /**
+     * JWT密钥
+     */
     @Value("${jwt.secret}")
     private String secret;
     
+    /**
+     * JWT Token过期时间（毫秒）
+     */
     @Value("${jwt.expiration}")
     private Long expiration;
     
+    /**
+     * JWT刷新Token过期时间（毫秒）
+     */
     @Value("${jwt.refresh-expiration}")
     private Long refreshExpiration;
 
@@ -51,6 +61,9 @@ public class JwtUtil {
 
     /**
      * 从Token中获取所有Claims
+     * 
+     * @param token JWT Token字符串
+     * @return Claims对象
      */
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
@@ -58,6 +71,9 @@ public class JwtUtil {
 
     /**
      * 判断Token是否过期
+     * 
+     * @param token JWT Token字符串
+     * @return true表示已过期，false表示未过期
      */
     private Boolean isTokenExpired(String token) {
         final Date expiration = getExpirationDateFromToken(token);
@@ -81,7 +97,11 @@ public class JwtUtil {
     }
 
     /**
-     * 创建Token
+     * 创建JWT Token
+     * 
+     * @param claims 自定义Claims
+     * @param subject Token主题（通常是用户名）
+     * @return JWT Token字符串
      */
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()

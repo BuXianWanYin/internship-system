@@ -6,10 +6,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Web MVC配置类
+ * 配置静态资源访问路径，包括Swagger UI资源和文件上传资源
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    /**
+     * 添加静态资源处理器
+     * 配置Swagger UI和文件上传资源的访问路径
+     * 
+     * @param registry 资源处理器注册表
+     */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Swagger UI资源

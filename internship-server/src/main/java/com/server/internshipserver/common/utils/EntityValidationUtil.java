@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * 实体验证工具类
- * 用于封装实体存在性和删除标志检查等重复逻辑
+ * 提供实体存在性、状态、ID等字段的验证方法，统一验证逻辑
  */
 public class EntityValidationUtil {
     

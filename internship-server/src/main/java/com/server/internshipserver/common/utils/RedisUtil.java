@@ -10,12 +10,19 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Redis工具类
+ * 封装Redis的常用操作，包括设置、获取、删除、判断存在、设置过期时间等
  */
 @Component
 public class RedisUtil {
     
+    /**
+     * 日志记录器
+     */
     private static final Logger logger = LoggerFactory.getLogger(RedisUtil.class);
     
+    /**
+     * Redis模板
+     */
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 

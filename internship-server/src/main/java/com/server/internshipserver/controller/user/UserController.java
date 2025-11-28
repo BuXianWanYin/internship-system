@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,30 +35,24 @@ public class UserController {
     @Autowired
     private UserService userService;
     
+    /**
+     * 分页查询用户列表
+     * 
+     * @param queryDTO 查询条件DTO（包含分页参数和查询条件）
+     * @return 用户分页列表
+     */
     @ApiOperation("分页查询用户列表")
     @GetMapping("/page")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
-    public Result<Page<UserInfo>> getUserPage(
-            @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
-            @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "用户名（可选）") @RequestParam(required = false) String username,
-            @ApiParam(value = "真实姓名（可选）") @RequestParam(required = false) String realName,
-            @ApiParam(value = "手机号（可选）") @RequestParam(required = false) String phone,
-            @ApiParam(value = "状态：1-启用，0-禁用（可选）") @RequestParam(required = false) Integer status,
-            @ApiParam(value = "角色代码（可选，多个用逗号分隔，如：ROLE_STUDENT,ROLE_TEACHER）") @RequestParam(required = false) String roleCodes,
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
-            @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId) {
-        Page<UserInfo> page = new Page<>(current, size);
-        UserQueryDTO queryDTO = new UserQueryDTO();
-        queryDTO.setUsername(username);
-        queryDTO.setRealName(realName);
-        queryDTO.setPhone(phone);
-        queryDTO.setStatus(status);
-        queryDTO.setRoleCodes(roleCodes);
-        queryDTO.setSchoolId(schoolId);
-        queryDTO.setCollegeId(collegeId);
-        queryDTO.setClassId(classId);
+    public Result<Page<UserInfo>> getUserPage(@ModelAttribute UserQueryDTO queryDTO) {
+        // 设置默认分页值
+        if (queryDTO.getCurrent() == null || queryDTO.getCurrent() < 1) {
+            queryDTO.setCurrent(1L);
+        }
+        if (queryDTO.getSize() == null || queryDTO.getSize() < 1) {
+            queryDTO.setSize(10L);
+        }
+        Page<UserInfo> page = new Page<>(queryDTO.getCurrent(), queryDTO.getSize());
         Page<UserInfo> result = userService.getUserPage(page, queryDTO);
         return Result.success("查询成功", result);
     }

@@ -1,7 +1,8 @@
 package com.server.internshipserver.common.constant;
 
 /**
- * 系统常量定义
+ * 系统常量定义类
+ * 定义系统中使用的各种常量，包括Token相关、Redis Key前缀、角色常量、默认值等
  */
 public class Constants {
     

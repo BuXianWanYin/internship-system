@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 日期验证工具类
- * 用于封装日期范围验证的重复逻辑
+ * 提供日期和日期时间范围验证的方法，确保日期逻辑的正确性
  */
 public final class DateValidationUtil {
     

@@ -1,7 +1,8 @@
 package com.server.internshipserver.common.result;
 
 /**
- * 响应码定义
+ * 响应码枚举类
+ * 定义系统中所有可能的响应码和对应的消息
  */
 public enum ResultCode {
     /**
@@ -74,18 +75,41 @@ public enum ResultCode {
      */
     OPERATION_FAILED(1007, "操作失败");
 
+    /**
+     * 响应码
+     */
     private final int code;
+    
+    /**
+     * 响应消息
+     */
     private final String message;
 
+    /**
+     * 构造函数
+     * 
+     * @param code 响应码
+     * @param message 响应消息
+     */
     ResultCode(int code, String message) {
         this.code = code;
         this.message = message;
     }
 
+    /**
+     * 获取响应码
+     * 
+     * @return 响应码
+     */
     public int getCode() {
         return code;
     }
 
+    /**
+     * 获取响应消息
+     * 
+     * @return 响应消息
+     */
     public String getMessage() {
         return message;
     }

@@ -8,7 +8,7 @@ import java.util.Collection;
 
 /**
  * 查询Wrapper工具类
- * 用于封装查询条件构建的重复逻辑
+ * 用于封装MyBatis Plus查询条件构建的重复逻辑，提供常用的查询条件构建方法
  */
 public final class QueryWrapperUtil {
     

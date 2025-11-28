@@ -2,6 +2,7 @@ package com.server.internshipserver.common.enums;
 
 /**
  * 实习申请状态枚举
+ * 定义学生实习申请的状态：待审核、已通过、已拒绝、已录用、已拒绝录用、已取消
  */
 public enum InternshipApplyStatus {
     /**
@@ -34,24 +35,50 @@ public enum InternshipApplyStatus {
      */
     CANCELLED(5, "已取消");
 
+    /**
+     * 状态代码
+     */
     private final int code;
+    
+    /**
+     * 状态描述
+     */
     private final String desc;
 
+    /**
+     * 构造函数
+     * 
+     * @param code 状态代码
+     * @param desc 状态描述
+     */
     InternshipApplyStatus(int code, String desc) {
         this.code = code;
         this.desc = desc;
     }
 
+    /**
+     * 获取状态代码
+     * 
+     * @return 状态代码
+     */
     public int getCode() {
         return code;
     }
 
+    /**
+     * 获取状态描述
+     * 
+     * @return 状态描述
+     */
     public String getDesc() {
         return desc;
     }
     
     /**
-     * 根据code获取枚举
+     * 根据代码获取枚举值
+     * 
+     * @param code 状态代码
+     * @return 对应的枚举值，如果不存在则返回null
      */
     public static InternshipApplyStatus getByCode(int code) {
         for (InternshipApplyStatus status : values()) {

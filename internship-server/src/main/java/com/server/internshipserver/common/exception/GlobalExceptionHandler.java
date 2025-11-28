@@ -19,10 +19,14 @@ import java.util.stream.Collectors;
 
 /**
  * 全局异常处理器
+ * 统一处理系统中抛出的各种异常，返回统一的响应格式
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
+    /**
+     * 日志记录器
+     */
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**

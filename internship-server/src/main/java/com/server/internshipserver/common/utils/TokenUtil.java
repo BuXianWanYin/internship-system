@@ -6,6 +6,7 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Token工具类
+ * 提供从HTTP请求中提取JWT Token的工具方法
  */
 public class TokenUtil {
     
