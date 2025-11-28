@@ -21,7 +21,9 @@ import {
   Clock,
   Files,
   ChatLineRound,
-  List
+  List,
+  Star,
+  DataAnalysis
 } from '@element-plus/icons-vue'
 
 /**
@@ -304,6 +306,12 @@ export const menuItems = [
         title: '问题反馈处理',
         icon: ChatLineRound,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
+        index: '/enterprise/evaluation/student',
+        title: '学生评价',
+        icon: Star,
+        roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       }
     ]
   },
@@ -368,6 +376,18 @@ export const menuItems = [
         title: '问题反馈',
         icon: ChatLineRound,
         roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/evaluation/self',
+        title: '自我评价',
+        icon: Star,
+        roles: ['ROLE_STUDENT']
+      },
+      {
+        index: '/student/evaluation/comprehensive-score',
+        title: '综合成绩',
+        icon: DataAnalysis,
+        roles: ['ROLE_STUDENT']
       }
     ]
   },
@@ -402,6 +422,12 @@ export const menuItems = [
         title: '问题反馈处理',
         icon: ChatLineRound,
         roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      },
+      {
+        index: '/teacher/evaluation/student',
+        title: '学生评价',
+        icon: Star,
+        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
   }

@@ -4,6 +4,7 @@ import { hasAnyRole } from '@/utils/permission'
 import systemRoutes from './modules/system'
 import userRoutes from './modules/user'
 import internshipRoutes from './modules/internship'
+import evaluationRoutes from './modules/evaluation'
 
 // 基础路由配置
 const baseRoutes = [
@@ -76,7 +77,8 @@ const routes = [
   ...baseRoutes,
   ...systemRoutes,
   ...userRoutes,
-  ...internshipRoutes
+  ...internshipRoutes,
+  ...evaluationRoutes
 ]
 
 const router = createRouter({
