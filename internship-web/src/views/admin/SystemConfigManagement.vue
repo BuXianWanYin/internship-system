@@ -17,13 +17,18 @@
           />
         </el-form-item>
         <el-form-item label="配置类型">
-          <el-input
+          <el-select
             v-model="searchForm.configType"
-            placeholder="请输入配置类型"
+            placeholder="请选择配置类型"
             clearable
             style="width: 200px"
-            @keyup.enter="handleSearch"
-          />
+          >
+            <el-option label="分享码配置" value="share_code" />
+            <el-option label="企业配置" value="enterprise" />
+            <el-option label="学校配置" value="school" />
+            <el-option label="学生配置" value="student" />
+            <el-option label="其他" value="other" />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
@@ -70,26 +75,37 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="600px"
+      width="700px"
       :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="formData"
         :rules="formRules"
-        label-width="100px"
+        label-width="120px"
       >
         <el-form-item label="配置键" prop="configKey">
-          <el-input v-model="formData.configKey" placeholder="请输入配置键" />
+          <el-input 
+            v-model="formData.configKey" 
+            placeholder="请输入配置键" 
+            :disabled="!!formData.configId"
+          />
         </el-form-item>
         <el-form-item label="配置值" prop="configValue">
           <el-input v-model="formData.configValue" type="textarea" :rows="3" placeholder="请输入配置值" />
         </el-form-item>
         <el-form-item label="配置类型" prop="configType">
-          <el-input v-model="formData.configType" placeholder="请输入配置类型" />
+          <el-select v-model="formData.configType" placeholder="请选择或输入配置类型" filterable allow-create>
+            <el-option label="分享码配置" value="share_code" />
+            <el-option label="评价权重配置" value="evaluation" />
+            <el-option label="企业配置" value="enterprise" />
+            <el-option label="学校配置" value="school" />
+            <el-option label="学生配置" value="student" />
+            <el-option label="其他" value="other" />
+          </el-select>
         </el-form-item>
         <el-form-item label="配置描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="2" placeholder="请输入配置描述" />
+          <el-input v-model="formData.description" type="textarea" :rows="2" placeholder="请输入配置描述，说明该配置的用途" />
         </el-form-item>
       </el-form>
       <template #footer>

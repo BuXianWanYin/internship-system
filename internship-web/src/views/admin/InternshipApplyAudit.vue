@@ -60,6 +60,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExportInternshipSummary"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -415,14 +423,17 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh, Document } from '@element-plus/icons-vue'
+import { Search, Refresh, Document, Download } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
+import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const auditLoading = ref(false)
+const exportLoading = ref(false)
 const detailDialogVisible = ref(false)
 const auditDialogVisible = ref(false)
 const auditDialogTitle = ref('审核申请')
@@ -726,6 +737,32 @@ const handleSubmitUnbind = async () => {
       unbindLoading.value = false
     }
   })
+}
+
+// 导出实习情况汇总表
+const handleExportInternshipSummary = async () => {
+  exportLoading.value = true
+  try {
+    // 构建导出参数，使用当前页面的筛选条件
+    const params = {
+      studentName: searchForm.studentName || undefined,
+      studentNo: searchForm.studentNo || undefined,
+      applyType: searchForm.applyType !== null ? searchForm.applyType : undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined,
+      unbindStatus: searchForm.unbindStatus !== null ? searchForm.unbindStatus : undefined
+    }
+    
+    await exportExcel(
+      reportApi.exportInternshipSummaryReport,
+      params,
+      '实习情况汇总表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 // 初始化

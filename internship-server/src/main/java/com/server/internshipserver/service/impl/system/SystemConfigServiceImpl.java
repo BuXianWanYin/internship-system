@@ -47,8 +47,11 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
             throw new BusinessException("配置ID不能为空");
         }
         
-        // 检查配置是否存在
-        SystemConfig existConfig = this.getById(config.getConfigId());
+        // 检查配置是否存在（只查询未删除的）
+        LambdaQueryWrapper<SystemConfig> existWrapper = new LambdaQueryWrapper<>();
+        existWrapper.eq(SystemConfig::getConfigId, config.getConfigId())
+                    .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        SystemConfig existConfig = this.getOne(existWrapper);
         EntityValidationUtil.validateEntityExists(existConfig, "配置");
         
         // 如果修改了配置键，检查新键是否已存在
@@ -60,14 +63,21 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         
         // 更新
         this.updateById(config);
-        return this.getById(config.getConfigId());
+        // 返回更新后的配置（只查询未删除的）
+        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SystemConfig::getConfigId, config.getConfigId())
+               .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        return this.getOne(wrapper);
     }
     
     @Override
     public SystemConfig getConfigById(Long configId) {
         EntityValidationUtil.validateIdNotNull(configId, "配置ID");
         
-        SystemConfig config = this.getById(configId);
+        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SystemConfig::getConfigId, configId)
+               .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        SystemConfig config = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(config, "配置");
         
         return config;
@@ -111,7 +121,11 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     public boolean deleteConfig(Long configId) {
         EntityValidationUtil.validateIdNotNull(configId, "配置ID");
         
-        SystemConfig config = this.getById(configId);
+        // 检查配置是否存在（只查询未删除的）
+        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SystemConfig::getConfigId, configId)
+               .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        SystemConfig config = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(config, "配置");
         
         // 软删除

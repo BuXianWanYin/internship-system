@@ -38,6 +38,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExportStudentList"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -73,9 +81,19 @@
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right" align="center">
+      <el-table-column label="操作" width="250" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
+          <el-button 
+            link 
+            type="success" 
+            size="small" 
+            :icon="Download"
+            @click="handleExportStudentReport(row)"
+            v-if="row.applyId"
+          >
+            导出报告
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -140,9 +158,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Download } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
+import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -248,6 +268,53 @@ const handleView = async (row) => {
   } catch (error) {
     console.error('获取详情失败:', error)
     ElMessage.error(error.response?.data?.message || '获取详情失败')
+  }
+}
+
+// 导出学生列表
+const handleExportStudentList = async () => {
+  exportLoading.value = true
+  try {
+    // 构建导出参数，使用当前页面的筛选条件
+    const params = {
+      studentName: searchForm.studentName || undefined,
+      studentNo: searchForm.studentNo || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined
+    }
+    
+    // 注意：这里需要后端提供导师学生列表导出接口
+    await exportExcel(
+      reportApi.exportInternshipSummaryReport,
+      params,
+      '我指导的学生列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// 导出学生个人实习报告
+const handleExportStudentReport = async (row) => {
+  if (!row.applyId) {
+    ElMessage.warning('该学生暂无实习申请')
+    return
+  }
+  
+  exportLoading.value = true
+  try {
+    await exportExcel(
+      () => reportApi.exportStudentInternshipReport(row.applyId),
+      {},
+      `学生实习报告_${row.studentNo}_${row.studentName}`
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

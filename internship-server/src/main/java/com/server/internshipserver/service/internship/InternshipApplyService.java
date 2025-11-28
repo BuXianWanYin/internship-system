@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.dto.AuditApplyDTO;
-import com.server.internshipserver.domain.internship.dto.AuditUnbindDTO;
 import com.server.internshipserver.domain.internship.dto.FilterApplyDTO;
 import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
 

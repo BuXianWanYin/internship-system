@@ -3,12 +3,14 @@ package com.server.internshipserver.service.impl.evaluation;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.server.internshipserver.common.constant.ConfigKeys;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.SystemConfigUtil;
 import com.server.internshipserver.domain.evaluation.ComprehensiveScore;
 import com.server.internshipserver.domain.evaluation.EnterpriseEvaluation;
 import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
@@ -91,10 +93,21 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
         BigDecimal schoolScore = schoolEval.getTotalScore();
         BigDecimal selfScore = selfEval.getSelfScore();
         
-        // 计算综合成绩：企业40% + 学校40% + 自评20%
-        BigDecimal enterprisePart = enterpriseScore.multiply(new BigDecimal("0.4"));
-        BigDecimal schoolPart = schoolScore.multiply(new BigDecimal("0.4"));
-        BigDecimal selfPart = selfScore.multiply(new BigDecimal("0.2"));
+        // 从系统配置读取权重，默认值：企业40%、学校40%、自评20%
+        BigDecimal enterpriseWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.ENTERPRISE_EVALUATION_WEIGHT, "0.4"));
+        BigDecimal schoolWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.SCHOOL_EVALUATION_WEIGHT, "0.4"));
+        BigDecimal selfWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.STUDENT_SELF_EVALUATION_WEIGHT, "0.2"));
+        
+        // 验证权重总和是否为1.0（允许0.01的误差）
+        BigDecimal totalWeight = enterpriseWeight.add(schoolWeight).add(selfWeight);
+        if (totalWeight.compareTo(new BigDecimal("1.0")) < 0 || totalWeight.compareTo(new BigDecimal("1.01")) > 0) {
+            throw new BusinessException("评价权重配置错误，三个权重之和必须等于1.0");
+        }
+        
+        // 计算综合成绩：企业评价×权重 + 学校评价×权重 + 自评×权重
+        BigDecimal enterprisePart = enterpriseScore.multiply(enterpriseWeight);
+        BigDecimal schoolPart = schoolScore.multiply(schoolWeight);
+        BigDecimal selfPart = selfScore.multiply(selfWeight);
         BigDecimal comprehensiveScore = enterprisePart.add(schoolPart).add(selfPart).setScale(2, RoundingMode.HALF_UP);
         
         // 计算等级

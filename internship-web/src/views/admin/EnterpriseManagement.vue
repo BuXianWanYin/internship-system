@@ -47,6 +47,15 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExportCooperationReport"
+            :loading="exportLoading"
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN'])"
+          >
+            导出合作情况表
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -587,19 +596,22 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Download } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, hasRole } from '@/utils/permission'
 import { enterpriseApi } from '@/api/user/enterprise'
 import { enterpriseRegisterSchoolApi } from '@/api/user/enterpriseRegisterSchool'
 import { cooperationApi } from '@/api/cooperation'
 import { schoolApi } from '@/api/system/school'
+import { reportApi } from '@/api/report'
 import { formatDateTime } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
 
 // 加载状态
 const loading = ref(false)
 const submitting = ref(false)
 const auditing = ref(false)
+const exportLoading = ref(false)
 
 // 搜索表单
 const searchForm = reactive({
@@ -1228,6 +1240,30 @@ const resetCooperationForm = () => {
     cooperationDesc: ''
   })
   cooperationFormRef.value?.clearValidate()
+}
+
+// 导出企业合作情况表
+const handleExportCooperationReport = async () => {
+  exportLoading.value = true
+  try {
+    // 构建导出参数，使用当前页面的筛选条件
+    const params = {
+      enterpriseName: searchForm.enterpriseName || undefined,
+      enterpriseCode: searchForm.enterpriseCode || undefined,
+      auditStatus: searchForm.auditStatus !== null ? searchForm.auditStatus : undefined
+    }
+    
+    await exportExcel(
+      reportApi.exportEnterpriseCooperationReport,
+      params,
+      '企业合作情况表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 // 初始化

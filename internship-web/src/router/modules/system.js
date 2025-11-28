@@ -59,7 +59,7 @@ export default [
     meta: {
       title: '系统配置',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      roles: ['ROLE_SYSTEM_ADMIN']
     }
   },
   {

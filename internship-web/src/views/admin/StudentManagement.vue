@@ -128,6 +128,14 @@
             <el-form-item>
               <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
               <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+              <el-button 
+                type="success" 
+                :icon="Download" 
+                @click="handleExportStudentList"
+                :loading="exportLoading"
+              >
+                导出Excel
+              </el-button>
             </el-form-item>
           </el-form>
         </div>
@@ -197,10 +205,20 @@
             </template>
           </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column label="操作" width="280" fixed="right" align="center">
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button 
+                link 
+                type="success" 
+                size="small" 
+                :icon="Download"
+                @click="handleExportStudentReport(row)"
+                v-if="row.currentApplyId"
+              >
+                导出报告
+              </el-button>
               <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
             </template>
           </el-table-column>
@@ -566,6 +584,8 @@ import { schoolApi } from '@/api/system/school'
 import { collegeApi } from '@/api/system/college'
 import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
+import { reportApi } from '@/api/report'
+import { exportExcel } from '@/utils/exportUtils'
 
 // 权限相关
 const authStore = useAuthStore()
@@ -576,6 +596,7 @@ const activeTab = ref('list')
 
 // ========== 学生列表相关 ==========
 const loading = ref(false)
+const exportLoading = ref(false)
 const tableData = ref([])
 const userInfoMap = ref({})
 const classMap = ref({})
@@ -1425,6 +1446,58 @@ const loadCurrentUserOrgInfo = async () => {
     }
   } catch (error) {
     console.error('获取组织信息失败:', error)
+  }
+}
+
+// 导出学生列表
+const handleExportStudentList = async () => {
+  exportLoading.value = true
+  try {
+    // 构建导出参数，使用当前页面的筛选条件
+    const params = {
+      studentNo: searchForm.studentNo || undefined,
+      schoolId: searchForm.schoolId || undefined,
+      collegeId: searchForm.collegeId || undefined,
+      majorId: searchForm.majorId || undefined,
+      classId: searchForm.classId || undefined,
+      status: searchForm.status !== null ? searchForm.status : undefined,
+      enrollmentYear: searchForm.enrollmentYear || undefined
+    }
+    
+    // 注意：这里需要后端提供学生列表导出接口
+    // 暂时使用实习情况汇总表接口，或者需要创建新的学生列表导出接口
+    await exportExcel(
+      reportApi.exportInternshipSummaryReport, // 或者 studentApi.exportStudentList
+      params,
+      '学生列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// 导出学生个人实习报告
+const handleExportStudentReport = async (row) => {
+  if (!row.currentApplyId) {
+    ElMessage.warning('该学生暂无实习申请')
+    return
+  }
+  
+  exportLoading.value = true
+  try {
+    await exportExcel(
+      () => reportApi.exportStudentInternshipReport(row.currentApplyId),
+      {},
+      `学生实习报告_${row.studentNo}_${userInfoMap.value[row.userId]?.realName || ''}`
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
   }
 }
 

@@ -4,12 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.constant.ConfigKeys;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.SystemConfigUtil;
 import com.server.internshipserver.common.utils.UniquenessValidationUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.common.exception.BusinessException;
@@ -352,7 +354,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         // 生成新的分享码
         String shareCode = generateUniqueShareCode();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expireTime = now.plusDays(Constants.SHARE_CODE_EXPIRE_DAYS);
+        // 从系统配置读取分享码有效期，默认30天
+        int expireDays = SystemConfigUtil.getConfigValueInt(ConfigKeys.SHARE_CODE_EXPIRE_DAYS, Constants.SHARE_CODE_EXPIRE_DAYS);
+        LocalDateTime expireTime = now.plusDays(expireDays);
         
         classInfo.setShareCode(shareCode);
         classInfo.setShareCodeGenerateTime(now);
@@ -371,7 +375,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         // 生成新的分享码
         String shareCode = generateUniqueShareCode();
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expireTime = now.plusDays(Constants.SHARE_CODE_EXPIRE_DAYS);
+        // 从系统配置读取分享码有效期，默认30天
+        int expireDays = SystemConfigUtil.getConfigValueInt(ConfigKeys.SHARE_CODE_EXPIRE_DAYS, Constants.SHARE_CODE_EXPIRE_DAYS);
+        LocalDateTime expireTime = now.plusDays(expireDays);
         
         classInfo.setShareCode(shareCode);
         classInfo.setShareCodeGenerateTime(now);
@@ -457,9 +463,12 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         String shareCode;
         int maxAttempts = 100; // 最多尝试100次
         
+        // 从系统配置读取分享码长度，默认8位
+        int shareCodeLength = SystemConfigUtil.getConfigValueInt(ConfigKeys.SHARE_CODE_LENGTH, Constants.SHARE_CODE_LENGTH);
+        
         do {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < Constants.SHARE_CODE_LENGTH; i++) {
+            for (int i = 0; i < shareCodeLength; i++) {
                 sb.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
             }
             shareCode = sb.toString();

@@ -50,7 +50,7 @@ public class SystemConfigController {
     }
     
     @ApiOperation("查询配置详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     @GetMapping("/{id}")
     public Result<SystemConfig> getConfigById(
             @ApiParam(value = "配置ID", required = true) @PathVariable Long id) {
@@ -59,6 +59,7 @@ public class SystemConfigController {
     }
     
     @ApiOperation("根据配置键查询配置")
+    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     @GetMapping("/key/{key}")
     public Result<SystemConfig> getConfigByKey(
             @ApiParam(value = "配置键", required = true) @PathVariable String key) {
@@ -67,7 +68,7 @@ public class SystemConfigController {
     }
     
     @ApiOperation("分页查询配置列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     @GetMapping("/page")
     public Result<Page<SystemConfig>> getConfigPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,

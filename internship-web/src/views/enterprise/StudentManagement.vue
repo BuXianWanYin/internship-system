@@ -33,6 +33,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExportStudentList"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -65,10 +73,20 @@
           <el-tag v-else type="info" size="small">未解绑</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right" align="center">
+      <el-table-column label="操作" width="360" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button link type="success" size="small" @click="handleAssignMentor(row)">分配导师</el-button>
+          <el-button 
+            link 
+            type="success" 
+            size="small" 
+            :icon="Download"
+            @click="handleExportStudentReport(row)"
+            v-if="row.applyId"
+          >
+            导出报告
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -177,13 +195,16 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Download } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
 import { enterpriseMentorApi } from '@/api/user/enterpriseMentor'
+import { reportApi } from '@/api/report'
 import { formatDateTime } from '@/utils/dateUtils'
+import { exportExcel } from '@/utils/exportUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
+const exportLoading = ref(false)
 const tableData = ref([])
 const searchForm = reactive({
   studentName: '',
@@ -332,7 +353,53 @@ const handleSubmitAssignMentor = async () => {
     }
   })
 }
+// 导出学生列表
+const handleExportStudentList = async () => {
+  exportLoading.value = true
+  try {
+    // 构建导出参数，使用当前页面的筛选条件
+    const params = {
+      studentName: searchForm.studentName || undefined,
+      studentNo: searchForm.studentNo || undefined,
+      postName: searchForm.postName || undefined
+    }
+    
+    // 注意：这里需要后端提供企业学生列表导出接口
+    // 暂时使用实习情况汇总表接口，或者需要创建新的接口
+    await exportExcel(
+      reportApi.exportInternshipSummaryReport,
+      params,
+      '实习学生列表'
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
+}
 
+// 导出学生个人实习报告
+const handleExportStudentReport = async (row) => {
+  if (!row.applyId) {
+    ElMessage.warning('该学生暂无实习申请')
+    return
+  }
+  
+  exportLoading.value = true
+  try {
+    await exportExcel(
+      () => reportApi.exportStudentInternshipReport(row.applyId),
+      {},
+      `学生实习报告_${row.studentNo}_${row.studentName}`
+    )
+    ElMessage.success('导出成功')
+  } catch (error) {
+    // 错误已在 exportExcel 中处理
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 onMounted(() => {
   loadData()

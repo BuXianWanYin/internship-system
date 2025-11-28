@@ -125,13 +125,13 @@ export const menuItems = [
     index: 'system',
     title: '系统管理',
     icon: Setting,
-    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
+    roles: ['ROLE_SYSTEM_ADMIN'],
     children: [
       {
         index: '/admin/system/config',
         title: '系统配置',
         icon: Tools,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+        roles: ['ROLE_SYSTEM_ADMIN']
       }
     ]
   },
