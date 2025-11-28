@@ -68,6 +68,10 @@ export const applyApi = {
   // 获取当前学生的实习申请（已确认上岗的）
   getCurrentInternship() {
     return request.get('/internship/apply/current')
+  },
+  // 查询企业导师指导的学生列表
+  getMentorStudents(params) {
+    return request.get('/internship/apply/mentor/students', { params })
   }
 }
 
