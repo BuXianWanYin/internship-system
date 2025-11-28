@@ -139,6 +139,7 @@ public class UserController {
     }
     
     @ApiOperation("获取当前登录用户信息")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/current")
     public Result<UserInfo> getCurrentUser() {
         UserInfo user = userService.getCurrentUser();
@@ -146,6 +147,7 @@ public class UserController {
     }
     
     @ApiOperation("更新当前用户个人信息")
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/current/profile")
     public Result<UserInfo> updateCurrentUserProfile(@RequestBody UserInfo user) {
         UserInfo result = userService.updateCurrentUserProfile(user);
@@ -153,6 +155,7 @@ public class UserController {
     }
     
     @ApiOperation("修改当前用户密码")
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/current/change-password")
     public Result<?> changePassword(
             @ApiParam(value = "旧密码", required = true) @RequestParam String oldPassword,
@@ -162,6 +165,7 @@ public class UserController {
     }
     
     @ApiOperation("获取当前用户组织信息（学校、学院、班级）")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/current/org-info")
     public Result<java.util.Map<String, Object>> getCurrentUserOrgInfo() {
         java.util.Map<String, Object> orgInfo = userService.getCurrentUserOrgInfo();

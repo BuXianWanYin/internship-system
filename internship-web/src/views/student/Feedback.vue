@@ -171,11 +171,30 @@
             placeholder="请详细描述遇到的问题、困难或建议"
           />
         </el-form-item>
-        <el-form-item label="附件" prop="feedbackAttachment">
-          <el-input
-            v-model="formData.feedbackAttachment"
-            placeholder="请输入附件URL或上传附件（可选）"
-          />
+        <el-form-item label="附件">
+          <el-upload
+            ref="uploadRef"
+            :file-list="attachmentFileList"
+            :auto-upload="false"
+            :on-change="handleAttachmentChange"
+            :on-remove="handleAttachmentRemove"
+            :before-upload="beforeUpload"
+            multiple
+            :limit="5"
+          >
+            <el-button type="primary" :icon="Upload">选择文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持上传多个附件（最多5个），单个文件不超过10MB
+                <br>
+                支持的文件类型：文档(.doc, .docx, .pdf, .txt)、图片(.jpg, .jpeg, .png, .gif)、表格(.xls, .xlsx)、压缩包(.zip, .rar)
+              </div>
+            </template>
+          </el-upload>
+          <div v-if="uploading" class="upload-status">
+            <el-icon class="is-loading"><Loading /></el-icon>
+            <span style="margin-left: 8px">正在上传...</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -207,10 +226,19 @@
         <el-descriptions-item label="反馈内容" :span="2">
           <div style="white-space: pre-wrap">{{ detailData.feedbackContent || '-' }}</div>
         </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.feedbackAttachment" label="附件" :span="2">
-          <el-link :href="detailData.feedbackAttachment" target="_blank" type="primary">
-            {{ detailData.feedbackAttachment }}
-          </el-link>
+        <el-descriptions-item v-if="detailData.attachmentUrls" label="附件" :span="2">
+          <div class="attachment-list">
+            <el-tag
+              v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u.trim())"
+              :key="index"
+              class="attachment-tag"
+              @click="handleDownloadAttachment(url)"
+              style="cursor: pointer; margin-right: 8px; margin-bottom: 8px"
+            >
+              <el-icon style="margin-right: 4px"><Document /></el-icon>
+              {{ url.split('/').pop() || `附件${index + 1}` }}
+            </el-tag>
+          </div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.replyContent" label="回复内容" :span="2">
           <div style="white-space: pre-wrap; color: #606266; background: #f5f7fa; padding: 10px; border-radius: 4px">
@@ -231,18 +259,21 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Upload, Loading, Document } from '@element-plus/icons-vue'
 import { feedbackApi } from '@/api/internship/feedback'
 import { applyApi } from '@/api/internship/apply'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const uploading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const dialogTitle = ref('提交反馈')
 const formRef = ref(null)
+const uploadRef = ref(null)
 
 const searchForm = reactive({
   feedbackType: null,
@@ -266,8 +297,13 @@ const formData = reactive({
   feedbackTitle: '',
   feedbackType: null,
   feedbackContent: '',
-  feedbackAttachment: ''
+  attachmentUrls: ''
 })
+
+// 附件文件列表（用于el-upload组件）
+const attachmentFileList = ref([])
+// 已上传的附件URL列表
+const uploadedAttachmentUrls = ref([])
 
 const formRules = {
   feedbackTitle: [{ required: true, message: '请输入反馈标题', trigger: 'blur' }],
@@ -350,8 +386,22 @@ const handleEdit = async (row) => {
         feedbackTitle: res.data.feedbackTitle,
         feedbackType: res.data.feedbackType,
         feedbackContent: res.data.feedbackContent || '',
-        feedbackAttachment: res.data.feedbackAttachment || ''
+        attachmentUrls: res.data.attachmentUrls || ''
       })
+      // 加载已有附件
+      if (res.data.attachmentUrls) {
+        const urls = res.data.attachmentUrls.split(',').filter(url => url.trim())
+        uploadedAttachmentUrls.value = urls
+        attachmentFileList.value = urls.map((url, index) => ({
+          uid: `existing-${index}`,
+          name: url.split('/').pop() || `附件${index + 1}`,
+          url: url,
+          status: 'success'
+        }))
+      } else {
+        attachmentFileList.value = []
+        uploadedAttachmentUrls.value = []
+      }
       dialogVisible.value = true
     }
   } catch (error) {
@@ -431,6 +481,60 @@ const handleDelete = async (row) => {
   }
 }
 
+// 文件上传前验证
+const beforeUpload = (file) => {
+  const isValidSize = file.size / 1024 / 1024 < 10
+  if (!isValidSize) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  return true
+}
+
+// 附件变化处理
+const handleAttachmentChange = (file, fileList) => {
+  attachmentFileList.value = fileList
+}
+
+// 附件移除处理
+const handleAttachmentRemove = (file, fileList) => {
+  attachmentFileList.value = fileList
+  // 如果移除的是已上传的文件，从已上传列表中移除
+  if (file.url && uploadedAttachmentUrls.value.includes(file.url)) {
+    uploadedAttachmentUrls.value = uploadedAttachmentUrls.value.filter(url => url !== file.url)
+  }
+}
+
+// 上传所有新选择的附件
+const uploadAttachments = async () => {
+  // 获取待上传的文件（没有url的文件）
+  const filesToUpload = attachmentFileList.value
+    .filter(file => !file.url && file.raw)
+    .map(file => file.raw)
+  
+  if (filesToUpload.length === 0) {
+    return uploadedAttachmentUrls.value.join(',')
+  }
+
+  uploading.value = true
+  try {
+    const res = await fileApi.uploadFiles(filesToUpload)
+    if (res.code === 200 && res.data) {
+      // 合并已有附件和 newly uploaded files
+      uploadedAttachmentUrls.value = [...uploadedAttachmentUrls.value, ...res.data]
+      return uploadedAttachmentUrls.value.join(',')
+    } else {
+      throw new Error(res.message || '文件上传失败')
+    }
+  } catch (error) {
+    console.error('上传附件失败:', error)
+    ElMessage.error(error.response?.data?.message || error.message || '文件上传失败')
+    throw error
+  } finally {
+    uploading.value = false
+  }
+}
+
 // 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -438,9 +542,18 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 先上传附件
+        let attachmentUrls = ''
+        try {
+          attachmentUrls = await uploadAttachments()
+        } catch (error) {
+          // 如果上传失败，停止提交
+          return
+        }
+
         const data = {
           ...formData,
-          feedbackAttachment: formData.feedbackAttachment || undefined
+          attachmentUrls: attachmentUrls || undefined
         }
         if (formData.feedbackId) {
           data.feedbackId = formData.feedbackId
@@ -477,10 +590,15 @@ const resetForm = () => {
     feedbackTitle: '',
     feedbackType: null,
     feedbackContent: '',
-    feedbackAttachment: ''
+    attachmentUrls: ''
   })
+  attachmentFileList.value = []
+  uploadedAttachmentUrls.value = []
   if (formRef.value) {
     formRef.value.clearValidate()
+  }
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
   }
 }
 
@@ -526,6 +644,16 @@ const getFeedbackStatusType = (status) => {
   return typeMap[status] || 'info'
 }
 
+// 下载附件
+const handleDownloadAttachment = async (url) => {
+  try {
+    await fileApi.downloadFile(url)
+  } catch (error) {
+    console.error('下载附件失败:', error)
+    ElMessage.error('下载附件失败')
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadData()
@@ -547,6 +675,29 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.upload-status {
+  margin-top: 8px;
+  color: #409eff;
+  display: flex;
+  align-items: center;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attachment-tag {
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.attachment-tag:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
 }
 </style>
 

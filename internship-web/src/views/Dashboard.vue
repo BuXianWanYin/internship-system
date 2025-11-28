@@ -2,13 +2,16 @@
   <div class="dashboard">
     <!-- 页面标题 -->
     <div class="dashboard-header">
-      <h1 class="dashboard-title">仪表盘</h1>
-      <p class="dashboard-subtitle">数据统计与分析</p>
+      <div class="header-left">
+        <h1 class="dashboard-title">仪表盘</h1>
+        <p class="dashboard-subtitle">数据统计与分析</p>
+      </div>
     </div>
 
     <!-- 筛选器 -->
     <StatisticsFilter
       v-if="showFilter"
+      class="dashboard-filter"
       :show-school-filter="hasRole(['ROLE_SYSTEM_ADMIN'])"
       :show-college-filter="hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
       :show-major-filter="hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])"
@@ -32,9 +35,20 @@
       </div>
     </div>
 
-    <!-- 图表区域 -->
-    <div class="charts-section">
-      <div class="charts-grid">
+    <!-- 主要内容区域：快捷操作 + 图表 -->
+    <div class="dashboard-main">
+      <!-- 左侧：快捷操作 -->
+      <div class="main-left">
+        <QuickActions
+          v-if="quickActions.length > 0"
+          :actions="quickActions"
+          icon="Operation"
+        />
+      </div>
+
+      <!-- 右侧：图表区域 -->
+      <div class="main-right">
+        <div class="charts-grid">
         <!-- 饼图：实习进度统计 -->
         <el-card
           v-if="hasChart('progress')"
@@ -249,6 +263,7 @@
             />
           </div>
         </el-card>
+        </div>
       </div>
     </div>
   </div>
@@ -261,11 +276,13 @@ import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
 import StatisticsCard from '@/components/common/StatisticsCard.vue'
 import StatisticsFilter from '@/components/common/StatisticsFilter.vue'
+import QuickActions from '@/components/common/QuickActions.vue'
 import PieChart from '@/components/charts/PieChart.vue'
 import BarChart from '@/components/charts/BarChart.vue'
 import LineChart from '@/components/charts/LineChart.vue'
 import RadarChart from '@/components/charts/RadarChart.vue'
 import { statisticsApi } from '@/api/statistics'
+import { useRouter } from 'vue-router'
 import {
   User,
   UserFilled,
@@ -274,10 +291,22 @@ import {
   Document,
   Clock,
   TrendCharts,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  EditPen,
+  DocumentChecked,
+  List,
+  Setting,
+  School,
+  Briefcase,
+  Files,
+  Reading,
+  Calendar,
+  Star,
+  Operation
 } from '@element-plus/icons-vue'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const userRoles = computed(() => authStore.roles || [])
 const loading = ref(false)
 const filterParams = ref({})
@@ -286,6 +315,82 @@ const filterParams = ref({})
 const hasRole = (roles) => {
   return hasAnyRole(roles)
 }
+
+// 快捷操作数据
+const quickActions = computed(() => {
+  const actions = []
+  
+  // 系统管理员快捷操作
+  if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+    actions.push(
+      { key: 'school', title: '学校管理', desc: '管理系统学校', icon: 'School', color: '#409EFF', path: '/admin/system/school' },
+      { key: 'user', title: '用户管理', desc: '管理系统用户', icon: 'User', color: '#67C23A', path: '/admin/system/user' },
+      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#F7BA2A', path: '/admin/internship/plan' },
+      { key: 'report', title: '报表生成', desc: '生成各类报表', icon: 'Document', color: '#E6A23C', path: '/admin/report' }
+    )
+  }
+  
+  // 学校管理员快捷操作
+  if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+    actions.push(
+      { key: 'college', title: '学院管理', desc: '管理本学校学院', icon: 'OfficeBuilding', color: '#409EFF', path: '/admin/system/college' },
+      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#67C23A', path: '/admin/internship/plan' },
+      { key: 'audit', title: '申请审核', desc: '审核实习申请', icon: 'DocumentChecked', color: '#F7BA2A', path: '/admin/internship/apply/audit' },
+      { key: 'report', title: '报表生成', desc: '生成各类报表', icon: 'Document', color: '#E6A23C', path: '/admin/report' }
+    )
+  }
+  
+  // 学院负责人快捷操作
+  if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+    actions.push(
+      { key: 'major', title: '专业管理', desc: '管理本院专业', icon: 'Reading', color: '#409EFF', path: '/admin/system/major' },
+      { key: 'class', title: '班级管理', desc: '管理本院班级', icon: 'User', color: '#67C23A', path: '/admin/system/class' },
+      { key: 'audit', title: '申请审核', desc: '审核实习申请', icon: 'DocumentChecked', color: '#F7BA2A', path: '/admin/internship/apply/audit' },
+      { key: 'evaluation', title: '学生评价', desc: '评价学生实习', icon: 'Star', color: '#E6A23C', path: '/teacher/student/evaluation' }
+    )
+  }
+  
+  // 班主任快捷操作
+  if (hasRole(['ROLE_CLASS_TEACHER'])) {
+    actions.push(
+      { key: 'log', title: '日志批阅', desc: '批阅学生日志', icon: 'Document', color: '#409EFF', path: '/teacher/internship/log' },
+      { key: 'report', title: '周报批阅', desc: '批阅学生周报', icon: 'Files', color: '#67C23A', path: '/teacher/internship/weekly-report' },
+      { key: 'evaluation', title: '学生评价', desc: '评价学生实习', icon: 'Star', color: '#F7BA2A', path: '/teacher/student/evaluation' },
+      { key: 'audit', title: '申请审核', desc: '审核实习申请', icon: 'DocumentChecked', color: '#E6A23C', path: '/admin/internship/apply/audit' }
+    )
+  }
+  
+  // 企业管理员快捷操作
+  if (hasRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    actions.push(
+      { key: 'post', title: '发布岗位', desc: '发布实习岗位', icon: 'Briefcase', color: '#409EFF', path: '/enterprise/internship/post' },
+      { key: 'student', title: '学生管理', desc: '管理实习学生', icon: 'User', color: '#67C23A', path: '/enterprise/internship/student' },
+      { key: 'application', title: '申请管理', desc: '处理学生申请', icon: 'List', color: '#F7BA2A', path: '/enterprise/internship/apply' },
+      { key: 'evaluation', title: '学生评价', desc: '评价实习学生', icon: 'Star', color: '#E6A23C', path: '/enterprise/student/evaluation' }
+    )
+  }
+  
+  // 企业导师快捷操作
+  if (hasRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    actions.push(
+      { key: 'log', title: '日志批阅', desc: '批阅学生日志', icon: 'Document', color: '#409EFF', path: '/teacher/internship/log' },
+      { key: 'report', title: '周报批阅', desc: '批阅学生周报', icon: 'Files', color: '#67C23A', path: '/teacher/internship/weekly-report' },
+      { key: 'attendance', title: '考勤管理', desc: '管理学生考勤', icon: 'Clock', color: '#F7BA2A', path: '/enterprise/internship/attendance' }
+    )
+  }
+  
+  // 学生快捷操作
+  if (hasRole(['ROLE_STUDENT'])) {
+    actions.push(
+      { key: 'apply', title: '申请实习', desc: '申请实习岗位', icon: 'EditPen', color: '#409EFF', path: '/student/internship/apply' },
+      { key: 'log', title: '实习日志', desc: '提交实习日志', icon: 'Document', color: '#67C23A', path: '/student/internship/log' },
+      { key: 'report', title: '实习周报', desc: '提交实习周报', icon: 'Files', color: '#F7BA2A', path: '/student/internship/weekly-report' },
+      { key: 'score', title: '查看成绩', desc: '查看评价成绩', icon: 'DataAnalysis', color: '#E6A23C', path: '/student/evaluation/score' }
+    )
+  }
+  
+  return actions
+})
 
 // 判断是否显示筛选器（学生和企业导师不显示筛选器）
 const showFilter = computed(() => {
@@ -955,26 +1060,44 @@ onMounted(() => {
 
 <style scoped>
 .dashboard {
-  padding: 24px;
-  background: #f5f7fa;
+  padding: 20px 24px;
+  background: linear-gradient(180deg, #f5f7fa 0%, #fafbfc 100%);
   min-height: calc(100vh - 60px);
+  overflow-x: hidden;
 }
 
 .dashboard-header {
   margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(64, 158, 255, 0.1);
+}
+
+.header-left {
+  flex: 1;
 }
 
 .dashboard-title {
   font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
+  font-weight: 700;
+  background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
 }
 
 .dashboard-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   color: #909399;
   margin: 0;
+}
+
+.dashboard-filter {
+  margin-bottom: 24px;
 }
 
 .statistics-cards {
@@ -983,33 +1106,102 @@ onMounted(() => {
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 20px;
 }
 
-.charts-section {
-  margin-top: 24px;
+/* 主要内容区域布局 */
+.dashboard-main {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.main-left {
+  position: sticky;
+  top: 16px;
+}
+
+.main-right {
+  min-width: 0; /* 防止网格溢出 */
 }
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
   gap: 20px;
 }
 
+/* 响应式布局 */
+@media (max-width: 1400px) {
+  .dashboard-main {
+    grid-template-columns: 280px 1fr;
+  }
+  
+  .charts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  }
+}
+
 @media (max-width: 1200px) {
+  .dashboard-main {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-left {
+    position: static;
+    margin-bottom: 16px;
+  }
+  
   .charts-grid {
     grid-template-columns: 1fr;
   }
 }
 
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 12px;
+  }
+  
+  .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  
+  .charts-grid {
+    gap: 12px;
+  }
+}
+
 .chart-card {
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid #e4e7ed;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 20px rgba(64, 158, 255, 0.15);
+  border-color: rgba(64, 158, 255, 0.3);
 }
 
 .pending-review-card {
   border-color: #F7BA2A;
+  background: linear-gradient(135deg, #fff7e6 0%, #ffffff 100%);
+}
+
+.pending-review-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #F7BA2A, #ffc868);
+  z-index: 1;
 }
 
 .chart-header {
@@ -1019,7 +1211,7 @@ onMounted(() => {
 }
 
 .chart-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   color: #303133;
 }
@@ -1031,18 +1223,42 @@ onMounted(() => {
 .chart-content {
   position: relative;
   min-height: 300px;
+  max-height: 420px;
+  overflow: hidden;
+  padding: 8px;
 }
 
 .pending-review-content {
-  padding: 10px 0;
+  padding: 12px 0;
+}
+
+.pending-review-content :deep(.el-alert) {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(247, 186, 42, 0.15);
 }
 
 :deep(.el-card__header) {
-  padding: 16px 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid #ebeef5;
+  background: #fafbfc;
 }
 
 :deep(.el-card__body) {
   padding: 20px;
+}
+
+.chart-card :deep(.el-card__header) {
+  background: transparent;
+  padding-bottom: 16px;
+}
+
+/* 防止内容溢出 */
+:deep(.el-card) {
+  overflow: hidden;
+}
+
+:deep(.el-card__body) {
+  overflow: hidden;
 }
 </style>

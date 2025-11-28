@@ -1738,6 +1738,31 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
      * 应用企业过滤条件（企业学生查询）
      */
     private void applyEnterpriseFilterForStudents(LambdaQueryWrapper<InternshipApply> wrapper) {
+        // 系统管理员不添加限制
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user == null) {
+            wrapper.eq(InternshipApply::getApplyId, -1L);
+            return;
+        }
+        
+        List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+        
+        // 企业导师：只能查看分配给自己的学生
+        if (DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR)) {
+            Long mentorId = dataPermissionUtil.getCurrentUserMentorId();
+            if (mentorId != null) {
+                wrapper.eq(InternshipApply::getMentorId, mentorId);
+            } else {
+                wrapper.eq(InternshipApply::getApplyId, -1L);
+            }
+            return;
+        }
+        
+        // 企业管理员：查看本企业的所有学生
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         if (currentUserEnterpriseId != null) {
             wrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);

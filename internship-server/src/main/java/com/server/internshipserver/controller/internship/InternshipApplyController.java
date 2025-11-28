@@ -138,7 +138,7 @@ public class InternshipApplyController {
     }
     
     @ApiOperation("查询企业实习学生列表（仅显示已录用的学生）")
-    @PreAuthorize("hasRole('ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/enterprise/students")
     public Result<Page<InternshipApply>> getEnterpriseStudents(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
