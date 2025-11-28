@@ -1790,6 +1790,51 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         result.setTotal(filteredRecords.size());
     }
     
+    @Override
+    public Page<InternshipApply> getMentorStudents(Page<InternshipApply> page, String studentName, String studentNo, Integer status) {
+        LambdaQueryWrapper<InternshipApply> wrapper = new LambdaQueryWrapper<>();
+        
+        QueryWrapperUtil.notDeleted(wrapper, InternshipApply::getDeleteFlag);
+        
+        // 获取当前企业导师ID
+        UserInfo user = UserUtil.getCurrentUser(userMapper);
+        Long mentorId = dataPermissionUtil.getCurrentUserMentorId();
+        if (mentorId == null) {
+            throw new BusinessException("未找到当前用户的企业导师信息");
+        }
+        
+        // 只查询分配给当前导师的学生
+        wrapper.eq(InternshipApply::getMentorId, mentorId);
+        
+        // 条件查询
+        if (status != null) {
+            wrapper.eq(InternshipApply::getStatus, status);
+        }
+        
+        wrapper.orderByDesc(InternshipApply::getCreateTime);
+        
+        Page<InternshipApply> result = this.page(page, wrapper);
+        
+        // 填充关联字段并过滤
+        if (EntityValidationUtil.hasRecords(result)) {
+            List<InternshipApply> records = result.getRecords();
+            List<InternshipApply> filteredRecords = new ArrayList<>();
+            
+            for (InternshipApply apply : records) {
+                fillApplyRelatedFields(apply);
+                
+                if (matchesStudentFilter(apply, studentName, studentNo)) {
+                    filteredRecords.add(apply);
+                }
+            }
+            
+            result.setRecords(filteredRecords);
+            result.setTotal(filteredRecords.size());
+        }
+        
+        return result;
+    }
+    
     /**
      * 判断申请是否匹配学生过滤条件
      */

@@ -97,6 +97,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("入学年份不能为空");
         }
         
+        // 数据权限检查：班主任只能添加到自己管理的班级（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            if (!currentUserClassIds.contains(student.getClassId())) {
+                throw new BusinessException("无权限添加学生到该班级");
+            }
+        }
+        
         // 检查学号是否已存在
         Student existStudent = getStudentByStudentNo(student.getStudentNo());
         if (existStudent != null) {
@@ -126,6 +134,21 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         Student existStudent = this.getById(student.getStudentId());
         EntityValidationUtil.validateEntityExists(existStudent, "学生");
         
+        // 数据权限检查：班主任只能修改管理的班级的学生（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 检查原班级是否在管理范围内
+            if (!currentUserClassIds.contains(existStudent.getClassId())) {
+                throw new BusinessException("无权限修改该学生信息");
+            }
+            // 如果修改了班级，检查新班级是否也在管理范围内
+            if (student.getClassId() != null && !student.getClassId().equals(existStudent.getClassId())) {
+                if (!currentUserClassIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权限将学生转移到该班级");
+                }
+            }
+        }
+        
         // 如果修改了学号，检查新学号是否已存在
         if (StringUtils.hasText(student.getStudentNo()) 
                 && !student.getStudentNo().equals(existStudent.getStudentNo())) {
@@ -146,6 +169,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         Student student = this.getById(studentId);
         EntityValidationUtil.validateEntityExists(student, "学生");
+        
+        // 数据权限检查：班主任只能查看管理的班级的学生（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            if (!currentUserClassIds.contains(student.getClassId())) {
+                throw new BusinessException("无权限查看该学生信息");
+            }
+        }
         
         return student;
     }
@@ -232,6 +263,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         Student student = this.getById(studentId);
         EntityValidationUtil.validateEntityExists(student, "学生");
+        
+        // 数据权限检查：班主任只能删除管理的班级的学生（支持多班级）
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            if (!currentUserClassIds.contains(student.getClassId())) {
+                throw new BusinessException("无权限删除该学生");
+            }
+        }
         
         // 软删除
         student.setDeleteFlag(DeleteFlag.DELETED.getCode());
@@ -350,7 +389,19 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
         
         try {
-            return classService.getClassById(finalClassId);
+            Class classInfo = classService.getClassById(finalClassId);
+            
+            // 数据权限检查：班主任只能导入到自己管理的班级（支持多班级）
+            List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+            if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                if (!currentUserClassIds.contains(finalClassId)) {
+                    dto.setErrorMessage("无权限导入学生到该班级");
+                    failList.add(dto);
+                    return null;
+                }
+            }
+            
+            return classInfo;
         } catch (Exception e) {
             dto.setErrorMessage("班级不存在");
             failList.add(dto);

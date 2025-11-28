@@ -59,7 +59,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据ID查询企业详情")
     @GetMapping("/{enterpriseId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Enterprise> getEnterpriseById(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         Enterprise enterprise = enterpriseService.getEnterpriseById(enterpriseId);
@@ -68,7 +68,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据用户ID查询企业信息")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Enterprise> getEnterpriseByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         Enterprise enterprise = enterpriseService.getEnterpriseByUserId(userId);
@@ -116,7 +116,7 @@ public class EnterpriseController {
     
     @ApiOperation("根据企业ID查询合作学校列表")
     @GetMapping("/{enterpriseId}/cooperation-schools")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<List<School>> getCooperationSchoolsByEnterpriseId(
             @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
         List<School> schools = enterpriseService.getCooperationSchoolsByEnterpriseId(enterpriseId);

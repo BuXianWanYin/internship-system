@@ -211,6 +211,16 @@ export default [
       requiresAuth: true,
       roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
+  },
+  {
+    path: '/enterprise/mentor/student',
+    name: 'MentorStudentManagement',
+    component: () => import('@/views/enterprise/MentorStudentManagement.vue'),
+    meta: {
+      title: '我指导的学生',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_MENTOR']
+    }
   }
 ]
 

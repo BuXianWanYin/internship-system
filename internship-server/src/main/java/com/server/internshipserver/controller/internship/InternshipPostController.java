@@ -52,7 +52,7 @@ public class InternshipPostController {
     }
     
     @ApiOperation("分页查询岗位列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
     @GetMapping("/page")
     public Result<Page<InternshipPost>> getPostPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
@@ -72,7 +72,7 @@ public class InternshipPostController {
     }
     
     @ApiOperation("查询岗位详情")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_STUDENT')")
     @GetMapping("/{postId}")
     public Result<InternshipPost> getPostById(
             @ApiParam(value = "岗位ID", required = true) @PathVariable Long postId) {

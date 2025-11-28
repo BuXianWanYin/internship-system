@@ -43,7 +43,7 @@ export const menuItems = [
     index: 'school-management',
     title: '学校管理',
     icon: School,
-    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'],
     children: [
       {
         index: '/admin/system/school',
@@ -61,19 +61,13 @@ export const menuItems = [
         index: '/admin/system/major',
         title: '专业管理',
         icon: Reading,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       },
       {
         index: '/admin/system/class',
         title: '班级管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
-        titleMap: {
-          'ROLE_SYSTEM_ADMIN': '班级管理',
-          'ROLE_SCHOOL_ADMIN': '班级管理',
-          'ROLE_COLLEGE_LEADER': '班级管理',
-          'ROLE_CLASS_TEACHER': '我管理的班级'
-        }
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       },
       {
         index: '/admin/system/semester',
@@ -85,9 +79,45 @@ export const menuItems = [
         index: '/admin/system/class-teacher',
         title: '班主任任命',
         icon: UserFilled,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       }
     ]
+  },
+  
+  // ========== 学院管理（学院负责人） ==========
+  {
+    index: 'college-management',
+    title: '学院管理',
+    icon: OfficeBuilding,
+    roles: ['ROLE_COLLEGE_LEADER'],
+    children: [
+      {
+        index: '/admin/system/major',
+        title: '专业管理',
+        icon: Reading,
+        roles: ['ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/system/class',
+        title: '班级管理',
+        icon: User,
+        roles: ['ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/system/class-teacher',
+        title: '班主任任命',
+        icon: UserFilled,
+        roles: ['ROLE_COLLEGE_LEADER']
+      }
+    ]
+  },
+  
+  // ========== 班级管理（班主任专用，独立菜单项） ==========
+  {
+    index: '/admin/system/class',
+    title: '班级管理',
+    icon: User,
+    roles: ['ROLE_CLASS_TEACHER']
   },
   
   // ========== 系统管理（系统配置） ==========
@@ -111,19 +141,19 @@ export const menuItems = [
     index: 'user',
     title: '用户管理',
     icon: UserFilled,
-    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'],
     children: [
       {
         index: '/admin/user',
         title: '用户管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       },
       {
         index: '/admin/student',
         title: '学生管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       },
       {
         index: '/admin/teacher',
@@ -132,6 +162,14 @@ export const menuItems = [
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
+  },
+  
+  // ========== 学生管理（班主任专用） ==========
+  {
+    index: '/admin/student',
+    title: '学生管理',
+    icon: User,
+    roles: ['ROLE_CLASS_TEACHER']
   },
   
   // ========== 企业管理（系统管理员） ==========
@@ -202,6 +240,30 @@ export const menuItems = [
         title: '企业导师管理',
         icon: User,
         roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/post',
+        title: '岗位管理',
+        icon: Briefcase,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/apply',
+        title: '申请管理',
+        icon: DocumentChecked,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/student',
+        title: '实习学生管理',
+        icon: User,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/internship/interview',
+        title: '面试管理',
+        icon: ChatLineRound,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
       }
     ]
   },
@@ -258,6 +320,22 @@ export const menuItems = [
     ]
   },
   
+  // ========== 企业管理（企业导师） ==========
+  {
+    index: 'enterprise-mentor',
+    title: '企业管理',
+    icon: OfficeBuilding,
+    roles: ['ROLE_ENTERPRISE_MENTOR'],
+    children: [
+      {
+        index: '/enterprise/mentor/student',
+        title: '我指导的学生',
+        icon: User,
+        roles: ['ROLE_ENTERPRISE_MENTOR']
+      }
+    ]
+  },
+  
   // ========== 实习管理（企业） ==========
   {
     index: 'internship-enterprise',
@@ -265,30 +343,6 @@ export const menuItems = [
     icon: Briefcase,
     roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'],
     children: [
-      {
-        index: '/enterprise/internship/post',
-        title: '岗位管理',
-        icon: Briefcase,
-        roles: ['ROLE_ENTERPRISE_ADMIN']
-      },
-      {
-        index: '/enterprise/internship/apply',
-        title: '申请管理',
-        icon: DocumentChecked,
-        roles: ['ROLE_ENTERPRISE_ADMIN']
-      },
-      {
-        index: '/enterprise/internship/student',
-        title: '实习学生管理',
-        icon: User,
-        roles: ['ROLE_ENTERPRISE_ADMIN']
-      },
-      {
-        index: '/enterprise/internship/interview',
-        title: '面试管理',
-        icon: ChatLineRound,
-        roles: ['ROLE_ENTERPRISE_ADMIN']
-      },
       {
         index: '/enterprise/internship/attendance',
         title: '考勤管理',

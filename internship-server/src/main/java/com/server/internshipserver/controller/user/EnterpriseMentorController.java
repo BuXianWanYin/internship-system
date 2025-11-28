@@ -34,7 +34,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("分页查询企业导师列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<Page<EnterpriseMentor>> getEnterpriseMentorPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -48,7 +48,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("根据ID查询企业导师详情")
     @GetMapping("/{mentorId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> getEnterpriseMentorById(
             @ApiParam(value = "企业导师ID", required = true) @PathVariable Long mentorId) {
         EnterpriseMentor mentor = enterpriseMentorService.getEnterpriseMentorById(mentorId);
@@ -57,7 +57,7 @@ public class EnterpriseMentorController {
     
     @ApiOperation("根据用户ID查询企业导师信息")
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")
     public Result<EnterpriseMentor> getEnterpriseMentorByUserId(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         EnterpriseMentor mentor = enterpriseMentorService.getEnterpriseMentorByUserId(userId);

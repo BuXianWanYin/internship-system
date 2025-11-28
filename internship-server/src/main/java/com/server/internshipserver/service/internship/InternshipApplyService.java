@@ -90,6 +90,16 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId);
     
     /**
+     * 查询企业导师指导的学生列表
+     * @param page 分页参数
+     * @param studentName 学生姓名（可选）
+     * @param studentNo 学号（可选）
+     * @param status 申请状态（可选）
+     * @return 申请列表
+     */
+    Page<InternshipApply> getMentorStudents(Page<InternshipApply> page, String studentName, String studentNo, Integer status);
+    
+    /**
      * 给学生分配企业导师
      * @param applyId 申请ID
      * @param mentorId 企业导师ID
