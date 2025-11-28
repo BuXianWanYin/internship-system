@@ -35,6 +35,14 @@
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+          <el-button 
+            type="success" 
+            :icon="Download" 
+            @click="handleExport"
+            :loading="exportLoading"
+          >
+            导出Excel
+          </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -159,11 +167,13 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Download } from '@element-plus/icons-vue'
 import { collegeApi } from '@/api/system/college'
 import { schoolApi } from '@/api/system/school'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
+import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole } from '@/utils/permission'
 
