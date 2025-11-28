@@ -185,7 +185,7 @@ public class InternshipApplyController {
     @PostMapping("/{applyId}/audit-unbind")
     public Result<?> auditUnbind(
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
-            @ApiParam(value = "审核状态（2-已解绑，3-解绑被拒绝）", required = true) @RequestParam Integer auditStatus,
+            @ApiParam(value = "审核状态（1-已通过，2-已拒绝）", required = true) @RequestParam Integer auditStatus,
             @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
         AuditUnbindDTO auditDTO = new AuditUnbindDTO();
         auditDTO.setAuditStatus(AuditStatus.getByCode(auditStatus));

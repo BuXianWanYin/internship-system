@@ -59,10 +59,11 @@
           {{ formatDateTime(row.acceptTime || row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="解绑状态" width="120" align="center">
+      <el-table-column label="在职状态" width="150" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.unbindStatus === 1" type="warning" size="small">申请中</el-tag>
-          <el-tag v-else-if="row.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
+          <el-tag v-if="row.unbindStatus === 1" type="warning" size="small">待企业管理员审批</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 4" type="warning" size="small">待学校审批</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 2" type="success" size="small">离职审批通过</el-tag>
           <el-tag v-else-if="row.unbindStatus === 3" type="danger" size="small">已拒绝</el-tag>
           <span v-else style="color: #909399">-</span>
         </template>
@@ -78,7 +79,7 @@
             size="small"
             @click="handleAuditUnbind(row)"
           >
-            审核解绑
+            离职审批
           </el-button>
         </template>
       </el-table-column>
@@ -166,9 +167,10 @@
         <el-descriptions-item label="状态">
           <el-tag type="success" size="small">已录用</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="解绑状态">
-          <el-tag v-if="detailData.unbindStatus === 1" type="warning" size="small">申请中</el-tag>
-          <el-tag v-else-if="detailData.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
+        <el-descriptions-item label="在职状态">
+          <el-tag v-if="detailData.unbindStatus === 1" type="warning" size="small">待企业管理员审批</el-tag>
+          <el-tag v-else-if="detailData.unbindStatus === 4" type="warning" size="small">待学校审批</el-tag>
+          <el-tag v-else-if="detailData.unbindStatus === 2" type="success" size="small">离职审批通过</el-tag>
           <el-tag v-else-if="detailData.unbindStatus === 3" type="danger" size="small">已拒绝</el-tag>
           <span v-else style="color: #909399">-</span>
         </el-descriptions-item>
@@ -187,7 +189,7 @@
     <!-- 审核解绑对话框 -->
     <el-dialog
       v-model="unbindAuditDialogVisible"
-      title="审核解绑申请"
+      title="离职审批"
       width="600px"
       :close-on-click-modal="false"
     >
@@ -210,8 +212,8 @@
         </el-form-item>
         <el-form-item label="审核结果" prop="auditStatus">
           <el-radio-group v-model="unbindAuditForm.auditStatus">
-            <el-radio :label="2">同意解绑</el-radio>
-            <el-radio :label="3">拒绝解绑</el-radio>
+            <el-radio :label="1">同意</el-radio>
+            <el-radio :label="2">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="审核意见" prop="auditOpinion">
@@ -219,7 +221,7 @@
             v-model="unbindAuditForm.auditOpinion"
             type="textarea"
             :rows="6"
-            :placeholder="unbindAuditForm.auditStatus === 2 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+            :placeholder="unbindAuditForm.auditStatus === 1 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
           />
         </el-form-item>
       </el-form>
@@ -276,7 +278,7 @@ const unbindAuditLoading = ref(false)
 const unbindAuditFormRef = ref(null)
 const currentUnbindApply = ref({})
 const unbindAuditForm = reactive({
-  auditStatus: 2, // 2-已解绑，3-解绑被拒绝
+  auditStatus: 1, // 1-已通过，2-已拒绝
   auditOpinion: ''
 })
 const unbindAuditFormRules = {
@@ -284,8 +286,8 @@ const unbindAuditFormRules = {
   auditOpinion: [
     {
       validator: (rule, value, callback) => {
-        if (unbindAuditForm.auditStatus === 3 && !value) {
-          callback(new Error('拒绝解绑时必须填写拒绝原因'))
+        if (unbindAuditForm.auditStatus === 2 && !value) {
+          callback(new Error('拒绝时必须填写拒绝原因'))
         } else {
           callback()
         }
@@ -420,7 +422,7 @@ const handleAuditUnbind = async (row) => {
     const res = await applyApi.getApplyById(row.applyId)
     if (res.code === 200) {
       currentUnbindApply.value = res.data
-      unbindAuditForm.auditStatus = 2
+      unbindAuditForm.auditStatus = 1
       unbindAuditForm.auditOpinion = ''
       unbindAuditDialogVisible.value = true
     }
@@ -458,8 +460,8 @@ const handleSubmitUnbindAudit = async () => {
         }
       }
     } catch (error) {
-      console.error('审核解绑失败:', error)
-      ElMessage.error(error.response?.data?.message || '审核解绑失败')
+      console.error('离职审批失败:', error)
+      ElMessage.error(error.response?.data?.message || '离职审批失败')
     } finally {
       unbindAuditLoading.value = false
     }

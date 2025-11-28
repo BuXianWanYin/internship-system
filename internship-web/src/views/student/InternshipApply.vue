@@ -129,7 +129,7 @@
                       取消
                     </el-button>
                     <el-button
-                      v-if="row.status === 3 && (row.studentConfirmStatus === 0 || row.studentConfirmStatus === null)"
+                      v-if="row.status === 3 && (row.studentConfirmStatus === 0 || row.studentConfirmStatus === null) && (row.unbindStatus === null || row.unbindStatus === 0 || row.unbindStatus === 3)"
                       link
                       type="warning"
                       size="small"

@@ -21,7 +21,7 @@ export default [
     meta: {
       title: '学生评价',
       requiresAuth: true,
-      roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
     }
   },
   // 学生自评

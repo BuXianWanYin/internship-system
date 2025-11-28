@@ -2,7 +2,7 @@ package com.server.internshipserver.common.enums;
 
 /**
  * 解绑状态枚举
- * 定义学生与企业导师解绑的状态：未申请、申请解绑、已解绑、解绑被拒绝
+ * 定义学生与企业导师解绑的状态：未申请、申请解绑（待企业管理员审批）、企业管理员已审批（待学校审批）、已解绑、解绑被拒绝
  */
 public enum UnbindStatus {
     /**
@@ -11,14 +11,19 @@ public enum UnbindStatus {
     NOT_APPLIED(0, "未申请"),
     
     /**
-     * 申请解绑
+     * 申请解绑（待企业管理员审批）
      */
     APPLIED(1, "申请解绑"),
     
     /**
-     * 已解绑
+     * 企业管理员已审批（待学校管理员/班主任审批）
      */
-    UNBOUND(2, "已解绑"),
+    ENTERPRISE_APPROVED(4, "企业管理员已审批"),
+    
+    /**
+     * 已解绑（离职审批通过）
+     */
+    UNBOUND(2, "离职审批通过"),
     
     /**
      * 解绑被拒绝

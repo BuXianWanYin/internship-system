@@ -46,16 +46,17 @@
             <el-option label="已拒绝录用" :value="4" />
         </el-select>
         </el-form-item>
-        <el-form-item label="解绑状态">
+        <el-form-item label="在职状态">
           <el-select
             v-model="searchForm.unbindStatus"
-            placeholder="请选择解绑状态"
+            placeholder="请选择在职状态"
             clearable
             style="width: 150px"
           >
             <el-option label="未申请" :value="0" />
-            <el-option label="申请中" :value="1" />
-            <el-option label="已解绑" :value="2" />
+            <el-option label="待企业管理员审批" :value="1" />
+            <el-option label="待学校审批" :value="4" />
+            <el-option label="离职审批通过" :value="2" />
             <el-option label="已拒绝" :value="3" />
           </el-select>
         </el-form-item>
@@ -93,10 +94,11 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="解绑状态" width="120" align="center">
+      <el-table-column label="在职状态" width="150" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.unbindStatus === 1" type="warning" size="small">申请中</el-tag>
-          <el-tag v-else-if="row.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
+          <el-tag v-if="row.unbindStatus === 1" type="warning" size="small">已申请离职 待审批</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 4" type="warning" size="small">已申请离职 待审批</el-tag>
+          <el-tag v-else-if="row.unbindStatus === 2" type="success" size="small">离职审批通过</el-tag>
           <el-tag v-else-if="row.unbindStatus === 3" type="danger" size="small">已拒绝</el-tag>
           <span v-else style="color: #909399">-</span>
         </template>
@@ -134,7 +136,7 @@
             size="small"
             @click="handleAuditUnbind(row)"
           >
-            审核解绑
+            离职审批
           </el-button>
         </template>
       </el-table-column>
@@ -360,7 +362,7 @@
     <!-- 审核解绑对话框 -->
     <el-dialog
       v-model="unbindAuditDialogVisible"
-      title="审核解绑申请"
+      title="离职审批"
       width="600px"
       :close-on-click-modal="false"
     >
@@ -383,8 +385,8 @@
         </el-form-item>
         <el-form-item label="审核结果" prop="auditStatus">
           <el-radio-group v-model="unbindAuditForm.auditStatus">
-            <el-radio :label="2">同意解绑</el-radio>
-            <el-radio :label="3">拒绝解绑</el-radio>
+            <el-radio :label="1">同意</el-radio>
+            <el-radio :label="2">拒绝</el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="审核意见" prop="auditOpinion">
@@ -450,7 +452,7 @@ const currentUnbindApply = ref({})
 const unbindAuditLoading = ref(false)
 
 const unbindAuditForm = reactive({
-  auditStatus: 2, // 2-已解绑，3-解绑被拒绝
+  auditStatus: 1, // 1-已通过，2-已拒绝
   auditOpinion: ''
 })
 
@@ -458,7 +460,7 @@ const unbindAuditFormRules = {
   auditOpinion: [
     {
       validator: (rule, value, callback) => {
-        if (unbindAuditForm.auditStatus === 3 && !value) {
+        if (unbindAuditForm.auditStatus === 2 && !value) {
           callback(new Error('拒绝时必须填写拒绝原因'))
         } else {
           callback()
@@ -629,7 +631,9 @@ const getStatusText = (status) => {
     1: '已通过',
     2: '已拒绝',
     3: '已录用',
-    4: '已拒绝录用'
+    4: '已拒绝录用',
+    5: '已取消',
+    6: '已离职'
   }
   return statusMap[status] || '未知'
 }
@@ -658,7 +662,9 @@ const getStatusType = (status, statusText) => {
     1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
     2: 'danger',  // 已拒绝 - 红色
     3: 'success', // 已录用 - 绿色
-    4: 'danger'   // 已拒绝录用 - 红色
+    4: 'danger',  // 已拒绝录用 - 红色
+    5: 'info',    // 已取消 - 灰色
+    6: 'warning'  // 已离职 - 黄色
   }
   return typeMap[status] || 'info'
 }
@@ -687,7 +693,7 @@ const handleDownloadResume = async (filePath) => {
 // 审核解绑
 const handleAuditUnbind = (row) => {
   currentUnbindApply.value = row
-  unbindAuditForm.auditStatus = 2 // 默认通过
+  unbindAuditForm.auditStatus = 1 // 默认通过
   unbindAuditForm.auditOpinion = ''
   unbindAuditDialogVisible.value = true
 }

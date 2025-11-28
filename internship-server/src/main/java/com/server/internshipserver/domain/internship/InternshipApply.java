@@ -98,7 +98,7 @@ public class InternshipApply implements Serializable {
     @TableField("apply_reason")
     private String applyReason;
     
-    @ApiModelProperty(value = "状态：0-待审核，1-已通过，2-已拒绝，3-已录用，4-已拒绝录用", example = "1")
+    @ApiModelProperty(value = "状态：0-待审核，1-已通过，2-已拒绝，3-已录用，4-已拒绝录用，5-已取消，6-已离职", example = "1")
     @TableField("status")
     private Integer status;
     
@@ -155,7 +155,7 @@ public class InternshipApply implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime studentConfirmTime;
     
-    @ApiModelProperty(value = "解绑状态：0-未申请，1-申请解绑，2-已解绑，3-解绑被拒绝", example = "0")
+    @ApiModelProperty(value = "解绑状态：0-未申请，1-申请解绑（待企业管理员审批），4-企业管理员已审批（待学校审批），2-已解绑（离职审批通过），3-解绑被拒绝", example = "0")
     @TableField("unbind_status")
     private Integer unbindStatus;
     

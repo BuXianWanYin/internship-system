@@ -707,6 +707,8 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "学校审核通过";
         } else if (status.equals(InternshipApplyStatus.REJECTED.getCode())) {
             return "学校审核拒绝";
+        } else if (status.equals(InternshipApplyStatus.RESIGNED.getCode())) {
+            return "已离职";
         }
         
         return "未知状态";
@@ -731,6 +733,8 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "已录用";
         } else if (status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())) {
             return "已拒绝录用";
+        } else if (status.equals(InternshipApplyStatus.RESIGNED.getCode())) {
+            return "已离职";
         }
         
         return "未知状态";
@@ -1901,6 +1905,11 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         EntityValidationUtil.validateStatusEquals(apply, InternshipApplyStatus.ACCEPTED.getCode(), 
                 "申请", "只有已录用的申请才能确认上岗");
         
+        // 检查是否已离职
+        if (apply.getUnbindStatus() != null && apply.getUnbindStatus().equals(UnbindStatus.UNBOUND.getCode())) {
+            throw new BusinessException("该申请已离职，无法确认上岗");
+        }
+        
         if (apply.getStudentConfirmStatus() != null 
                 && !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.NOT_CONFIRMED.getCode())) {
             throw new BusinessException("该申请已经确认过了");
@@ -2006,8 +2015,10 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         InternshipApply apply = this.getById(applyId);
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 验证申请的解绑状态为申请解绑
-        if (apply.getUnbindStatus() == null || !apply.getUnbindStatus().equals(UnbindStatus.APPLIED.getCode())) {
+        // 验证申请的解绑状态为申请解绑或企业管理员已审批
+        if (apply.getUnbindStatus() == null || 
+            (!apply.getUnbindStatus().equals(UnbindStatus.APPLIED.getCode()) 
+             && !apply.getUnbindStatus().equals(UnbindStatus.ENTERPRISE_APPROVED.getCode()))) {
             throw new BusinessException("该申请没有待审核的解绑申请");
         }
         
@@ -2020,11 +2031,30 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("无法获取当前用户信息");
         }
         
-        // 执行审核
-        if (auditDTO.getAuditStatus().getCode() == UnbindStatus.UNBOUND.getCode()) {
-            processUnbindApproved(apply, currentUserId, auditDTO.getAuditOpinion());
+        // 判断当前用户角色，执行相应的审核逻辑
+        if (isEnterpriseUser()) {
+            // 企业管理员/企业导师审批：只能审批状态为"申请解绑"的申请
+            if (!apply.getUnbindStatus().equals(UnbindStatus.APPLIED.getCode())) {
+                throw new BusinessException("该申请已由企业管理员审批，请等待学校管理员或班主任审批");
+            }
+            // 企业管理员审批通过，状态变为"企业管理员已审批"
+            if (auditDTO.getAuditStatus().getCode() == AuditStatus.APPROVED.getCode()) {
+                processEnterpriseUnbindApproved(apply, currentUserId, auditDTO.getAuditOpinion());
+            } else {
+                // 企业管理员拒绝，直接变为"解绑被拒绝"
+                processUnbindRejected(apply, currentUserId, auditDTO.getAuditOpinion());
+            }
         } else {
-            processUnbindRejected(apply, currentUserId, auditDTO.getAuditOpinion());
+            // 学校端角色审批：只能审批状态为"企业管理员已审批"的申请
+            if (!apply.getUnbindStatus().equals(UnbindStatus.ENTERPRISE_APPROVED.getCode())) {
+                throw new BusinessException("该申请需要先由企业管理员审批");
+            }
+            // 学校端审批
+            if (auditDTO.getAuditStatus().getCode() == AuditStatus.APPROVED.getCode()) {
+                processUnbindApproved(apply, currentUserId, auditDTO.getAuditOpinion());
+            } else {
+                processUnbindRejected(apply, currentUserId, auditDTO.getAuditOpinion());
+            }
         }
         
         return true;
@@ -2117,15 +2147,35 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     }
     
     /**
-     * 处理解绑审核通过
+     * 处理企业管理员解绑审核通过
+     */
+    private void processEnterpriseUnbindApproved(InternshipApply apply, Long currentUserId, String auditOpinion) {
+        apply.setUnbindStatus(UnbindStatus.ENTERPRISE_APPROVED.getCode());
+        // 保存企业管理员审核信息（可以使用新的字段，或者合并到现有字段）
+        apply.setUnbindAuditUserId(currentUserId);
+        apply.setUnbindAuditTime(LocalDateTime.now());
+        apply.setUnbindAuditOpinion(auditOpinion);
+        this.updateById(apply);
+    }
+    
+    /**
+     * 处理解绑审核通过（学校端最终审批）
      */
     private void processUnbindApproved(InternshipApply apply, Long currentUserId, String auditOpinion) {
         apply.setUnbindStatus(UnbindStatus.UNBOUND.getCode());
         apply.setUnbindAuditUserId(currentUserId);
         apply.setUnbindAuditTime(LocalDateTime.now());
-        apply.setUnbindAuditOpinion(auditOpinion);
+        // 合并审核意见：企业管理员意见 + 学校端意见
+        String existingOpinion = apply.getUnbindAuditOpinion();
+        if (StringUtils.hasText(existingOpinion) && StringUtils.hasText(auditOpinion)) {
+            apply.setUnbindAuditOpinion("企业管理员：" + existingOpinion + "；学校端：" + auditOpinion);
+        } else if (StringUtils.hasText(auditOpinion)) {
+            apply.setUnbindAuditOpinion("学校端：" + auditOpinion);
+        }
         apply.setStudentConfirmStatus(StudentConfirmStatus.NOT_CONFIRMED.getCode());
         apply.setInternshipEndDate(java.time.LocalDate.now());
+        // 更新申请状态为已离职
+        apply.setStatus(InternshipApplyStatus.RESIGNED.getCode());
         this.updateById(apply);
         
         // 更新学生信息

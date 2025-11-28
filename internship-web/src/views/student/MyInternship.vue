@@ -21,14 +21,14 @@
                 {{ getInternshipStatusText(currentInternship.studentInternshipStatus) }}
               </el-tag>
               <el-tag 
-                v-if="currentInternship.studentConfirmStatus === 1" 
+                v-if="currentInternship.studentConfirmStatus === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)" 
                 type="success" 
                 size="small"
               >
                 已确认上岗
               </el-tag>
               <el-tag 
-                v-else-if="currentInternship.studentConfirmStatus === 0" 
+                v-else-if="currentInternship.studentConfirmStatus === 0 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0)" 
                 type="warning" 
                 size="small"
               >
@@ -55,7 +55,18 @@
             {{ formatDate(currentInternship.internshipEndDate) || formatDate(currentInternship.selfEndDate) || '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="学生确认状态">
-            <el-tag :type="currentInternship.studentConfirmStatus === 1 ? 'success' : 'warning'" size="small">
+            <el-tag 
+              v-if="currentInternship.unbindStatus === 2" 
+              type="info" 
+              size="small"
+            >
+              已离职
+            </el-tag>
+            <el-tag 
+              v-else 
+              :type="currentInternship.studentConfirmStatus === 1 ? 'success' : 'warning'" 
+              size="small"
+            >
               {{ currentInternship.studentConfirmStatus === 1 ? '已确认上岗' : '待确认上岗' }}
             </el-tag>
           </el-descriptions-item>
@@ -87,7 +98,14 @@
             type="warning"
             disabled
           >
-            离职申请审核中
+            离职申请审核中（待企业管理员审批）
+          </el-button>
+          <el-button
+            v-else-if="currentInternship.unbindStatus === 4"
+            type="warning"
+            disabled
+          >
+            离职申请审核中（待学校审批）
           </el-button>
           <el-button
             v-else-if="currentInternship.unbindStatus === 3"
@@ -234,8 +252,9 @@ const getInternshipStatusType = (status) => {
 const getUnbindStatusText = (status) => {
   const statusMap = {
     0: '未申请',
-    1: '申请中',
-    2: '已解绑',
+    1: '已申请离职 待审批',
+    4: '已申请离职 待审批',
+    2: '离职审批通过',
     3: '已拒绝'
   }
   return statusMap[status] || '未知'
@@ -246,6 +265,7 @@ const getUnbindStatusType = (status) => {
   const typeMap = {
     0: 'info',
     1: 'warning',
+    4: 'warning',
     2: 'success',
     3: 'danger'
   }
