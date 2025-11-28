@@ -29,7 +29,7 @@ export default [
     meta: {
       title: '岗位管理',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
     }
   },
   {
@@ -209,7 +209,7 @@ export default [
     meta: {
       title: '问题反馈处理',
       requiresAuth: true,
-      roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   }
 ]

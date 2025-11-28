@@ -105,20 +105,13 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     boolean confirmOnboard(Long applyId);
     
     /**
-     * 学生申请离职/解绑
+     * 解绑企业（班主任/管理员）
      * @param applyId 申请ID
-     * @param reason 离职原因
+     * @param reason 解绑原因（可选）
+     * @param remark 备注（可选）
      * @return 是否成功
      */
-    boolean applyUnbind(Long applyId, String reason);
-    
-    /**
-     * 审核解绑申请（班主任/学院负责人）
-     * @param applyId 申请ID
-     * @param auditDTO 审核信息
-     * @return 是否成功
-     */
-    boolean auditUnbind(Long applyId, AuditUnbindDTO auditDTO);
+    boolean unbindInternship(Long applyId, String reason, String remark);
     
     /**
      * 获取当前学生的实习申请（已确认上岗的）

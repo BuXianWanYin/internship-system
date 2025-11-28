@@ -2,7 +2,8 @@ package com.server.internshipserver.common.enums;
 
 /**
  * 学生实习状态枚举
- * 定义学生实习的状态：未实习、实习中、已离职、已结束
+ * 定义学生实习的状态：未实习、实习中、已结束
+ * 注意：已删除"已离职"状态，解绑后学生实习状态恢复为"未实习"
  */
 public enum StudentInternshipStatus {
     /**
@@ -14,11 +15,6 @@ public enum StudentInternshipStatus {
      * 实习中
      */
     IN_PROGRESS(1, "实习中"),
-    
-    /**
-     * 已离职
-     */
-    RESIGNED(2, "已离职"),
     
     /**
      * 已结束

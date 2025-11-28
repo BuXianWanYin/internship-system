@@ -3,6 +3,7 @@ package com.server.internshipserver.common.enums;
 /**
  * 实习申请状态枚举
  * 定义学生实习申请的状态：待审核、已通过、已拒绝、已录用、已拒绝录用、已取消
+ * 注意：已删除"已离职"状态，解绑后申请状态保持为"已录用"，通过解绑状态标识
  */
 public enum InternshipApplyStatus {
     /**
@@ -33,12 +34,7 @@ public enum InternshipApplyStatus {
     /**
      * 已取消
      */
-    CANCELLED(5, "已取消"),
-    
-    /**
-     * 已离职
-     */
-    RESIGNED(6, "已离职");
+    CANCELLED(5, "已取消");
 
     /**
      * 状态代码

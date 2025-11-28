@@ -1430,7 +1430,9 @@ const getApplyStatusText = (status) => {
     0: '待审核',
     1: '已通过',
     2: '已拒绝',
-    3: '已取消'
+    3: '已录用',
+    4: '已拒绝录用',
+    5: '已取消'
   }
   return statusMap[status] || '未知'
 }

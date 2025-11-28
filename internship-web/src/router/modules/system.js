@@ -69,7 +69,7 @@ export default [
     meta: {
       title: '班主任任命',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
     }
   }
 ]

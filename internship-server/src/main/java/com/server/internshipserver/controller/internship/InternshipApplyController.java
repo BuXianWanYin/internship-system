@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.dto.AuditApplyDTO;
-import com.server.internshipserver.domain.internship.dto.AuditUnbindDTO;
 import com.server.internshipserver.domain.internship.dto.FilterApplyDTO;
 import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
 import com.server.internshipserver.common.enums.AuditStatus;
@@ -170,28 +169,15 @@ public class InternshipApplyController {
         return Result.success("确认上岗成功");
     }
     
-    @ApiOperation("学生申请离职/解绑")
-    @PreAuthorize("hasRole('ROLE_STUDENT')")
-    @PostMapping("/{applyId}/apply-unbind")
-    public Result<?> applyUnbind(
+    @ApiOperation("解绑企业（班主任/管理员）")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @PostMapping("/{applyId}/unbind")
+    public Result<?> unbindInternship(
             @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
-            @ApiParam(value = "离职原因", required = true) @RequestParam String reason) {
-        internshipApplyService.applyUnbind(applyId, reason);
-        return Result.success("离职申请提交成功，等待审核");
-    }
-    
-    @ApiOperation("审核解绑申请（班主任/学院负责人/学校管理员/企业管理员/企业导师）")
-    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_COLLEGE_LEADER', 'ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
-    @PostMapping("/{applyId}/audit-unbind")
-    public Result<?> auditUnbind(
-            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
-            @ApiParam(value = "审核状态（1-已通过，2-已拒绝）", required = true) @RequestParam Integer auditStatus,
-            @ApiParam(value = "审核意见", required = false) @RequestParam(required = false) String auditOpinion) {
-        AuditUnbindDTO auditDTO = new AuditUnbindDTO();
-        auditDTO.setAuditStatus(AuditStatus.getByCode(auditStatus));
-        auditDTO.setAuditOpinion(auditOpinion);
-        internshipApplyService.auditUnbind(applyId, auditDTO);
-        return Result.success("审核成功");
+            @ApiParam(value = "解绑原因", required = false) @RequestParam(required = false) String reason,
+            @ApiParam(value = "备注", required = false) @RequestParam(required = false) String remark) {
+        internshipApplyService.unbindInternship(applyId, reason, remark);
+        return Result.success("解绑成功");
     }
     
     @ApiOperation("获取当前学生的实习申请（已确认上岗的）")

@@ -59,16 +59,10 @@ export const applyApi = {
   confirmOnboard(applyId) {
     return request.post(`/internship/apply/${applyId}/confirm-onboard`)
   },
-  // 学生申请离职/解绑
-  applyUnbind(applyId, reason) {
-    return request.post(`/internship/apply/${applyId}/apply-unbind`, null, {
-      params: { reason }
-    })
-  },
-  // 审核解绑申请（班主任/学院负责人）
-  auditUnbind(applyId, auditStatus, auditOpinion) {
-    return request.post(`/internship/apply/${applyId}/audit-unbind`, null, {
-      params: { auditStatus, auditOpinion }
+  // 解绑企业（班主任/管理员）
+  unbindInternship(applyId, reason, remark) {
+    return request.post(`/internship/apply/${applyId}/unbind`, null, {
+      params: { reason, remark }
     })
   },
   // 获取当前学生的实习申请（已确认上岗的）

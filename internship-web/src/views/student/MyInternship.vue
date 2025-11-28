@@ -60,14 +60,21 @@
               type="info" 
               size="small"
             >
-              已离职
+              已解绑
+            </el-tag>
+            <el-tag 
+              v-else-if="currentInternship.studentInternshipStatus === 1" 
+              type="success" 
+              size="small"
+            >
+              已确认上岗
             </el-tag>
             <el-tag 
               v-else 
-              :type="currentInternship.studentConfirmStatus === 1 ? 'success' : 'warning'" 
+              type="warning" 
               size="small"
             >
-              {{ currentInternship.studentConfirmStatus === 1 ? '已确认上岗' : '待确认上岗' }}
+              待确认上岗
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="确认上岗时间">
@@ -85,102 +92,49 @@
         </el-descriptions>
         
         <div class="action-buttons" style="margin-top: 20px">
-          <el-button
-            v-if="currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === null"
-            type="danger"
-            :loading="unbindLoading"
-            @click="showUnbindDialog = true"
-          >
-            申请离职
-          </el-button>
-          <el-button
-            v-else-if="currentInternship.unbindStatus === 1"
-            type="warning"
-            disabled
-          >
-            离职申请审核中（待企业管理员审批）
-          </el-button>
-          <el-button
-            v-else-if="currentInternship.unbindStatus === 4"
-            type="warning"
-            disabled
-          >
-            离职申请审核中（待学校审批）
-          </el-button>
-          <el-button
-            v-else-if="currentInternship.unbindStatus === 3"
+          <el-alert
+            v-if="currentInternship.unbindStatus === 2"
             type="info"
-            disabled
+            :closable="false"
+            show-icon
           >
-            离职申请被拒绝
-          </el-button>
+            <template #title>
+              <span>您已与企业解绑，如需重新实习，请联系班主任</span>
+            </template>
+          </el-alert>
         </div>
       </el-card>
       
       <!-- 解绑信息（如果有） -->
-      <el-card v-if="currentInternship.unbindStatus !== 0 && currentInternship.unbindStatus !== null" class="unbind-info-card" shadow="hover">
+      <el-card v-if="currentInternship.unbindStatus === 2" class="unbind-info-card" shadow="hover">
         <template #header>
-          <span class="card-title">离职申请信息</span>
+          <span class="card-title">解绑信息</span>
         </template>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="离职原因" :span="2">
+          <el-descriptions-item label="解绑原因" :span="2">
             {{ currentInternship.unbindReason || '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="审核状态">
+          <el-descriptions-item label="解绑状态">
             <el-tag :type="getUnbindStatusType(currentInternship.unbindStatus)" size="small">
               {{ getUnbindStatusText(currentInternship.unbindStatus) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item v-if="currentInternship.unbindAuditTime" label="审核时间">
+          <el-descriptions-item v-if="currentInternship.unbindAuditTime" label="解绑时间">
             {{ formatDateTime(currentInternship.unbindAuditTime) }}
           </el-descriptions-item>
-          <el-descriptions-item v-if="currentInternship.unbindAuditOpinion" label="审核意见" :span="2">
+          <el-descriptions-item v-if="currentInternship.unbindAuditOpinion" label="解绑备注" :span="2">
             {{ currentInternship.unbindAuditOpinion }}
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
     </div>
     
-    <!-- 申请离职对话框 -->
-    <el-dialog
-      v-model="showUnbindDialog"
-      title="申请离职"
-      width="500px"
-    >
-      <el-form :model="unbindForm" :rules="unbindFormRules" ref="unbindFormRef" label-width="100px">
-        <el-form-item label="离职原因" prop="reason">
-          <el-input
-            v-model="unbindForm.reason"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入离职原因"
-            maxlength="500"
-            show-word-limit
-          />
-        </el-form-item>
-        <el-alert
-          type="warning"
-          :closable="false"
-          show-icon
-          style="margin-top: 10px"
-        >
-          <template #default>
-            <div>离职申请提交后，需要班主任或学院负责人审核通过后才能解绑。</div>
-          </template>
-        </el-alert>
-      </el-form>
-      <template #footer>
-        <el-button @click="showUnbindDialog = false">取消</el-button>
-        <el-button type="danger" :loading="unbindLoading" @click="handleSubmitUnbind">提交申请</el-button>
-      </template>
-    </el-dialog>
   </PageLayout>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
@@ -188,21 +142,7 @@ import PageLayout from '@/components/common/PageLayout.vue'
 
 const router = useRouter()
 const loading = ref(false)
-const unbindLoading = ref(false)
-const showUnbindDialog = ref(false)
 const currentInternship = ref(null)
-const unbindFormRef = ref(null)
-
-const unbindForm = reactive({
-  reason: ''
-})
-
-const unbindFormRules = {
-  reason: [
-    { required: true, message: '请输入离职原因', trigger: 'blur' },
-    { min: 5, message: '离职原因至少5个字符', trigger: 'blur' }
-  ]
-}
 
 // 加载当前实习信息
 const loadCurrentInternship = async () => {
@@ -227,7 +167,6 @@ const getInternshipStatusText = (status) => {
   const statusMap = {
     0: '未实习',
     1: '实习中',
-    2: '已离职',
     3: '已结束'
   }
   return statusMap[status] || '未知'
@@ -242,7 +181,6 @@ const getInternshipStatusType = (status) => {
   const typeMap = {
     0: 'info',
     1: 'success',
-    2: 'warning',
     3: 'info'
   }
   return typeMap[status] || 'info'
@@ -251,11 +189,8 @@ const getInternshipStatusType = (status) => {
 // 获取解绑状态文本
 const getUnbindStatusText = (status) => {
   const statusMap = {
-    0: '未申请',
-    1: '已申请离职 待审批',
-    4: '已申请离职 待审批',
-    2: '离职审批通过',
-    3: '已拒绝'
+    0: '未解绑',
+    2: '已解绑'
   }
   return statusMap[status] || '未知'
 }
@@ -264,44 +199,11 @@ const getUnbindStatusText = (status) => {
 const getUnbindStatusType = (status) => {
   const typeMap = {
     0: 'info',
-    1: 'warning',
-    4: 'warning',
-    2: 'success',
-    3: 'danger'
+    2: 'success'
   }
   return typeMap[status] || 'info'
 }
 
-// 提交离职申请
-const handleSubmitUnbind = async () => {
-  if (!unbindFormRef.value) return
-  
-  await unbindFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    
-    if (!currentInternship.value || !currentInternship.value.applyId) {
-      ElMessage.error('申请ID不存在')
-      return
-    }
-    
-    try {
-      unbindLoading.value = true
-      const res = await applyApi.applyUnbind(currentInternship.value.applyId, unbindForm.reason)
-      if (res.code === 200) {
-        ElMessage.success('离职申请提交成功，等待审核')
-        showUnbindDialog.value = false
-        unbindForm.reason = ''
-        // 重新加载数据
-        await loadCurrentInternship()
-      }
-    } catch (error) {
-      console.error('提交离职申请失败:', error)
-      ElMessage.error(error.response?.data?.message || '提交离职申请失败')
-    } finally {
-      unbindLoading.value = false
-    }
-  })
-}
 
 // 去申请实习
 const goToApply = () => {

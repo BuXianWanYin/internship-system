@@ -105,7 +105,7 @@ public class ClassController {
     }
     
     @ApiOperation("生成班级分享码")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @PostMapping("/{id}/share-code")
     public Result<Map<String, Object>> generateShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
@@ -115,7 +115,7 @@ public class ClassController {
     }
     
     @ApiOperation("重新生成班级分享码")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @PostMapping("/{id}/share-code/regenerate")
     public Result<Map<String, Object>> regenerateShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
@@ -125,7 +125,7 @@ public class ClassController {
     }
     
     @ApiOperation("查看班级分享码")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/{id}/share-code")
     public Result<Map<String, Object>> getShareCode(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long id) {
@@ -142,7 +142,7 @@ public class ClassController {
     }
     
     @ApiOperation("任命班主任")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @PostMapping("/{classId}/appoint-teacher")
     public Result<?> appointClassTeacher(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long classId,
@@ -155,7 +155,7 @@ public class ClassController {
     }
     
     @ApiOperation("取消班主任任命")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @PostMapping("/{classId}/remove-teacher")
     public Result<?> removeClassTeacher(
             @ApiParam(value = "班级ID", required = true) @PathVariable Long classId) {

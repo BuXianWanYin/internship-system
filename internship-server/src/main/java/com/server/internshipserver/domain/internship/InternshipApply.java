@@ -98,7 +98,7 @@ public class InternshipApply implements Serializable {
     @TableField("apply_reason")
     private String applyReason;
     
-    @ApiModelProperty(value = "状态：0-待审核，1-已通过，2-已拒绝，3-已录用，4-已拒绝录用，5-已取消，6-已离职", example = "1")
+    @ApiModelProperty(value = "状态：0-待审核，1-已通过，2-已拒绝，3-已录用，4-已拒绝录用，5-已取消", example = "1")
     @TableField("status")
     private Integer status;
     
@@ -155,7 +155,7 @@ public class InternshipApply implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime studentConfirmTime;
     
-    @ApiModelProperty(value = "解绑状态：0-未申请，1-申请解绑（待企业管理员审批），4-企业管理员已审批（待学校审批），2-已解绑（离职审批通过），3-解绑被拒绝", example = "0")
+    @ApiModelProperty(value = "解绑状态：0-未解绑，2-已解绑", example = "0")
     @TableField("unbind_status")
     private Integer unbindStatus;
     
@@ -163,16 +163,16 @@ public class InternshipApply implements Serializable {
     @TableField("unbind_reason")
     private String unbindReason;
     
-    @ApiModelProperty(value = "解绑审核人ID（班主任）", example = "1")
+    @ApiModelProperty(value = "解绑操作人ID（班主任/管理员）", example = "1")
     @TableField("unbind_audit_user_id")
     private Long unbindAuditUserId;
     
-    @ApiModelProperty(value = "解绑审核时间")
+    @ApiModelProperty(value = "解绑时间")
     @TableField("unbind_audit_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime unbindAuditTime;
     
-    @ApiModelProperty(value = "解绑审核意见", example = "同意解绑")
+    @ApiModelProperty(value = "解绑备注", example = "学生离职，已与企业沟通")
     @TableField("unbind_audit_opinion")
     private String unbindAuditOpinion;
     
@@ -249,7 +249,7 @@ public class InternshipApply implements Serializable {
     @TableField(exist = false)
     private String planCode;
     
-    @ApiModelProperty(value = "学生实习状态：0-未实习，1-实习中，2-已离职，3-已结束（用于前端显示）")
+    @ApiModelProperty(value = "学生实习状态：0-未实习，1-实习中，3-已结束（用于前端显示）")
     @TableField(exist = false)
     private Integer studentInternshipStatus;
     

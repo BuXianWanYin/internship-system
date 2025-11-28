@@ -85,7 +85,7 @@ export const menuItems = [
         index: '/admin/system/class-teacher',
         title: '班主任任命',
         icon: UserFilled,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
   },
@@ -123,7 +123,7 @@ export const menuItems = [
         index: '/admin/student',
         title: '学生管理',
         icon: User,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
       },
       {
         index: '/admin/teacher',
@@ -162,24 +162,30 @@ export const menuItems = [
     ]
   },
   
-  // ========== 企业管理（学校管理员） ==========
+  // ========== 企业管理（学校管理员、学院负责人） ==========
   {
     index: 'enterprise-cooperation',
     title: '合作企业管理',
     icon: OfficeBuilding,
-    roles: ['ROLE_SCHOOL_ADMIN'],
+    roles: ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'],
     children: [
       {
         index: '/admin/enterprise',
         title: '合作企业管理',
         icon: OfficeBuilding,
-        roles: ['ROLE_SCHOOL_ADMIN']
+        roles: ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       },
       {
         index: '/admin/enterprise-mentor',
         title: '企业导师详情',
         icon: User,
-        roles: ['ROLE_SCHOOL_ADMIN']
+        roles: ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/internship/post',
+        title: '岗位管理',
+        icon: Briefcase,
+        roles: ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
   },
@@ -211,13 +217,7 @@ export const menuItems = [
         index: '/admin/internship/plan',
         title: '实习计划管理',
         icon: Document,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
-      },
-      {
-        index: '/admin/internship/post',
-        title: '岗位管理',
-        icon: Briefcase,
-        roles: ['ROLE_SCHOOL_ADMIN']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       },
       {
         index: '/admin/internship/apply/audit',
@@ -433,7 +433,7 @@ export const menuItems = [
         index: '/teacher/internship/feedback',
         title: '问题反馈处理',
         icon: ChatLineRound,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/evaluation/student',

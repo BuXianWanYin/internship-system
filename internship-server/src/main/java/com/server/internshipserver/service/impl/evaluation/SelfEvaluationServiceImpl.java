@@ -52,9 +52,18 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
         InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 验证实习状态为"实习结束"（status=7）
-        if (apply.getStatus() == null || apply.getStatus() != 7) {
-            throw new BusinessException("只能评价实习已结束的申请");
+        // 验证实习状态为"已录用"（status=3）
+        if (apply.getStatus() == null || apply.getStatus() != 3) {
+            throw new BusinessException("只能评价已录用的实习申请");
+        }
+        
+        // 验证实习是否已结束（实习结束日期已过或今天）
+        if (apply.getInternshipEndDate() == null) {
+            throw new BusinessException("实习结束日期未设置，无法填写自我评价");
+        }
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (apply.getInternshipEndDate().isAfter(today)) {
+            throw new BusinessException("实习尚未结束，请在实习结束后填写自我评价");
         }
         
         // 获取当前登录用户（学生）

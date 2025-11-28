@@ -41,7 +41,7 @@ public class StudentController {
     
     @ApiOperation("分页查询学生列表")
     @GetMapping("/page")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Page<Student>> getStudentPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -67,7 +67,7 @@ public class StudentController {
     
     @ApiOperation("根据ID查询学生详情")
     @GetMapping("/{studentId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Student> getStudentById(
             @ApiParam(value = "学生ID", required = true) @PathVariable Long studentId) {
         Student student = studentService.getStudentById(studentId);
@@ -85,7 +85,7 @@ public class StudentController {
     
     @ApiOperation("添加学生")
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Student> addStudent(@RequestBody Student student) {
         Student result = studentService.addStudent(student);
         return Result.success("添加成功", result);
@@ -93,7 +93,7 @@ public class StudentController {
     
     @ApiOperation("更新学生信息")
     @PutMapping
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Student> updateStudent(@RequestBody Student student) {
         Student result = studentService.updateStudent(student);
         return Result.success("更新成功", result);
@@ -101,7 +101,7 @@ public class StudentController {
     
     @ApiOperation("停用学生（软删除）")
     @DeleteMapping("/{studentId}")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<?> deleteStudent(
             @ApiParam(value = "学生ID", required = true) @PathVariable Long studentId) {
         boolean success = studentService.deleteStudent(studentId);
@@ -110,14 +110,14 @@ public class StudentController {
     
     @ApiOperation("下载学生导入Excel模板")
     @GetMapping("/import/template")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public void downloadImportTemplate(HttpServletResponse response) throws IOException {
         ExcelUtil.generateStudentImportTemplate(response);
     }
     
     @ApiOperation("Excel批量导入学生")
     @PostMapping("/import")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<StudentImportResult> importStudents(
             @ApiParam(value = "Excel文件", required = true) @RequestParam("file") MultipartFile file,
             @ApiParam(value = "班级ID（可选，如果Excel中未指定班级ID则使用此值）") @RequestParam(required = false) Long classId) {
@@ -138,7 +138,7 @@ public class StudentController {
     
     @ApiOperation("分页查询待审核学生列表（班主任审核）")
     @GetMapping("/pending-approval/page")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<Page<Student>> getPendingApprovalStudentPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
@@ -151,7 +151,7 @@ public class StudentController {
     
     @ApiOperation("审核学生注册申请")
     @PostMapping("/{studentId}/approve")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<?> approveStudentRegistration(
             @ApiParam(value = "学生ID", required = true) @PathVariable Long studentId,
             @ApiParam(value = "是否通过：true-通过，false-拒绝", required = true) @RequestParam Boolean approved,
