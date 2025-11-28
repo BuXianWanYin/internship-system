@@ -320,20 +320,12 @@ export const menuItems = [
     ]
   },
   
-  // ========== 企业管理（企业导师） ==========
+  // ========== 学生管理（企业导师） ==========
   {
-    index: 'enterprise-mentor',
-    title: '企业管理',
-    icon: OfficeBuilding,
-    roles: ['ROLE_ENTERPRISE_MENTOR'],
-    children: [
-      {
-        index: '/enterprise/mentor/student',
-        title: '我指导的学生',
-        icon: User,
-        roles: ['ROLE_ENTERPRISE_MENTOR']
-      }
-    ]
+    index: '/enterprise/mentor/student',
+    title: '学生管理',
+    icon: User,
+    roles: ['ROLE_ENTERPRISE_MENTOR']
   },
   
   // ========== 实习管理（企业） ==========
