@@ -1468,12 +1468,18 @@ const canReview = (row) => {
     return true
   }
   
+  // 如果没有申请类型信息，默认允许企业导师审核（兼容旧数据）
+  if (row.applyType === null || row.applyType === undefined) {
+    // 企业导师和管理员可以审核（可能是旧数据，没有申请类型）
+    return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
+  }
+  
   // 根据申请类型判断
   if (row.applyType === 1) {
     // 合作企业实习：企业导师可以审核
     return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
   } else if (row.applyType === 2) {
-    // 自主实习：班主任可以审核
+    // 自主实习：班主任可以审核（企业导师不应该看到，但为了安全还是判断一下）
     return roles.includes('ROLE_CLASS_TEACHER')
   }
   

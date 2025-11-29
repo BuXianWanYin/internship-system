@@ -237,7 +237,10 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 更新
         this.updateById(attendance);
-        return this.getById(attendance.getAttendanceId());
+        Attendance updated = this.getById(attendance.getAttendanceId());
+        // 填充关联字段
+        fillAttendanceRelatedFields(updated);
+        return updated;
     }
     
     @Override
@@ -336,6 +339,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                             );
                             
                             // 方式2：通过student.current_enterprise_id查询（查询当前实习企业为本企业的学生）
+                            // 注意：只查询合作企业实习的学生，不包含自主实习
                             List<Student> students = studentMapper.selectList(
                                     new LambdaQueryWrapper<Student>()
                                             .eq(Student::getCurrentEnterpriseId, currentUserEnterpriseId)
@@ -346,14 +350,14 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                             // 合并两种方式的查询结果
                             List<Long> applyIds = new ArrayList<>();
                             
-                            // 添加方式1的申请ID
+                            // 添加方式1的申请ID（只包含合作企业实习）
                             if (applies != null && !applies.isEmpty()) {
                                 applyIds.addAll(applies.stream()
                                         .map(InternshipApply::getApplyId)
                                         .collect(Collectors.toList()));
                             }
                             
-                            // 添加方式2的申请ID（通过学生ID查询其当前申请）
+                            // 添加方式2的申请ID（通过学生ID查询其当前申请，只包含合作企业实习）
                             if (students != null && !students.isEmpty()) {
                                 List<Long> studentIds = students.stream()
                                         .map(Student::getStudentId)
@@ -361,6 +365,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                                 List<InternshipApply> studentApplies = internshipApplyMapper.selectList(
                                         new LambdaQueryWrapper<InternshipApply>()
                                                 .in(InternshipApply::getStudentId, studentIds)
+                                                .eq(InternshipApply::getApplyType, ApplyType.COOPERATION.getCode())
                                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                                 .select(InternshipApply::getApplyId)
                                 );
