@@ -155,6 +155,7 @@
                     placeholder="上班时间"
                     size="small"
                     style="width: 100%"
+                    @change="() => calculateWorkHours(slot, index)"
                   />
                 </el-col>
                 <el-col :span="5">
@@ -165,6 +166,7 @@
                     placeholder="下班时间"
                     size="small"
                     style="width: 100%"
+                    @change="() => calculateWorkHours(slot, index)"
                   />
                 </el-col>
                 <el-col :span="4">
@@ -951,6 +953,31 @@ const handleAddTimeSlot = () => {
 // 删除时间段
 const handleRemoveTimeSlot = (index) => {
   formData.timeSlots.splice(index, 1)
+}
+
+// 计算工作时长
+const calculateWorkHours = (slot, index) => {
+  if (slot.startTime && slot.endTime) {
+    try {
+      const [startHour, startMinute] = slot.startTime.split(':').map(Number)
+      const [endHour, endMinute] = slot.endTime.split(':').map(Number)
+      
+      const startMinutes = startHour * 60 + startMinute
+      const endMinutes = endHour * 60 + endMinute
+      
+      // 处理跨天的情况（如果结束时间小于开始时间，认为是第二天）
+      let diffMinutes = endMinutes - startMinutes
+      if (diffMinutes < 0) {
+        diffMinutes += 24 * 60 // 加一天
+      }
+      
+      // 转换为小时（保留2位小数）
+      const workHours = Math.round((diffMinutes / 60) * 100) / 100
+      slot.workHours = workHours
+    } catch (error) {
+      console.error('计算工作时长失败:', error)
+    }
+  }
 }
 
 // 提交表单

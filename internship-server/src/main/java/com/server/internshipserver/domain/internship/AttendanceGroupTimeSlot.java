@@ -6,14 +6,21 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 /**
  * 考勤组时间段实体类
@@ -39,13 +46,41 @@ public class AttendanceGroupTimeSlot implements Serializable {
     
     @ApiModelProperty(value = "上班时间", required = true, example = "09:00:00")
     @TableField("start_time")
-    @JsonFormat(pattern = "HH:mm:ss")
+    @JsonDeserialize(using = LocalTimeDeserializer.class)
     private LocalTime startTime;
     
     @ApiModelProperty(value = "下班时间", required = true, example = "18:00:00")
     @TableField("end_time")
-    @JsonFormat(pattern = "HH:mm:ss")
+    @JsonDeserialize(using = LocalTimeDeserializer.class)
     private LocalTime endTime;
+    
+    /**
+     * LocalTime 自定义反序列化器，支持 "HH:mm" 和 "HH:mm:ss" 两种格式
+     */
+    public static class LocalTimeDeserializer extends JsonDeserializer<LocalTime> {
+        private static final DateTimeFormatter FORMATTER_HHMM = DateTimeFormatter.ofPattern("HH:mm");
+        private static final DateTimeFormatter FORMATTER_HHMMSS = DateTimeFormatter.ofPattern("HH:mm:ss");
+        
+        @Override
+        public LocalTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            String timeStr = p.getText().trim();
+            if (timeStr == null || timeStr.isEmpty()) {
+                return null;
+            }
+            
+            // 先尝试 "HH:mm:ss" 格式
+            try {
+                return LocalTime.parse(timeStr, FORMATTER_HHMMSS);
+            } catch (DateTimeParseException e) {
+                // 如果失败，尝试 "HH:mm" 格式
+                try {
+                    return LocalTime.parse(timeStr, FORMATTER_HHMM);
+                } catch (DateTimeParseException e2) {
+                    throw new IOException("无法解析时间格式: " + timeStr + "，支持的格式: HH:mm 或 HH:mm:ss", e2);
+                }
+            }
+        }
+    }
     
     @ApiModelProperty(value = "工作时长（小时）", required = true, example = "8.00")
     @TableField("work_hours")
