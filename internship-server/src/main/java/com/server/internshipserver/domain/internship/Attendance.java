@@ -41,6 +41,14 @@ public class Attendance implements Serializable {
     @TableField("apply_id")
     private Long applyId;
     
+    @ApiModelProperty(value = "考勤组ID", example = "1")
+    @TableField("group_id")
+    private Long groupId;
+    
+    @ApiModelProperty(value = "时间段ID", example = "1")
+    @TableField("time_slot_id")
+    private Long timeSlotId;
+    
     @ApiModelProperty(value = "考勤日期", required = true, example = "2024-03-01")
     @TableField("attendance_date")
     @JsonFormat(pattern = "yyyy-MM-dd")

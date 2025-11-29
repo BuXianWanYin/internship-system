@@ -3,6 +3,39 @@
     <!-- 搜索筛选栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
+        <el-form-item label="班级">
+          <el-select
+            v-model="searchForm.classId"
+            placeholder="请选择班级"
+            clearable
+            style="width: 200px"
+            @change="handleClassChange"
+          >
+            <el-option
+              v-for="classItem in classList"
+              :key="classItem.classId"
+              :label="classItem.className"
+              :value="classItem.classId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="学生">
+          <el-select
+            v-model="searchForm.studentId"
+            placeholder="请选择学生"
+            clearable
+            filterable
+            style="width: 200px"
+            :disabled="!searchForm.classId"
+          >
+            <el-option
+              v-for="student in studentList"
+              :key="student.studentId"
+              :label="student.studentName ? `${student.studentName}（${student.studentNo}）` : student.studentNo"
+              :value="student.studentId"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="学生姓名">
           <el-input
             v-model="searchForm.studentName"
@@ -49,10 +82,6 @@
                   <span class="legend-dot rest"></span>
                   <span>休息</span>
                 </div>
-                <div class="legend-item">
-                  <span class="legend-dot pending"></span>
-                  <span>待确认</span>
-                </div>
               </div>
             </div>
           </template>
@@ -63,9 +92,6 @@
                 <div v-if="getDateAttendanceCount(data.day) > 0" class="calendar-content">
                   <div class="attendance-summary">
                     <span class="count-badge">{{ getDateAttendanceCount(data.day) }}人</span>
-                    <span v-if="getPendingCount(data.day) > 0" class="pending-badge">
-                      {{ getPendingCount(data.day) }}待确认
-                    </span>
                   </div>
                 </div>
               </div>
@@ -75,14 +101,6 @@
       </el-col>
       <!-- 右侧：统计面板 -->
       <el-col :span="8">
-        <el-card shadow="hover" style="margin-bottom: 12px">
-          <div class="stat-item">
-            <div class="stat-label">待确认数量</div>
-            <div class="stat-value" style="color: #e6a23c; cursor: pointer" @click="handleViewPending">
-              {{ statistics.pendingCount || 0 }}
-            </div>
-          </div>
-        </el-card>
         <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">异常考勤</div>
@@ -159,27 +177,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
-            <el-button
-              v-if="row.confirmStatus === 0"
-              link
-              type="success"
-              size="small"
-              @click="handleConfirm(row)"
-            >
-              确认
-            </el-button>
-            <el-button
-              v-if="row.confirmStatus === 0"
-              link
-              type="danger"
-              size="small"
-              @click="handleReject(row)"
-            >
-              拒绝
-            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -230,60 +230,33 @@
         </el-descriptions-item>
       </el-descriptions>
     </el-dialog>
-
-    <!-- 确认/拒绝对话框 -->
-    <el-dialog
-      v-model="confirmDialogVisible"
-      :title="confirmAction === 'confirm' ? '确认考勤' : '拒绝考勤'"
-      width="500px"
-    >
-      <el-form :model="confirmForm" label-width="100px">
-        <el-form-item label="学生姓名">
-          <el-input :value="confirmForm.studentName" disabled />
-        </el-form-item>
-        <el-form-item label="考勤日期">
-          <el-input :value="formatDate(confirmForm.attendanceDate)" disabled />
-        </el-form-item>
-        <el-form-item label="确认意见">
-          <el-input
-            v-model="confirmForm.comment"
-            type="textarea"
-            :rows="4"
-            :placeholder="confirmAction === 'confirm' ? '请输入确认意见（可选）' : '请输入拒绝原因'"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="confirmDialogVisible = false">取消</el-button>
-        <el-button
-          :type="confirmAction === 'confirm' ? 'success' : 'danger'"
-          @click="handleSubmitConfirm"
-        >
-          {{ confirmAction === 'confirm' ? '确认' : '拒绝' }}
-        </el-button>
-      </template>
-    </el-dialog>
   </PageLayout>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
+import { classApi } from '@/api/system/class'
+import { studentApi } from '@/api/user/student'
+import { userApi } from '@/api/user/user'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const detailDialogVisible = ref(false)
 const dateListDialogVisible = ref(false)
-const confirmDialogVisible = ref(false)
-const confirmAction = ref('confirm') // 'confirm' or 'reject'
 
 const searchForm = reactive({
+  classId: null,
+  studentId: null,
   studentName: '',
   studentNo: ''
 })
+
+const classList = ref([])
+const studentList = ref([])
 
 const calendarDate = ref(new Date())
 const selectedDate = ref('')
@@ -292,15 +265,8 @@ const allAttendanceData = ref([]) // 存储所有考勤数据
 const attendanceMap = ref(new Map()) // 按日期组织的考勤数据
 
 const detailData = ref({})
-const confirmForm = reactive({
-  attendanceId: null,
-  studentName: '',
-  attendanceDate: '',
-  comment: ''
-})
 
 const statistics = ref({
-  pendingCount: 0,
   abnormalCount: 0,
   todayAttendanceRate: 0,
   weekAttendanceRate: 0,
@@ -308,19 +274,123 @@ const statistics = ref({
   confirmedCount: 0
 })
 
+// 加载班级列表
+const loadClassList = async () => {
+  try {
+    const res = await classApi.getClassPage({
+      current: 1,
+      size: 1000
+    })
+    if (res.code === 200) {
+      classList.value = res.data.records || []
+    }
+  } catch (error) {
+    console.error('加载班级列表失败:', error)
+  }
+}
+
+// 加载学生列表（根据班级）
+const loadStudentList = async (classId) => {
+  if (!classId) {
+    studentList.value = []
+    return
+  }
+  try {
+    const res = await studentApi.getStudentPage({
+      current: 1,
+      size: 1000,
+      classId: classId
+    })
+    if (res.code === 200) {
+      const students = res.data.records || []
+      
+      // 批量获取用户信息以获取学生姓名
+      const userIds = students.map(s => s.userId).filter(id => id)
+      if (userIds.length > 0) {
+        try {
+          // 批量查询用户信息
+          const userPromises = userIds.map(userId => 
+            userApi.getUserById(userId).catch(() => null)
+          )
+          const userResults = await Promise.all(userPromises)
+          
+          // 创建userId到realName的映射
+          const userMap = new Map()
+          userResults.forEach((userRes, index) => {
+            if (userRes && userRes.code === 200 && userRes.data) {
+              userMap.set(userIds[index], userRes.data.realName || '')
+            }
+          })
+          
+          // 为学生对象添加studentName字段
+          studentList.value = students.map(student => ({
+            ...student,
+            studentName: userMap.get(student.userId) || ''
+          }))
+        } catch (userError) {
+          console.warn('获取用户信息失败，使用学号显示:', userError)
+          // 如果获取用户信息失败，至少显示学号
+          studentList.value = students.map(student => ({
+            ...student,
+            studentName: ''
+          }))
+        }
+      } else {
+        studentList.value = students
+      }
+    }
+  } catch (error) {
+    console.error('加载学生列表失败:', error)
+    ElMessage.error('加载学生列表失败')
+  }
+}
+
+// 班级变化
+const handleClassChange = (classId) => {
+  searchForm.studentId = null
+  loadStudentList(classId)
+}
+
 // 加载数据
 const loadData = async () => {
   loading.value = true
   try {
-    // 加载所有考勤数据用于日历显示
-    const res = await attendanceApi.getAttendancePage({
+    const params = {
       current: 1,
-      size: 1000,
-      studentName: searchForm.studentName || undefined,
-      studentNo: searchForm.studentNo || undefined
-    })
+      size: 1000
+    }
+    
+    // 如果选择了学生ID，优先使用学生ID
+    if (searchForm.studentId) {
+      // 需要从考勤数据中获取studentId对应的考勤记录
+      // 这里先通过学生姓名和学号筛选
+      if (searchForm.studentName) {
+        params.studentName = searchForm.studentName
+      }
+      if (searchForm.studentNo) {
+        params.studentNo = searchForm.studentNo
+      }
+    } else {
+      // 使用学生姓名和学号筛选
+      if (searchForm.studentName) {
+        params.studentName = searchForm.studentName
+      }
+      if (searchForm.studentNo) {
+        params.studentNo = searchForm.studentNo
+      }
+    }
+    
+    // 加载所有考勤数据用于日历显示
+    const res = await attendanceApi.getAttendancePage(params)
     if (res.code === 200) {
-      allAttendanceData.value = res.data.records || []
+      let records = res.data.records || []
+      
+      // 如果选择了学生ID，进一步筛选
+      if (searchForm.studentId) {
+        records = records.filter(item => item.studentId === searchForm.studentId)
+      }
+      
+      allAttendanceData.value = records
       
       // 构建考勤数据映射（按日期）
       attendanceMap.value.clear()
@@ -350,20 +420,17 @@ const calculateStatistics = () => {
   const today = new Date().toISOString().split('T')[0]
   const todayList = attendanceMap.value.get(today) || []
   
-  // 待确认数量
-  statistics.value.pendingCount = allAttendanceData.value.filter(item => item.confirmStatus === 0).length
-  
   // 异常考勤（迟到、早退、缺勤）
   statistics.value.abnormalCount = allAttendanceData.value.filter(item => 
     item.attendanceType === 2 || item.attendanceType === 3 || item.attendanceType === 5
   ).length
   
-  // 今日出勤率
+  // 今日出勤率（只统计已确认的正常考勤）
   const todayTotal = todayList.length
   const todayNormal = todayList.filter(item => item.attendanceType === 1 && item.confirmStatus === 1).length
   statistics.value.todayAttendanceRate = todayTotal > 0 ? (todayNormal / todayTotal) * 100 : 0
   
-  // 本周出勤率（简化计算，使用所有数据）
+  // 本周出勤率（简化计算，使用所有数据，只统计已确认的正常考勤）
   const totalCount = allAttendanceData.value.length
   const normalCount = allAttendanceData.value.filter(item => 
     item.attendanceType === 1 && item.confirmStatus === 1
@@ -383,14 +450,6 @@ const getDateAttendanceCount = (dateStr) => {
   return list.length
 }
 
-// 获取日期待确认数量
-const getPendingCount = (dateStr) => {
-  if (!dateStr) return 0
-  const dateOnly = dateStr.split(' ')[0]
-  const list = attendanceMap.value.get(dateOnly) || []
-  return list.filter(item => item.confirmStatus === 0).length
-}
-
 // 点击日期
 const handleDateClick = (dateStr) => {
   if (!dateStr) return
@@ -398,21 +457,6 @@ const handleDateClick = (dateStr) => {
   selectedDate.value = dateOnly
   dateAttendanceList.value = attendanceMap.value.get(dateOnly) || []
   dateListDialogVisible.value = true
-}
-
-// 查看待确认
-const handleViewPending = () => {
-  searchForm.confirmStatus = 0
-  handleSearch()
-  // 也可以直接显示待确认列表
-  const pendingList = allAttendanceData.value.filter(item => item.confirmStatus === 0)
-  if (pendingList.length > 0) {
-    // 显示第一个待确认的日期
-    const firstPending = pendingList[0]
-    handleDateClick(firstPending.attendanceDate)
-  } else {
-    ElMessage.info('暂无待确认的考勤记录')
-  }
 }
 
 // 查看详情
@@ -426,54 +470,6 @@ const handleView = async (row) => {
   } catch (error) {
     console.error('查询详情失败:', error)
     ElMessage.error('查询详情失败')
-  }
-}
-
-// 确认考勤
-const handleConfirm = (row) => {
-  confirmAction.value = 'confirm'
-  confirmForm.attendanceId = row.attendanceId
-  confirmForm.studentName = row.studentName
-  confirmForm.attendanceDate = row.attendanceDate
-  confirmForm.comment = ''
-  confirmDialogVisible.value = true
-}
-
-// 拒绝考勤
-const handleReject = (row) => {
-  confirmAction.value = 'reject'
-  confirmForm.attendanceId = row.attendanceId
-  confirmForm.studentName = row.studentName
-  confirmForm.attendanceDate = row.attendanceDate
-  confirmForm.comment = ''
-  confirmDialogVisible.value = true
-}
-
-// 提交确认/拒绝
-const handleSubmitConfirm = async () => {
-  if (confirmAction.value === 'reject' && !confirmForm.comment.trim()) {
-    ElMessage.warning('请输入拒绝原因')
-    return
-  }
-  
-  try {
-    const confirmStatus = confirmAction.value === 'confirm' ? 1 : 2
-    const res = await attendanceApi.confirmAttendance(
-      confirmForm.attendanceId,
-      confirmStatus,
-      confirmForm.comment || undefined
-    )
-    if (res.code === 200) {
-      ElMessage.success(confirmAction.value === 'confirm' ? '确认成功' : '拒绝成功')
-      confirmDialogVisible.value = false
-      await loadData()
-      // 刷新日期列表
-      if (dateListDialogVisible.value) {
-        handleDateClick(selectedDate.value)
-      }
-    }
-  } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
   }
 }
 
@@ -493,8 +489,11 @@ const handleSearch = () => {
 
 // 重置
 const handleReset = () => {
+  searchForm.classId = null
+  searchForm.studentId = null
   searchForm.studentName = ''
   searchForm.studentNo = ''
+  studentList.value = []
   handleSearch()
 }
 
@@ -546,6 +545,7 @@ const getConfirmStatusTagType = (status) => {
 
 // 初始化
 onMounted(() => {
+  loadClassList()
   loadData()
 })
 </script>
@@ -613,15 +613,6 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.pending-badge {
-  font-size: 9px;
-  color: #e6a23c;
-  background-color: #fdf6ec;
-  padding: 1px 4px;
-  border-radius: 2px;
-  display: inline-block;
-}
-
 .legend-item {
   display: flex;
   align-items: center;
@@ -647,10 +638,6 @@ onMounted(() => {
 
 .legend-dot.rest {
   background-color: #409eff;
-}
-
-.legend-dot.pending {
-  background-color: #e6a23c;
 }
 
 :deep(.el-calendar-day) {
