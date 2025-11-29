@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.ConfigKeys;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
 import com.server.internshipserver.common.exception.BusinessException;
@@ -67,48 +68,75 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
         InternshipApply apply = internshipApplyMapper.selectById(applyId);
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 检查三个评价是否都完成
+        // 判断申请类型
+        boolean isCooperation = apply.getApplyType() != null && 
+                               apply.getApplyType().equals(ApplyType.COOPERATION.getCode());
+        
+        // 检查评价是否都完成（根据实习类型判断）
         if (!checkAllEvaluationsCompleted(applyId)) {
-            throw new BusinessException("三个评价都完成后才能计算综合成绩");
+            if (isCooperation) {
+                throw new BusinessException("企业评价、学校评价和自评都完成后才能计算综合成绩");
+            } else {
+                throw new BusinessException("学校评价和自评都完成后才能计算综合成绩");
+            }
         }
         
-        // 获取三个评价
-        EnterpriseEvaluation enterpriseEval = getEnterpriseEvaluation(applyId);
+        // 获取学校评价和自评（所有类型都需要）
         SchoolEvaluation schoolEval = getSchoolEvaluation(applyId);
         SelfEvaluation selfEval = getSelfEvaluation(applyId);
         
-        if (enterpriseEval == null || schoolEval == null || selfEval == null) {
+        if (schoolEval == null || selfEval == null) {
             throw new BusinessException("评价信息不完整，无法计算综合成绩");
         }
         
         // 验证评价状态为已提交
-        if (!enterpriseEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) ||
-            !schoolEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) ||
+        if (!schoolEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) ||
             !selfEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode())) {
-            throw new BusinessException("所有评价都必须已提交才能计算综合成绩");
+            throw new BusinessException("学校评价和自评都必须已提交才能计算综合成绩");
         }
         
-        // 获取总分
-        BigDecimal enterpriseScore = enterpriseEval.getTotalScore();
+        BigDecimal enterpriseScore = null;
         BigDecimal schoolScore = schoolEval.getTotalScore();
         BigDecimal selfScore = selfEval.getSelfScore();
+        BigDecimal comprehensiveScore;
         
-        // 从系统配置读取权重，默认值：企业40%、学校40%、自评20%
-        BigDecimal enterpriseWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.ENTERPRISE_EVALUATION_WEIGHT, "0.4"));
-        BigDecimal schoolWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.SCHOOL_EVALUATION_WEIGHT, "0.4"));
-        BigDecimal selfWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.STUDENT_SELF_EVALUATION_WEIGHT, "0.2"));
-        
-        // 验证权重总和是否为1.0（允许0.01的误差）
-        BigDecimal totalWeight = enterpriseWeight.add(schoolWeight).add(selfWeight);
-        if (totalWeight.compareTo(new BigDecimal("1.0")) < 0 || totalWeight.compareTo(new BigDecimal("1.01")) > 0) {
-            throw new BusinessException("评价权重配置错误，三个权重之和必须等于1.0");
+        if (isCooperation) {
+            // 合作企业实习：企业评价×权重 + 学校评价×权重 + 自评×权重
+            EnterpriseEvaluation enterpriseEval = getEnterpriseEvaluation(applyId);
+            if (enterpriseEval == null) {
+                throw new BusinessException("企业评价信息不完整，无法计算综合成绩");
+            }
+            if (!enterpriseEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode())) {
+                throw new BusinessException("企业评价必须已提交才能计算综合成绩");
+            }
+            
+            enterpriseScore = enterpriseEval.getTotalScore();
+            
+            // 从系统配置读取权重，默认值：企业40%、学校40%、自评20%
+            BigDecimal enterpriseWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.ENTERPRISE_EVALUATION_WEIGHT, "0.4"));
+            BigDecimal schoolWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.SCHOOL_EVALUATION_WEIGHT, "0.4"));
+            BigDecimal selfWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.STUDENT_SELF_EVALUATION_WEIGHT, "0.2"));
+            
+            // 验证权重总和是否为1.0（允许0.01的误差）
+            BigDecimal totalWeight = enterpriseWeight.add(schoolWeight).add(selfWeight);
+            if (totalWeight.compareTo(new BigDecimal("1.0")) < 0 || totalWeight.compareTo(new BigDecimal("1.01")) > 0) {
+                throw new BusinessException("评价权重配置错误，三个权重之和必须等于1.0");
+            }
+            
+            // 计算综合成绩：企业评价×权重 + 学校评价×权重 + 自评×权重
+            BigDecimal enterprisePart = enterpriseScore.multiply(enterpriseWeight);
+            BigDecimal schoolPart = schoolScore.multiply(schoolWeight);
+            BigDecimal selfPart = selfScore.multiply(selfWeight);
+            comprehensiveScore = enterprisePart.add(schoolPart).add(selfPart).setScale(2, RoundingMode.HALF_UP);
+        } else {
+            // 自主实习：学校评价×60% + 自评×40%
+            BigDecimal schoolWeight = new BigDecimal("0.6");
+            BigDecimal selfWeight = new BigDecimal("0.4");
+            
+            BigDecimal schoolPart = schoolScore.multiply(schoolWeight);
+            BigDecimal selfPart = selfScore.multiply(selfWeight);
+            comprehensiveScore = schoolPart.add(selfPart).setScale(2, RoundingMode.HALF_UP);
         }
-        
-        // 计算综合成绩：企业评价×权重 + 学校评价×权重 + 自评×权重
-        BigDecimal enterprisePart = enterpriseScore.multiply(enterpriseWeight);
-        BigDecimal schoolPart = schoolScore.multiply(schoolWeight);
-        BigDecimal selfPart = selfScore.multiply(selfWeight);
-        BigDecimal comprehensiveScore = enterprisePart.add(schoolPart).add(selfPart).setScale(2, RoundingMode.HALF_UP);
         
         // 计算等级
         String gradeLevel = calculateGradeLevel(comprehensiveScore);
@@ -155,19 +183,36 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
     public boolean checkAllEvaluationsCompleted(Long applyId) {
         EntityValidationUtil.validateIdNotNull(applyId, "申请ID");
         
-        // 1. 检查企业评价
-        EnterpriseEvaluation enterpriseEval = getEnterpriseEvaluation(applyId);
+        // 获取申请信息，判断申请类型
+        InternshipApply apply = internshipApplyMapper.selectById(applyId);
+        if (apply == null) {
+            return false;
+        }
         
-        // 2. 检查学校评价
+        // 检查学校评价和自评（所有类型都需要）
         SchoolEvaluation schoolEval = getSchoolEvaluation(applyId);
-        
-        // 3. 检查学生自评
         SelfEvaluation selfEval = getSelfEvaluation(applyId);
         
-        return enterpriseEval != null && schoolEval != null && selfEval != null &&
-               enterpriseEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) &&
-               schoolEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) &&
-               selfEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode());
+        if (schoolEval == null || selfEval == null) {
+            return false;
+        }
+        
+        // 判断申请类型
+        boolean isCooperation = apply.getApplyType() != null && 
+                               apply.getApplyType().equals(ApplyType.COOPERATION.getCode());
+        
+        if (isCooperation) {
+            // 合作企业实习：需要企业评价、学校评价和自评
+            EnterpriseEvaluation enterpriseEval = getEnterpriseEvaluation(applyId);
+            return enterpriseEval != null && 
+                   enterpriseEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) &&
+                   schoolEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) &&
+                   selfEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode());
+        } else {
+            // 自主实习：只需要学校评价和自评
+            return schoolEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode()) &&
+                   selfEval.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode());
+        }
     }
     
     @Override

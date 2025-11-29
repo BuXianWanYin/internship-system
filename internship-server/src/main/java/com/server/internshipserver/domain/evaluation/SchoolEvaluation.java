@@ -107,5 +107,13 @@ public class SchoolEvaluation implements Serializable {
     @ApiModelProperty(value = "日志周报质量自动计算分数（参考值，非数据库字段）")
     @TableField(exist = false)
     private BigDecimal logWeeklyReportScoreAuto;
+    
+    @ApiModelProperty(value = "综合成绩（非数据库字段）")
+    @TableField(exist = false)
+    private BigDecimal comprehensiveScore;
+    
+    @ApiModelProperty(value = "成绩等级（非数据库字段）")
+    @TableField(exist = false)
+    private String gradeLevel;
 }
 

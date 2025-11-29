@@ -13,6 +13,7 @@ import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
+import com.server.internshipserver.domain.evaluation.ComprehensiveScore;
 import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipLog;
@@ -21,6 +22,7 @@ import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.evaluation.SchoolEvaluationMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.service.evaluation.ComprehensiveScoreService;
 import com.server.internshipserver.mapper.internship.InternshipLogMapper;
 import com.server.internshipserver.mapper.internship.InternshipWeeklyReportMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
@@ -59,6 +61,9 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
     
     @Autowired
     private InternshipWeeklyReportMapper internshipWeeklyReportMapper;
+    
+    @Autowired
+    private ComprehensiveScoreService comprehensiveScoreService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -167,6 +172,13 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (evaluation.getApplyId() != null) {
             BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
             evaluation.setLogWeeklyReportScoreAuto(autoScore);
+            
+            // 填充综合成绩（如果已计算）
+            ComprehensiveScore comprehensiveScore = comprehensiveScoreService.getScoreByApplyId(evaluation.getApplyId());
+            if (comprehensiveScore != null) {
+                evaluation.setComprehensiveScore(comprehensiveScore.getComprehensiveScore());
+                evaluation.setGradeLevel(comprehensiveScore.getGradeLevel());
+            }
         }
         
         // 填充关联字段
@@ -191,6 +203,13 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
             if (evaluation.getApplyId() != null) {
                 BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
                 evaluation.setLogWeeklyReportScoreAuto(autoScore);
+                
+                // 填充综合成绩（如果已计算）
+                ComprehensiveScore comprehensiveScore = comprehensiveScoreService.getScoreByApplyId(evaluation.getApplyId());
+                if (comprehensiveScore != null) {
+                    evaluation.setComprehensiveScore(comprehensiveScore.getComprehensiveScore());
+                    evaluation.setGradeLevel(comprehensiveScore.getGradeLevel());
+                }
             }
             fillEvaluationRelatedFields(evaluation);
         }
@@ -222,6 +241,16 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (EntityValidationUtil.hasRecords(result)) {
             for (SchoolEvaluation evaluation : result.getRecords()) {
                 fillEvaluationRelatedFields(evaluation);
+                
+                // 填充综合成绩（如果已计算）
+                if (evaluation.getApplyId() != null) {
+                    ComprehensiveScore comprehensiveScore = comprehensiveScoreService.getScoreByApplyId(evaluation.getApplyId());
+                    if (comprehensiveScore != null) {
+                        evaluation.setComprehensiveScore(comprehensiveScore.getComprehensiveScore());
+                        evaluation.setGradeLevel(comprehensiveScore.getGradeLevel());
+                    }
+                }
+                
                 // 如果提供了学生姓名，进行过滤
                 if (StringUtils.hasText(studentName) && 
                     (evaluation.getStudentName() == null || 
