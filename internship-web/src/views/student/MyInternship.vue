@@ -20,8 +20,16 @@
               <el-tag :type="getInternshipStatusType(currentInternship.studentInternshipStatus)" size="large">
                 {{ getInternshipStatusText(currentInternship.studentInternshipStatus) }}
               </el-tag>
+              <!-- 如果实习已结束，显示结束日期 -->
+              <el-tag
+                v-if="isInternshipCompleted(currentInternship)"
+                type="info"
+                size="small"
+              >
+                实习已结束（{{ formatDate(currentInternship.internshipEndDate) }}）
+              </el-tag>
               <el-tag 
-                v-if="currentInternship.studentConfirmStatus === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)" 
+                v-else-if="currentInternship.studentConfirmStatus === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)" 
                 type="success" 
                 size="small"
               >
@@ -53,6 +61,13 @@
           </el-descriptions-item>
           <el-descriptions-item label="实习结束日期">
             {{ formatDate(currentInternship.internshipEndDate) || formatDate(currentInternship.selfEndDate) || '-' }}
+          </el-descriptions-item>
+          <!-- 如果是实习结束，显示结束日期和备注 -->
+          <el-descriptions-item v-if="isInternshipCompleted(currentInternship)" label="实习结束日期">
+            {{ formatDate(currentInternship.internshipEndDate) }}
+          </el-descriptions-item>
+          <el-descriptions-item v-if="isInternshipCompleted(currentInternship) && currentInternship.unbindAuditOpinion" label="结束备注" :span="2">
+            {{ currentInternship.unbindAuditOpinion }}
           </el-descriptions-item>
           <el-descriptions-item label="学生确认状态">
             <el-tag 
