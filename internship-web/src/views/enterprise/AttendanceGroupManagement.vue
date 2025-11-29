@@ -1033,7 +1033,6 @@ const handleSubmitForm = async () => {
     
     submitLoading.value = true
     try {
-      // 构建请求数据，不传递 enterpriseId（后端会自动获取）
       const groupData = {
         groupId: formData.groupId,
         groupName: formData.groupName,
@@ -1041,9 +1040,6 @@ const handleSubmitForm = async () => {
         workDaysType: formData.workDaysType,
         workDaysConfig: formData.workDaysConfig
       }
-      
-      // 如果是新增，不传递 enterpriseId（后端会自动获取）
-      // 如果是编辑，也不传递 enterpriseId（后端会从现有记录中获取）
       
       const requestData = {
         group: groupData,

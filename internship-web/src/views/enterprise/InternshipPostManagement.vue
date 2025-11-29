@@ -709,32 +709,17 @@ const handleSubmitForm = async () => {
     if (valid) {
       submitLoading.value = true
       try {
-        // 如果是新增岗位，需要获取当前用户的企业ID
+        // 构建请求数据，新增时不传递 enterpriseId
+        const requestData = { ...formData }
         if (!formData.postId) {
-          const authStore = useAuthStore()
-          const userId = authStore.userInfo?.userId
-          if (!userId) {
-            ElMessage.error('无法获取当前用户信息')
-            submitLoading.value = false
-            return
-          }
-          
-          // 获取当前用户的企业信息
-          const enterpriseRes = await enterpriseApi.getEnterpriseByUserId(userId)
-          if (enterpriseRes.code === 200 && enterpriseRes.data) {
-            formData.enterpriseId = enterpriseRes.data.enterpriseId
-          } else {
-            ElMessage.error('无法获取企业信息，请确认您已关联企业')
-            submitLoading.value = false
-            return
-          }
+          delete requestData.enterpriseId
         }
         
         let res
         if (formData.postId) {
-          res = await postApi.updatePost(formData)
+          res = await postApi.updatePost(requestData)
         } else {
-          res = await postApi.addPost(formData)
+          res = await postApi.addPost(requestData)
         }
         if (res.code === 200) {
           ElMessage.success(formData.postId ? '更新成功' : '发布成功')

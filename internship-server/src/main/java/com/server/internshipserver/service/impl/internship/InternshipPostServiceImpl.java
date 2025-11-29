@@ -54,8 +54,15 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         // 参数校验
         EntityValidationUtil.validateStringNotBlank(post.getPostName(), "岗位名称");
         EntityValidationUtil.validateStringNotBlank(post.getPostCode(), "岗位编号");
-        EntityValidationUtil.validateIdNotNull(post.getEnterpriseId(), "企业ID");
         EntityValidationUtil.validateStringNotBlank(post.getWorkLocation(), "工作地点");
+        
+        if (post.getEnterpriseId() == null) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId == null) {
+                throw new BusinessException("企业ID不能为空，请确认您已关联企业");
+            }
+            post.setEnterpriseId(currentUserEnterpriseId);
+        }
         
         // 检查岗位编号是否已存在（同一企业内唯一）
         UniquenessValidationUtil.validateUniqueInScope(this, InternshipPost::getPostCode, post.getPostCode(),

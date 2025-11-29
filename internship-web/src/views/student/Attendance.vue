@@ -3,21 +3,44 @@
     <!-- 操作按钮区域 -->
     <div class="action-bar" style="margin-bottom: 20px">
       <el-card shadow="hover">
-        <div style="display: flex; align-items: center; justify-content: space-between">
-          <div style="display: flex; align-items: center; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <!-- 时间段选择 -->
+            <div v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 0" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
+              <span style="font-size: 14px; color: #606266; white-space: nowrap">时间段：</span>
+              <el-select
+                v-model="selectedTimeSlotId"
+                placeholder="请选择时间段"
+                style="width: 200px"
+                size="default"
+              >
+                <el-option
+                  v-for="slot in attendanceGroup.timeSlots"
+                  :key="slot.slotId"
+                  :label="`${slot.slotName}（${slot.startTime} - ${slot.endTime}）`"
+                  :value="slot.slotId"
+                />
+              </el-select>
+            </div>
+            <div v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
+              <span style="font-size: 14px; color: #606266; white-space: nowrap">时间段：</span>
+              <span style="font-size: 14px; color: #303133; padding: 0 12px; background: #f5f7fa; border-radius: 4px; white-space: nowrap">
+                {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
+              </span>
+            </div>
             <el-button 
               type="success" 
               :icon="Check" 
-              :disabled="!canCheckIn"
-              @click="showCheckInDialog = true"
+              :disabled="!canCheckIn || (attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
+              @click="handleCheckIn"
             >
               上班打卡
             </el-button>
             <el-button 
               type="primary" 
               :icon="Close" 
-              :disabled="!canCheckOut"
-              @click="showCheckOutDialog = true"
+              :disabled="!canCheckOut || (attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
+              @click="handleCheckOut"
             >
               下班打卡
             </el-button>
@@ -56,10 +79,18 @@
       <template #header>
         <div style="display: flex; align-items: center; justify-content: space-between">
           <span style="font-size: 16px; font-weight: 600">考勤日历</span>
-          <div style="display: flex; gap: 12px; align-items: center">
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
             <div class="legend-item">
               <span class="legend-dot normal"></span>
               <span>正常</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot late"></span>
+              <span>迟到</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot early"></span>
+              <span>早退</span>
             </div>
             <div class="legend-item">
               <span class="legend-dot leave"></span>
@@ -89,6 +120,36 @@
                 <div v-if="getAttendanceByDate(data.day).checkOutTime" class="time-info">
                   <span class="time-label">下班:</span>
                   <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkOutTime) }}</span>
+                </div>
+              </div>
+              <div v-else-if="getAttendanceByDate(data.day).attendanceType === 2" class="attendance-info late">
+                <div class="attendance-content-row">
+                  <div class="time-info-wrapper">
+                    <div v-if="getAttendanceByDate(data.day).checkInTime" class="time-info">
+                      <span class="time-label">上班:</span>
+                      <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkInTime) }}</span>
+                    </div>
+                    <div v-if="getAttendanceByDate(data.day).checkOutTime" class="time-info">
+                      <span class="time-label">下班:</span>
+                      <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkOutTime) }}</span>
+                    </div>
+                  </div>
+                  <div class="type-tag">迟到</div>
+                </div>
+              </div>
+              <div v-else-if="getAttendanceByDate(data.day).attendanceType === 3" class="attendance-info early">
+                <div class="attendance-content-row">
+                  <div class="time-info-wrapper">
+                    <div v-if="getAttendanceByDate(data.day).checkInTime" class="time-info">
+                      <span class="time-label">上班:</span>
+                      <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkInTime) }}</span>
+                    </div>
+                    <div v-if="getAttendanceByDate(data.day).checkOutTime" class="time-info">
+                      <span class="time-label">下班:</span>
+                      <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkOutTime) }}</span>
+                    </div>
+                  </div>
+                  <div class="type-tag">早退</div>
                 </div>
               </div>
               <div v-else-if="getAttendanceByDate(data.day).attendanceType === 4" class="attendance-info leave">
@@ -291,83 +352,6 @@
       </template>
     </el-dialog>
 
-    <!-- 上班打卡对话框 -->
-    <el-dialog
-      v-model="showCheckInDialog"
-      title="上班打卡"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form label-width="100px">
-        <el-form-item v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1" label="选择时间段" required>
-          <el-select
-            v-model="selectedTimeSlotId"
-            placeholder="请选择时间段"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="slot in attendanceGroup.timeSlots"
-              :key="slot.slotId"
-              :label="`${slot.slotName}（${slot.startTime} - ${slot.endTime}）`"
-              :value="slot.slotId"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" label="时间段">
-          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
-            {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
-          </div>
-        </el-form-item>
-        <el-form-item v-if="!attendanceGroup" label="提示">
-          <el-alert type="warning" :closable="false">
-            您尚未分配到考勤组，请联系企业导师
-          </el-alert>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCheckInDialog = false">取消</el-button>
-        <el-button type="primary" :disabled="!attendanceGroup || (attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)" @click="handleCheckIn">确定打卡</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 下班打卡对话框 -->
-    <el-dialog
-      v-model="showCheckOutDialog"
-      title="下班打卡"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form label-width="100px">
-        <el-form-item v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1" label="选择时间段" required>
-          <el-select
-            v-model="selectedTimeSlotId"
-            placeholder="请选择时间段"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="slot in attendanceGroup.timeSlots"
-              :key="slot.slotId"
-              :label="`${slot.slotName}（${slot.startTime} - ${slot.endTime}）`"
-              :value="slot.slotId"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" label="时间段">
-          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
-            {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
-          </div>
-        </el-form-item>
-        <el-form-item v-if="!attendanceGroup" label="提示">
-          <el-alert type="warning" :closable="false">
-            您尚未分配到考勤组，请联系企业导师
-          </el-alert>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCheckOutDialog = false">取消</el-button>
-        <el-button type="primary" :disabled="!attendanceGroup || (attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)" @click="handleCheckOut">确定打卡</el-button>
-      </template>
-    </el-dialog>
   </PageLayout>
 </template>
 
@@ -378,6 +362,7 @@ import { Check, Close, Calendar, Sunny } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
 import { attendanceGroupApi } from '@/api/internship/attendanceGroup'
 import { applyApi } from '@/api/internship/apply'
+import { useAuthStore } from '@/store/modules/auth'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -385,8 +370,6 @@ const loading = ref(false)
 const detailDialogVisible = ref(false)
 const showLeaveDialog = ref(false)
 const showRestDialog = ref(false)
-const showCheckInDialog = ref(false)
-const showCheckOutDialog = ref(false)
 const todayAttendance = ref(null)
 const restDate = ref(null)
 const attendanceGroup = ref(null)
@@ -537,10 +520,14 @@ const loadTodayAttendance = async () => {
 // 加载考勤组信息
 const loadAttendanceGroup = async () => {
   try {
-    // 获取当前学生的实习申请ID（从考勤记录中获取，或从申请列表获取）
+    // 获取当前学生的实习申请ID
     if (!currentApplyId.value) {
-      // 优先从今天的考勤记录中获取
-      if (todayAttendance.value && todayAttendance.value.applyId) {
+      // 优先从用户信息中获取
+      const authStore = useAuthStore()
+      if (authStore.userInfo?.currentApplyId) {
+        currentApplyId.value = authStore.userInfo.currentApplyId
+      } else if (todayAttendance.value && todayAttendance.value.applyId) {
+        // 从今天的考勤记录中获取
         currentApplyId.value = todayAttendance.value.applyId
       } else {
         // 从申请列表获取已录用的申请
@@ -566,6 +553,8 @@ const loadAttendanceGroup = async () => {
       } else {
         attendanceGroup.value = null
       }
+    } else {
+      attendanceGroup.value = null
     }
   } catch (error) {
     console.error('加载考勤组失败:', error)
@@ -575,17 +564,36 @@ const loadAttendanceGroup = async () => {
 
 // 上班打卡
 const handleCheckIn = async () => {
+  // 确保考勤组已加载
+  if (!attendanceGroup.value) {
+    await loadAttendanceGroup()
+  }
+  
+  // 如果没有考勤组，提示用户
+  if (!attendanceGroup.value) {
+    ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
+    return
+  }
+  
+  // 如果只有一个时间段，自动选择
+  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
+    selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
+  }
+  
+  // 如果有多个时间段但未选择，提示用户
+  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
+    ElMessage.warning('请先选择时间段')
+    return
+  }
+  
   try {
-    // 如果只有一个时间段，使用自动选择的；如果有多个，使用用户选择的
-    const timeSlotId = attendanceGroup.value && attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+    const timeSlotId = attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
       ? attendanceGroup.value.timeSlots[0].slotId
       : selectedTimeSlotId.value
     
     const res = await attendanceApi.studentCheckIn(null, timeSlotId)
     if (res.code === 200) {
       ElMessage.success('上班打卡成功')
-      showCheckInDialog.value = false
-      selectedTimeSlotId.value = null
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
@@ -597,17 +605,36 @@ const handleCheckIn = async () => {
 
 // 下班打卡
 const handleCheckOut = async () => {
+  // 确保考勤组已加载
+  if (!attendanceGroup.value) {
+    await loadAttendanceGroup()
+  }
+  
+  // 如果没有考勤组，提示用户
+  if (!attendanceGroup.value) {
+    ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
+    return
+  }
+  
+  // 如果只有一个时间段，自动选择
+  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
+    selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
+  }
+  
+  // 如果有多个时间段但未选择，提示用户
+  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
+    ElMessage.warning('请先选择时间段')
+    return
+  }
+  
   try {
-    // 如果只有一个时间段，使用自动选择的；如果有多个，使用用户选择的
-    const timeSlotId = attendanceGroup.value && attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+    const timeSlotId = attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
       ? attendanceGroup.value.timeSlots[0].slotId
       : selectedTimeSlotId.value
     
     const res = await attendanceApi.studentCheckOut(null, timeSlotId)
     if (res.code === 200) {
       ElMessage.success('下班打卡成功')
-      showCheckOutDialog.value = false
-      selectedTimeSlotId.value = null
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
@@ -727,10 +754,14 @@ const getAttendanceTypeTagType = (type) => {
 
 // 初始化
 onMounted(async () => {
-  await loadTodayAttendance() // 先加载今天的考勤记录，可能包含applyId
-  await loadAttendanceGroup() // 然后加载考勤组
-  await loadData()
-  await loadStatistics()
+  // 并行加载数据，提高效率
+  await Promise.all([
+    loadTodayAttendance(), // 加载今天的考勤记录
+    loadData(), // 加载考勤列表
+    loadStatistics() // 加载统计数据
+  ])
+  // 加载考勤组（依赖 todayAttendance 中的 applyId）
+  await loadAttendanceGroup()
 })
 </script>
 
@@ -755,10 +786,12 @@ onMounted(async () => {
 
 .calendar-cell {
   height: 100%;
-  padding: 1px 2px;
+  padding: 2px;
   cursor: pointer;
   transition: background-color 0.2s;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .calendar-cell:hover {
@@ -769,17 +802,42 @@ onMounted(async () => {
   font-size: 11px;
   font-weight: 500;
   color: #303133;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
+  line-height: 1.2;
+  flex-shrink: 0;
 }
 
 .calendar-content {
   font-size: 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .attendance-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
+}
+
+.attendance-content-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+}
+
+.time-info-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
 .attendance-info.normal {
@@ -803,30 +861,48 @@ onMounted(async () => {
   align-items: center;
   gap: 2px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .time-label {
   font-size: 9px;
   opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .time-value {
   font-size: 10px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .type-tag {
   font-size: 9px;
-  padding: 1px 3px;
+  padding: 2px 4px;
   border-radius: 2px;
   display: inline-block;
   width: fit-content;
   line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 .attendance-info.normal .type-tag {
   background-color: #f0f9ff;
   color: #67c23a;
+}
+
+.attendance-info.late .type-tag {
+  background-color: #fdf6ec;
+  color: #e6a23c;
+}
+
+.attendance-info.early .type-tag {
+  background-color: #fdf6ec;
+  color: #e6a23c;
 }
 
 .attendance-info.leave .type-tag {
@@ -863,6 +939,14 @@ onMounted(async () => {
   background-color: #67c23a;
 }
 
+.legend-dot.late {
+  background-color: #e6a23c;
+}
+
+.legend-dot.early {
+  background-color: #e6a23c;
+}
+
 .legend-dot.leave {
   background-color: #909399;
 }
@@ -876,8 +960,9 @@ onMounted(async () => {
 }
 
 :deep(.el-calendar-day) {
-  height: 50px;
+  height: 60px;
   padding: 0;
+  overflow: hidden;
 }
 
 :deep(.el-calendar__header) {

@@ -92,19 +92,16 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
             throw new BusinessException("只有企业管理员可以创建考勤组");
         }
         
-        // 自动获取当前用户的企业ID（如果前端没有传递）
         if (!dataPermissionUtil.isSystemAdmin()) {
             Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
             if (currentUserEnterpriseId == null) {
                 throw new BusinessException("无法获取当前用户的企业ID，请确保您已关联企业");
             }
-            // 如果前端传递了企业ID，验证是否匹配；如果没有传递，使用当前用户的企业ID
             if (group.getEnterpriseId() != null) {
                 if (!currentUserEnterpriseId.equals(group.getEnterpriseId())) {
                     throw new BusinessException("无权为该企业创建考勤组");
                 }
             } else {
-                // 自动设置当前用户的企业ID
                 group.setEnterpriseId(currentUserEnterpriseId);
             }
         } else {
