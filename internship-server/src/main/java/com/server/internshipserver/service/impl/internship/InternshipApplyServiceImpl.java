@@ -707,6 +707,13 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "学校审核通过";
         } else if (status.equals(InternshipApplyStatus.REJECTED.getCode())) {
             return "学校审核拒绝";
+        } else if (status.equals(InternshipApplyStatus.ACCEPTED.getCode())) {
+            // 自主实习审核通过后，如果学生确认上岗，状态会变为已录用
+            return "已录用";
+        } else if (status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())) {
+            return "已拒绝录用";
+        } else if (status.equals(InternshipApplyStatus.CANCELLED.getCode())) {
+            return "已取消";
         }
         
         return "未知状态";

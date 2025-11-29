@@ -816,6 +816,16 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                     existAttendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
                 }
             }
+            
+            // 自主实习学生打卡后自动确认
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                if (existAttendance.getConfirmStatus() == null || existAttendance.getConfirmStatus().equals(ConfirmStatus.PENDING.getCode())) {
+                    existAttendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+                    existAttendance.setConfirmTime(LocalDateTime.now());
+                    existAttendance.setConfirmUserId(userId);
+                }
+            }
+            
             this.updateById(existAttendance);
             return existAttendance;
         } else {
@@ -828,8 +838,6 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setCheckInTime(now);
             attendance.setGroupId(group != null ? group.getGroupId() : null);
             attendance.setTimeSlotId(selectedTimeSlotId);
-            attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
-            EntityDefaultValueUtil.setDefaultValues(attendance);
             
             // 判断是否迟到（使用时间段的startTime）
             LocalTime workStartTime = selectedTimeSlot != null ? selectedTimeSlot.getStartTime() : LocalTime.of(9, 0);
@@ -839,6 +847,16 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                 attendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
             }
             
+            // 自主实习学生打卡后自动确认，合作企业实习待确认
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                attendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+                attendance.setConfirmTime(LocalDateTime.now());
+                attendance.setConfirmUserId(userId);
+            } else {
+                attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            }
+            
+            EntityDefaultValueUtil.setDefaultValues(attendance);
             this.save(attendance);
             return attendance;
         }
@@ -929,6 +947,18 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             LocalTime workEndTime = timeSlot != null ? timeSlot.getEndTime() : LocalTime.of(18, 0);
             if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() != null && attendance.getAttendanceType().equals(AttendanceType.ATTENDANCE.getCode())) {
                 attendance.setAttendanceType(AttendanceType.EARLY_LEAVE.getCode());
+            }
+        }
+        
+        // 自主实习学生签退后自动确认（如果还未确认）
+        if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+            if (attendance.getConfirmStatus() == null || attendance.getConfirmStatus().equals(ConfirmStatus.PENDING.getCode())) {
+                attendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+                attendance.setConfirmTime(LocalDateTime.now());
+                Long currentUserId = dataPermissionUtil.getCurrentUserId();
+                if (currentUserId != null) {
+                    attendance.setConfirmUserId(currentUserId);
+                }
             }
         }
         
@@ -1077,7 +1107,16 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                 throw new BusinessException("该日期考勤已确认，无法修改为休息");
             }
             existAttendance.setAttendanceType(AttendanceType.REST.getCode());
-            existAttendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            
+            // 自主实习学生休息自动确认，合作企业实习待确认
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                existAttendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+                existAttendance.setConfirmTime(LocalDateTime.now());
+                existAttendance.setConfirmUserId(userId);
+            } else {
+                existAttendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            }
+            
             this.updateById(existAttendance);
             return existAttendance;
         } else {
@@ -1088,9 +1127,17 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setApplyId(apply.getApplyId());
             attendance.setAttendanceDate(attendanceDate);
             attendance.setAttendanceType(AttendanceType.REST.getCode());
-            attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
-            EntityDefaultValueUtil.setDefaultValues(attendance);
             
+            // 自主实习学生休息自动确认，合作企业实习待确认
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                attendance.setConfirmStatus(ConfirmStatus.CONFIRMED.getCode());
+                attendance.setConfirmTime(LocalDateTime.now());
+                attendance.setConfirmUserId(userId);
+            } else {
+                attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
+            }
+            
+            EntityDefaultValueUtil.setDefaultValues(attendance);
             this.save(attendance);
             return attendance;
         }

@@ -101,8 +101,8 @@
       </el-table-column>
       <el-table-column label="在职状态" width="150" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
-          <el-tag v-else type="info" size="small">未解绑</el-tag>
+          <el-tag v-if="row.unbindStatus === 2" type="danger" size="small">离职</el-tag>
+          <el-tag v-else type="success" size="small">在职</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="申请时间" width="180">

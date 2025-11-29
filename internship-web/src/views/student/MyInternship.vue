@@ -104,15 +104,25 @@
               </template>
             </el-alert>
           </div>
-          <el-button 
-            v-if="currentInternship.applyId"
-            type="primary" 
-            :icon="Download" 
-            @click="handleExportMyReport"
-            :loading="exportLoading"
-          >
-            导出实习报告
-          </el-button>
+          <div style="display: flex; gap: 10px">
+            <el-button 
+              v-if="currentInternship.applyId && currentInternship.applyType === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
+              type="primary" 
+              :icon="Download" 
+              @click="handleExportMyReport"
+              :loading="exportLoading"
+            >
+              导出实习报告
+            </el-button>
+            <el-button 
+              v-if="currentInternship.applyId && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
+              type="danger" 
+              @click="handleResign"
+              :loading="resignLoading"
+            >
+              离职
+            </el-button>
+          </div>
         </div>
       </el-card>
       
@@ -151,12 +161,13 @@ import { applyApi } from '@/api/internship/apply'
 import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import { exportExcel } from '@/utils/exportUtils'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const router = useRouter()
 const loading = ref(false)
 const exportLoading = ref(false)
+const resignLoading = ref(false)
 const currentInternship = ref(null)
 
 // 加载当前实习信息
@@ -244,6 +255,47 @@ const handleExportMyReport = async () => {
     // 错误已在 exportExcel 中处理
   } finally {
     exportLoading.value = false
+  }
+}
+
+// 离职
+const handleResign = async () => {
+  if (!currentInternship.value || !currentInternship.value.applyId) {
+    ElMessage.warning('暂无实习申请信息')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      '确认已从该公司离职吗？',
+      '离职确认',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    resignLoading.value = true
+    try {
+      const res = await applyApi.unbindInternship(
+        currentInternship.value.applyId,
+        '学生主动离职',
+        undefined
+      )
+      if (res.code === 200) {
+        ElMessage.success('离职成功')
+        // 重新加载当前实习信息
+        await loadCurrentInternship()
+      }
+    } catch (error) {
+      console.error('离职失败:', error)
+      ElMessage.error(error.response?.data?.message || '离职失败')
+    } finally {
+      resignLoading.value = false
+    }
+  } catch (error) {
+    // 用户取消
   }
 }
 
