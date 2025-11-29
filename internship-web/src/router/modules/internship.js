@@ -33,16 +33,6 @@ export default [
     }
   },
   {
-    path: '/student/internship/post',
-    name: 'InternshipPostList',
-    component: () => import('@/views/student/InternshipPostList.vue'),
-    meta: {
-      title: '岗位列表',
-      requiresAuth: true,
-      roles: ['ROLE_STUDENT']
-    }
-  },
-  {
     path: '/student/internship/apply',
     name: 'InternshipApply',
     component: () => import('@/views/student/InternshipApply.vue'),

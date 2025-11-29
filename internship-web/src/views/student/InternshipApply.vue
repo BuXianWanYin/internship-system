@@ -107,7 +107,7 @@
                 <el-table-column prop="status" label="状态" width="150" align="center">
                   <template #default="{ row }">
                     <el-tag :type="getApplyStatusType(row.status, row.statusText)" size="small">
-                      {{ row.statusText || getApplyStatusText(row.status) }}
+                      {{ row.statusText || getApplyStatusText(row.status, row.applyType) }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -120,7 +120,7 @@
                   <template #default="{ row }">
                     <el-button link type="primary" size="small" @click="handleViewCooperationApply(row)">查看详情</el-button>
                     <el-button
-                      v-if="row.status === 0"
+                      v-if="row.status === 0 || row.status === 10"
                       link
                       type="danger"
                       size="small"
@@ -129,7 +129,7 @@
                       取消
                     </el-button>
                     <el-button
-                      v-if="row.status === 3 && (row.studentConfirmStatus === 0 || row.studentConfirmStatus === null) && (row.unbindStatus === null || row.unbindStatus === 0 || row.unbindStatus === 3)"
+                      v-if="row.status === 3 && (row.studentConfirmStatus === 0 || row.studentConfirmStatus === null) && (row.unbindStatus === null || row.unbindStatus === 0 || row.unbindStatus === 3) && row.applyType === 1"
                       link
                       type="warning"
                       size="small"
@@ -188,7 +188,7 @@
             <el-table-column prop="status" label="状态" width="150" align="center">
               <template #default="{ row }">
                     <el-tag :type="getApplyStatusType(row.status, row.statusText)" size="small">
-                      {{ row.statusText || getApplyStatusText(row.status) }}
+                      {{ row.statusText || getApplyStatusText(row.status, row.applyType) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -201,7 +201,7 @@
               <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="handleViewApply(row)">查看</el-button>
                 <el-button
-                  v-if="row.status === 0"
+                  v-if="row.status === 0 || row.status === 10"
                   link
                   type="danger"
                   size="small"
@@ -593,7 +593,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getApplyStatusType(applyDetailData.status, applyDetailData.statusText)" size="small">
-            {{ applyDetailData.statusText || getApplyStatusText(applyDetailData.status) }}
+            {{ applyDetailData.statusText || getApplyStatusText(applyDetailData.status, applyDetailData.applyType) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
@@ -657,7 +657,7 @@
         <el-descriptions-item label="企业名称">{{ cooperationApplyDetailData.enterpriseName }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getApplyStatusType(cooperationApplyDetailData.status, cooperationApplyDetailData.statusText)" size="small">
-            {{ cooperationApplyDetailData.statusText || getApplyStatusText(cooperationApplyDetailData.status) }}
+            {{ cooperationApplyDetailData.statusText || getApplyStatusText(cooperationApplyDetailData.status, cooperationApplyDetailData.applyType) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
@@ -714,6 +714,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Upload, Document } from '@element-plus/icons-vue'
 import { postApi } from '@/api/internship/post'
@@ -722,6 +723,8 @@ import { planApi } from '@/api/internship/plan'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+
+const router = useRouter()
 
 // 获取计划范围类型标签类型
 const getPlanScopeTypeTag = (planScopeType) => {
@@ -1305,6 +1308,22 @@ const handleConfirmOnboard = async (row) => {
         ElMessage.success('确认上岗成功，可以开始实习了！')
         // 刷新列表
         await loadCooperationApplyData()
+        
+        // 提示用户前往"我的实习"页面
+        try {
+          await ElMessageBox.confirm(
+            '确认上岗成功！是否前往"我的实习"页面查看？',
+            '提示',
+            {
+              confirmButtonText: '前往',
+              cancelButtonText: '稍后',
+              type: 'success'
+            }
+          )
+          router.push('/student/internship/my')
+        } catch (error) {
+          // 用户选择稍后，不跳转
+        }
       }
     } catch (error) {
       console.error('确认上岗失败:', error)
@@ -1425,7 +1444,30 @@ const handleApplyPageChange = () => {
 }
 
 // 获取申请状态文本
-const getApplyStatusText = (status) => {
+const getApplyStatusText = (status, applyType) => {
+  // 判断是否为自主实习状态（状态码范围 10-19）
+  const isSelfStatus = status >= 10 && status <= 19
+  
+  // 如果是自主实习状态码，使用新的自主实习状态文本
+  if (isSelfStatus || applyType === 2) {
+    const selfStatusMap = {
+      // 新状态码（10-19）
+      10: '待审核',
+      11: '实习中',
+      12: '审核拒绝',
+      13: '实习结束',
+      14: '已取消',
+      // 兼容旧状态码（0-9）
+      0: '待审核',
+      1: '实习中',  // 旧：学校审核通过 → 新：实习中
+      2: '审核拒绝',
+      3: '实习中',  // 旧：已录用 → 新：实习中
+      5: '已取消'
+    }
+    return selfStatusMap[status] || '未知状态'
+  }
+  
+  // 合作企业的状态文本（状态码 0-9）
   const statusMap = {
     0: '待审核',
     1: '已通过',
@@ -1444,27 +1486,41 @@ const getApplyStatusType = (status, statusText) => {
     if (statusText.includes('等待') || statusText.includes('待')) {
       return 'warning' // 黄色 - 等待状态
     }
-    if (statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
+    if (statusText.includes('实习中') || statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
       return 'success' // 绿色 - 成功/通过状态
     }
-    if (statusText.includes('拒绝') || statusText.includes('未通过') || statusText.includes('已取消')) {
+    if (statusText.includes('拒绝') || statusText.includes('未通过')) {
       return 'danger' // 红色 - 拒绝/失败状态
     }
-    if (statusText.includes('已完成') || statusText.includes('待定')) {
+    if (statusText.includes('实习结束') || statusText.includes('已完成') || statusText.includes('待定') || statusText.includes('已取消')) {
       return 'info' // 灰色 - 信息状态
     }
   }
   
   // 如果没有状态文本，根据基础状态值判断
-  const typeMap = {
-    0: 'warning', // 待审核 - 黄色
-    1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
-    2: 'danger',  // 已拒绝 - 红色
-    3: 'success', // 已录用 - 绿色
-    4: 'danger',  // 已拒绝录用 - 红色
-    5: 'info'     // 已取消 - 灰色
+  const isSelfStatus = status >= 10 && status <= 19
+  if (isSelfStatus) {
+    // 自主实习状态（10-19）
+    const selfTypeMap = {
+      10: 'warning', // 待审核 - 黄色
+      11: 'success', // 实习中 - 绿色
+      12: 'danger',  // 审核拒绝 - 红色
+      13: 'info',    // 实习结束 - 灰色
+      14: 'info'     // 已取消 - 灰色
+    }
+    return selfTypeMap[status] || 'info'
+  } else {
+    // 合作企业状态（0-9）
+    const typeMap = {
+      0: 'warning', // 待审核 - 黄色
+      1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
+      2: 'danger',  // 已拒绝 - 红色
+      3: 'success', // 已录用 - 绿色
+      4: 'danger',  // 已拒绝录用 - 红色
+      5: 'info'     // 已取消 - 灰色
+    }
+    return typeMap[status] || 'info'
   }
-  return typeMap[status] || 'info'
 }
 
 // 初始化

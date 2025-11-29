@@ -203,7 +203,10 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+const router = useRouter()
 import { Search, Refresh } from '@element-plus/icons-vue'
 import { interviewApi } from '@/api/internship/interview'
 import { applyApi } from '@/api/internship/apply'
@@ -249,8 +252,11 @@ const loadData = async () => {
           try {
             const applyRes = await applyApi.getApplyById(row.applyId)
             if (applyRes.code === 200 && applyRes.data) {
+              // 只有合作企业申请（applyType = 1）才能确认上岗
               // 如果申请状态为已录用（status = 3）且学生确认状态为未确认（studentConfirmStatus = 0或null）
-              if (applyRes.data.status === 3 && (applyRes.data.studentConfirmStatus === 0 || applyRes.data.studentConfirmStatus === null)) {
+              if (applyRes.data.applyType === 1 && 
+                  applyRes.data.status === 3 && 
+                  (applyRes.data.studentConfirmStatus === 0 || applyRes.data.studentConfirmStatus === null)) {
                 row.canConfirmOnboard = true
                 row.studentConfirmStatus = applyRes.data.studentConfirmStatus
               }
@@ -364,6 +370,22 @@ const handleConfirmOnboard = async (row) => {
       if (res.code === 200) {
         ElMessage.success('确认上岗成功，可以开始实习了！')
         loadData()
+        
+        // 提示用户前往"我的实习"页面
+        try {
+          await ElMessageBox.confirm(
+            '确认上岗成功！是否前往"我的实习"页面查看？',
+            '提示',
+            {
+              confirmButtonText: '前往',
+              cancelButtonText: '稍后',
+              type: 'success'
+            }
+          )
+          router.push('/student/internship/my')
+        } catch (error) {
+          // 用户选择稍后，不跳转
+        }
       }
     } catch (error) {
       console.error('确认上岗失败:', error)

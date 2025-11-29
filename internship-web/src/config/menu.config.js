@@ -394,12 +394,6 @@ export const menuItems = [
     roles: ['ROLE_STUDENT'],
     children: [
       {
-        index: '/student/internship/post',
-        title: '岗位列表',
-        icon: List,
-        roles: ['ROLE_STUDENT']
-      },
-      {
         index: '/student/internship/apply',
         title: '实习申请',
         icon: EditPen,

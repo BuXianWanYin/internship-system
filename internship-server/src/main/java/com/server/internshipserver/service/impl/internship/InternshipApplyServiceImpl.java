@@ -9,6 +9,7 @@ import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.InternshipApplyStatus;
+import com.server.internshipserver.common.enums.SelfInternshipApplyStatus;
 import com.server.internshipserver.common.enums.InternshipPlanStatus;
 import com.server.internshipserver.common.enums.InternshipPostStatus;
 import com.server.internshipserver.common.enums.UserStatus;
@@ -665,14 +666,42 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "状态异常";
         }
         
-        // 自主实习申请
+        Integer status = apply.getStatus();
+        
+        // 判断是否为自主实习状态（状态码范围 10-19）
+        if (SelfInternshipApplyStatus.isSelfInternshipStatus(status)) {
+            return buildSelfApplyStatusText(apply);
+        }
+        
+        // 自主实习申请（根据 applyType 判断，兼容旧数据）
         if (isSelfApply(apply)) {
+            // 如果是旧状态码（0-9），转换为新状态码后再构建文本
+            if (!SelfInternshipApplyStatus.isSelfInternshipStatus(status)) {
+                status = SelfInternshipApplyStatus.convertOldStatusToNew(status);
+                apply.setStatus(status); // 临时设置，用于构建文本
+            }
             return buildSelfApplyStatusText(apply);
         }
         
         // 合作企业申请
         if (isCooperationApply(apply)) {
             return buildCooperationApplyStatusText(apply);
+        }
+        
+        // 如果 applyType 为 null 或未知，根据其他字段判断
+        // 如果 enterpriseId 为 null 且 selfEnterpriseName 不为 null，可能是自主实习
+        if (apply.getApplyType() == null) {
+            if (apply.getEnterpriseId() == null && apply.getSelfEnterpriseName() != null) {
+                // 可能是自主实习，尝试使用自主实习状态文本
+                if (!SelfInternshipApplyStatus.isSelfInternshipStatus(status)) {
+                    status = SelfInternshipApplyStatus.convertOldStatusToNew(status);
+                    apply.setStatus(status);
+                }
+                return buildSelfApplyStatusText(apply);
+            } else if (apply.getEnterpriseId() != null) {
+                // 可能是合作企业，尝试使用合作企业状态文本
+                return buildCooperationApplyStatusText(apply);
+            }
         }
         
         return "未知状态";
@@ -701,22 +730,32 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "未知状态";
         }
         
-        if (status.equals(InternshipApplyStatus.PENDING.getCode())) {
-            return "等待学校审核";
-        } else if (status.equals(InternshipApplyStatus.APPROVED.getCode())) {
-            return "学校审核通过";
-        } else if (status.equals(InternshipApplyStatus.REJECTED.getCode())) {
-            return "学校审核拒绝";
-        } else if (status.equals(InternshipApplyStatus.ACCEPTED.getCode())) {
-            // 自主实习审核通过后，如果学生确认上岗，状态会变为已录用
-            return "已录用";
-        } else if (status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())) {
-            return "已拒绝录用";
-        } else if (status.equals(InternshipApplyStatus.CANCELLED.getCode())) {
-            return "已取消";
+        // 如果是旧状态码（0-9），先转换为新状态码
+        if (!SelfInternshipApplyStatus.isSelfInternshipStatus(status)) {
+            status = SelfInternshipApplyStatus.convertOldStatusToNew(status);
         }
         
-        return "未知状态";
+        // 使用新的自主实习状态枚举
+        SelfInternshipApplyStatus selfStatus = SelfInternshipApplyStatus.getByCode(status);
+        if (selfStatus != null) {
+            return selfStatus.getDesc();
+        }
+        
+        // 兼容处理：如果状态码不在枚举中，尝试根据状态码判断
+        switch (status) {
+            case 10:
+                return "待审核";
+            case 11:
+                return "实习中";
+            case 12:
+                return "审核拒绝";
+            case 13:
+                return "实习结束";
+            case 14:
+                return "已取消";
+            default:
+                return "未知状态";
+        }
     }
     
     /**
@@ -1341,29 +1380,37 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         InternshipApply apply = this.getById(applyId);
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        EntityValidationUtil.validateStatusEquals(apply, InternshipApplyStatus.PENDING.getCode(), 
+        // 验证申请状态：自主实习使用新状态码(10)，合作企业使用旧状态码(0)
+        Integer expectedStatus = isSelfApply(apply) 
+                ? SelfInternshipApplyStatus.PENDING.getCode() 
+                : InternshipApplyStatus.PENDING.getCode();
+        EntityValidationUtil.validateStatusEquals(apply, expectedStatus, 
                 "申请", "只有待审核状态的申请才能审核");
         
         // 设置审核信息
         AuditUtil.setAuditInfo(apply, auditDTO.getAuditStatus().getCode(), auditDTO.getAuditOpinion(), userMapper);
         
-        // 如果是自主实习且审核通过，需要创建企业并绑定
-        if (isSelfApplyApproved(apply, auditDTO.getAuditStatus())) {
-            processSelfApplyApproved(apply);
+        // 根据申请类型和审核结果设置状态
+        if (isSelfApply(apply)) {
+            // 自主实习
+            if (auditDTO.getAuditStatus() == AuditStatus.APPROVED) {
+                // 审核通过：实习中(11)
+                processSelfApplyApproved(apply);
+            } else {
+                // 审核拒绝：审核拒绝(12)
+                apply.setStatus(SelfInternshipApplyStatus.REJECTED.getCode());
+            }
+        } else {
+            // 合作企业：使用原有逻辑
+            if (auditDTO.getAuditStatus() == AuditStatus.APPROVED) {
+                apply.setStatus(InternshipApplyStatus.APPROVED.getCode());
+            } else {
+                apply.setStatus(InternshipApplyStatus.REJECTED.getCode());
+            }
         }
         
         return this.updateById(apply);
     }
-    
-    /**
-     * 判断是否为自主实习且审核通过
-     */
-    private boolean isSelfApplyApproved(InternshipApply apply, AuditStatus auditStatus) {
-        return apply.getApplyType() != null 
-                && apply.getApplyType().equals(ApplyType.SELF.getCode())
-                && auditStatus == AuditStatus.APPROVED;
-    }
-    
     
     /**
      * 处理自主实习审核通过
@@ -1371,7 +1418,8 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     private void processSelfApplyApproved(InternshipApply apply) {
         Long enterpriseId = findOrCreateEnterprise(apply);
         apply.setEnterpriseId(enterpriseId);
-        apply.setStatus(InternshipApplyStatus.ACCEPTED.getCode());
+        // 使用新的自主实习状态码：实习中(11)
+        apply.setStatus(SelfInternshipApplyStatus.IN_PROGRESS.getCode());
         apply.setAcceptTime(LocalDateTime.now());
         
         // 自主实习审核通过后，自动开始实习，更新学生信息和申请状态
@@ -1568,11 +1616,20 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         }
         
         // 只有待审核状态才能取消
-        EntityValidationUtil.validateStatusEquals(apply, InternshipApplyStatus.PENDING.getCode(), "申请", "只有待审核状态的申请才能取消");
+        Integer expectedStatus = isSelfApply(apply) 
+                ? SelfInternshipApplyStatus.PENDING.getCode() 
+                : InternshipApplyStatus.PENDING.getCode();
+        EntityValidationUtil.validateStatusEquals(apply, expectedStatus, "申请", "只有待审核状态的申请才能取消");
+        
+        // 设置状态为已取消（自主实习使用新状态码14，合作企业使用旧状态码5）
+        Integer cancelledStatus = isSelfApply(apply) 
+                ? SelfInternshipApplyStatus.CANCELLED.getCode() 
+                : InternshipApplyStatus.CANCELLED.getCode();
         
         // 软删除 - 使用 LambdaUpdateWrapper 确保字段被更新
         boolean result = this.update(new LambdaUpdateWrapper<InternshipApply>()
                 .eq(InternshipApply::getApplyId, applyId)
+                .set(InternshipApply::getStatus, cancelledStatus)
                 .set(InternshipApply::getDeleteFlag, DeleteFlag.DELETED.getCode()));
         if (!result) {
             throw new BusinessException("取消申请失败，请重试");
@@ -1830,7 +1887,6 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         QueryWrapperUtil.notDeleted(wrapper, InternshipApply::getDeleteFlag);
         
         // 获取当前企业导师ID
-        UserInfo user = UserUtil.getCurrentUser(userMapper);
         Long mentorId = dataPermissionUtil.getCurrentUserMentorId();
         if (mentorId == null) {
             throw new BusinessException("未找到当前用户的企业导师信息");
@@ -1976,6 +2032,12 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
      * 验证确认上岗状态
      */
     private void validateConfirmOnboardStatus(InternshipApply apply) {
+        // 自主实习不需要确认上岗（审核通过后自动确认）
+        if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+            throw new BusinessException("自主实习审核通过后自动确认上岗，无需手动确认");
+        }
+        
+        // 合作企业：必须是已录用状态
         EntityValidationUtil.validateStatusEquals(apply, InternshipApplyStatus.ACCEPTED.getCode(), 
                 "申请", "只有已录用的申请才能确认上岗");
         
@@ -2043,9 +2105,18 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         InternshipApply apply = this.getById(applyId);
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 验证申请状态
-        if (!apply.getStatus().equals(InternshipApplyStatus.ACCEPTED.getCode())) {
+        // 验证申请状态：自主实习使用新状态码(11)，合作企业使用旧状态码(3)
+        Integer expectedStatus = isSelfApply(apply) 
+                ? SelfInternshipApplyStatus.IN_PROGRESS.getCode() 
+                : InternshipApplyStatus.ACCEPTED.getCode();
+        if (!apply.getStatus().equals(expectedStatus)) {
             throw new BusinessException("只有已录用的申请才能解绑");
+        }
+        
+        // 验证是否已确认上岗
+        if (apply.getStudentConfirmStatus() == null || 
+            !apply.getStudentConfirmStatus().equals(StudentConfirmStatus.CONFIRMED.getCode())) {
+            throw new BusinessException("只有已确认上岗的申请才能解绑");
         }
         
         // 验证是否已解绑
@@ -2074,7 +2145,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         // 使用 unbind_audit_opinion 字段存储备注（字段名保持不变，但含义改为备注）
         apply.setUnbindAuditOpinion(remark);
         apply.setInternshipEndDate(java.time.LocalDate.now());
-        // 注意：申请状态保持为"已录用"，不更新为"已离职"
+        
+        // 根据申请类型设置状态
+        if (isSelfApply(apply)) {
+            // 自主实习：设置为实习结束(13)
+            apply.setStatus(SelfInternshipApplyStatus.COMPLETED.getCode());
+        }
+        // 合作企业：申请状态保持为"已录用"，不更新为"已离职"
+        
         this.updateById(apply);
         
         // ========== 2. 更新学生信息 ==========

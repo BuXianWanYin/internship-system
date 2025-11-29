@@ -95,7 +95,7 @@
       <el-table-column prop="status" label="状态" width="150" align="center">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status, row.statusText)" size="small">
-            {{ row.statusText || getStatusText(row.status) }}
+            {{ row.statusText || getStatusText(row.status, row.applyType) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -174,7 +174,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(detailData.status, detailData.statusText)" size="small">
-            {{ detailData.statusText || getStatusText(detailData.status) }}
+            {{ detailData.statusText || getStatusText(detailData.status, detailData.applyType) }}
           </el-tag>
         </el-descriptions-item>
       </el-descriptions>
@@ -636,7 +636,30 @@ const handlePageChange = () => {
 }
 
 // 获取状态文本
-const getStatusText = (status) => {
+const getStatusText = (status, applyType) => {
+  // 判断是否为自主实习状态（状态码范围 10-19）
+  const isSelfStatus = status >= 10 && status <= 19
+  
+  // 如果是自主实习状态码，使用新的自主实习状态文本
+  if (isSelfStatus || applyType === 2) {
+    const selfStatusMap = {
+      // 新状态码（10-19）
+      10: '待审核',
+      11: '实习中',
+      12: '审核拒绝',
+      13: '实习结束',
+      14: '已取消',
+      // 兼容旧状态码（0-9）
+      0: '待审核',
+      1: '实习中',  // 旧：学校审核通过 → 新：实习中
+      2: '审核拒绝',
+      3: '实习中',  // 旧：已录用 → 新：实习中
+      5: '已取消'
+    }
+    return selfStatusMap[status] || '未知状态'
+  }
+  
+  // 合作企业的状态文本（状态码 0-9）
   const statusMap = {
     0: '待审核',
     1: '已通过',
@@ -650,32 +673,48 @@ const getStatusText = (status) => {
 
 // 获取状态类型（根据状态文本动态判断颜色）
 const getStatusType = (status, statusText) => {
+  // 判断是否为自主实习状态（状态码范围 10-19）
+  const isSelfStatus = status >= 10 && status <= 19
+  
   // 如果有状态文本，优先根据状态文本判断
   if (statusText) {
     if (statusText.includes('等待') || statusText.includes('待')) {
       return 'warning' // 黄色 - 等待状态
     }
-    if (statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
+    if (statusText.includes('实习中') || statusText.includes('通过') || statusText.includes('已确认') || statusText.includes('已录用')) {
       return 'success' // 绿色 - 成功/通过状态
     }
-    if (statusText.includes('拒绝') || statusText.includes('未通过') || statusText.includes('已取消')) {
+    if (statusText.includes('拒绝') || statusText.includes('未通过')) {
       return 'danger' // 红色 - 拒绝/失败状态
     }
-    if (statusText.includes('已完成') || statusText.includes('待定') || statusText.includes('处理')) {
+    if (statusText.includes('实习结束') || statusText.includes('已完成') || statusText.includes('待定') || statusText.includes('处理') || statusText.includes('已取消')) {
       return 'info' // 灰色 - 信息状态
     }
   }
   
   // 如果没有状态文本，根据基础状态值判断
-  const typeMap = {
-    0: 'warning', // 待审核 - 黄色
-    1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
-    2: 'danger',  // 已拒绝 - 红色
-    3: 'success', // 已录用 - 绿色
-    4: 'danger',  // 已拒绝录用 - 红色
-    5: 'info'     // 已取消 - 灰色
+  if (isSelfStatus) {
+    // 自主实习状态（10-19）
+    const selfTypeMap = {
+      10: 'warning', // 待审核 - 黄色
+      11: 'success', // 实习中 - 绿色
+      12: 'danger',  // 审核拒绝 - 红色
+      13: 'info',    // 实习结束 - 灰色
+      14: 'info'     // 已取消 - 灰色
+    }
+    return selfTypeMap[status] || 'info'
+  } else {
+    // 合作企业状态（0-9）
+    const typeMap = {
+      0: 'warning', // 待审核 - 黄色
+      1: 'info',    // 已通过（等待企业处理）- 灰色，不是绿色
+      2: 'danger',  // 已拒绝 - 红色
+      3: 'success', // 已录用 - 绿色
+      4: 'danger',  // 已拒绝录用 - 红色
+      5: 'info'     // 已取消 - 灰色
+    }
+    return typeMap[status] || 'info'
   }
-  return typeMap[status] || 'info'
 }
 
 // 获取简历文件名
