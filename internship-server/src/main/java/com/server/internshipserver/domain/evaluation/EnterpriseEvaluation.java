@@ -60,7 +60,15 @@ public class EnterpriseEvaluation implements Serializable {
     @TableField("innovation_score")
     private BigDecimal innovationScore;
     
-    @ApiModelProperty(value = "总分（5项指标的平均分）", required = true, example = "82.00")
+    @ApiModelProperty(value = "日志周报质量评分（0-100分）", required = true, example = "85.00")
+    @TableField("log_weekly_report_score")
+    private BigDecimal logWeeklyReportScore;
+    
+    @ApiModelProperty(value = "日志周报质量自动计算分数（参考值）", example = "86.50")
+    @TableField("log_weekly_report_score_auto")
+    private BigDecimal logWeeklyReportScoreAuto;
+    
+    @ApiModelProperty(value = "总分（6项指标的平均分）", required = true, example = "82.00")
     @TableField("total_score")
     private BigDecimal totalScore;
     

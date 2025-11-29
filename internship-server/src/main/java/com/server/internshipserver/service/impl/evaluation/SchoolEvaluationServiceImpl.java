@@ -78,6 +78,13 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         // 获取当前登录用户（教师）
         UserInfo user = UserUtil.getCurrentUser(userMapper);
         
+        // 自动计算日志周报质量建议分数（如果未填写，则使用自动计算值）
+        BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+        if (evaluation.getLogWeeklyReportScore() == null && autoScore != null) {
+            // 如果未填写且自动计算有值，则使用自动计算值
+            evaluation.setLogWeeklyReportScore(autoScore);
+        }
+        
         // 验证评分范围
         validateScore(evaluation.getLogWeeklyReportScore(), "日志周报质量");
         validateScore(evaluation.getProcessPerformanceScore(), "过程表现");
@@ -156,6 +163,12 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         SchoolEvaluation evaluation = this.getById(evaluationId);
         EntityValidationUtil.validateEntityExists(evaluation, "评价");
         
+        // 自动计算日志周报质量建议分数（用于前端显示参考）
+        if (evaluation.getApplyId() != null) {
+            BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+            evaluation.setLogWeeklyReportScoreAuto(autoScore);
+        }
+        
         // 填充关联字段
         fillEvaluationRelatedFields(evaluation);
         
@@ -174,6 +187,11 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         
         SchoolEvaluation evaluation = this.getOne(wrapper);
         if (evaluation != null) {
+            // 自动计算日志周报质量建议分数（用于前端显示参考）
+            if (evaluation.getApplyId() != null) {
+                BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+                evaluation.setLogWeeklyReportScoreAuto(autoScore);
+            }
             fillEvaluationRelatedFields(evaluation);
         }
         

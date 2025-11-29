@@ -81,10 +81,36 @@
         />
       </el-form-item>
 
+      <el-form-item label="日志周报质量" prop="logWeeklyReportScore">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%">
+          <el-input-number
+            v-model="formData.logWeeklyReportScore"
+            :min="0"
+            :max="100"
+            :precision="2"
+            placeholder="请输入日志周报质量评分（0-100分）"
+            style="flex: 1"
+            @change="calculateTotalScore"
+          />
+          <el-button
+            v-if="formData.logWeeklyReportScoreAuto !== null && formData.logWeeklyReportScoreAuto !== undefined"
+            type="info"
+            size="small"
+            @click="useAutoScore"
+          >
+            使用自动计算值 ({{ formData.logWeeklyReportScoreAuto }})
+          </el-button>
+        </div>
+        <div v-if="formData.logWeeklyReportScoreAuto !== null && formData.logWeeklyReportScoreAuto !== undefined" 
+             style="margin-top: 5px; font-size: 12px; color: #909399;">
+          系统自动计算值：{{ formData.logWeeklyReportScoreAuto }} 分（基于日志和周报的平均分）
+        </div>
+      </el-form-item>
+
       <el-form-item label="总分">
         <el-input :value="formData.totalScore" disabled />
         <div style="margin-top: 5px; font-size: 12px; color: #909399;">
-          自动计算（5项指标的平均分）
+          自动计算（6项指标的平均分）
         </div>
       </el-form-item>
 
@@ -136,6 +162,8 @@ const formData = reactive({
   professionalSkillScore: null,
   teamworkScore: null,
   innovationScore: null,
+  logWeeklyReportScore: null,
+  logWeeklyReportScoreAuto: null,
   totalScore: null,
   evaluationComment: ''
 })
@@ -155,7 +183,18 @@ const formRules = {
   ],
   innovationScore: [
     { required: true, message: '请输入创新意识评分', trigger: 'blur' }
+  ],
+  logWeeklyReportScore: [
+    { required: true, message: '请输入日志周报质量评分', trigger: 'blur' }
   ]
+}
+
+// 使用自动计算值
+const useAutoScore = () => {
+  if (formData.logWeeklyReportScoreAuto !== null && formData.logWeeklyReportScoreAuto !== undefined) {
+    formData.logWeeklyReportScore = formData.logWeeklyReportScoreAuto
+    calculateTotalScore()
+  }
 }
 
 // 计算总分
@@ -165,12 +204,15 @@ const calculateTotalScore = () => {
     formData.knowledgeApplicationScore,
     formData.professionalSkillScore,
     formData.teamworkScore,
-    formData.innovationScore
+    formData.innovationScore,
+    formData.logWeeklyReportScore
   ].filter(score => score !== null && score !== undefined)
   
-  if (scores.length === 5) {
+  if (scores.length === 6) {
     const sum = scores.reduce((a, b) => a + b, 0)
-    formData.totalScore = (sum / 5).toFixed(2)
+    formData.totalScore = (sum / 6).toFixed(2)
+  } else {
+    formData.totalScore = null
   }
 }
 
@@ -190,6 +232,8 @@ const handleSave = async () => {
       professionalSkillScore: formData.professionalSkillScore,
       teamworkScore: formData.teamworkScore,
       innovationScore: formData.innovationScore,
+      logWeeklyReportScore: formData.logWeeklyReportScore,
+      logWeeklyReportScoreAuto: formData.logWeeklyReportScoreAuto,
       totalScore: formData.totalScore ? parseFloat(formData.totalScore) : null,
       evaluationComment: formData.evaluationComment,
       evaluationStatus: 0 // 草稿
@@ -227,6 +271,8 @@ const handleSubmit = async () => {
           professionalSkillScore: formData.professionalSkillScore,
           teamworkScore: formData.teamworkScore,
           innovationScore: formData.innovationScore,
+          logWeeklyReportScore: formData.logWeeklyReportScore,
+          logWeeklyReportScoreAuto: formData.logWeeklyReportScoreAuto,
           totalScore: formData.totalScore ? parseFloat(formData.totalScore) : null,
           evaluationComment: formData.evaluationComment,
           evaluationStatus: 1 // 已提交
@@ -264,6 +310,8 @@ watch(() => props.evaluation, (newVal) => {
     formData.professionalSkillScore = newVal.professionalSkillScore
     formData.teamworkScore = newVal.teamworkScore
     formData.innovationScore = newVal.innovationScore
+    formData.logWeeklyReportScore = newVal.logWeeklyReportScore
+    formData.logWeeklyReportScoreAuto = newVal.logWeeklyReportScoreAuto
     formData.totalScore = newVal.totalScore
     formData.evaluationComment = newVal.evaluationComment || ''
   } else {
@@ -274,16 +322,39 @@ watch(() => props.evaluation, (newVal) => {
     formData.professionalSkillScore = null
     formData.teamworkScore = null
     formData.innovationScore = null
+    formData.logWeeklyReportScore = null
+    formData.logWeeklyReportScoreAuto = null
     formData.totalScore = null
     formData.evaluationComment = ''
   }
 }, { immediate: true, deep: true })
 
-// 监听学生变化，初始化表单
-watch(() => props.student, (newVal) => {
+// 监听学生变化，初始化表单并加载自动计算值
+watch(() => props.student, async (newVal) => {
   if (newVal) {
     formData.applyId = newVal.applyId || formData.applyId
     formData.enterpriseId = newVal.enterpriseId || formData.enterpriseId
+    
+    // 如果有申请ID，尝试加载评价以获取自动计算值
+    if (newVal.applyId && !formData.evaluationId) {
+      try {
+        const { enterpriseEvaluationApi } = await import('@/api/evaluation/enterprise')
+        const res = await enterpriseEvaluationApi.getEvaluationByApplyId(newVal.applyId)
+        if (res.code === 200 && res.data) {
+          formData.logWeeklyReportScoreAuto = res.data.logWeeklyReportScoreAuto
+          // 如果还没有填写日志周报质量评分，使用自动计算值
+          if (formData.logWeeklyReportScore === null && res.data.logWeeklyReportScoreAuto !== null) {
+            formData.logWeeklyReportScore = res.data.logWeeklyReportScoreAuto
+            calculateTotalScore()
+          }
+        } else if (res.code === 200 && !res.data) {
+          // 如果没有评价记录，也需要获取自动计算值
+          // 可以通过调用后端接口获取，或者在前端页面加载时获取
+        }
+      } catch (error) {
+        console.error('加载自动计算值失败:', error)
+      }
+    }
   }
 }, { immediate: true })
 </script>

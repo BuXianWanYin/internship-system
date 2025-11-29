@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
+import com.server.internshipserver.common.enums.ReviewStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -14,11 +15,15 @@ import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.evaluation.EnterpriseEvaluation;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.internship.InternshipLog;
+import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.evaluation.EnterpriseEvaluationMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.mapper.internship.InternshipLogMapper;
+import com.server.internshipserver.mapper.internship.InternshipWeeklyReportMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -31,6 +36,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 企业评价管理Service实现类
@@ -52,6 +58,12 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
     
     @Autowired
     private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private InternshipLogMapper internshipLogMapper;
+    
+    @Autowired
+    private InternshipWeeklyReportMapper internshipWeeklyReportMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -96,13 +108,33 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         validateScore(evaluation.getTeamworkScore(), "团队协作");
         validateScore(evaluation.getInnovationScore(), "创新意识");
         
-        // 计算总分（5项指标的平均分）
+        // 自动计算日志周报质量分数（如果未填写）
+        if (evaluation.getLogWeeklyReportScore() == null) {
+            BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+            evaluation.setLogWeeklyReportScoreAuto(autoScore);
+            // 如果自动计算有值，则使用自动计算值；否则需要手动填写
+            if (autoScore != null) {
+                evaluation.setLogWeeklyReportScore(autoScore);
+            }
+        } else {
+            // 如果已填写，也计算自动值作为参考
+            BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+            evaluation.setLogWeeklyReportScoreAuto(autoScore);
+        }
+        
+        // 验证日志周报质量评分范围（如果已填写）
+        if (evaluation.getLogWeeklyReportScore() != null) {
+            validateScore(evaluation.getLogWeeklyReportScore(), "日志周报质量");
+        }
+        
+        // 计算总分（6项指标的平均分）
         BigDecimal totalScore = calculateTotalScore(
                 evaluation.getWorkAttitudeScore(),
                 evaluation.getKnowledgeApplicationScore(),
                 evaluation.getProfessionalSkillScore(),
                 evaluation.getTeamworkScore(),
-                evaluation.getInnovationScore()
+                evaluation.getInnovationScore(),
+                evaluation.getLogWeeklyReportScore()
         );
         evaluation.setTotalScore(totalScore);
         
@@ -153,7 +185,8 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
             evaluation.getKnowledgeApplicationScore() == null ||
             evaluation.getProfessionalSkillScore() == null ||
             evaluation.getTeamworkScore() == null ||
-            evaluation.getInnovationScore() == null) {
+            evaluation.getInnovationScore() == null ||
+            evaluation.getLogWeeklyReportScore() == null) {
             throw new BusinessException("请填写所有评价指标");
         }
         
@@ -170,6 +203,12 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         
         EnterpriseEvaluation evaluation = this.getById(evaluationId);
         EntityValidationUtil.validateEntityExists(evaluation, "评价");
+        
+        // 自动计算日志周报质量分数（如果还没有自动计算值）
+        if (evaluation.getLogWeeklyReportScoreAuto() == null && evaluation.getApplyId() != null) {
+            BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+            evaluation.setLogWeeklyReportScoreAuto(autoScore);
+        }
         
         // 填充关联字段
         fillEvaluationRelatedFields(evaluation);
@@ -189,6 +228,11 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         
         EnterpriseEvaluation evaluation = this.getOne(wrapper);
         if (evaluation != null) {
+            // 自动计算日志周报质量分数（如果还没有自动计算值）
+            if (evaluation.getLogWeeklyReportScoreAuto() == null && evaluation.getApplyId() != null) {
+                BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+                evaluation.setLogWeeklyReportScoreAuto(autoScore);
+            }
             fillEvaluationRelatedFields(evaluation);
         }
         
@@ -265,12 +309,76 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
     }
     
     /**
-     * 计算总分（5项指标的平均分）
+     * 计算总分（6项指标的平均分）
      */
     private BigDecimal calculateTotalScore(BigDecimal score1, BigDecimal score2, BigDecimal score3, 
-                                           BigDecimal score4, BigDecimal score5) {
-        BigDecimal sum = score1.add(score2).add(score3).add(score4).add(score5);
-        return sum.divide(new BigDecimal("5"), 2, RoundingMode.HALF_UP);
+                                           BigDecimal score4, BigDecimal score5, BigDecimal score6) {
+        if (score6 == null) {
+            throw new BusinessException("日志周报质量评分不能为空");
+        }
+        BigDecimal sum = score1.add(score2).add(score3).add(score4).add(score5).add(score6);
+        return sum.divide(new BigDecimal("6"), 2, RoundingMode.HALF_UP);
+    }
+    
+    /**
+     * 计算日志周报质量建议分数（日志平均分×50% + 周报平均分×50%）
+     * @param applyId 申请ID
+     * @return 建议分数，如果没有日志或周报则返回null
+     */
+    private BigDecimal calculateLogWeeklyReportScore(Long applyId) {
+        // 查询已批阅的日志
+        LambdaQueryWrapper<InternshipLog> logWrapper = new LambdaQueryWrapper<>();
+        logWrapper.eq(InternshipLog::getApplyId, applyId)
+                  .eq(InternshipLog::getReviewStatus, ReviewStatus.APPROVED.getCode())
+                  .isNotNull(InternshipLog::getReviewScore)
+                  .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        List<InternshipLog> logs = internshipLogMapper.selectList(logWrapper);
+        
+        // 查询已批阅的周报
+        LambdaQueryWrapper<InternshipWeeklyReport> reportWrapper = new LambdaQueryWrapper<>();
+        reportWrapper.eq(InternshipWeeklyReport::getApplyId, applyId)
+                     .eq(InternshipWeeklyReport::getReviewStatus, ReviewStatus.APPROVED.getCode())
+                     .isNotNull(InternshipWeeklyReport::getReviewScore)
+                     .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        List<InternshipWeeklyReport> reports = internshipWeeklyReportMapper.selectList(reportWrapper);
+        
+        BigDecimal logAvgScore = null;
+        BigDecimal reportAvgScore = null;
+        
+        // 计算日志平均分
+        if (logs != null && !logs.isEmpty()) {
+            BigDecimal logSum = BigDecimal.ZERO;
+            for (InternshipLog log : logs) {
+                if (log.getReviewScore() != null) {
+                    logSum = logSum.add(log.getReviewScore());
+                }
+            }
+            logAvgScore = logSum.divide(new BigDecimal(logs.size()), 2, RoundingMode.HALF_UP);
+        }
+        
+        // 计算周报平均分
+        if (reports != null && !reports.isEmpty()) {
+            BigDecimal reportSum = BigDecimal.ZERO;
+            for (InternshipWeeklyReport report : reports) {
+                if (report.getReviewScore() != null) {
+                    reportSum = reportSum.add(report.getReviewScore());
+                }
+            }
+            reportAvgScore = reportSum.divide(new BigDecimal(reports.size()), 2, RoundingMode.HALF_UP);
+        }
+        
+        // 计算建议分数（日志平均分×50% + 周报平均分×50%）
+        if (logAvgScore != null && reportAvgScore != null) {
+            BigDecimal logPart = logAvgScore.multiply(new BigDecimal("0.5"));
+            BigDecimal reportPart = reportAvgScore.multiply(new BigDecimal("0.5"));
+            return logPart.add(reportPart).setScale(2, RoundingMode.HALF_UP);
+        } else if (logAvgScore != null) {
+            return logAvgScore;
+        } else if (reportAvgScore != null) {
+            return reportAvgScore;
+        }
+        
+        return null;
     }
     
     /**
