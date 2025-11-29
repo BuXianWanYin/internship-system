@@ -77,7 +77,6 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
     public AttendanceGroup createAttendanceGroup(AttendanceGroup group, List<AttendanceGroupTimeSlot> timeSlots) {
         // 参数校验
         EntityValidationUtil.validateStringNotBlank(group.getGroupName(), "考勤组名称");
-        EntityValidationUtil.validateIdNotNull(group.getEnterpriseId(), "企业ID");
         if (group.getWorkDaysType() == null) {
             throw new BusinessException("工作日类型不能为空");
         }
@@ -93,12 +92,24 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
             throw new BusinessException("只有企业管理员可以创建考勤组");
         }
         
-        // 检查企业ID权限
+        // 自动获取当前用户的企业ID（如果前端没有传递）
         if (!dataPermissionUtil.isSystemAdmin()) {
             Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-            if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(group.getEnterpriseId())) {
-                throw new BusinessException("无权为该企业创建考勤组");
+            if (currentUserEnterpriseId == null) {
+                throw new BusinessException("无法获取当前用户的企业ID，请确保您已关联企业");
             }
+            // 如果前端传递了企业ID，验证是否匹配；如果没有传递，使用当前用户的企业ID
+            if (group.getEnterpriseId() != null) {
+                if (!currentUserEnterpriseId.equals(group.getEnterpriseId())) {
+                    throw new BusinessException("无权为该企业创建考勤组");
+                }
+            } else {
+                // 自动设置当前用户的企业ID
+                group.setEnterpriseId(currentUserEnterpriseId);
+            }
+        } else {
+            // 系统管理员必须传递企业ID
+            EntityValidationUtil.validateIdNotNull(group.getEnterpriseId(), "企业ID");
         }
         
         // 设置默认值

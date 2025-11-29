@@ -46,11 +46,13 @@ public class AttendanceGroupTimeSlot implements Serializable {
     
     @ApiModelProperty(value = "上班时间", required = true, example = "09:00:00")
     @TableField("start_time")
+    @JsonFormat(pattern = "HH:mm")
     @JsonDeserialize(using = LocalTimeDeserializer.class)
     private LocalTime startTime;
     
     @ApiModelProperty(value = "下班时间", required = true, example = "18:00:00")
     @TableField("end_time")
+    @JsonFormat(pattern = "HH:mm")
     @JsonDeserialize(using = LocalTimeDeserializer.class)
     private LocalTime endTime;
     

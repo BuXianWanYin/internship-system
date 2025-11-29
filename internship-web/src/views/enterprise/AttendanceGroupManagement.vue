@@ -472,6 +472,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Delete } from '@element-plus/icons-vue'
 import { attendanceGroupApi } from '@/api/internship/attendanceGroup'
 import { applyApi } from '@/api/internship/apply'
+import { enterpriseApi } from '@/api/user/enterprise'
+import { useAuthStore } from '@/store/modules/auth'
 import { formatDate, formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -711,13 +713,20 @@ const handleEdit = async (row) => {
   try {
     const res = await attendanceGroupApi.getAttendanceGroupDetail(row.groupId)
     if (res.code === 200) {
+      // 处理时间段数据，确保时间格式为 HH:mm（如果后端返回的是 HH:mm:ss，截取前5位）
+      const timeSlots = (res.data.timeSlots || []).map(slot => ({
+        ...slot,
+        startTime: slot.startTime ? (slot.startTime.length > 5 ? slot.startTime.substring(0, 5) : slot.startTime) : '',
+        endTime: slot.endTime ? (slot.endTime.length > 5 ? slot.endTime.substring(0, 5) : slot.endTime) : ''
+      }))
+      
       Object.assign(formData, {
         groupId: res.data.groupId,
         groupName: res.data.groupName,
         groupDescription: res.data.groupDescription || '',
         workDaysType: res.data.workDaysType,
         workDaysConfig: res.data.workDaysConfig || '',
-        timeSlots: res.data.timeSlots || []
+        timeSlots: timeSlots
       })
       
       // 解析自定义工作日
@@ -730,6 +739,13 @@ const handleEdit = async (row) => {
         }
       } else {
         customWorkDays.value = []
+      }
+      
+      // 重新计算所有时间段的工作时长
+      if (formData.timeSlots && formData.timeSlots.length > 0) {
+        formData.timeSlots.forEach((slot, index) => {
+          calculateWorkHours(slot, index)
+        })
       }
       
       dialogVisible.value = true
@@ -1010,17 +1026,27 @@ const handleSubmitForm = async () => {
       formData.workDaysConfig = ''
     }
     
+    // 提交前重新计算所有时间段的工作时长
+    formData.timeSlots.forEach((slot, index) => {
+      calculateWorkHours(slot, index)
+    })
+    
     submitLoading.value = true
     try {
+      // 构建请求数据，不传递 enterpriseId（后端会自动获取）
+      const groupData = {
+        groupId: formData.groupId,
+        groupName: formData.groupName,
+        groupDescription: formData.groupDescription,
+        workDaysType: formData.workDaysType,
+        workDaysConfig: formData.workDaysConfig
+      }
+      
+      // 如果是新增，不传递 enterpriseId（后端会自动获取）
+      // 如果是编辑，也不传递 enterpriseId（后端会从现有记录中获取）
+      
       const requestData = {
-        group: {
-          groupId: formData.groupId,
-          groupName: formData.groupName,
-          groupDescription: formData.groupDescription,
-          workDaysType: formData.workDaysType,
-          workDaysConfig: formData.workDaysConfig,
-          enterpriseId: null // 后端会自动获取当前用户的企业ID
-        },
+        group: groupData,
         timeSlots: formData.timeSlots.map(slot => ({
           slotName: slot.slotName,
           startTime: slot.startTime,
