@@ -20,8 +20,8 @@
           <h3 style="margin: 0 0 15px 0;">参考信息</h3>
           
           <el-tabs v-model="activeReferenceTab" type="border-card">
-        <!-- 日志周报情况 -->
-        <el-tab-pane label="日志周报情况" name="logs">
+        <!-- 日志情况 -->
+        <el-tab-pane label="日志情况" name="logs">
           <div v-if="referenceInfo.logs.length > 0" style="padding: 10px 0;">
             <p>日志：已提交{{ referenceInfo.logs.length }}篇</p>
             <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.logs) }}分</p>
@@ -110,10 +110,76 @@
         <!-- 考勤记录 -->
         <el-tab-pane label="考勤记录" name="attendance">
           <div v-if="referenceInfo.attendance" style="padding: 10px 0;">
-            <p>出勤率：{{ referenceInfo.attendance.attendanceRate || 0 }}%</p>
-            <p>迟到：{{ referenceInfo.attendance.lateCount || 0 }}次</p>
-            <p>请假：{{ referenceInfo.attendance.leaveCount || 0 }}次</p>
-            <el-button link type="primary" size="small" @click="viewAttendance">查看考勤记录</el-button>
+            <!-- 考勤统计卡片 -->
+            <el-row :gutter="12" style="margin-bottom: 15px;">
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">总出勤天数</div>
+                    <div class="stat-value">{{ referenceInfo.attendance.totalDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">正常出勤</div>
+                    <div class="stat-value" style="color: #67c23a">{{ referenceInfo.attendance.normalDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">迟到</div>
+                    <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.lateDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">早退</div>
+                    <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.earlyLeaveDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">请假</div>
+                    <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.leaveDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">缺勤</div>
+                    <div class="stat-value" style="color: #f56c6c">{{ referenceInfo.attendance.absentDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">休息</div>
+                    <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.restDays || 0 }}</div>
+                  </div>
+                </el-card>
+              </el-col>
+              <el-col :span="6">
+                <el-card shadow="hover">
+                  <div class="stat-item">
+                    <div class="stat-label">出勤率</div>
+                    <div class="stat-value" style="color: #409eff">
+                      {{ referenceInfo.attendance.attendanceRate ? referenceInfo.attendance.attendanceRate.toFixed(2) + '%' : '0%' }}
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+            
             <!-- 考勤记录列表 -->
             <el-table v-if="referenceInfo.attendanceRecords && referenceInfo.attendanceRecords.length > 0" 
                       :data="referenceInfo.attendanceRecords" border style="margin-top: 10px" max-height="300">
@@ -122,12 +188,15 @@
                   {{ formatDate(row.attendanceDate) }}
                 </template>
               </el-table-column>
-              <el-table-column prop="attendanceStatus" label="状态" width="100" align="center">
+              <el-table-column prop="attendanceType" label="状态" width="100" align="center">
                 <template #default="{ row }">
-                  <el-tag v-if="row.attendanceStatus === 1" type="success" size="small">正常</el-tag>
-                  <el-tag v-else-if="row.attendanceStatus === 2" type="warning" size="small">迟到</el-tag>
-                  <el-tag v-else-if="row.attendanceStatus === 3" type="info" size="small">请假</el-tag>
-                  <el-tag v-else type="danger" size="small">缺勤</el-tag>
+                  <el-tag v-if="row.attendanceType === 1" type="success" size="small">正常</el-tag>
+                  <el-tag v-else-if="row.attendanceType === 2" type="warning" size="small">迟到</el-tag>
+                  <el-tag v-else-if="row.attendanceType === 3" type="warning" size="small">早退</el-tag>
+                  <el-tag v-else-if="row.attendanceType === 4" type="info" size="small">请假</el-tag>
+                  <el-tag v-else-if="row.attendanceType === 5" type="danger" size="small">缺勤</el-tag>
+                  <el-tag v-else-if="row.attendanceType === 6" type="info" size="small">休息</el-tag>
+                  <el-tag v-else size="small">未知</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="checkInTime" label="签到时间" width="180">
@@ -140,7 +209,13 @@
                   {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
                 </template>
               </el-table-column>
+              <el-table-column prop="workHours" label="工作时长" width="100" align="center">
+                <template #default="{ row }">
+                  {{ row.workHours ? row.workHours + '小时' : '-' }}
+                </template>
+              </el-table-column>
             </el-table>
+            <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤记录</div>
           </div>
           <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤数据</div>
         </el-tab-pane>
@@ -658,6 +733,22 @@ onMounted(() => {
 
 .student-info-card {
   margin-bottom: 20px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
 }
 </style>
 

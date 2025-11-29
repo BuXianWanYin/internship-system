@@ -499,14 +499,16 @@ public class DataPermissionUtil {
         
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 企业管理员：获取本企业的所有实习学生ID（已录用状态）
+        // 企业管理员：获取本企业的所有实习学生ID（已录用和已结束状态）
         if (hasRole(roleCodes, Constants.ROLE_ENTERPRISE_ADMIN)) {
             Long enterpriseId = getCurrentUserEnterpriseId();
             if (enterpriseId != null) {
                 List<InternshipApply> applies = internshipApplyMapper.selectList(
                         new LambdaQueryWrapper<InternshipApply>()
                                 .eq(InternshipApply::getEnterpriseId, enterpriseId)
-                                .eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode())
+                                .in(InternshipApply::getStatus, 
+                                    InternshipApplyStatus.ACCEPTED.getCode(), 
+                                    InternshipApplyStatus.COMPLETED.getCode())
                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(InternshipApply::getStudentId)
                 );
@@ -520,14 +522,16 @@ public class DataPermissionUtil {
             return Collections.emptyList();
         }
         
-        // 企业导师：获取分配给自己的学生ID（已录用状态）
+        // 企业导师：获取分配给自己的学生ID（已录用和已结束状态）
         if (hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR)) {
             Long mentorId = getCurrentUserMentorId();
             if (mentorId != null) {
                 List<InternshipApply> applies = internshipApplyMapper.selectList(
                         new LambdaQueryWrapper<InternshipApply>()
                                 .eq(InternshipApply::getMentorId, mentorId)
-                                .eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode())
+                                .in(InternshipApply::getStatus, 
+                                    InternshipApplyStatus.ACCEPTED.getCode(), 
+                                    InternshipApplyStatus.COMPLETED.getCode())
                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(InternshipApply::getStudentId)
                 );
