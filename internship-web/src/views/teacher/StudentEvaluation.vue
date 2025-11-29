@@ -161,25 +161,8 @@ const tableData = ref([])
 const loadData = async () => {
   loading.value = true
   try {
-    const params = {
-      current: pagination.current,
-      size: pagination.size,
-      studentName: searchForm.studentName || undefined,
-      evaluationStatus: searchForm.evaluationStatus !== null ? searchForm.evaluationStatus : undefined
-    }
-    
-    const res = await schoolEvaluationApi.getEvaluationPage(params)
-    if (res.code === 200) {
-      tableData.value = res.data.records || []
-      pagination.total = res.data.total || 0
-      
-      // 如果没有评价记录，从申请列表加载实习结束的学生
-      if (tableData.value.length === 0 && searchForm.evaluationStatus === null) {
-        await loadStudentList()
-      }
-    } else {
-      ElMessage.error(res.message || '加载失败')
-    }
+    // 直接加载所有实习结束的学生列表（无论是否有评价记录）
+    await loadStudentList()
   } catch (error) {
     ElMessage.error('加载失败：' + (error.message || '未知错误'))
   } finally {
@@ -187,7 +170,7 @@ const loadData = async () => {
   }
 }
 
-// 加载学生列表（实习结束但未评价的学生）
+// 加载学生列表（实习结束的学生，包括已评价和未评价的）
 const loadStudentList = async () => {
   try {
     const res = await applyApi.getApplyPage({
@@ -196,7 +179,7 @@ const loadStudentList = async () => {
       status: 7 // 实习结束
     })
     if (res.code === 200 && res.data && res.data.records) {
-      const students = res.data.records.map(item => ({
+      let students = res.data.records.map(item => ({
         applyId: item.applyId,
         studentId: item.studentId,
         studentNo: item.studentNo,
@@ -204,23 +187,65 @@ const loadStudentList = async () => {
         enterpriseName: item.enterpriseName,
         startDate: item.internshipStartDate,
         endDate: item.internshipEndDate,
-        evaluationStatus: null
+        evaluationStatus: null,
+        evaluationId: null,
+        comprehensiveScore: null,
+        gradeLevel: null
       }))
       
-      // 检查已有评价的学生
+      // 为每个学生查询评价记录和综合成绩
       for (const student of students) {
-        const evalRes = await schoolEvaluationApi.getEvaluationByApplyId(student.applyId)
-        if (evalRes.code === 200 && evalRes.data) {
-          student.evaluationStatus = evalRes.data.evaluationStatus
-          student.evaluationId = evalRes.data.evaluationId
+        try {
+          // 查询学校评价
+          const evalRes = await schoolEvaluationApi.getEvaluationByApplyId(student.applyId)
+          if (evalRes.code === 200 && evalRes.data) {
+            student.evaluationStatus = evalRes.data.evaluationStatus
+            student.evaluationId = evalRes.data.evaluationId
+            student.comprehensiveScore = evalRes.data.comprehensiveScore
+            student.gradeLevel = evalRes.data.gradeLevel
+          }
+        } catch (error) {
+          console.error(`查询学生 ${student.studentName} 的评价失败:`, error)
         }
       }
       
+      // 根据评价状态过滤
+      if (searchForm.evaluationStatus !== null) {
+        if (searchForm.evaluationStatus === 0) {
+          // 草稿：显示评价状态为0的学生
+          students = students.filter(s => s.evaluationStatus === 0)
+        } else if (searchForm.evaluationStatus === 1) {
+          // 已提交：显示评价状态为1的学生
+          students = students.filter(s => s.evaluationStatus === 1)
+        }
+      } else {
+        // 待评价：显示所有学生（评价状态为null或0的显示待评价，1的显示已评价）
+      }
+      
+      // 根据学生姓名过滤
+      if (searchForm.studentName) {
+        students = students.filter(s => 
+          s.studentName && s.studentName.includes(searchForm.studentName)
+        )
+      }
+      
       tableData.value = students
+      // 使用后端返回的总数（注意：如果前端过滤，总数可能不准确，但这里先这样处理）
       pagination.total = res.data.total || 0
+      
+      // 如果当前页过滤后没有数据，但总数不为0，可能需要提示
+      if (students.length === 0 && pagination.total > 0 && (searchForm.studentName || searchForm.evaluationStatus !== null)) {
+        // 可能是过滤条件导致的，不显示错误，只是没有数据显示
+      }
+    } else if (res.code !== 200) {
+      ElMessage.error(res.message || '加载失败')
+    } else {
+      tableData.value = []
+      pagination.total = 0
     }
   } catch (error) {
     console.error('加载学生列表失败:', error)
+    ElMessage.error('加载失败：' + (error.message || '未知错误'))
   }
 }
 

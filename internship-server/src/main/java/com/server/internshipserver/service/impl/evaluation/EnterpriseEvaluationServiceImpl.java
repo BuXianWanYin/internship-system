@@ -37,6 +37,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 企业评价管理Service实现类
@@ -70,11 +71,18 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
     public EnterpriseEvaluation saveOrUpdateEvaluation(EnterpriseEvaluation evaluation) {
         // 参数校验
         EntityValidationUtil.validateIdNotNull(evaluation.getApplyId(), "申请ID");
-        EntityValidationUtil.validateIdNotNull(evaluation.getEnterpriseId(), "企业ID");
         
         // 验证申请是否存在且实习已结束
         InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
         EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 如果企业ID为空，从申请中自动获取
+        if (evaluation.getEnterpriseId() == null) {
+            if (apply.getEnterpriseId() == null) {
+                throw new BusinessException("申请中缺少企业ID信息，无法进行评价");
+            }
+            evaluation.setEnterpriseId(apply.getEnterpriseId());
+        }
         
         // 验证实习状态为"实习结束"（status=7）
         if (apply.getStatus() == null || apply.getStatus() != 7) {
@@ -93,11 +101,9 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         Enterprise enterprise = enterpriseMapper.selectById(evaluation.getEnterpriseId());
         EntityValidationUtil.validateEntityExists(enterprise, "企业");
         
-        // 检查当前用户是否是企业管理员或企业导师
-        boolean isEnterpriseAdmin = enterprise.getUserId().equals(user.getUserId());
-        // TODO: 检查是否是企业导师（需要查询企业导师表）
-        
-        if (!isEnterpriseAdmin) {
+        // 使用 getCurrentUserEnterpriseId() 方法检查当前用户是否是企业管理员或企业导师
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(evaluation.getEnterpriseId())) {
             throw new BusinessException("只有企业管理员或企业导师可以评价");
         }
         
@@ -247,24 +253,11 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         // 只查询未删除的数据
         QueryWrapperUtil.notDeleted(wrapper, EnterpriseEvaluation::getDeleteFlag);
         
-        // 数据权限过滤
-        if (!dataPermissionUtil.isSystemAdmin()) {
-            UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-            if (user != null) {
-                // 企业管理员和导师只能查看本企业的评价
-                Enterprise enterprise = enterpriseMapper.selectOne(
-                        new LambdaQueryWrapper<Enterprise>()
-                                .eq(Enterprise::getUserId, user.getUserId())
-                                .eq(Enterprise::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                );
-                if (enterprise != null) {
-                    wrapper.eq(EnterpriseEvaluation::getEnterpriseId, enterprise.getEnterpriseId());
-                } else {
-                    // 如果不是企业管理员，返回空结果
-                    wrapper.eq(EnterpriseEvaluation::getEvaluationId, -1L);
-                }
-            }
-        }
+        // 数据权限过滤（企业管理员和企业导师只能查看本企业的评价）
+        applyDataPermissionFilter(wrapper);
+        
+        // 过滤实习状态：只显示实习已结束（status=7）的学生评价
+        filterByInternshipStatus(wrapper, enterpriseId);
         
         // 条件查询
         if (enterpriseId != null) {
@@ -279,20 +272,82 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         
         Page<EnterpriseEvaluation> result = this.page(page, wrapper);
         
-        // 填充关联字段
+        // 填充关联字段并过滤学生姓名
         if (EntityValidationUtil.hasRecords(result)) {
-            for (EnterpriseEvaluation evaluation : result.getRecords()) {
+            result.getRecords().removeIf(evaluation -> {
                 fillEvaluationRelatedFields(evaluation);
-                // 如果提供了学生姓名，进行过滤
-                if (StringUtils.hasText(studentName) && 
-                    (evaluation.getStudentName() == null || 
-                     !evaluation.getStudentName().contains(studentName))) {
-                    result.getRecords().remove(evaluation);
-                }
-            }
+                return shouldFilterByStudentName(evaluation, studentName);
+            });
         }
         
         return result;
+    }
+    
+    /**
+     * 过滤实习状态：只显示实习已结束（status=7）的学生评价
+     */
+    private void filterByInternshipStatus(LambdaQueryWrapper<EnterpriseEvaluation> wrapper, Long enterpriseId) {
+        // 查询实习已结束的申请ID列表
+        LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+        applyWrapper.eq(InternshipApply::getStatus, 7) // 实习结束
+                    .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                    .select(InternshipApply::getApplyId);
+        
+        // 如果指定了企业ID，只查询该企业的申请
+        if (enterpriseId != null) {
+            applyWrapper.eq(InternshipApply::getEnterpriseId, enterpriseId);
+        } else {
+            // 如果没有指定企业ID，但已经通过数据权限过滤了企业，需要进一步过滤
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId != null && !dataPermissionUtil.isSystemAdmin()) {
+                applyWrapper.eq(InternshipApply::getEnterpriseId, currentUserEnterpriseId);
+            }
+        }
+        
+        List<InternshipApply> applies = internshipApplyMapper.selectList(applyWrapper);
+        
+        if (applies == null || applies.isEmpty()) {
+            // 如果没有符合条件的申请，返回空结果
+            wrapper.eq(EnterpriseEvaluation::getEvaluationId, -1L);
+            return;
+        }
+        
+        List<Long> applyIds = applies.stream()
+                .map(InternshipApply::getApplyId)
+                .collect(Collectors.toList());
+        
+        // 只查询这些申请ID对应的评价
+        wrapper.in(EnterpriseEvaluation::getApplyId, applyIds);
+    }
+    
+    /**
+     * 数据权限过滤（企业管理员和企业导师只能查看本企业的评价）
+     */
+    private void applyDataPermissionFilter(LambdaQueryWrapper<EnterpriseEvaluation> wrapper) {
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 使用 getCurrentUserEnterpriseId() 方法，它已经支持企业管理员和企业导师
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null) {
+            wrapper.eq(EnterpriseEvaluation::getEnterpriseId, currentUserEnterpriseId);
+        } else {
+            // 如果不是企业管理员或企业导师，返回空结果
+            wrapper.eq(EnterpriseEvaluation::getEvaluationId, -1L);
+        }
+    }
+    
+    /**
+     * 判断是否应该根据学生姓名过滤
+     * @return true表示应该过滤掉，false表示保留
+     */
+    private boolean shouldFilterByStudentName(EnterpriseEvaluation evaluation, String studentName) {
+        if (!StringUtils.hasText(studentName)) {
+            return false;
+        }
+        
+        return evaluation.getStudentName() == null || !evaluation.getStudentName().contains(studentName);
     }
     
     /**
@@ -385,33 +440,63 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
      * 填充评价关联字段
      */
     private void fillEvaluationRelatedFields(EnterpriseEvaluation evaluation) {
-        // 填充学生信息
-        if (evaluation.getStudentId() != null) {
-            Student student = studentMapper.selectById(evaluation.getStudentId());
-            if (student != null) {
-                UserInfo studentUser = userMapper.selectById(student.getUserId());
-                if (studentUser != null) {
-                    evaluation.setStudentName(studentUser.getRealName());
-                    evaluation.setStudentNo(student.getStudentNo());
-                }
-            }
+        fillStudentInfo(evaluation);
+        fillEnterpriseInfo(evaluation);
+        fillEvaluatorInfo(evaluation);
+    }
+    
+    /**
+     * 填充学生信息
+     */
+    private void fillStudentInfo(EnterpriseEvaluation evaluation) {
+        if (evaluation.getStudentId() == null) {
+            return;
         }
         
-        // 填充企业信息
-        if (evaluation.getEnterpriseId() != null) {
-            Enterprise enterprise = enterpriseMapper.selectById(evaluation.getEnterpriseId());
-            if (enterprise != null) {
-                evaluation.setEnterpriseName(enterprise.getEnterpriseName());
-            }
+        Student student = studentMapper.selectById(evaluation.getStudentId());
+        if (student == null) {
+            return;
         }
         
-        // 填充评价人信息
-        if (evaluation.getEvaluatorId() != null) {
-            UserInfo evaluator = userMapper.selectById(evaluation.getEvaluatorId());
-            if (evaluator != null) {
-                evaluation.setEvaluatorName(evaluator.getRealName());
-            }
+        UserInfo studentUser = userMapper.selectById(student.getUserId());
+        if (studentUser == null) {
+            return;
         }
+        
+        evaluation.setStudentName(studentUser.getRealName());
+        evaluation.setStudentNo(student.getStudentNo());
+    }
+    
+    /**
+     * 填充企业信息
+     */
+    private void fillEnterpriseInfo(EnterpriseEvaluation evaluation) {
+        if (evaluation.getEnterpriseId() == null) {
+            return;
+        }
+        
+        Enterprise enterprise = enterpriseMapper.selectById(evaluation.getEnterpriseId());
+        if (enterprise == null) {
+            return;
+        }
+        
+        evaluation.setEnterpriseName(enterprise.getEnterpriseName());
+    }
+    
+    /**
+     * 填充评价人信息
+     */
+    private void fillEvaluatorInfo(EnterpriseEvaluation evaluation) {
+        if (evaluation.getEvaluatorId() == null) {
+            return;
+        }
+        
+        UserInfo evaluator = userMapper.selectById(evaluation.getEvaluatorId());
+        if (evaluator == null) {
+            return;
+        }
+        
+        evaluation.setEvaluatorName(evaluator.getRealName());
     }
 }
 

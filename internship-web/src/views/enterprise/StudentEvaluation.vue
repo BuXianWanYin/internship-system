@@ -194,6 +194,7 @@ const loadStudentList = async () => {
         studentId: item.studentId,
         studentNo: item.studentNo,
         studentName: item.studentName,
+        enterpriseId: item.enterpriseId, // 确保包含企业ID
         enterpriseName: item.enterpriseName,
         startDate: item.internshipStartDate,
         endDate: item.internshipEndDate,
@@ -206,6 +207,21 @@ const loadStudentList = async () => {
         if (evalRes.code === 200 && evalRes.data) {
           student.evaluationStatus = evalRes.data.evaluationStatus
           student.evaluationId = evalRes.data.evaluationId
+          // 如果评价中有企业ID，使用评价中的企业ID
+          if (evalRes.data.enterpriseId && !student.enterpriseId) {
+            student.enterpriseId = evalRes.data.enterpriseId
+          }
+        }
+        // 如果仍然没有企业ID，从申请详情中获取
+        if (!student.enterpriseId && student.applyId) {
+          try {
+            const applyRes = await applyApi.getApplyById(student.applyId)
+            if (applyRes.code === 200 && applyRes.data && applyRes.data.enterpriseId) {
+              student.enterpriseId = applyRes.data.enterpriseId
+            }
+          } catch (error) {
+            console.error('获取申请详情失败:', error)
+          }
         }
       }
       
@@ -232,13 +248,33 @@ const handleReset = () => {
 
 // 评价
 const handleEvaluate = async (row) => {
-  currentStudent.value = row
+  // 确保学生对象包含企业ID
+  let studentData = { ...row }
+  
+  // 如果没有企业ID，从申请详情中获取
+  if (!studentData.enterpriseId && studentData.applyId) {
+    try {
+      const applyRes = await applyApi.getApplyById(studentData.applyId)
+      if (applyRes.code === 200 && applyRes.data && applyRes.data.enterpriseId) {
+        studentData.enterpriseId = applyRes.data.enterpriseId
+      }
+    } catch (error) {
+      console.error('获取申请详情失败:', error)
+    }
+  }
+  
+  currentStudent.value = studentData
   evaluationDialogTitle.value = `企业评价 - ${row.studentName}（学号：${row.studentNo}）`
   
   // 加载已有评价（草稿）
   const res = await enterpriseEvaluationApi.getEvaluationByApplyId(row.applyId)
   if (res.code === 200 && res.data) {
     currentEvaluation.value = res.data
+    // 如果评价中有企业ID，也更新到学生对象中
+    if (res.data.enterpriseId && !studentData.enterpriseId) {
+      studentData.enterpriseId = res.data.enterpriseId
+      currentStudent.value = studentData
+    }
   } else {
     currentEvaluation.value = null
   }

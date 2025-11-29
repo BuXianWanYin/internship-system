@@ -304,7 +304,12 @@ watch(() => props.evaluation, (newVal) => {
   if (newVal) {
     formData.evaluationId = newVal.evaluationId
     formData.applyId = newVal.applyId || formData.applyId
-    formData.enterpriseId = newVal.enterpriseId || formData.enterpriseId
+    // 优先使用评价中的企业ID，如果评价中没有，保持现有的企业ID
+    if (newVal.enterpriseId) {
+      formData.enterpriseId = newVal.enterpriseId
+    } else if (!formData.enterpriseId && props.student?.enterpriseId) {
+      formData.enterpriseId = props.student.enterpriseId
+    }
     formData.workAttitudeScore = newVal.workAttitudeScore
     formData.knowledgeApplicationScore = newVal.knowledgeApplicationScore
     formData.professionalSkillScore = newVal.professionalSkillScore
@@ -315,7 +320,7 @@ watch(() => props.evaluation, (newVal) => {
     formData.totalScore = newVal.totalScore
     formData.evaluationComment = newVal.evaluationComment || ''
   } else {
-    // 如果没有评价，重置表单
+    // 如果没有评价，重置表单（但保留申请ID和企业ID）
     formData.evaluationId = null
     formData.workAttitudeScore = null
     formData.knowledgeApplicationScore = null
@@ -333,7 +338,21 @@ watch(() => props.evaluation, (newVal) => {
 watch(() => props.student, async (newVal) => {
   if (newVal) {
     formData.applyId = newVal.applyId || formData.applyId
-    formData.enterpriseId = newVal.enterpriseId || formData.enterpriseId
+    // 优先使用学生对象中的企业ID，如果学生对象中没有，保持现有的企业ID
+    if (newVal.enterpriseId) {
+      formData.enterpriseId = newVal.enterpriseId
+    } else if (!formData.enterpriseId && newVal.applyId) {
+      // 如果学生对象中没有企业ID，尝试从申请中获取
+      try {
+        const { applyApi } = await import('@/api/internship/apply')
+        const applyRes = await applyApi.getApplyById(newVal.applyId)
+        if (applyRes.code === 200 && applyRes.data && applyRes.data.enterpriseId) {
+          formData.enterpriseId = applyRes.data.enterpriseId
+        }
+      } catch (error) {
+        console.error('获取申请详情失败:', error)
+      }
+    }
     
     // 如果有申请ID，尝试加载评价以获取自动计算值
     if (newVal.applyId && !formData.evaluationId) {
@@ -342,6 +361,10 @@ watch(() => props.student, async (newVal) => {
         const res = await enterpriseEvaluationApi.getEvaluationByApplyId(newVal.applyId)
         if (res.code === 200 && res.data) {
           formData.logWeeklyReportScoreAuto = res.data.logWeeklyReportScoreAuto
+          // 如果评价中有企业ID，也更新表单
+          if (res.data.enterpriseId && !formData.enterpriseId) {
+            formData.enterpriseId = res.data.enterpriseId
+          }
           // 如果还没有填写日志周报质量评分，使用自动计算值
           if (formData.logWeeklyReportScore === null && res.data.logWeeklyReportScoreAuto !== null) {
             formData.logWeeklyReportScore = res.data.logWeeklyReportScoreAuto
