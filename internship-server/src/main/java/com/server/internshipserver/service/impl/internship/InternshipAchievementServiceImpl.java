@@ -231,10 +231,28 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         
         if (!isAdmin && apply != null) {
             if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
-                // 合作企业实习：企业导师可以审批
-                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
-                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                // 合作企业实习：企业导师可以审批（需要是该学生的导师）
+                if (currentUser == null) {
+                    throw new BusinessException("无权审批该成果");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                
+                // 企业管理员：可以审批本企业的所有学生成果
+                if (DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_ADMIN)) {
+                    Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                    if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                            || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                        throw new BusinessException("无权审批该成果");
+                    }
+                }
+                // 企业导师：只能审批分配给自己的学生成果
+                else if (DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR)) {
+                    Long currentUserMentorId = dataPermissionUtil.getCurrentUserMentorId();
+                    if (currentUserMentorId == null || apply.getMentorId() == null
+                            || !currentUserMentorId.equals(apply.getMentorId())) {
+                        throw new BusinessException("无权审批该成果，只能审批分配给自己的学生成果");
+                    }
+                } else {
                     throw new BusinessException("无权审批该成果");
                 }
             } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {

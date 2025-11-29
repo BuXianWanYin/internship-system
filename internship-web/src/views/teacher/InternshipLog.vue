@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="实习日志批阅">
+  <PageLayout :title="pageTitle">
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -256,6 +256,8 @@ import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
+import { computed } from 'vue'
 
 const loading = ref(false)
 const reviewLoading = ref(false)
@@ -292,6 +294,16 @@ const reviewFormRules = {
   ],
   reviewComment: [{ required: true, message: '请输入批阅意见', trigger: 'blur' }]
 }
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '日志查看'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '日志批阅'
+  }
+  return '实习日志批阅'
+})
 
 // 加载数据
 const loadData = async () => {

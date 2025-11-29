@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="学生评价">
+  <PageLayout :title="pageTitle">
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -118,6 +118,18 @@ import EnterpriseEvaluationForm from '@/components/business/EnterpriseEvaluation
 import { enterpriseEvaluationApi } from '@/api/evaluation/enterprise'
 import { applyApi } from '@/api/internship/apply'
 import { formatDate } from '@/utils/dateUtils'
+import { hasAnyRole } from '@/utils/permission'
+import { computed } from 'vue'
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '评价管理'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '学生评价'
+  }
+  return '学生评价'
+})
 
 const loading = ref(false)
 const evaluationDialogVisible = ref(false)

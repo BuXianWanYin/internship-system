@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="成果审核">
+  <PageLayout :title="pageTitle">
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -90,7 +90,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.reviewStatus === 0"
+            v-if="row.reviewStatus === 0 && canReview(row)"
             link
             type="success"
             size="small"
@@ -99,7 +99,7 @@
             通过
           </el-button>
           <el-button
-            v-if="row.reviewStatus === 0"
+            v-if="row.reviewStatus === 0 && canReview(row)"
             link
             type="danger"
             size="small"
@@ -247,6 +247,18 @@ import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
+import { computed } from 'vue'
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '成果查看'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '成果审核'
+  }
+  return '成果审核'
+})
 
 const loading = ref(false)
 const reviewLoading = ref(false)

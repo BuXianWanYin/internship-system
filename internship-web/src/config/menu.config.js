@@ -350,42 +350,70 @@ export const menuItems = [
   {
     index: 'internship-enterprise',
     title: '实习管理',
+    titleMap: {
+      'ROLE_ENTERPRISE_ADMIN': '实习管理',
+      'ROLE_ENTERPRISE_MENTOR': '实习指导'
+    },
     icon: Briefcase,
     roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'],
     children: [
       {
         index: '/enterprise/internship/attendance',
         title: '考勤管理',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '考勤管理',
+          'ROLE_ENTERPRISE_MENTOR': '学生考勤'
+        },
         icon: Clock,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/log',
         title: '实习日志批阅',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '日志查看',
+          'ROLE_ENTERPRISE_MENTOR': '日志批阅'
+        },
         icon: Document,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/weekly-report',
         title: '周报批阅',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '周报查看',
+          'ROLE_ENTERPRISE_MENTOR': '周报批阅'
+        },
         icon: Files,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/achievement',
         title: '成果审核',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '成果查看',
+          'ROLE_ENTERPRISE_MENTOR': '成果审核'
+        },
         icon: Files,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/feedback',
         title: '问题反馈处理',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '反馈管理',
+          'ROLE_ENTERPRISE_MENTOR': '反馈处理'
+        },
         icon: ChatLineRound,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/enterprise/evaluation/student',
         title: '学生评价',
+        titleMap: {
+          'ROLE_ENTERPRISE_ADMIN': '评价管理',
+          'ROLE_ENTERPRISE_MENTOR': '学生评价'
+        },
         icon: Star,
         roles: ['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       }

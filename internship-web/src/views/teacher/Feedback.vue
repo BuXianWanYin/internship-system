@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="问题反馈处理">
+  <PageLayout :title="pageTitle">
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -126,18 +126,37 @@
         <el-descriptions-item label="提交时间">
           {{ formatDateTime(detailData.createTime) }}
         </el-descriptions-item>
-        <el-descriptions-item label="反馈内容" :span="2">
-          <div style="white-space: pre-wrap">{{ detailData.feedbackContent || '-' }}</div>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.feedbackAttachment" label="附件" :span="2">
-          <el-link :href="detailData.feedbackAttachment" target="_blank" type="primary">
-            {{ detailData.feedbackAttachment }}
-          </el-link>
-        </el-descriptions-item>
-        <el-descriptions-item v-if="detailData.replyContent" label="回复内容" :span="2">
-          <div style="white-space: pre-wrap; color: #606266; background: #f5f7fa; padding: 10px; border-radius: 4px">
-            {{ detailData.replyContent }}
+      </el-descriptions>
+
+      <!-- 反馈内容 -->
+      <div class="content-section">
+        <div class="content-title">反馈内容</div>
+        <div 
+          v-html="detailData.feedbackContent || '-'" 
+          class="rich-content feedback-content"
+        ></div>
+      </div>
+
+      <!-- 附件 -->
+      <div v-if="detailData.attachmentUrls" class="content-section">
+        <div class="content-title">附件</div>
+        <div class="attachment-list">
+          <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
+            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
+              {{ getFileName(url) }}
+            </el-link>
           </div>
+        </div>
+      </div>
+
+      <!-- 回复信息 -->
+      <el-descriptions v-if="detailData.replyContent || detailData.replyTime || detailData.replyUserName" :column="2" border class="detail-info">
+        <el-descriptions-item v-if="detailData.replyContent" label="回复内容" :span="2">
+          <div 
+            v-html="detailData.replyContent" 
+            class="rich-content reply-content"
+            style="color: #606266; background: #f5f7fa; padding: 10px; border-radius: 4px"
+          ></div>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.replyTime" label="回复时间">
           {{ formatDateTime(detailData.replyTime) }}
@@ -198,11 +217,24 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Document } from '@element-plus/icons-vue'
 import { feedbackApi } from '@/api/internship/feedback'
+import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
+import { computed } from 'vue'
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '反馈管理'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '反馈处理'
+  }
+  return '问题反馈处理'
+})
 
 const loading = ref(false)
 const replyLoading = ref(false)
@@ -395,6 +427,27 @@ const getFeedbackStatusType = (status) => {
   return typeMap[status] || 'info'
 }
 
+// 获取文件名
+const getFileName = (url) => {
+  if (!url) return ''
+  const parts = url.split('/')
+  return parts[parts.length - 1] || url
+}
+
+// 下载文件
+const handleDownloadFile = async (filePath) => {
+  if (!filePath) {
+    ElMessage.warning('文件路径为空')
+    return
+  }
+  try {
+    await fileApi.downloadFile(filePath)
+  } catch (error) {
+    console.error('下载文件失败:', error)
+    ElMessage.error('下载文件失败: ' + (error.message || '未知错误'))
+  }
+}
+
 // 初始化
 onMounted(() => {
   loadData()
@@ -416,6 +469,146 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.content-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.content-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #409eff;
+}
+
+.rich-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  min-height: 100px;
+  line-height: 1.8;
+  color: #606266;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.feedback-content :deep(p),
+.reply-content :deep(p) {
+  margin: 12px 0;
+  line-height: 1.8;
+}
+
+.feedback-content :deep(img),
+.reply-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 16px 0;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-content :deep(table),
+.reply-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.feedback-content :deep(table td),
+.feedback-content :deep(table th),
+.reply-content :deep(table td),
+.reply-content :deep(table th) {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.feedback-content :deep(table th),
+.reply-content :deep(table th) {
+  background-color: #f5f7fa;
+  font-weight: bold;
+}
+
+.feedback-content :deep(ul),
+.feedback-content :deep(ol),
+.reply-content :deep(ul),
+.reply-content :deep(ol) {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.feedback-content :deep(li),
+.reply-content :deep(li) {
+  margin: 8px 0;
+  line-height: 1.8;
+}
+
+.feedback-content :deep(h1),
+.feedback-content :deep(h2),
+.feedback-content :deep(h3),
+.feedback-content :deep(h4),
+.feedback-content :deep(h5),
+.feedback-content :deep(h6),
+.reply-content :deep(h1),
+.reply-content :deep(h2),
+.reply-content :deep(h3),
+.reply-content :deep(h4),
+.reply-content :deep(h5),
+.reply-content :deep(h6) {
+  margin: 16px 0 12px 0;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.feedback-content :deep(blockquote),
+.reply-content :deep(blockquote) {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 4px solid #409eff;
+  background-color: #f5f7fa;
+  color: #606266;
+}
+
+.feedback-content :deep(code),
+.reply-content :deep(code) {
+  padding: 2px 6px;
+  background-color: #f5f7fa;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.feedback-content {
+  min-height: 50px;
+}
+
+.reply-content {
+  min-height: 50px;
+}
+
+.attachment-list {
+  margin-top: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.detail-info {
+  margin-top: 20px;
 }
 </style>
 

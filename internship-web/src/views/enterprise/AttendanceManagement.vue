@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="考勤管理">
+  <PageLayout :title="pageTitle">
     <template #actions>
       <el-button type="primary" :icon="Plus" @click="handleAdd">确认考勤</el-button>
       <el-button type="success" :icon="Plus" @click="handleBatchAdd">批量确认</el-button>
@@ -606,6 +606,17 @@ import { applyApi } from '@/api/internship/apply'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '考勤管理'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '学生考勤'
+  }
+  return '考勤管理'
+})
 
 const loading = ref(false)
 const submitLoading = ref(false)

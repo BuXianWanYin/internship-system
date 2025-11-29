@@ -71,7 +71,7 @@ public class InternshipAchievementController {
     }
     
     @ApiOperation("审核成果")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @PostMapping("/{achievementId}/review")
     public Result<?> reviewAchievement(
             @ApiParam(value = "成果ID", required = true) @PathVariable Long achievementId,

@@ -1,5 +1,5 @@
 <template>
-  <PageLayout title="周报批阅">
+  <PageLayout :title="pageTitle">
     <!-- 搜索栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
@@ -257,6 +257,18 @@ import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
+import { hasAnyRole } from '@/utils/permission'
+import { computed } from 'vue'
+
+// 根据角色动态显示页面标题
+const pageTitle = computed(() => {
+  if (hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    return '周报查看'
+  } else if (hasAnyRole(['ROLE_ENTERPRISE_MENTOR'])) {
+    return '周报批阅'
+  }
+  return '周报批阅'
+})
 
 const loading = ref(false)
 const reviewLoading = ref(false)
