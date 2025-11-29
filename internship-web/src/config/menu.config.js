@@ -306,6 +306,12 @@ export const menuItems = [
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
+        index: '/teacher/internship/attendance',
+        title: '考勤查看',
+        icon: Clock,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      },
+      {
         index: '/teacher/evaluation/student',
         title: '学生评价',
         icon: Star,
@@ -473,6 +479,12 @@ export const menuItems = [
         index: '/teacher/internship/achievement',
         title: '成果审核',
         icon: Files,
+        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/teacher/internship/attendance',
+        title: '考勤查看',
+        icon: Clock,
         roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       },
       {

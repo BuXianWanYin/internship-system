@@ -11,7 +11,7 @@
               :disabled="!canCheckIn"
               @click="handleCheckIn"
             >
-              签到
+              上班打卡
             </el-button>
             <el-button 
               type="primary" 
@@ -19,7 +19,7 @@
               :disabled="!canCheckOut"
               @click="handleCheckOut"
             >
-              签退
+              下班打卡
             </el-button>
             <el-button 
               type="warning" 
@@ -38,98 +38,119 @@
           </div>
           <div v-if="todayAttendance" style="font-size: 14px; color: #606266">
             <span v-if="todayAttendance.checkInTime">
-              已签到：{{ formatDateTime(todayAttendance.checkInTime) }}
+              已上班打卡：{{ formatDateTime(todayAttendance.checkInTime) }}
             </span>
             <span v-if="todayAttendance.checkOutTime" style="margin-left: 20px">
-              已签退：{{ formatDateTime(todayAttendance.checkOutTime) }}
+              已下班打卡：{{ formatDateTime(todayAttendance.checkOutTime) }}
             </span>
           </div>
         </div>
       </el-card>
     </div>
 
-    <!-- 搜索栏 -->
-    <div class="search-bar">
-      <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="考勤日期">
-          <el-date-picker
-            v-model="searchForm.attendanceDate"
-            type="date"
-            placeholder="请选择日期"
-            clearable
-            style="width: 200px"
-            value-format="YYYY-MM-DD"
-            @change="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="考勤类型">
-          <el-select
-            v-model="searchForm.attendanceType"
-            placeholder="请选择类型"
-            clearable
-            style="width: 150px"
-          >
-            <el-option label="正常" :value="1" />
-            <el-option label="迟到" :value="2" />
-            <el-option label="早退" :value="3" />
-            <el-option label="请假" :value="4" />
-            <el-option label="缺勤" :value="5" />
-            <el-option label="休息" :value="6" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
-          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
-
-    <!-- 考勤统计卡片 -->
+    <!-- 日历和统计卡片 -->
     <el-row :gutter="20" style="margin-bottom: 20px">
-      <el-col :span="6">
+      <!-- 左侧：日历组件 -->
+      <el-col :span="16">
         <el-card shadow="hover">
+      <template #header>
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-size: 16px; font-weight: 600">考勤日历</span>
+          <div style="display: flex; gap: 12px; align-items: center">
+            <div class="legend-item">
+              <span class="legend-dot normal"></span>
+              <span>正常</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot leave"></span>
+              <span>请假</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot rest"></span>
+              <span>休息</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot absent"></span>
+              <span>缺勤</span>
+            </div>
+          </div>
+        </div>
+      </template>
+      <el-calendar v-loading="loading" v-model="calendarDate">
+        <template #date-cell="{ data }">
+          <div class="calendar-cell" @click="handleDateClick(data.day)">
+            <div class="calendar-date">{{ data.day.split('-').slice(2).join('-') }}</div>
+            <div v-if="getAttendanceByDate(data.day)" class="calendar-content">
+              <div v-if="getAttendanceByDate(data.day).attendanceType === 1" class="attendance-info normal">
+                <div v-if="getAttendanceByDate(data.day).checkInTime" class="time-info">
+                  <span class="time-label">上班:</span>
+                  <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkInTime) }}</span>
+                </div>
+                <div v-if="getAttendanceByDate(data.day).checkOutTime" class="time-info">
+                  <span class="time-label">下班:</span>
+                  <span class="time-value">{{ formatTime(getAttendanceByDate(data.day).checkOutTime) }}</span>
+                </div>
+              </div>
+              <div v-else-if="getAttendanceByDate(data.day).attendanceType === 4" class="attendance-info leave">
+                <div class="type-tag">请假</div>
+              </div>
+              <div v-else-if="getAttendanceByDate(data.day).attendanceType === 6" class="attendance-info rest">
+                <div class="type-tag">休息</div>
+              </div>
+              <div v-else-if="getAttendanceByDate(data.day).attendanceType === 5" class="attendance-info absent">
+                <div class="type-tag">缺勤</div>
+              </div>
+            </div>
+          </div>
+        </template>
+          </el-calendar>
+        </el-card>
+      </el-col>
+      <!-- 右侧：统计卡片 -->
+      <el-col :span="8">
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">总出勤天数</div>
             <div class="stat-value">{{ statistics.totalDays || 0 }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">正常出勤</div>
             <div class="stat-value" style="color: #67c23a">{{ statistics.normalDays || 0 }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">请假天数</div>
             <div class="stat-value" style="color: #909399">{{ statistics.leaveDays || 0 }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">缺勤天数</div>
             <div class="stat-value" style="color: #f56c6c">{{ statistics.absentDays || 0 }}</div>
           </div>
         </el-card>
       </el-col>
-    </el-row>
-    <el-row :gutter="20" style="margin-bottom: 20px">
-      <el-col :span="6">
-        <el-card shadow="hover">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">休息天数</div>
             <div class="stat-value" style="color: #909399">{{ statistics.restDays || 0 }}</div>
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
           <div class="stat-item">
             <div class="stat-label">出勤率</div>
             <div class="stat-value" style="color: #409eff">
@@ -138,7 +159,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+          <el-col :span="24">
         <el-card shadow="hover">
           <div class="stat-item">
             <div class="stat-label">总工作时长</div>
@@ -149,75 +170,8 @@
         </el-card>
       </el-col>
     </el-row>
-
-    <!-- 考勤列表 -->
-    <el-table
-      v-loading="loading"
-      :data="tableData"
-      stripe
-      style="width: 100%"
-      :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
-      table-layout="auto"
-    >
-      <el-table-column type="index" label="序号" min-width="60" align="center" />
-      <el-table-column prop="attendanceDate" label="考勤日期" min-width="120" align="center">
-        <template #default="{ row }">
-          {{ formatDate(row.attendanceDate) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="checkInTime" label="签到时间" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">
-          {{ row.checkInTime ? formatDateTime(row.checkInTime) : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="checkOutTime" label="签退时间" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">
-          {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="attendanceType" label="考勤类型" min-width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="getAttendanceTypeTagType(row.attendanceType)" size="small">
-            {{ getAttendanceTypeText(row.attendanceType) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="workHours" label="工作时长" min-width="100" align="center">
-        <template #default="{ row }">
-          {{ row.workHours ? `${row.workHours}小时` : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="confirmStatus" label="确认状态" min-width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="row.confirmStatus === 1 ? 'success' : 'warning'" size="small">
-            {{ row.confirmStatus === 1 ? '已确认' : '待确认' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" min-width="180" show-overflow-tooltip>
-        <template #default="{ row }">
-          {{ formatDateTime(row.createTime) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" min-width="100" fixed="right" align="center">
-        <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.current"
-        v-model:page-size="pagination.size"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </div>
+      </el-col>
+    </el-row>
 
     <!-- 查看详情对话框 -->
     <el-dialog
@@ -234,10 +188,10 @@
             {{ getAttendanceTypeText(detailData.attendanceType) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="签到时间">
+        <el-descriptions-item label="上班打卡时间">
           {{ detailData.checkInTime ? formatDateTime(detailData.checkInTime) : '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="签退时间">
+        <el-descriptions-item label="下班打卡时间">
           {{ detailData.checkOutTime ? formatDateTime(detailData.checkOutTime) : '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="工作时长">
@@ -328,12 +282,7 @@
             placeholder="请选择休息日期"
             style="width: 100%"
             value-format="YYYY-MM-DD"
-            :disabled-date="disabledDate"
-            :default-value="new Date()"
           />
-          <div style="color: #909399; font-size: 12px; margin-top: 5px">
-            只能选择今天的日期
-          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -347,7 +296,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Check, Close, Calendar, Sunny } from '@element-plus/icons-vue'
+import { Check, Close, Calendar, Sunny } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
@@ -359,10 +308,6 @@ const showRestDialog = ref(false)
 const todayAttendance = ref(null)
 const restDate = ref(null)
 
-const searchForm = reactive({
-  attendanceDate: null,
-  attendanceType: null
-})
 
 const pagination = reactive({
   current: 1,
@@ -372,6 +317,8 @@ const pagination = reactive({
 
 const tableData = ref([])
 const detailData = ref({})
+const calendarDate = ref(new Date())
+const attendanceMap = ref(new Map()) // 用于存储按日期组织的考勤数据
 const statistics = ref({
   totalDays: 0,
   normalDays: 0,
@@ -396,13 +343,13 @@ const leaveFormRules = {
 
 const leaveFormRef = ref(null)
 
-// 计算是否可以签到
+// 计算是否可以上班打卡
 const canCheckIn = computed(() => {
   if (!todayAttendance.value) return true
   return !todayAttendance.value.checkInTime
 })
 
-// 计算是否可以签退
+// 计算是否可以下班打卡
 const canCheckOut = computed(() => {
   if (!todayAttendance.value) return false
   return todayAttendance.value.checkInTime && !todayAttendance.value.checkOutTime
@@ -412,21 +359,54 @@ const canCheckOut = computed(() => {
 const loadData = async () => {
   loading.value = true
   try {
+      // 加载所有考勤数据用于日历显示（不限制分页）
     const res = await attendanceApi.getAttendancePage({
-      current: pagination.current,
-      size: pagination.size,
-      attendanceDate: searchForm.attendanceDate || undefined,
-      attendanceType: searchForm.attendanceType !== null ? searchForm.attendanceType : undefined
+        current: 1,
+        size: 1000 // 加载足够多的数据
     })
     if (res.code === 200) {
       tableData.value = res.data.records || []
       pagination.total = res.data.total || 0
+      
+      // 构建考勤数据映射（按日期）
+      attendanceMap.value.clear()
+      tableData.value.forEach(item => {
+        if (item.attendanceDate) {
+          attendanceMap.value.set(item.attendanceDate, item)
+        }
+      })
     }
   } catch (error) {
     console.error('加载数据失败:', error)
     ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// 根据日期获取考勤信息
+const getAttendanceByDate = (dateStr) => {
+  // 处理日期格式，确保格式一致（YYYY-MM-DD）
+  if (!dateStr) return null
+  // 如果日期字符串包含时间部分，只取日期部分
+  const dateOnly = dateStr.split(' ')[0]
+  return attendanceMap.value.get(dateOnly) || null
+}
+
+// 格式化时间（只显示时分）
+const formatTime = (dateTimeStr) => {
+  if (!dateTimeStr) return ''
+  const date = new Date(dateTimeStr)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+// 点击日期
+const handleDateClick = (dateStr) => {
+  const attendance = getAttendanceByDate(dateStr)
+  if (attendance) {
+    handleView(attendance)
   }
 }
 
@@ -463,33 +443,33 @@ const loadTodayAttendance = async () => {
   }
 }
 
-// 签到
+// 上班打卡
 const handleCheckIn = async () => {
   try {
     const res = await attendanceApi.studentCheckIn()
     if (res.code === 200) {
-      ElMessage.success('签到成功')
+      ElMessage.success('上班打卡成功')
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
     }
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '签到失败')
+    ElMessage.error(error.response?.data?.message || '上班打卡失败')
   }
 }
 
-// 签退
+// 下班打卡
 const handleCheckOut = async () => {
   try {
     const res = await attendanceApi.studentCheckOut()
     if (res.code === 200) {
-      ElMessage.success('签退成功')
+      ElMessage.success('下班打卡成功')
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
     }
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '签退失败')
+    ElMessage.error(error.response?.data?.message || '下班打卡失败')
   }
 }
 
@@ -559,18 +539,6 @@ const disabledDate = (time) => {
   return timeDate.getTime() !== today.getTime()
 }
 
-// 搜索
-const handleSearch = () => {
-  pagination.current = 1
-  loadData()
-}
-
-// 重置
-const handleReset = () => {
-  searchForm.attendanceDate = null
-  searchForm.attendanceType = null
-  handleSearch()
-}
 
 // 查看详情
 const handleView = async (row) => {
@@ -586,14 +554,6 @@ const handleView = async (row) => {
   }
 }
 
-// 分页处理
-const handleSizeChange = () => {
-  loadData()
-}
-
-const handlePageChange = () => {
-  loadData()
-}
 
 // 获取考勤类型文本
 const getAttendanceTypeText = (type) => {
@@ -630,36 +590,170 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.search-bar {
-  margin-bottom: 20px;
-}
-
-.search-form {
-  background: #f5f7fa;
-  padding: 20px;
-  border-radius: 8px;
-}
 
 .stat-item {
   text-align: center;
+  padding: 6px 0;
 }
 
 .stat-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #909399;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: bold;
   color: #303133;
 }
 
-.pagination-container {
-  margin-top: 20px;
+.calendar-cell {
+  height: 100%;
+  padding: 1px 2px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  overflow: hidden;
+}
+
+.calendar-cell:hover {
+  background-color: #f5f7fa;
+}
+
+.calendar-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 1px;
+}
+
+.calendar-content {
+  font-size: 10px;
+}
+
+.attendance-info {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendance-info.normal {
+  color: #67c23a;
+}
+
+.attendance-info.leave {
+  color: #909399;
+}
+
+.attendance-info.rest {
+  color: #409eff;
+}
+
+.attendance-info.absent {
+  color: #f56c6c;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.2;
+}
+
+.time-label {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.time-value {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.type-tag {
+  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  display: inline-block;
+  width: fit-content;
+  line-height: 1.2;
+}
+
+.attendance-info.normal .type-tag {
+  background-color: #f0f9ff;
+  color: #67c23a;
+}
+
+.attendance-info.leave .type-tag {
+  background-color: #f5f7fa;
+  color: #909399;
+}
+
+.attendance-info.rest .type-tag {
+  background-color: #ecf5ff;
+  color: #409eff;
+}
+
+.attendance-info.absent .type-tag {
+  background-color: #fef0f0;
+  color: #f56c6c;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.normal {
+  background-color: #67c23a;
+}
+
+.legend-dot.leave {
+  background-color: #909399;
+}
+
+.legend-dot.rest {
+  background-color: #409eff;
+}
+
+.legend-dot.absent {
+  background-color: #f56c6c;
+}
+
+:deep(.el-calendar-day) {
+  height: 50px;
+  padding: 0;
+}
+
+:deep(.el-calendar__header) {
+  padding: 8px 12px;
+}
+
+:deep(.el-calendar__body) {
+  padding: 8px 12px;
+}
+
+:deep(.el-calendar-table) {
+  font-size: 12px;
+}
+
+:deep(.el-calendar-table thead th) {
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+:deep(.el-calendar-table td) {
+  padding: 2px;
 }
 </style>
 

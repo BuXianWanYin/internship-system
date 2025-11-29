@@ -7,15 +7,15 @@
 
     <!-- 待确认考勤提示 -->
     <el-alert
-      v-if="pendingCount > 0"
-      :title="`有 ${pendingCount} 条待确认的考勤记录，请及时处理`"
+      v-if="statistics.pendingCount > 0"
+      :title="`有 ${statistics.pendingCount} 条待确认的考勤记录，请及时处理`"
       type="warning"
       :closable="false"
       show-icon
       style="margin-bottom: 20px"
     >
       <template #default>
-        <span>待确认考勤：{{ pendingCount }} 条</span>
+        <span>待确认考勤：{{ statistics.pendingCount }} 条</span>
         <el-button
           type="primary"
           link
@@ -28,7 +28,7 @@
       </template>
     </el-alert>
 
-    <!-- 搜索栏 -->
+    <!-- 搜索筛选栏 -->
     <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="学生姓名">
@@ -49,43 +49,6 @@
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="考勤日期">
-          <el-date-picker
-            v-model="searchForm.attendanceDate"
-            type="date"
-            placeholder="请选择日期"
-            clearable
-            style="width: 200px"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item label="考勤类型">
-          <el-select
-            v-model="searchForm.attendanceType"
-            placeholder="请选择类型"
-            clearable
-            style="width: 150px"
-          >
-            <el-option label="正常" :value="1" />
-            <el-option label="迟到" :value="2" />
-            <el-option label="早退" :value="3" />
-            <el-option label="请假" :value="4" />
-            <el-option label="缺勤" :value="5" />
-            <el-option label="休息" :value="6" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="确认状态">
-          <el-select
-            v-model="searchForm.confirmStatus"
-            placeholder="请选择状态"
-            clearable
-            style="width: 150px"
-          >
-            <el-option label="待确认" :value="0" />
-            <el-option label="已确认" :value="1" />
-            <el-option label="已拒绝" :value="2" />
-          </el-select>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
           <el-button :icon="Refresh" @click="handleReset">重置</el-button>
@@ -93,94 +56,218 @@
       </el-form>
     </div>
 
-    <!-- 考勤列表 -->
-    <el-table
-      v-loading="loading"
-      :data="tableData"
-      stripe
-      style="width: 100%"
-      :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
-      :row-class-name="getRowClassName"
+    <!-- 日历和统计面板 -->
+    <el-row :gutter="20" style="margin-bottom: 20px">
+      <!-- 左侧：日历组件 -->
+      <el-col :span="16">
+        <el-card shadow="hover">
+          <template #header>
+            <div style="display: flex; align-items: center; justify-content: space-between">
+              <span style="font-size: 14px; font-weight: 600">考勤日历</span>
+              <div style="display: flex; gap: 10px; align-items: center">
+                <div class="legend-item">
+                  <span class="legend-dot normal"></span>
+                  <span>正常</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot leave"></span>
+                  <span>请假</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot rest"></span>
+                  <span>休息</span>
+                </div>
+                <div class="legend-item">
+                  <span class="legend-dot pending"></span>
+                  <span>待确认</span>
+                </div>
+              </div>
+            </div>
+          </template>
+          <el-calendar v-loading="loading" v-model="calendarDate">
+            <template #date-cell="{ data }">
+              <div class="calendar-cell" @click="handleDateClick(data.day)">
+                <div class="calendar-date">{{ data.day.split('-').slice(2).join('-') }}</div>
+                <div v-if="getDateAttendanceCount(data.day) > 0" class="calendar-content">
+                  <div class="attendance-summary">
+                    <span class="count-badge">{{ getDateAttendanceCount(data.day) }}人</span>
+                    <span v-if="getPendingCount(data.day) > 0" class="pending-badge">
+                      {{ getPendingCount(data.day) }}待确认
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </el-calendar>
+        </el-card>
+      </el-col>
+      <!-- 右侧：统计面板 -->
+      <el-col :span="8">
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
+              <div class="stat-item">
+                <div class="stat-label">待确认数量</div>
+                <div class="stat-value" style="color: #e6a23c; cursor: pointer" @click="handleViewPending">
+                  {{ statistics.pendingCount || 0 }}
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
+              <div class="stat-item">
+                <div class="stat-label">异常考勤</div>
+                <div class="stat-value" style="color: #f56c6c">{{ statistics.abnormalCount || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
+              <div class="stat-item">
+                <div class="stat-label">今日出勤率</div>
+                <div class="stat-value" style="color: #409eff">
+                  {{ statistics.todayAttendanceRate ? statistics.todayAttendanceRate.toFixed(2) + '%' : '0%' }}
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
+              <div class="stat-item">
+                <div class="stat-label">本周出勤率</div>
+                <div class="stat-value" style="color: #67c23a">
+                  {{ statistics.weekAttendanceRate ? statistics.weekAttendanceRate.toFixed(2) + '%' : '0%' }}
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover" style="margin-bottom: 12px">
+              <div class="stat-item">
+                <div class="stat-label">总考勤记录</div>
+                <div class="stat-value">{{ statistics.totalCount || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card shadow="hover">
+              <div class="stat-item">
+                <div class="stat-label">已确认记录</div>
+                <div class="stat-value" style="color: #67c23a">{{ statistics.confirmedCount || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-col>
+    </el-row>
+
+    <!-- 日期考勤列表对话框 -->
+    <el-dialog
+      v-model="dateListDialogVisible"
+      :title="`${selectedDate} 考勤记录`"
+      width="1000px"
     >
-      <el-table-column type="index" label="序号" width="60" align="center" />
-      <el-table-column prop="studentName" label="学生姓名" min-width="120" />
-      <el-table-column prop="studentNo" label="学号" min-width="120" />
-      <el-table-column prop="attendanceDate" label="考勤日期" width="120" align="center">
-        <template #default="{ row }">
-          {{ formatDate(row.attendanceDate) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="checkInTime" label="签到时间" width="180">
-        <template #default="{ row }">
-          {{ row.checkInTime ? formatDateTime(row.checkInTime) : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="checkOutTime" label="签退时间" width="180">
-        <template #default="{ row }">
-          {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="attendanceType" label="考勤类型" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="getAttendanceTypeTagType(row.attendanceType)" size="small">
-            {{ getAttendanceTypeText(row.attendanceType) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="workHours" label="工作时长" width="100" align="center">
-        <template #default="{ row }">
-          {{ row.workHours ? `${row.workHours}小时` : '-' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="confirmStatus" label="确认状态" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="row.confirmStatus === 1 ? 'success' : 'warning'" size="small">
-            {{ row.confirmStatus === 1 ? '已确认' : '待确认' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="180">
-        <template #default="{ row }">
-          {{ formatDateTime(row.createTime) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right" align="center">
-        <template #default="{ row }">
-          <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
+      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center">
+        <div>
+          <el-checkbox v-model="selectAll" @change="handleSelectAll">全选</el-checkbox>
+          <span style="margin-left: 12px; color: #606266; font-size: 14px">
+            已选择 {{ selectedAttendanceIds.length }} 条
+          </span>
+        </div>
+        <div>
           <el-button
-            v-if="row.confirmStatus === 0"
-            link
-            type="primary"
-            size="small"
-            @click="handleEdit(row)"
-          >
-            编辑
-          </el-button>
-          <el-button
-            v-if="row.confirmStatus === 0"
-            link
             type="success"
             size="small"
-            @click="handleConfirm(row)"
+            :disabled="selectedAttendanceIds.length === 0"
+            @click="handleBatchConfirm"
           >
-            确认
+            批量确认
           </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.current"
-        v-model:page-size="pagination.size"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </div>
+          <el-button
+            type="danger"
+            size="small"
+            :disabled="selectedAttendanceIds.length === 0"
+            @click="handleBatchReject"
+          >
+            批量拒绝
+          </el-button>
+        </div>
+      </div>
+      <el-table
+        :data="dateAttendanceList"
+        stripe
+        style="width: 100%"
+        :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column prop="studentName" label="学生姓名" min-width="120" />
+        <el-table-column prop="studentNo" label="学号" min-width="120" />
+        <el-table-column prop="attendanceType" label="考勤类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getAttendanceTypeTagType(row.attendanceType)" size="small">
+              {{ getAttendanceTypeText(row.attendanceType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkInTime" label="上班打卡" width="150">
+          <template #default="{ row }">
+            {{ row.checkInTime ? formatTime(row.checkInTime) : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="checkOutTime" label="下班打卡" width="150">
+          <template #default="{ row }">
+            {{ row.checkOutTime ? formatTime(row.checkOutTime) : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="workHours" label="工作时长" width="100" align="center">
+          <template #default="{ row }">
+            {{ row.workHours ? `${row.workHours}小时` : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="confirmStatus" label="确认状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getConfirmStatusTagType(row.confirmStatus)" size="small">
+              {{ getConfirmStatusText(row.confirmStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="250" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
+            <el-button
+              v-if="row.confirmStatus === 0"
+              link
+              type="primary"
+              size="small"
+              @click="handleEdit(row)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-if="row.confirmStatus === 0"
+              link
+              type="success"
+              size="small"
+              @click="handleConfirm(row)"
+            >
+              确认
+            </el-button>
+            <el-button
+              v-if="row.confirmStatus === 0"
+              link
+              type="danger"
+              size="small"
+              @click="handleReject(row)"
+            >
+              拒绝
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
@@ -236,26 +323,26 @@
         </el-form-item>
         <el-form-item 
           v-if="formData.attendanceType !== 4 && formData.attendanceType !== 6" 
-          label="签到时间" 
+          label="上班打卡时间" 
           prop="checkInTime"
         >
           <el-date-picker
             v-model="formData.checkInTime"
             type="datetime"
-            placeholder="请选择签到时间"
+            placeholder="请选择上班打卡时间"
             style="width: 100%"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item 
           v-if="formData.attendanceType !== 4 && formData.attendanceType !== 6" 
-          label="签退时间" 
+          label="下班打卡时间" 
           prop="checkOutTime"
         >
           <el-date-picker
             v-model="formData.checkOutTime"
             type="datetime"
-            placeholder="请选择签退时间"
+            placeholder="请选择下班打卡时间"
             style="width: 100%"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
@@ -318,26 +405,26 @@
         </el-form-item>
         <el-form-item 
           v-if="confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6" 
-          label="签到时间" 
+          label="上班打卡时间" 
           prop="checkInTime"
         >
           <el-date-picker
             v-model="confirmForm.checkInTime"
             type="datetime"
-            placeholder="请选择签到时间"
+            placeholder="请选择上班打卡时间"
             style="width: 100%"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
         </el-form-item>
         <el-form-item 
           v-if="confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6" 
-          label="签退时间" 
+          label="下班打卡时间" 
           prop="checkOutTime"
         >
           <el-date-picker
             v-model="confirmForm.checkOutTime"
             type="datetime"
-            placeholder="请选择签退时间"
+            placeholder="请选择下班打卡时间"
             style="width: 100%"
             value-format="YYYY-MM-DD HH:mm:ss"
           />
@@ -363,6 +450,37 @@
       </template>
     </el-dialog>
 
+    <!-- 批量确认/拒绝对话框 -->
+    <el-dialog
+      v-model="batchConfirmDialogVisible"
+      :title="batchConfirmAction === 'confirm' ? '批量确认考勤' : '批量拒绝考勤'"
+      width="500px"
+    >
+      <el-form :model="batchConfirmForm" label-width="100px">
+        <el-form-item label="选择数量">
+          <el-input :value="`${selectedAttendanceIds.length} 条记录`" disabled />
+        </el-form-item>
+        <el-form-item label="确认意见">
+          <el-input
+            v-model="batchConfirmForm.comment"
+            type="textarea"
+            :rows="4"
+            :placeholder="batchConfirmAction === 'confirm' ? '请输入确认意见（可选）' : '请输入拒绝原因'"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchConfirmDialogVisible = false">取消</el-button>
+        <el-button
+          :type="batchConfirmAction === 'confirm' ? 'success' : 'danger'"
+          :loading="batchConfirmLoading"
+          @click="handleSubmitBatchConfirm"
+        >
+          {{ batchConfirmAction === 'confirm' ? '确认' : '拒绝' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 查看详情对话框 -->
     <el-dialog
       v-model="detailDialogVisible"
@@ -380,22 +498,25 @@
             {{ getAttendanceTypeText(detailData.attendanceType) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="签到时间">
+        <el-descriptions-item label="上班打卡时间">
           {{ detailData.checkInTime ? formatDateTime(detailData.checkInTime) : '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="签退时间">
+        <el-descriptions-item label="下班打卡时间">
           {{ detailData.checkOutTime ? formatDateTime(detailData.checkOutTime) : '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="工作时长">
           {{ detailData.workHours ? `${detailData.workHours}小时` : '-' }}
         </el-descriptions-item>
         <el-descriptions-item label="确认状态">
-          <el-tag :type="detailData.confirmStatus === 1 ? 'success' : 'warning'" size="small">
-            {{ detailData.confirmStatus === 1 ? '已确认' : '待确认' }}
+          <el-tag :type="getConfirmStatusTagType(detailData.confirmStatus)" size="small">
+            {{ getConfirmStatusText(detailData.confirmStatus) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item v-if="detailData.remark" label="备注" :span="2">
           <div style="white-space: pre-wrap">{{ detailData.remark }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="detailData.confirmComment" label="确认意见" :span="2">
+          <div style="white-space: pre-wrap">{{ detailData.confirmComment }}</div>
         </el-descriptions-item>
         <el-descriptions-item label="创建时间">
           {{ formatDateTime(detailData.createTime) }}
@@ -406,11 +527,11 @@
       </el-descriptions>
     </el-dialog>
 
-    <!-- 批量确认对话框 -->
+    <!-- 批量确认对话框（原有功能保留） -->
     <el-dialog
       v-model="batchDialogVisible"
       title="批量确认考勤"
-      width="900px"
+      width="700px"
       :close-on-click-modal="false"
     >
       <el-form
@@ -477,8 +598,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
 import { applyApi } from '@/api/internship/apply'
@@ -489,10 +610,13 @@ const loading = ref(false)
 const submitLoading = ref(false)
 const batchLoading = ref(false)
 const confirmLoading = ref(false)
+const batchConfirmLoading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const batchDialogVisible = ref(false)
 const confirmDialogVisible = ref(false)
+const batchConfirmDialogVisible = ref(false)
+const dateListDialogVisible = ref(false)
 const dialogTitle = ref('确认考勤')
 const formRef = ref(null)
 const batchFormRef = ref(null)
@@ -500,21 +624,17 @@ const confirmFormRef = ref(null)
 
 const searchForm = reactive({
   studentName: '',
-  studentNo: '',
-  attendanceDate: null,
-  attendanceType: null,
-  confirmStatus: null
+  studentNo: ''
 })
 
-const pendingCount = ref(0)
+const calendarDate = ref(new Date())
+const selectedDate = ref('')
+const dateAttendanceList = ref([])
+const selectedAttendanceIds = ref([])
+const selectAll = ref(false)
+const allAttendanceData = ref([])
+const attendanceMap = ref(new Map())
 
-const pagination = reactive({
-  current: 1,
-  size: 10,
-  total: 0
-})
-
-const tableData = ref([])
 const detailData = ref({})
 const studentList = ref([])
 
@@ -550,6 +670,21 @@ const confirmForm = reactive({
   confirmComment: ''
 })
 
+const batchConfirmForm = reactive({
+  comment: ''
+})
+
+const batchConfirmAction = ref('confirm') // 'confirm' or 'reject'
+
+const statistics = ref({
+  pendingCount: 0,
+  abnormalCount: 0,
+  todayAttendanceRate: 0,
+  weekAttendanceRate: 0,
+  totalCount: 0,
+  confirmedCount: 0
+})
+
 // 动态验证规则：根据考勤类型决定是否需要签到签退时间
 const getConfirmFormRules = () => {
   const rules = {
@@ -557,8 +692,8 @@ const getConfirmFormRules = () => {
   }
   // 请假(4)和休息(6)不需要签到签退时间
   if (confirmForm.attendanceType !== 4 && confirmForm.attendanceType !== 6) {
-    rules.checkInTime = [{ required: true, message: '请选择签到时间', trigger: 'change' }]
-    rules.checkOutTime = [{ required: true, message: '请选择签退时间', trigger: 'change' }]
+    rules.checkInTime = [{ required: true, message: '请选择上班打卡时间', trigger: 'change' }]
+    rules.checkOutTime = [{ required: true, message: '请选择下班打卡时间', trigger: 'change' }]
   }
   return rules
 }
@@ -572,8 +707,8 @@ const getFormRules = () => {
   }
   // 请假(4)和休息(6)不需要签到签退时间和工作时长
   if (formData.attendanceType !== 4 && formData.attendanceType !== 6) {
-    rules.checkInTime = [{ required: true, message: '请选择签到时间', trigger: 'change' }]
-    rules.checkOutTime = [{ required: true, message: '请选择签退时间', trigger: 'change' }]
+    rules.checkInTime = [{ required: true, message: '请选择上班打卡时间', trigger: 'change' }]
+    rules.checkOutTime = [{ required: true, message: '请选择下班打卡时间', trigger: 'change' }]
     rules.workHours = [{ required: true, message: '请输入工作时长', trigger: 'blur' }]
   }
   return rules
@@ -597,18 +732,30 @@ const getBatchFormRules = () => {
 const loadData = async () => {
   loading.value = true
   try {
+    // 加载所有考勤数据用于日历显示
     const res = await attendanceApi.getAttendancePage({
-      current: pagination.current,
-      size: pagination.size,
+      current: 1,
+      size: 1000,
       studentName: searchForm.studentName || undefined,
-      studentNo: searchForm.studentNo || undefined,
-      attendanceDate: searchForm.attendanceDate || undefined,
-      attendanceType: searchForm.attendanceType !== null ? searchForm.attendanceType : undefined,
-      confirmStatus: searchForm.confirmStatus !== null ? searchForm.confirmStatus : undefined
+      studentNo: searchForm.studentNo || undefined
     })
     if (res.code === 200) {
-      tableData.value = res.data.records || []
-      pagination.total = res.data.total || 0
+      allAttendanceData.value = res.data.records || []
+      
+      // 构建考勤数据映射（按日期）
+      attendanceMap.value.clear()
+      allAttendanceData.value.forEach(item => {
+        if (item.attendanceDate) {
+          const date = item.attendanceDate
+          if (!attendanceMap.value.has(date)) {
+            attendanceMap.value.set(date, [])
+          }
+          attendanceMap.value.get(date).push(item)
+        }
+      })
+      
+      // 计算统计数据
+      calculateStatistics()
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -618,52 +765,285 @@ const loadData = async () => {
   }
 }
 
-// 加载待确认考勤数量
-const loadPendingCount = async () => {
+// 计算统计数据
+const calculateStatistics = () => {
+  const today = new Date().toISOString().split('T')[0]
+  const todayList = attendanceMap.value.get(today) || []
+  
+  // 待确认数量
+  statistics.value.pendingCount = allAttendanceData.value.filter(item => item.confirmStatus === 0).length
+  
+  // 异常考勤（迟到、早退、缺勤）
+  statistics.value.abnormalCount = allAttendanceData.value.filter(item => 
+    item.attendanceType === 2 || item.attendanceType === 3 || item.attendanceType === 5
+  ).length
+  
+  // 今日出勤率
+  const todayTotal = todayList.length
+  const todayNormal = todayList.filter(item => item.attendanceType === 1 && item.confirmStatus === 1).length
+  statistics.value.todayAttendanceRate = todayTotal > 0 ? (todayNormal / todayTotal) * 100 : 0
+  
+  // 本周出勤率（简化计算，使用所有数据）
+  const totalCount = allAttendanceData.value.length
+  const normalCount = allAttendanceData.value.filter(item => 
+    item.attendanceType === 1 && item.confirmStatus === 1
+  ).length
+  statistics.value.weekAttendanceRate = totalCount > 0 ? (normalCount / totalCount) * 100 : 0
+  
+  // 总记录数和已确认数
+  statistics.value.totalCount = allAttendanceData.value.length
+  statistics.value.confirmedCount = allAttendanceData.value.filter(item => item.confirmStatus === 1).length
+}
+
+// 获取日期考勤数量
+const getDateAttendanceCount = (dateStr) => {
+  if (!dateStr) return 0
+  const dateOnly = dateStr.split(' ')[0]
+  const list = attendanceMap.value.get(dateOnly) || []
+  return list.length
+}
+
+// 获取日期待确认数量
+const getPendingCount = (dateStr) => {
+  if (!dateStr) return 0
+  const dateOnly = dateStr.split(' ')[0]
+  const list = attendanceMap.value.get(dateOnly) || []
+  return list.filter(item => item.confirmStatus === 0).length
+}
+
+// 点击日期
+const handleDateClick = (dateStr) => {
+  if (!dateStr) return
+  const dateOnly = dateStr.split(' ')[0]
+  selectedDate.value = dateOnly
+  dateAttendanceList.value = attendanceMap.value.get(dateOnly) || []
+  selectedAttendanceIds.value = []
+  selectAll.value = false
+  dateListDialogVisible.value = true
+}
+
+// 全选/取消全选
+const handleSelectAll = (checked) => {
+  if (checked) {
+    selectedAttendanceIds.value = dateAttendanceList.value
+      .filter(item => item.confirmStatus === 0)
+      .map(item => item.attendanceId)
+  } else {
+    selectedAttendanceIds.value = []
+  }
+}
+
+// 选择变化
+const handleSelectionChange = (selection) => {
+  selectedAttendanceIds.value = selection.map(item => item.attendanceId)
+  selectAll.value = selectedAttendanceIds.value.length > 0 && 
+    selectedAttendanceIds.value.length === dateAttendanceList.value.filter(item => item.confirmStatus === 0).length
+}
+
+// 批量确认
+const handleBatchConfirm = () => {
+  if (selectedAttendanceIds.value.length === 0) {
+    ElMessage.warning('请选择要确认的考勤记录')
+    return
+  }
+  batchConfirmAction.value = 'confirm'
+  batchConfirmForm.comment = ''
+  batchConfirmDialogVisible.value = true
+}
+
+// 批量拒绝
+const handleBatchReject = () => {
+  if (selectedAttendanceIds.value.length === 0) {
+    ElMessage.warning('请选择要拒绝的考勤记录')
+    return
+  }
+  batchConfirmAction.value = 'reject'
+  batchConfirmForm.comment = ''
+  batchConfirmDialogVisible.value = true
+}
+
+// 提交批量确认/拒绝
+const handleSubmitBatchConfirm = async () => {
+  if (batchConfirmAction.value === 'reject' && !batchConfirmForm.comment.trim()) {
+    ElMessage.warning('请输入拒绝原因')
+    return
+  }
+  
+  batchConfirmLoading.value = true
   try {
-    const res = await attendanceApi.getAttendancePage({
-      current: 1,
-      size: 1,
-      confirmStatus: 0 // 待确认
-    })
-    if (res.code === 200) {
-      pendingCount.value = res.data.total || 0
+    const confirmStatus = batchConfirmAction.value === 'confirm' ? 1 : 2
+    let successCount = 0
+    let failCount = 0
+    
+    for (const attendanceId of selectedAttendanceIds.value) {
+      try {
+        await attendanceApi.confirmAttendance(
+          attendanceId,
+          confirmStatus,
+          batchConfirmForm.comment || undefined
+        )
+        successCount++
+      } catch (error) {
+        failCount++
+        console.error(`确认考勤 ${attendanceId} 失败:`, error)
+      }
+    }
+    
+    if (successCount > 0) {
+      ElMessage.success(`${batchConfirmAction.value === 'confirm' ? '确认' : '拒绝'}成功 ${successCount} 条`)
+    }
+    if (failCount > 0) {
+      ElMessage.warning(`失败 ${failCount} 条`)
+    }
+    
+    batchConfirmDialogVisible.value = false
+    selectedAttendanceIds.value = []
+    selectAll.value = false
+    await loadData()
+    // 刷新日期列表
+    if (dateListDialogVisible.value) {
+      handleDateClick(selectedDate.value)
     }
   } catch (error) {
-    console.error('加载待确认数量失败:', error)
+    ElMessage.error('操作失败')
+  } finally {
+    batchConfirmLoading.value = false
+  }
+}
+
+// 查看待确认
+const handleViewPending = () => {
+  const pendingList = allAttendanceData.value.filter(item => item.confirmStatus === 0)
+  if (pendingList.length > 0) {
+    // 显示第一个待确认的日期
+    const firstPending = pendingList[0]
+    handleDateClick(firstPending.attendanceDate)
+  } else {
+    ElMessage.info('暂无待确认的考勤记录')
   }
 }
 
 // 加载学生列表
 const loadStudentList = async () => {
   try {
-    const res = await applyApi.getApplyPage({
+    // 首先尝试从考勤数据中提取学生信息（所有角色都可以）
+    const res = await attendanceApi.getAttendancePage({
       current: 1,
-      size: 1000,
-      status: 1 // 已通过的申请
+      size: 1000
     })
     if (res.code === 200) {
       // 去重学生
       const studentMap = new Map()
-      res.data.records.forEach(apply => {
-        if (apply.studentId && !studentMap.has(apply.studentId)) {
-          studentMap.set(apply.studentId, {
-            studentId: apply.studentId,
-            studentName: apply.studentName,
-            studentNo: apply.studentNo
+      res.data.records.forEach(attendance => {
+        if (attendance.studentId && !studentMap.has(attendance.studentId)) {
+          studentMap.set(attendance.studentId, {
+            studentId: attendance.studentId,
+            studentName: attendance.studentName || '',
+            studentNo: attendance.studentNo || ''
           })
         }
       })
       studentList.value = Array.from(studentMap.values())
     }
+    
+    // 如果从考勤数据中没有获取到学生，尝试其他方式
+    if (studentList.value.length === 0) {
+      // 企业导师使用专门的API
+      try {
+        const mentorRes = await applyApi.getMentorStudents({
+          current: 1,
+          size: 1000
+        })
+        if (mentorRes.code === 200) {
+          const mentorStudentMap = new Map()
+          mentorRes.data.records.forEach(apply => {
+            if (apply.studentId && !mentorStudentMap.has(apply.studentId)) {
+              mentorStudentMap.set(apply.studentId, {
+                studentId: apply.studentId,
+                studentName: apply.studentName || '',
+                studentNo: apply.studentNo || ''
+              })
+            }
+          })
+          studentList.value = Array.from(mentorStudentMap.values())
+        }
+      } catch (mentorError) {
+        // 如果不是企业导师或API失败，尝试企业管理员的方式
+        try {
+          const applyRes = await applyApi.getApplyPage({
+            current: 1,
+            size: 1000,
+            status: 1 // 已通过的申请
+          })
+          if (applyRes.code === 200) {
+            const applyStudentMap = new Map()
+            applyRes.data.records.forEach(apply => {
+              if (apply.studentId && !applyStudentMap.has(apply.studentId)) {
+                applyStudentMap.set(apply.studentId, {
+                  studentId: apply.studentId,
+                  studentName: apply.studentName,
+                  studentNo: apply.studentNo
+                })
+              }
+            })
+            studentList.value = Array.from(applyStudentMap.values())
+          }
+        } catch (applyError) {
+          console.warn('无法从申请接口获取学生列表（可能是权限问题）:', applyError)
+        }
+      }
+    }
   } catch (error) {
     console.error('加载学生列表失败:', error)
+    // 如果考勤接口失败，尝试企业导师API
+    try {
+      const mentorRes = await applyApi.getMentorStudents({
+        current: 1,
+        size: 1000
+      })
+      if (mentorRes.code === 200) {
+        const mentorStudentMap = new Map()
+        mentorRes.data.records.forEach(apply => {
+          if (apply.studentId && !mentorStudentMap.has(apply.studentId)) {
+            mentorStudentMap.set(apply.studentId, {
+              studentId: apply.studentId,
+              studentName: apply.studentName || '',
+              studentNo: apply.studentNo || ''
+            })
+          }
+        })
+        studentList.value = Array.from(mentorStudentMap.values())
+      }
+    } catch (mentorError) {
+      // 最后尝试企业管理员的方式
+      try {
+        const applyRes = await applyApi.getApplyPage({
+          current: 1,
+          size: 1000,
+          status: 1
+        })
+        if (applyRes.code === 200) {
+          const studentMap = new Map()
+          applyRes.data.records.forEach(apply => {
+            if (apply.studentId && !studentMap.has(apply.studentId)) {
+              studentMap.set(apply.studentId, {
+                studentId: apply.studentId,
+                studentName: apply.studentName,
+                studentNo: apply.studentNo
+              })
+            }
+          })
+          studentList.value = Array.from(studentMap.values())
+        }
+      } catch (applyError) {
+        console.error('从申请接口获取学生列表也失败:', applyError)
+      }
+    }
   }
 }
 
 // 搜索
 const handleSearch = () => {
-  pagination.current = 1
   loadData()
 }
 
@@ -671,16 +1051,6 @@ const handleSearch = () => {
 const handleReset = () => {
   searchForm.studentName = ''
   searchForm.studentNo = ''
-  searchForm.attendanceDate = null
-  searchForm.attendanceType = null
-  searchForm.confirmStatus = null
-  handleSearch()
-}
-
-// 查看待确认考勤
-const handleViewPending = () => {
-  searchForm.confirmStatus = 0
-  pagination.current = 1
   handleSearch()
 }
 
@@ -764,6 +1134,30 @@ const handleConfirm = async (row) => {
   }
 }
 
+// 拒绝考勤
+const handleReject = async (row) => {
+  try {
+    const res = await attendanceApi.getAttendanceById(row.attendanceId)
+    if (res.code === 200) {
+      Object.assign(confirmForm, {
+        attendanceId: res.data.attendanceId,
+        studentName: res.data.studentName || '',
+        studentNo: res.data.studentNo || '',
+        attendanceDate: res.data.attendanceDate,
+        attendanceType: res.data.attendanceType,
+        checkInTime: res.data.checkInTime || '',
+        checkOutTime: res.data.checkOutTime || '',
+        confirmStatus: 2,
+        confirmComment: ''
+      })
+      confirmDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('查询详情失败:', error)
+    ElMessage.error('查询详情失败')
+  }
+}
+
 // 提交确认
 const handleSubmitConfirm = async () => {
   if (!confirmFormRef.value) return
@@ -787,14 +1181,17 @@ const handleSubmitConfirm = async () => {
           checkOutTime
         )
         if (res.code === 200) {
-          ElMessage.success('确认成功')
+          ElMessage.success('操作成功')
           confirmDialogVisible.value = false
-          loadData()
-          loadPendingCount()
+          await loadData()
+          // 刷新日期列表
+          if (dateListDialogVisible.value) {
+            handleDateClick(selectedDate.value)
+          }
         }
       } catch (error) {
-        console.error('确认失败:', error)
-        ElMessage.error(error.response?.data?.message || '确认失败')
+        console.error('操作失败:', error)
+        ElMessage.error(error.response?.data?.message || '操作失败')
       } finally {
         confirmLoading.value = false
       }
@@ -811,19 +1208,38 @@ const handleStudentChange = async (studentId) => {
     // 自动查询该学生的已通过申请，获取applyId
     if (studentId && !formData.attendanceId) {
       try {
-        const res = await applyApi.getApplyPage({
-          current: 1,
-          size: 100,
-          studentId: studentId,
-          status: 1 // 已通过的申请
-        })
-        if (res.code === 200 && res.data.records && res.data.records.length > 0) {
-          // 如果有多个申请，使用最新的一个
-          const latestApply = res.data.records[0]
-          formData.applyId = latestApply.applyId
+        // 先从考勤数据中查找该学生的applyId
+        const attendance = allAttendanceData.value.find(item => item.studentId === studentId)
+        if (attendance && attendance.applyId) {
+          formData.applyId = attendance.applyId
         } else {
-          ElMessage.warning('该学生没有已通过的实习申请，无法添加考勤')
-          formData.applyId = null
+          // 如果考勤数据中没有，尝试从申请接口获取（仅企业管理员）
+          try {
+            const res = await applyApi.getApplyPage({
+              current: 1,
+              size: 100,
+              studentId: studentId,
+              status: 1 // 已通过的申请
+            })
+            if (res.code === 200 && res.data.records && res.data.records.length > 0) {
+              // 如果有多个申请，使用最新的一个
+              const latestApply = res.data.records[0]
+              formData.applyId = latestApply.applyId
+            } else {
+              ElMessage.warning('该学生没有已通过的实习申请，无法添加考勤')
+              formData.applyId = null
+            }
+          } catch (applyError) {
+            // 企业导师可能没有权限访问申请接口，忽略错误
+            console.warn('无法从申请接口获取applyId（可能是权限问题）:', applyError)
+            // 尝试从考勤数据中获取
+            if (attendance && attendance.applyId) {
+              formData.applyId = attendance.applyId
+            } else {
+              ElMessage.warning('无法获取该学生的申请信息，请手动选择')
+              formData.applyId = null
+            }
+          }
         }
       } catch (error) {
         console.error('查询申请失败:', error)
@@ -857,16 +1273,18 @@ const handleSubmit = async () => {
           if (res.code === 200) {
             ElMessage.success('更新成功')
             dialogVisible.value = false
-            loadData()
-            loadPendingCount()
+            await loadData()
+            // 刷新日期列表
+            if (dateListDialogVisible.value) {
+              handleDateClick(selectedDate.value)
+            }
           }
         } else {
           const res = await attendanceApi.addAttendance(data)
           if (res.code === 200) {
             ElMessage.success('确认成功')
             dialogVisible.value = false
-            loadData()
-            loadPendingCount()
+            await loadData()
           }
         }
       } catch (error) {
@@ -889,32 +1307,44 @@ const handleSubmitBatch = async () => {
         // 为每个学生查询对应的申请ID
         const attendanceList = []
         for (const studentId of batchForm.studentIds) {
-          try {
-            const res = await applyApi.getApplyPage({
-              current: 1,
-              size: 1,
-              studentId: studentId,
-              status: 1 // 已通过的申请
-            })
-            if (res.code === 200 && res.data.records && res.data.records.length > 0) {
-              const latestApply = res.data.records[0]
-              const attendanceItem = {
-                studentId,
-                applyId: latestApply.applyId,
-                attendanceDate: batchForm.attendanceDate,
-                attendanceType: batchForm.attendanceType
+          let applyId = null
+          
+          // 先从考勤数据中查找该学生的applyId
+          const attendance = allAttendanceData.value.find(item => item.studentId === studentId)
+          if (attendance && attendance.applyId) {
+            applyId = attendance.applyId
+          } else {
+            // 如果考勤数据中没有，尝试从申请接口获取（仅企业管理员）
+            try {
+              const res = await applyApi.getApplyPage({
+                current: 1,
+                size: 1,
+                studentId: studentId,
+                status: 1 // 已通过的申请
+              })
+              if (res.code === 200 && res.data.records && res.data.records.length > 0) {
+                applyId = res.data.records[0].applyId
               }
-              // 请假(4)和休息(6)不需要工作时长
-              if (batchForm.attendanceType !== 4 && batchForm.attendanceType !== 6) {
-                attendanceItem.workHours = batchForm.workHours
-              }
-              attendanceList.push(attendanceItem)
-            } else {
-              ElMessage.warning(`学生ID ${studentId} 没有已通过的实习申请，已跳过`)
+            } catch (applyError) {
+              // 企业导师可能没有权限访问申请接口，忽略错误
+              console.warn(`无法从申请接口获取学生 ${studentId} 的applyId:`, applyError)
             }
-          } catch (error) {
-            console.error(`查询学生 ${studentId} 的申请失败:`, error)
-            ElMessage.warning(`查询学生ID ${studentId} 的申请失败，已跳过`)
+          }
+          
+          if (applyId) {
+            const attendanceItem = {
+              studentId,
+              applyId: applyId,
+              attendanceDate: batchForm.attendanceDate,
+              attendanceType: batchForm.attendanceType
+            }
+            // 请假(4)和休息(6)不需要工作时长
+            if (batchForm.attendanceType !== 4 && batchForm.attendanceType !== 6) {
+              attendanceItem.workHours = batchForm.workHours
+            }
+            attendanceList.push(attendanceItem)
+          } else {
+            ElMessage.warning(`学生ID ${studentId} 没有已通过的实习申请，已跳过`)
           }
         }
         
@@ -928,8 +1358,7 @@ const handleSubmitBatch = async () => {
         if (res.code === 200) {
           ElMessage.success('批量确认成功')
           batchDialogVisible.value = false
-          loadData()
-          loadPendingCount()
+          await loadData()
         }
       } catch (error) {
         console.error('批量确认失败:', error)
@@ -973,13 +1402,13 @@ const resetBatchForm = () => {
   }
 }
 
-// 分页处理
-const handleSizeChange = () => {
-  loadData()
-}
-
-const handlePageChange = () => {
-  loadData()
+// 格式化时间（只显示时分）
+const formatTime = (dateTimeStr) => {
+  if (!dateTimeStr) return ''
+  const date = new Date(dateTimeStr)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 // 获取考勤类型文本
@@ -995,19 +1424,6 @@ const getAttendanceTypeText = (type) => {
   return typeMap[type] || '-'
 }
 
-// 获取表格行样式类名（用于高亮显示待确认的请假/休息申请）
-const getRowClassName = ({ row }) => {
-  // 如果是待确认的请假或休息申请，添加高亮样式
-  if (row.confirmStatus === 0 && (row.attendanceType === 4 || row.attendanceType === 6)) {
-    return 'pending-leave-rest-row'
-  }
-  // 如果是待确认的考勤，添加浅色背景
-  if (row.confirmStatus === 0) {
-    return 'pending-attendance-row'
-  }
-  return ''
-}
-
 // 获取考勤类型标签类型
 const getAttendanceTypeTagType = (type) => {
   const typeMap = {
@@ -1015,23 +1431,36 @@ const getAttendanceTypeTagType = (type) => {
     2: 'warning',
     3: 'warning',
     4: 'info',
-    5: 'danger'
+    5: 'danger',
+    6: 'info'
   }
   return typeMap[type] || 'info'
 }
 
-// 监听数据变化，更新待确认数量
-watch(() => [tableData.value, searchForm.confirmStatus], () => {
-  // 如果当前筛选的是待确认状态，更新数量
-  if (searchForm.confirmStatus === 0) {
-    pendingCount.value = pagination.total
+// 获取确认状态文本
+const getConfirmStatusText = (status) => {
+  const statusMap = {
+    0: '待确认',
+    1: '已确认',
+    2: '已拒绝'
   }
-}, { deep: true })
+  return statusMap[status] || '-'
+}
+
+// 获取确认状态标签类型
+const getConfirmStatusTagType = (status) => {
+  const statusMap = {
+    0: 'warning',
+    1: 'success',
+    2: 'danger'
+  }
+  return statusMap[status] || 'info'
+}
 
 // 初始化
 onMounted(() => {
   loadData()
-  loadPendingCount()
+  loadStudentList()
 })
 </script>
 
@@ -1046,25 +1475,121 @@ onMounted(() => {
   border-radius: 8px;
 }
 
-.pagination-container {
-  margin-top: 20px;
+.stat-item {
+  text-align: center;
+  padding: 6px 0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.calendar-cell {
+  height: 100%;
+  padding: 1px 2px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  overflow: hidden;
+}
+
+.calendar-cell:hover {
+  background-color: #f5f7fa;
+}
+
+.calendar-date {
+  font-size: 11px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 2px;
+}
+
+.calendar-content {
+  font-size: 10px;
+}
+
+.attendance-summary {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* 待确认考勤行样式 */
-:deep(.pending-attendance-row) {
-  background-color: #fef0e6 !important;
+.count-badge {
+  font-size: 10px;
+  color: #409eff;
+  font-weight: 500;
 }
 
-/* 待确认的请假/休息申请行样式（高亮显示） */
-:deep(.pending-leave-rest-row) {
-  background-color: #fff7e6 !important;
-  border-left: 3px solid #faad14;
+.pending-badge {
+  font-size: 9px;
+  color: #e6a23c;
+  background-color: #fdf6ec;
+  padding: 1px 4px;
+  border-radius: 2px;
+  display: inline-block;
 }
 
-:deep(.pending-leave-rest-row:hover) {
-  background-color: #ffe58f !important;
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #606266;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.normal {
+  background-color: #67c23a;
+}
+
+.legend-dot.leave {
+  background-color: #909399;
+}
+
+.legend-dot.rest {
+  background-color: #409eff;
+}
+
+.legend-dot.pending {
+  background-color: #e6a23c;
+}
+
+:deep(.el-calendar-day) {
+  height: 50px;
+  padding: 0;
+}
+
+:deep(.el-calendar__header) {
+  padding: 8px 12px;
+}
+
+:deep(.el-calendar__body) {
+  padding: 8px 12px;
+}
+
+:deep(.el-calendar-table) {
+  font-size: 12px;
+}
+
+:deep(.el-calendar-table thead th) {
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+:deep(.el-calendar-table td) {
+  padding: 2px;
 }
 </style>
-

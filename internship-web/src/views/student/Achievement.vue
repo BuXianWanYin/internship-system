@@ -161,13 +161,12 @@
         <el-form-item label="成果附件" prop="fileUrls">
           <el-upload
             ref="uploadRef"
-            :action="uploadAction"
-            :headers="uploadHeaders"
-            :file-list="fileList"
+            v-model:file-list="fileList"
+            :action="''"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
             :before-upload="beforeUpload"
-            :on-success="handleUploadSuccess"
-            :on-remove="handleRemove"
-            :on-error="handleUploadError"
             :limit="10"
             multiple
             :accept="allowedFileTypes"
@@ -179,22 +178,36 @@
                 <div>单个文件大小不超过10MB，最多可上传10个文件</div>
               </div>
             </template>
-          </el-upload>
-          <div v-if="attachmentUrls.length > 0" class="attachment-preview">
-            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
-              <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
-                {{ getFileName(url) }}
-              </el-link>
+            <template #file="{ file }">
+              <div class="custom-file-item">
+                <div class="file-info">
+                  <el-icon class="file-icon">
+                    <Document />
+                  </el-icon>
+                  <span class="file-name">{{ file.name }}</span>
+                </div>
+                <div class="file-actions">
+                  <el-button
+                    v-if="file.url || (file.response && file.response.data)"
+                    link
+                    type="primary"
+                    size="small"
+                    :icon="Download"
+                    circle
+                    @click="handleDownloadFileFromUpload(file)"
+                  />
               <el-button
                 link
                 type="danger"
                 size="small"
-                @click="handleRemoveAttachment(index)"
-              >
-                删除
-              </el-button>
+                    :icon="Delete"
+                    circle
+                    @click="handleRemoveFileFromUpload(file)"
+                  />
             </div>
           </div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -234,9 +247,23 @@
         <el-descriptions-item v-if="detailData.fileUrls" label="成果附件" :span="2">
           <div class="attachment-list">
             <div v-for="(url, index) in (detailData.fileUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
-              <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
-                {{ getFileName(url) }}
-              </el-link>
+              <div class="attachment-info">
+                <el-icon class="file-icon">
+                  <Document />
+                </el-icon>
+                <span class="file-name">{{ getFileName(url) }}</span>
+              </div>
+              <div class="attachment-actions">
+                <el-button
+                  link
+                  type="primary"
+                  size="small"
+                  :icon="Download"
+                  @click="handleDownloadFile(url)"
+                >
+                  下载
+                </el-button>
+              </div>
             </div>
           </div>
         </el-descriptions-item>
@@ -257,12 +284,11 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Document } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Document, Delete, Download } from '@element-plus/icons-vue'
 import { achievementApi } from '@/api/internship/achievement'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
-import { getToken } from '@/utils/auth'
 import PageLayout from '@/components/common/PageLayout.vue'
 import RichTextEditor from '@/components/common/RichTextEditor.vue'
 
@@ -301,18 +327,63 @@ const formData = reactive({
   fileUrls: ''
 })
 
-// 文件上传配置
-const uploadAction = computed(() => {
-  // 使用相对路径，request会自动添加baseURL
-  return '/file/upload'
-})
+// 文件变化
+const handleFileChange = (file, fileList) => {
+  // 文件已添加到列表，稍后统一上传
+  // 更新 fileList，但不添加到 attachmentUrls（等上传成功后再添加）
+}
 
-const uploadHeaders = computed(() => {
-  const token = getToken()
-  return {
-    Authorization: token ? `Bearer ${token}` : ''
+// 移除文件
+const handleFileRemove = (file, fileList) => {
+  // 如果文件已经上传过（有 response），从 attachmentUrls 中移除
+  if (file.response && file.response.data) {
+    const url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
+    const index = attachmentUrls.value.indexOf(url)
+    if (index > -1) {
+      attachmentUrls.value.splice(index, 1)
+    }
   }
-})
+}
+
+// 上传附件
+const uploadAttachments = async () => {
+  // 只上传新选择的文件（有raw属性且没有response的）
+  const newFiles = fileList.value.filter(item => item.raw && !item.response)
+  if (newFiles.length === 0) {
+    return attachmentUrls.value.join(',')
+  }
+  
+  const files = newFiles.map(item => item.raw).filter(Boolean)
+  if (files.length === 0) {
+    return attachmentUrls.value.join(',')
+  }
+  
+  try {
+    const res = await fileApi.uploadFiles(files)
+    if (res.code === 200 && res.data) {
+      // 更新已上传文件的fileList项，添加response和url
+      let urlIndex = 0
+      newFiles.forEach(file => {
+        if (urlIndex < res.data.length) {
+          const url = res.data[urlIndex]
+          file.response = { data: url }
+          file.url = fileApi.getDownloadUrl(url)
+          file.status = 'success'
+          attachmentUrls.value.push(url)
+          urlIndex++
+        }
+      })
+      // 返回所有附件URL
+      return attachmentUrls.value.join(',')
+    }
+  } catch (error) {
+    console.error('附件上传失败:', error)
+    ElMessage.error('附件上传失败: ' + (error.response?.data?.message || error.message))
+    throw error
+  }
+  
+  return attachmentUrls.value.join(',')
+}
 
 // 根据成果类型获取允许的文件类型
 const allowedFileTypes = computed(() => {
@@ -450,9 +521,9 @@ const handleEdit = async (row) => {
       // 加载附件列表
       if (res.data.fileUrls) {
         attachmentUrls.value = res.data.fileUrls.split(',').filter(url => url.trim())
-        // 构建fileList用于显示
+        // 构建fileList用于显示（使用负数uid避免冲突）
         fileList.value = attachmentUrls.value.map((url, index) => ({
-          uid: index,
+          uid: -(index + 1),
           name: getFileName(url),
           url: fileApi.getDownloadUrl(url),
           status: 'success'
@@ -522,58 +593,55 @@ const beforeUpload = (file) => {
     return false
   }
   
-  return true
+  return false // 阻止自动上传
 }
 
-// 文件上传成功
-const handleUploadSuccess = (response, file) => {
-  if (response.code === 200) {
-    if (Array.isArray(response.data)) {
-      // 多个文件上传
-      response.data.forEach(url => {
-        if (!attachmentUrls.value.includes(url)) {
-          attachmentUrls.value.push(url)
-        }
-      })
-    } else if (typeof response.data === 'string') {
-      // 单个文件上传
-      if (!attachmentUrls.value.includes(response.data)) {
-        attachmentUrls.value.push(response.data)
-      }
-    }
-    ElMessage.success('文件上传成功')
-  } else {
-    ElMessage.error(response.message || '文件上传失败')
+
+
+// 从上传组件下载文件
+const handleDownloadFileFromUpload = (file) => {
+  let url = ''
+  if (file.url) {
+    // 已上传的文件，从url中提取路径
+    url = file.url.replace(/^.*\/file\/download\?path=/, '')
+    url = decodeURIComponent(url)
+  } else if (file.response && file.response.data) {
+    // 新上传的文件
+    url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
+  }
+  if (url) {
+    handleDownloadFile(url)
   }
 }
 
-// 文件上传失败
-const handleUploadError = (error) => {
-  console.error('文件上传失败:', error)
-  ElMessage.error('文件上传失败')
-}
-
-// 移除文件
-const handleRemove = (file) => {
-  // 从attachmentUrls中移除对应的URL
+// 从上传组件移除文件
+const handleRemoveFileFromUpload = (file) => {
+  // 如果文件已经上传过，从 attachmentUrls 中移除
   if (file.response && file.response.data) {
     const url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
     const index = attachmentUrls.value.indexOf(url)
     if (index > -1) {
       attachmentUrls.value.splice(index, 1)
     }
-  }
-}
-
-// 移除附件
-const handleRemoveAttachment = (index) => {
+  } else if (file.url) {
+    // 已存在的文件（编辑时加载的），从 attachmentUrls 中移除
+    // 从下载URL中提取原始路径
+    try {
+      const urlMatch = file.url.match(/path=([^&]+)/)
+      if (urlMatch) {
+        const decodedUrl = decodeURIComponent(urlMatch[1])
+        const index = attachmentUrls.value.indexOf(decodedUrl)
+        if (index > -1) {
   attachmentUrls.value.splice(index, 1)
-  // 同时从fileList中移除
-  if (uploadRef.value) {
-    const fileList = uploadRef.value.fileList
-    if (fileList[index]) {
-      uploadRef.value.handleRemove(fileList[index])
+        }
+      }
+    } catch (e) {
+      console.error('解析文件URL失败:', e)
     }
+  }
+  // 从 fileList 中移除
+  if (uploadRef.value) {
+    uploadRef.value.handleRemove(file)
   }
 }
 
@@ -594,6 +662,59 @@ const getFileName = (url) => {
   return parts[parts.length - 1] || url
 }
 
+// 获取文件类型
+const getFileType = (url) => {
+  if (!url) return ''
+  const fileName = getFileName(url)
+  const extension = fileName.split('.').pop()?.toLowerCase() || ''
+  const typeMap = {
+    'doc': 'Word',
+    'docx': 'Word',
+    'pdf': 'PDF',
+    'xls': 'Excel',
+    'xlsx': 'Excel',
+    'jpg': '图片',
+    'jpeg': '图片',
+    'png': '图片',
+    'gif': '图片',
+    'zip': '压缩包',
+    'rar': '压缩包',
+    '7z': '压缩包',
+    'txt': '文本'
+  }
+  return typeMap[extension] || extension.toUpperCase()
+}
+
+// 判断是否为图片文件
+const isImageFile = (url) => {
+  if (!url) return false
+  const fileName = getFileName(url)
+  const extension = fileName.split('.').pop()?.toLowerCase() || ''
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(extension)
+}
+
+// 获取文件图标样式类
+const getFileIconClass = (url) => {
+  if (!url) return ''
+  const fileName = getFileName(url)
+  const extension = fileName.split('.').pop()?.toLowerCase() || ''
+  const classMap = {
+    'doc': 'file-word',
+    'docx': 'file-word',
+    'pdf': 'file-pdf',
+    'xls': 'file-excel',
+    'xlsx': 'file-excel',
+    'jpg': 'file-image',
+    'jpeg': 'file-image',
+    'png': 'file-image',
+    'gif': 'file-image',
+    'zip': 'file-zip',
+    'rar': 'file-zip',
+    '7z': 'file-zip'
+  }
+  return classMap[extension] || 'file-default'
+}
+
 // 提交
 const handleSubmit = async () => {
   if (!formRef.value) return
@@ -601,12 +722,18 @@ const handleSubmit = async () => {
     if (valid) {
       submitLoading.value = true
       try {
+        // 先上传附件
+        let fileUrlsStr = ''
+        try {
+          fileUrlsStr = await uploadAttachments()
+        } catch (error) {
+          // 附件上传失败，不阻止提交
+          console.error('附件上传失败，继续提交:', error)
+        }
+        
         // 设置提交日期为当前日期
         const today = new Date()
         const submitDate = today.toISOString().split('T')[0] // 格式：YYYY-MM-DD
-        
-        // 合并附件URL（逗号分隔）
-        const fileUrlsStr = attachmentUrls.value.length > 0 ? attachmentUrls.value.join(',') : ''
         
         const data = {
           ...formData,
@@ -721,21 +848,84 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
-.attachment-preview {
-  margin-top: 10px;
+.custom-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+  gap: 12px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 18px;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #606266;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
+.attachment-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .attachment-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+  transition: all 0.3s;
 }
 
-.attachment-list {
+.attachment-item:hover {
+  background: #ecf5ff;
+  border-color: #b3d8ff;
+}
+
+.attachment-info {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .rich-content {

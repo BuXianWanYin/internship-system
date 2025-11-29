@@ -1366,6 +1366,32 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setEnterpriseId(enterpriseId);
         apply.setStatus(InternshipApplyStatus.ACCEPTED.getCode());
         apply.setAcceptTime(LocalDateTime.now());
+        
+        // 自主实习审核通过后，自动开始实习，更新学生信息和申请状态
+        updateStudentForSelfApplyApproved(apply);
+        // 设置学生确认状态为已确认（自主实习审核通过即视为学生已确认）
+        apply.setStudentConfirmStatus(StudentConfirmStatus.CONFIRMED.getCode());
+        apply.setStudentConfirmTime(LocalDateTime.now());
+        // 如果实习开始日期为空，设置为当前日期
+        if (apply.getInternshipStartDate() == null) {
+            apply.setInternshipStartDate(java.time.LocalDate.now());
+        }
+    }
+    
+    /**
+     * 更新学生信息（自主实习审核通过后）
+     */
+    private void updateStudentForSelfApplyApproved(InternshipApply apply) {
+        Student student = studentMapper.selectById(apply.getStudentId());
+        if (student == null) {
+            throw new BusinessException("学生信息不存在");
+        }
+        
+        // 更新学生的实习关联信息
+        student.setCurrentApplyId(apply.getApplyId());
+        student.setCurrentEnterpriseId(apply.getEnterpriseId());
+        student.setInternshipStatus(StudentInternshipStatus.IN_PROGRESS.getCode());
+        studentMapper.updateById(student);
     }
     
     /**

@@ -197,20 +197,36 @@
                 支持上传Word文档、PDF、图片等，单个文件不超过10MB，最多上传5个文件
               </div>
             </template>
-          </el-upload>
-          <div v-if="attachmentUrls.length > 0" class="attachment-list">
-            <div v-for="(url, index) in attachmentUrls" :key="index" class="attachment-item">
-               <el-link type="primary" @click="handleDownloadFile(url)">{{ getFileName(url) }}</el-link>
+            <template #file="{ file }">
+              <div class="custom-file-item">
+                <div class="file-info">
+                  <el-icon class="file-icon">
+                    <Document />
+                  </el-icon>
+                  <span class="file-name">{{ file.name }}</span>
+                </div>
+                <div class="file-actions">
+                  <el-button
+                    v-if="file.url || (file.response && file.response.data)"
+                    link
+                    type="primary"
+                    size="small"
+                    :icon="Download"
+                    circle
+                    @click="handleDownloadFileFromUpload(file)"
+                  />
               <el-button
                 link
                 type="danger"
                 size="small"
-                @click="removeAttachment(index)"
-              >
-                删除
-              </el-button>
+                    :icon="Delete"
+                    circle
+                    @click="handleRemoveFileFromUpload(file)"
+                  />
             </div>
           </div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -262,9 +278,22 @@
         <div class="content-title">附件</div>
           <div class="attachment-list">
             <div v-for="(url, index) in (detailData.attachmentUrls || '').split(',').filter(u => u)" :key="index" class="attachment-item">
-            <el-link type="primary" :icon="Document" @click="handleDownloadFile(url)">
-              {{ getFileName(url) }}
-            </el-link>
+              <div class="attachment-info">
+                <el-icon class="file-icon">
+                  <Document />
+                </el-icon>
+                <span class="file-name">{{ getFileName(url) }}</span>
+              </div>
+              <div class="attachment-actions">
+                <el-button
+                  link
+                  type="primary"
+                  size="small"
+                  :icon="Download"
+                  circle
+                  @click="handleDownloadFile(url)"
+                />
+              </div>
           </div>
             </div>
           </div>
@@ -288,7 +317,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Document } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Document, Download, Delete } from '@element-plus/icons-vue'
 import { weeklyReportApi } from '@/api/internship/weeklyReport'
 import { applyApi } from '@/api/internship/apply'
 import { fileApi } from '@/api/common/file'
@@ -452,10 +481,17 @@ const handleEdit = async (row) => {
       // 加载附件列表
       if (res.data.attachmentUrls) {
         attachmentUrls.value = res.data.attachmentUrls.split(',').filter(u => u)
+        // 构建fileList用于显示（使用负数uid避免冲突）
+        fileList.value = attachmentUrls.value.map((url, index) => ({
+          uid: -(index + 1),
+          name: getFileName(url),
+          url: fileApi.getDownloadUrl(url),
+          status: 'success'
+        }))
       } else {
         attachmentUrls.value = []
-      }
       fileList.value = []
+      }
       dialogVisible.value = true
     }
   } catch (error) {
@@ -527,11 +563,13 @@ const handleFileRemove = (file, fileList) => {
 
 // 上传附件
 const uploadAttachments = async () => {
-  if (fileList.value.length === 0) {
+  // 只上传新选择的文件（有raw属性且没有response的）
+  const newFiles = fileList.value.filter(item => item.raw && !item.response)
+  if (newFiles.length === 0) {
     return attachmentUrls.value.join(',')
   }
   
-  const files = fileList.value.map(item => item.raw).filter(Boolean)
+  const files = newFiles.map(item => item.raw).filter(Boolean)
   if (files.length === 0) {
     return attachmentUrls.value.join(',')
   }
@@ -539,9 +577,20 @@ const uploadAttachments = async () => {
   try {
     const res = await fileApi.uploadFiles(files)
     if (res.code === 200 && res.data) {
-      // 合并新上传的文件和已有附件
-      const newUrls = [...attachmentUrls.value, ...res.data]
-      return newUrls.join(',')
+      // 更新已上传文件的fileList项，添加response和url
+      let urlIndex = 0
+      newFiles.forEach(file => {
+        if (urlIndex < res.data.length) {
+          const url = res.data[urlIndex]
+          file.response = { data: url }
+          file.url = fileApi.getDownloadUrl(url)
+          file.status = 'success'
+          attachmentUrls.value.push(url)
+          urlIndex++
+        }
+      })
+      // 返回所有附件URL
+      return attachmentUrls.value.join(',')
     }
   } catch (error) {
     console.error('附件上传失败:', error)
@@ -573,9 +622,56 @@ const handleDownloadFile = async (filePath) => {
   }
 }
 
-// 移除附件
-const removeAttachment = (index) => {
+// 从上传组件下载文件
+const handleDownloadFileFromUpload = (file) => {
+  let url = ''
+  if (file.url) {
+    // 已上传的文件，从url中提取路径
+    try {
+      const urlMatch = file.url.match(/path=([^&]+)/)
+      if (urlMatch) {
+        url = decodeURIComponent(urlMatch[1])
+      }
+    } catch (e) {
+      console.error('解析文件URL失败:', e)
+    }
+  } else if (file.response && file.response.data) {
+    // 新上传的文件
+    url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
+  }
+  if (url) {
+    handleDownloadFile(url)
+  }
+}
+
+// 从上传组件移除文件
+const handleRemoveFileFromUpload = (file) => {
+  // 如果文件已经上传过，从 attachmentUrls 中移除
+  if (file.response && file.response.data) {
+    const url = Array.isArray(file.response.data) ? file.response.data[0] : file.response.data
+    const index = attachmentUrls.value.indexOf(url)
+    if (index > -1) {
   attachmentUrls.value.splice(index, 1)
+    }
+  } else if (file.url) {
+    // 已存在的文件（编辑时加载的），从 attachmentUrls 中移除
+    try {
+      const urlMatch = file.url.match(/path=([^&]+)/)
+      if (urlMatch) {
+        const decodedUrl = decodeURIComponent(urlMatch[1])
+        const index = attachmentUrls.value.indexOf(decodedUrl)
+        if (index > -1) {
+          attachmentUrls.value.splice(index, 1)
+        }
+      }
+    } catch (e) {
+      console.error('解析文件URL失败:', e)
+    }
+  }
+  // 从 fileList 中移除
+  if (uploadRef.value) {
+    uploadRef.value.handleRemove(file)
+  }
 }
 
 // 提交
@@ -729,18 +825,78 @@ onMounted(() => {
   justify-content: flex-end;
 }
 
+.custom-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+  gap: 12px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 18px;
+  color: #606266;
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #606266;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
 .attachment-list {
   margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .attachment-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding: 8px;
+  justify-content: space-between;
+  padding: 12px 16px;
   background: #f5f7fa;
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .detail-info {

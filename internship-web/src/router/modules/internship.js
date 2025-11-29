@@ -133,6 +133,16 @@ export default [
     }
   },
   {
+    path: '/teacher/internship/attendance',
+    name: 'TeacherAttendance',
+    component: () => import('@/views/teacher/Attendance.vue'),
+    meta: {
+      title: '考勤查看',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+    }
+  },
+  {
     path: '/student/internship/weekly-report',
     name: 'StudentWeeklyReport',
     component: () => import('@/views/student/WeeklyReport.vue'),
