@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
@@ -128,9 +129,12 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         SystemConfig config = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(config, "配置");
         
-        // 软删除
-        config.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(config);
+        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
+        LambdaUpdateWrapper<SystemConfig> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SystemConfig::getConfigId, configId)
+                     .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .set(SystemConfig::getDeleteFlag, DeleteFlag.DELETED.getCode());
+        return this.update(updateWrapper);
     }
 }
 
