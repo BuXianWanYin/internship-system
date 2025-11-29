@@ -12,15 +12,17 @@
       </el-descriptions>
     </el-card>
 
-    <!-- 参考信息（Tab标签切换） -->
-    <el-card class="reference-info-card" shadow="never" style="margin-top: 15px;">
-      <template #header>
-        <div class="card-header">
-          <span>参考信息</span>
-          <el-button link type="primary" size="small" @click="loadSuggestedScore">一键填入建议分数</el-button>
-        </div>
-      </template>
-      <el-tabs v-model="activeReferenceTab" type="border-card">
+    <!-- 主标签页：参考信息和评分表单 -->
+    <el-tabs v-model="activeMainTab" type="border-card" style="margin-top: 15px;">
+      <!-- 标签页1: 参考信息 -->
+      <el-tab-pane label="参考信息" name="reference">
+        <div style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">参考信息</h3>
+            <el-button type="primary" size="small" @click="loadSuggestedScore">一键填入建议分数</el-button>
+          </div>
+          
+          <el-tabs v-model="activeReferenceTab" type="border-card">
         <!-- 日志周报情况 -->
         <el-tab-pane label="日志周报情况" name="logs">
           <div v-if="referenceInfo.logs.length > 0" style="padding: 10px 0;">
@@ -145,17 +147,19 @@
           </div>
           <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤数据</div>
         </el-tab-pane>
-      </el-tabs>
-    </el-card>
-
-    <!-- 评价表单 -->
-    <el-form
-      ref="formRef"
-      :model="formData"
-      :rules="formRules"
-      label-width="150px"
-      style="margin-top: 20px"
-    >
+          </el-tabs>
+        </div>
+      </el-tab-pane>
+      
+      <!-- 标签页2: 评分填写 -->
+      <el-tab-pane label="评分填写" name="evaluation">
+        <div style="padding: 20px;">
+          <el-form
+            ref="formRef"
+            :model="formData"
+            :rules="formRules"
+            label-width="150px"
+          >
       <el-form-item label="日志周报质量" prop="logWeeklyReportScore">
         <el-input-number
           v-model="formData.logWeeklyReportScore"
@@ -223,11 +227,14 @@
         />
       </el-form-item>
 
-      <el-form-item>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
-        <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
-      </el-form-item>
-    </el-form>
+            <el-form-item>
+              <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
+              <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -257,7 +264,8 @@ const emit = defineEmits(['save', 'submit'])
 const formRef = ref(null)
 const saving = ref(false)
 const submitting = ref(false)
-const activeReferenceTab = ref('logs')
+const activeMainTab = ref('reference') // 主标签页：参考信息/评分填写
+const activeReferenceTab = ref('logs') // 参考信息内部标签页
 
 const formData = reactive({
   evaluationId: null,
@@ -545,15 +553,8 @@ onMounted(() => {
   padding: 20px 0;
 }
 
-.student-info-card,
-.reference-info-card {
+.student-info-card {
   margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 </style>
 

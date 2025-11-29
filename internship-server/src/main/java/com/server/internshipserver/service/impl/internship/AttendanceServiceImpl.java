@@ -582,19 +582,76 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         QueryWrapperUtil.notDeleted(wrapper, Attendance::getDeleteFlag);
         
         // 数据权限过滤
-        String username = UserUtil.getCurrentUsername();
-        if (username != null) {
-            UserInfo user = userMapper.selectOne(
-                    new LambdaQueryWrapper<UserInfo>()
-                            .eq(UserInfo::getUsername, username)
-                            .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-            );
-            if (user != null) {
-                // 学生端：只能查看自己的统计
-                if (studentId == null) {
-                    // 如果没有指定studentId，自动使用当前登录学生的ID
-                    // 这里需要根据实际业务逻辑获取当前学生的ID
-                    // 暂时通过applyId或其他方式获取
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            boolean isSystemAdmin = dataPermissionUtil.isSystemAdmin();
+            boolean isStudent = DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_STUDENT);
+            boolean isClassTeacher = DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER);
+            boolean isEnterpriseAdmin = DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_ADMIN);
+            boolean isEnterpriseMentor = DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR);
+            
+            // 学生：只能查看自己的统计
+            if (isStudent && !isSystemAdmin) {
+                Long currentStudentId = dataPermissionUtil.getCurrentStudentId();
+                if (currentStudentId != null) {
+                    if (studentId != null && !studentId.equals(currentStudentId)) {
+                        throw new BusinessException("无权查看其他学生的考勤统计");
+                    }
+                    studentId = currentStudentId;
+                }
+            }
+            
+            // 企业管理员/企业导师：只能查看本企业的学生考勤统计
+            if ((isEnterpriseAdmin || isEnterpriseMentor) && !isSystemAdmin) {
+                Long currentEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentEnterpriseId == null) {
+                    throw new BusinessException("无法获取当前用户的企业信息");
+                }
+                
+                // 通过applyId或studentId验证权限
+                if (applyId != null) {
+                    InternshipApply apply = internshipApplyMapper.selectById(applyId);
+                    if (apply == null) {
+                        throw new BusinessException("实习申请不存在");
+                    }
+                    if (apply.getEnterpriseId() == null || !apply.getEnterpriseId().equals(currentEnterpriseId)) {
+                        throw new BusinessException("无权查看该学生的考勤统计");
+                    }
+                } else if (studentId != null) {
+                    // 如果只提供了studentId，需要验证该学生是否属于当前企业
+                    Student student = studentMapper.selectById(studentId);
+                    if (student == null) {
+                        throw new BusinessException("学生不存在");
+                    }
+                    // 查询该学生的当前实习申请
+                    InternshipApply apply = internshipApplyMapper.selectOne(
+                            new LambdaQueryWrapper<InternshipApply>()
+                                    .eq(InternshipApply::getStudentId, studentId)
+                                    .eq(InternshipApply::getStatus, 3) // 已录用
+                                    .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .orderByDesc(InternshipApply::getCreateTime)
+                                    .last("LIMIT 1")
+                    );
+                    if (apply == null || apply.getEnterpriseId() == null || !apply.getEnterpriseId().equals(currentEnterpriseId)) {
+                        throw new BusinessException("无权查看该学生的考勤统计");
+                    }
+                } else {
+                    throw new BusinessException("企业用户必须指定学生ID或申请ID");
+                }
+            }
+            
+            // 班主任：只能查看所管理班级的学生考勤统计
+            if (isClassTeacher && !isSystemAdmin) {
+                if (studentId != null) {
+                    Student student = studentMapper.selectById(studentId);
+                    if (student == null) {
+                        throw new BusinessException("学生不存在");
+                    }
+                    List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                    if (classIds == null || !classIds.contains(student.getClassId())) {
+                        throw new BusinessException("无权查看该学生的考勤统计");
+                    }
                 }
             }
         }

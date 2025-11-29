@@ -107,7 +107,7 @@ public class AttendanceController {
     }
     
     @ApiOperation("考勤统计")
-    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER')")
+    @PreAuthorize("hasAnyRole('ROLE_STUDENT', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/statistics")
     public Result<AttendanceStatistics> getAttendanceStatistics(
             @ApiParam(value = "学生ID", required = false) @RequestParam(required = false) Long studentId,
