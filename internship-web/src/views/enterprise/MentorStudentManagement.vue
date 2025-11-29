@@ -33,6 +33,7 @@
             <el-option label="已拒绝" :value="2" />
             <el-option label="已录用" :value="3" />
             <el-option label="已拒绝录用" :value="4" />
+            <el-option label="实习结束" :value="7" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -101,16 +102,6 @@
             v-if="row.applyId && row.status === 3"
           >
             分配考勤组
-          </el-button>
-          <el-button 
-            link 
-            type="success" 
-            size="small" 
-            :icon="Download"
-            @click="handleExportStudentReport(row)"
-            v-if="row.applyId"
-          >
-            导出报告
           </el-button>
           <el-button
             v-if="canMarkAsCompleted(row)"
@@ -191,6 +182,16 @@
           <el-tag v-else type="danger" size="small">未分配</el-tag>
         </el-descriptions-item>
       </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button
+          v-if="canMarkAsCompleted(detailData)"
+          type="success"
+          @click="handleMarkAsCompletedFromDetail"
+        >
+          结束实习
+        </el-button>
+      </template>
     </el-dialog>
 
     <!-- 分配考勤组对话框 -->
@@ -343,7 +344,8 @@ const getStatusText = (status) => {
     1: '已通过',
     2: '已拒绝',
     3: '已录用',
-    4: '已拒绝录用'
+    4: '已拒绝录用',
+    7: '实习结束'
   }
   return statusMap[status] || '-'
 }
@@ -355,9 +357,21 @@ const getStatusType = (status) => {
     1: 'success',
     2: 'danger',
     3: 'success',
-    4: 'danger'
+    4: 'danger',
+    7: 'info'
   }
   return typeMap[status] || 'info'
+}
+
+// 判断是否可以标记为结束（仅合作企业）
+const canMarkAsCompleted = (row) => {
+  if (!row) return false
+  // 不能标记已删除的
+  if (row.deleteFlag === 1) return false
+  // 不能标记已解绑的
+  if (row.unbindStatus === 2) return false
+  // 仅合作企业：status=3（已录用）且未标记结束（status!=7）
+  return row.applyType === 1 && row.status === 3 && row.status !== 7
 }
 
 // 加载数据
@@ -562,6 +576,57 @@ const handleExportStudentReport = async (row) => {
     // 错误已在 exportExcel 中处理
   } finally {
     exportLoading.value = false
+  }
+}
+
+// 处理结束实习
+const handleMarkAsCompleted = (row) => {
+  currentCompleteApply.value = { ...row }
+  completeForm.endDate = null
+  completeForm.remark = ''
+  completeDialogVisible.value = true
+}
+
+// 从详情对话框处理结束实习
+const handleMarkAsCompletedFromDetail = () => {
+  currentCompleteApply.value = { ...detailData.value }
+  completeForm.endDate = null
+  completeForm.remark = ''
+  completeDialogVisible.value = true
+}
+
+// 提交结束实习
+const handleSubmitComplete = async () => {
+  if (!completeFormRef.value) return
+  
+  try {
+    await completeFormRef.value.validate()
+    
+    completeLoading.value = true
+    try {
+      const res = await applyApi.completeInternship(
+        currentCompleteApply.value.applyId,
+        completeForm.endDate,
+        completeForm.remark
+      )
+      if (res.code === 200) {
+        ElMessage.success('结束实习成功')
+        completeDialogVisible.value = false
+        // 刷新列表
+        await loadData()
+        // 如果详情对话框打开，刷新详情
+        if (detailDialogVisible.value) {
+          await handleView(currentCompleteApply.value)
+        }
+      }
+    } catch (error) {
+      console.error('结束实习失败:', error)
+      ElMessage.error(error.response?.data?.message || '结束实习失败')
+    } finally {
+      completeLoading.value = false
+    }
+  } catch (error) {
+    // 表单验证失败
   }
 }
 

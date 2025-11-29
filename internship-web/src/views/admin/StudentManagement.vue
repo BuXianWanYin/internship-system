@@ -209,16 +209,6 @@
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button 
-                link 
-                type="success" 
-                size="small" 
-                :icon="Download"
-                @click="handleExportStudentReport(row)"
-                v-if="row.currentApplyId"
-              >
-                导出报告
-              </el-button>
               <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
             </template>
           </el-table-column>
@@ -1480,27 +1470,6 @@ const handleExportStudentList = async () => {
 }
 
 // 导出学生个人实习报告
-const handleExportStudentReport = async (row) => {
-  if (!row.currentApplyId) {
-    ElMessage.warning('该学生暂无实习申请')
-    return
-  }
-  
-  exportLoading.value = true
-  try {
-    await exportExcel(
-      () => reportApi.exportStudentInternshipReport(row.currentApplyId),
-      {},
-      `学生实习报告_${row.studentNo}_${userInfoMap.value[row.userId]?.realName || ''}`
-    )
-    ElMessage.success('导出成功')
-  } catch (error) {
-    // 错误已在 exportExcel 中处理
-  } finally {
-    exportLoading.value = false
-  }
-}
-
 onMounted(async () => {
   loadSchoolList()
   await loadCurrentUserOrgInfo()

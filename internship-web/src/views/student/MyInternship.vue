@@ -121,15 +121,6 @@
           </div>
           <div style="display: flex; gap: 10px">
             <el-button 
-              v-if="currentInternship.applyId && currentInternship.applyType === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
-              type="primary" 
-              :icon="Download" 
-              @click="handleExportMyReport"
-              :loading="exportLoading"
-            >
-              导出实习报告
-            </el-button>
-            <el-button 
               v-if="currentInternship.applyId && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
               type="danger" 
               @click="handleResign"
@@ -171,17 +162,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Loading, Download } from '@element-plus/icons-vue'
+import { Loading } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
-import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
-import { exportExcel } from '@/utils/exportUtils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const router = useRouter()
 const loading = ref(false)
-const exportLoading = ref(false)
 const resignLoading = ref(false)
 const currentInternship = ref(null)
 
@@ -245,32 +233,23 @@ const getUnbindStatusType = (status) => {
   return typeMap[status] || 'info'
 }
 
+// 判断实习是否已结束
+const isInternshipCompleted = (internship) => {
+  if (!internship) return false
+  // 合作企业：status=7
+  if (internship.applyType === 1) {
+    return internship.status === 7
+  }
+  // 自主实习：status=13
+  if (internship.applyType === 2) {
+    return internship.status === 13
+  }
+  return false
+}
 
 // 去申请实习
 const goToApply = () => {
   router.push('/student/internship/apply')
-}
-
-// 导出我的实习报告
-const handleExportMyReport = async () => {
-  if (!currentInternship.value || !currentInternship.value.applyId) {
-    ElMessage.warning('暂无实习申请信息')
-    return
-  }
-  
-  exportLoading.value = true
-  try {
-    await exportExcel(
-      () => reportApi.exportStudentInternshipReport(currentInternship.value.applyId),
-      {},
-      `我的实习报告_${currentInternship.value.studentNo || ''}`
-    )
-    ElMessage.success('导出成功')
-  } catch (error) {
-    // 错误已在 exportExcel 中处理
-  } finally {
-    exportLoading.value = false
-  }
 }
 
 // 离职

@@ -1900,6 +1900,9 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             throw new BusinessException("未找到当前用户的企业导师信息");
         }
         
+        // 只查询合作企业的申请（企业导师只能看到合作企业的学生）
+        wrapper.eq(InternshipApply::getApplyType, ApplyType.COOPERATION.getCode());
+        
         // 只查询分配给当前导师的学生
         wrapper.eq(InternshipApply::getMentorId, mentorId);
         
