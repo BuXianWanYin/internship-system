@@ -71,7 +71,7 @@ public class SemesterController {
     }
     
     @ApiOperation("分页查询学期列表")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     @GetMapping("/page")
     public Result<Page<Semester>> getSemesterPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,

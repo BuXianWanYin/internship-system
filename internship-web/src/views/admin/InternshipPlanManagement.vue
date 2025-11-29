@@ -585,12 +585,24 @@ const loadData = async () => {
 // 加载学期列表
 const loadSemesterList = async () => {
   try {
-    const res = await semesterApi.getSemesterPage({ current: 1, size: 1000 })
+    // 学院负责人：只加载自己学校的学期列表
+    const params = { current: 1, size: 1000 }
+    if (hasAnyRole(['ROLE_COLLEGE_LEADER']) && currentOrgInfo.value.schoolId) {
+      params.schoolId = currentOrgInfo.value.schoolId
+    } else if (hasAnyRole(['ROLE_SCHOOL_ADMIN']) && currentOrgInfo.value.schoolId) {
+      params.schoolId = currentOrgInfo.value.schoolId
+    }
+    
+    const res = await semesterApi.getSemesterPage(params)
     if (res.code === 200) {
       semesterList.value = res.data.records || []
     }
   } catch (error) {
     console.error('加载学期列表失败:', error)
+    // 如果是403错误，可能是权限问题，不显示错误提示，只记录日志
+    if (error.response?.status !== 403) {
+      ElMessage.warning('加载学期列表失败，部分功能可能受限')
+    }
   }
 }
 
@@ -1089,9 +1101,10 @@ const handleExport = async () => {
 }
 
 onMounted(async () => {
+  // 先加载用户组织信息，因为加载学期列表可能需要学校ID
+  await loadCurrentUserOrgInfo()
   loadSemesterList()
   loadSchoolList()
-  await loadCurrentUserOrgInfo()
   loadData()
 })
 </script>
