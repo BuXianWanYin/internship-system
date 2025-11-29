@@ -101,8 +101,9 @@
       </el-table-column>
       <el-table-column label="在职状态" width="150" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.unbindStatus === 2" type="danger" size="small">离职</el-tag>
-          <el-tag v-else type="success" size="small">在职</el-tag>
+          <el-tag :type="getUnbindStatusType(row)" size="small">
+            {{ getUnbindStatusText(row) }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="申请时间" width="180">
@@ -130,6 +131,15 @@
             @click="handleAudit(row, 2)"
           >
             拒绝
+          </el-button>
+          <el-button
+            v-if="canMarkAsCompleted(row)"
+            link
+            type="success"
+            size="small"
+            @click="handleMarkAsCompleted(row)"
+          >
+            结束实习
           </el-button>
           <el-button
             v-if="row.status === 3 && (row.unbindStatus === 0 || row.unbindStatus === null)"
@@ -323,6 +333,13 @@
         >
           拒绝
         </el-button>
+        <el-button
+          v-if="canMarkAsCompleted(detailData)"
+          type="success"
+          @click="handleMarkAsCompletedFromDetail"
+        >
+          结束实习
+        </el-button>
       </template>
     </el-dialog>
 
@@ -361,6 +378,68 @@
       </template>
     </el-dialog>
     
+    <!-- 结束实习对话框 -->
+    <el-dialog
+      v-model="completeDialogVisible"
+      title="结束实习"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="completeFormRef"
+        :model="completeForm"
+        :rules="completeFormRules"
+        label-width="120px"
+      >
+        <el-form-item label="申请信息">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            <div><strong>学生：</strong>{{ currentCompleteApply.studentName }}（{{ currentCompleteApply.studentNo }}）</div>
+            <div style="margin-top: 5px">
+              <strong>企业：</strong>
+              {{ currentCompleteApply.enterpriseName || currentCompleteApply.selfEnterpriseName || '-' }}
+            </div>
+            <div style="margin-top: 5px">
+              <strong>岗位：</strong>
+              {{ currentCompleteApply.postName || currentCompleteApply.selfPostName || '-' }}
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="实习结束日期" prop="endDate">
+          <el-date-picker
+            v-model="completeForm.endDate"
+            type="date"
+            placeholder="请选择结束日期（不选则使用今天）"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="completeForm.remark"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入备注（可选）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-top: 10px"
+        >
+          <template #default>
+            <div>结束实习后，学生的实习状态将更新为"已结束"，可以进行评价。</div>
+          </template>
+        </el-alert>
+      </el-form>
+      <template #footer>
+        <el-button @click="completeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="completeLoading" @click="handleSubmitComplete">确定</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 解绑企业对话框 -->
     <el-dialog
       v-model="unbindDialogVisible"
@@ -429,6 +508,7 @@ import { fileApi } from '@/api/common/file'
 import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import { exportExcel } from '@/utils/exportUtils'
+import { isInternshipCompleted, isUnbound, getUnbindStatusText, getUnbindStatusType } from '@/utils/statusUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -473,12 +553,44 @@ const unbindForm = reactive({
   remark: ''
 })
 
+const completeDialogVisible = ref(false)
+const completeFormRef = ref(null)
+const currentCompleteApply = ref({})
+const completeLoading = ref(false)
+
+const completeForm = reactive({
+  endDate: null,
+  remark: ''
+})
+
 const unbindFormRules = {
   reason: [
     { max: 500, message: '解绑原因不能超过500个字符', trigger: 'blur' }
   ],
   remark: [
     { max: 500, message: '备注不能超过500个字符', trigger: 'blur' }
+  ]
+}
+
+const completeFormRules = {
+  endDate: [
+    {
+      validator: (rule, value, callback) => {
+        if (value) {
+          const endDate = new Date(value)
+          const startDate = currentCompleteApply.value.internshipStartDate || 
+                           currentCompleteApply.value.selfStartDate
+          if (startDate && endDate < new Date(startDate)) {
+            callback(new Error('实习结束日期不能早于开始日期'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
   ]
 }
 
@@ -714,6 +826,75 @@ const getStatusType = (status, statusText) => {
       5: 'info'     // 已取消 - 灰色
     }
     return typeMap[status] || 'info'
+  }
+}
+
+// 判断是否可以标记为结束
+const canMarkAsCompleted = (row) => {
+  if (!row) return false
+  // 不能标记已删除的
+  if (row.deleteFlag === 1) return false
+  // 不能标记已解绑的
+  if (row.unbindStatus === 2) return false
+  // 合作企业：status=3（已录用）且未标记结束（status!=7）
+  if (row.applyType === 1) {
+    return row.status === 3 && row.status !== 7
+  }
+  // 自主实习：status=11（实习中）且未标记结束（status!=13）
+  if (row.applyType === 2) {
+    return row.status === 11 && row.status !== 13
+  }
+  return false
+}
+
+// 处理结束实习
+const handleMarkAsCompleted = (row) => {
+  currentCompleteApply.value = { ...row }
+  completeForm.endDate = null
+  completeForm.remark = ''
+  completeDialogVisible.value = true
+}
+
+// 从详情对话框处理结束实习
+const handleMarkAsCompletedFromDetail = () => {
+  currentCompleteApply.value = { ...detailData.value }
+  completeForm.endDate = null
+  completeForm.remark = ''
+  completeDialogVisible.value = true
+}
+
+// 提交结束实习
+const handleSubmitComplete = async () => {
+  if (!completeFormRef.value) return
+  
+  try {
+    await completeFormRef.value.validate()
+    
+    completeLoading.value = true
+    try {
+      const res = await applyApi.completeInternship(
+        currentCompleteApply.value.applyId,
+        completeForm.endDate,
+        completeForm.remark
+      )
+      if (res.code === 200) {
+        ElMessage.success('结束实习成功')
+        completeDialogVisible.value = false
+        // 刷新列表
+        await loadData()
+        // 如果详情对话框打开，刷新详情
+        if (detailDialogVisible.value) {
+          await handleView(currentCompleteApply.value)
+        }
+      }
+    } catch (error) {
+      console.error('结束实习失败:', error)
+      ElMessage.error(error.response?.data?.message || '结束实习失败')
+    } finally {
+      completeLoading.value = false
+    }
+  } catch (error) {
+    // 表单验证失败
   }
 }
 

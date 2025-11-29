@@ -128,5 +128,21 @@ public interface InternshipApplyService extends IService<InternshipApply> {
      * @return 申请信息，如果没有则返回null
      */
     InternshipApply getCurrentInternship();
+    
+    /**
+     * 结束实习（单个）
+     * @param applyId 申请ID
+     * @param endDate 实习结束日期（可选，不传则使用当前日期）
+     * @param remark 备注（可选）
+     */
+    void completeInternship(Long applyId, java.time.LocalDate endDate, String remark);
+    
+    /**
+     * 批量结束实习
+     * @param applyIds 申请ID列表
+     * @param endDate 实习结束日期（可选，不传则使用当前日期）
+     * @param remark 备注（可选）
+     */
+    void batchCompleteInternship(java.util.List<Long> applyIds, java.time.LocalDate endDate, String remark);
 }
 

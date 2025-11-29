@@ -72,6 +72,30 @@ export const applyApi = {
   // 查询企业导师指导的学生列表
   getMentorStudents(params) {
     return request.get('/internship/apply/mentor/students', { params })
+  },
+  // 结束实习（单个）
+  completeInternship(applyId, endDate, remark) {
+    const params = {}
+    if (endDate) {
+      params.endDate = endDate
+    }
+    if (remark) {
+      params.remark = remark
+    }
+    return request.post(`/internship/apply/${applyId}/complete`, null, { params })
+  },
+  // 批量结束实习
+  batchCompleteInternship(applyIds, endDate, remark) {
+    const params = {
+      applyIds: applyIds
+    }
+    if (endDate) {
+      params.endDate = endDate
+    }
+    if (remark) {
+      params.remark = remark
+    }
+    return request.post('/internship/apply/batch-complete', null, { params })
   }
 }
 

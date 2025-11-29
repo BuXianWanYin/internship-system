@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 实习申请管理控制器
@@ -204,6 +207,30 @@ public class InternshipApplyController {
         Page<InternshipApply> page = new Page<>(current, size);
         Page<InternshipApply> result = internshipApplyService.getMentorStudents(page, studentName, studentNo, status);
         return Result.success("查询成功", result);
+    }
+    
+    @ApiOperation("结束实习（单个）")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    @PostMapping("/{applyId}/complete")
+    public Result<?> completeInternship(
+            @ApiParam(value = "申请ID", required = true) @PathVariable Long applyId,
+            @ApiParam(value = "实习结束日期（可选，格式：yyyy-MM-dd）", required = false) 
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            @ApiParam(value = "备注", required = false) @RequestParam(required = false) String remark) {
+        internshipApplyService.completeInternship(applyId, endDate, remark);
+        return Result.success("结束实习成功");
+    }
+    
+    @ApiOperation("批量结束实习")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
+    @PostMapping("/batch-complete")
+    public Result<?> batchCompleteInternship(
+            @ApiParam(value = "申请ID列表", required = true) @RequestParam List<Long> applyIds,
+            @ApiParam(value = "实习结束日期（可选，格式：yyyy-MM-dd）", required = false) 
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            @ApiParam(value = "备注", required = false) @RequestParam(required = false) String remark) {
+        internshipApplyService.batchCompleteInternship(applyIds, endDate, remark);
+        return Result.success("批量结束实习成功");
     }
 }
 

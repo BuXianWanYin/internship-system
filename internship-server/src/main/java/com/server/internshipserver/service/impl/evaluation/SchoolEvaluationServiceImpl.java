@@ -549,16 +549,16 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 合作企业：status=7，自主实习：status=13
      */
     private List<Long> getApplyIdsByStudentIds(List<Long> studentIds) {
-        List<InternshipApply> applies = internshipApplyMapper.selectList(
-                new LambdaQueryWrapper<InternshipApply>()
-                        .in(InternshipApply::getStudentId, studentIds)
+                    List<InternshipApply> applies = internshipApplyMapper.selectList(
+                            new LambdaQueryWrapper<InternshipApply>()
+                                    .in(InternshipApply::getStudentId, studentIds)
                         // 合作企业：status=7，自主实习：status=13
                         .and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
                                   .or()
                                   .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
-                        .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        .select(InternshipApply::getApplyId)
-        );
+                                    .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(InternshipApply::getApplyId)
+                    );
                     
         if (applies == null || applies.isEmpty()) {
             return null;
@@ -648,8 +648,8 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
             return;
         }
         
-        evaluation.setEvaluatorName(evaluator.getRealName());
-    }
+                evaluation.setEvaluatorName(evaluator.getRealName());
+            }
     
     /**
      * 判断实习是否已结束

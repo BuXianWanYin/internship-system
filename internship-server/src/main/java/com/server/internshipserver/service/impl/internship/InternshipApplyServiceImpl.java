@@ -54,6 +54,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -1806,7 +1807,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         if (status != null) {
             wrapper.eq(InternshipApply::getStatus, status);
         } else {
-            wrapper.eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode());
+        wrapper.eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode());
         }
         
         wrapper.eq(InternshipApply::getStudentConfirmStatus, StudentConfirmStatus.CONFIRMED.getCode());
@@ -2295,6 +2296,314 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         fillApplyRelatedFields(apply);
         
         return apply;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void completeInternship(Long applyId, LocalDate endDate, String remark) {
+        // 1. 参数校验
+        EntityValidationUtil.validateIdNotNull(applyId, "申请ID");
+        
+        // 2. 查询申请信息
+        InternshipApply apply = this.getById(applyId);
+        EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 3. 权限检查（区分合作企业和自主实习）
+        checkCompletePermission(apply);
+        
+        // 4. 状态检查：只有符合条件的状态才能标记为结束
+        validateStatusForComplete(apply);
+        
+        // 5. 检查是否已标记
+        if (isInternshipCompleted(apply)) {
+            throw new BusinessException("该实习申请已经标记为结束");
+        }
+        
+        // 6. 更新申请信息（更新 status、internshipEndDate、unbindAuditOpinion）
+        updateApplyForComplete(apply, endDate, remark);
+        
+        // 7. 触发联动操作（更新 Student.internshipStatus，保持 currentApplyId 和 currentEnterpriseId 不变）
+        triggerCompleteActions(apply);
+    }
+    
+    /**
+     * 权限检查（区分合作企业和自主实习）
+     */
+    private void checkCompletePermission(InternshipApply apply) {
+        Integer applyType = apply.getApplyType();
+        
+        if (applyType == null) {
+            throw new BusinessException("申请类型不能为空");
+        }
+        
+        // 系统管理员可以标记所有
+        if (dataPermissionUtil.isSystemAdmin()) {
+            return;
+        }
+        
+        // 根据申请类型判断权限
+        if (applyType.equals(ApplyType.COOPERATION.getCode())) {
+            // 合作企业实习：检查企业权限或班主任权限
+            checkCooperationPermission(apply);
+        } else if (applyType.equals(ApplyType.SELF.getCode())) {
+            // 自主实习：检查学校权限
+            checkSelfInternshipPermission(apply);
+        } else {
+            throw new BusinessException("未知的申请类型");
+        }
+    }
+    
+    /**
+     * 合作企业实习权限检查（方案C：企业优先，班主任容错）
+     */
+    private void checkCooperationPermission(InternshipApply apply) {
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        
+        // 企业管理员可以标记本企业的申请（优先）
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_ADMIN)) {
+            if (currentUserEnterpriseId != null && 
+                apply.getEnterpriseId() != null &&
+                currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                return;
+            }
+        }
+        
+        // 企业导师可以标记分配给自己的学生（优先）
+        if (dataPermissionUtil.hasRole(Constants.ROLE_ENTERPRISE_MENTOR)) {
+            if (currentUserEnterpriseId != null && 
+                apply.getEnterpriseId() != null &&
+                currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                // 检查是否分配给当前导师
+                UserInfo currentUser = UserUtil.getCurrentUser(userMapper);
+                if (currentUser != null) {
+                    // 查询当前用户对应的企业导师
+                    LambdaQueryWrapper<EnterpriseMentor> mentorWrapper = new LambdaQueryWrapper<>();
+                    mentorWrapper.eq(EnterpriseMentor::getUserId, currentUser.getUserId())
+                                .eq(EnterpriseMentor::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+                    EnterpriseMentor mentor = enterpriseMentorMapper.selectOne(mentorWrapper);
+                    
+                    if (mentor != null && mentor.getMentorId() != null) {
+                        // 检查申请是否分配给该导师
+                        if (apply.getMentorId() != null && apply.getMentorId().equals(mentor.getMentorId())) {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 班主任可以标记本班学生的申请（容错）
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            if (apply.getStudentId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            Student student = studentMapper.selectById(apply.getStudentId());
+            if (student == null || student.getClassId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+            if (classIds != null && classIds.contains(student.getClassId())) {
+                // 检查是否已被企业标记
+                if (isInternshipCompleted(apply)) {
+                    throw new BusinessException("该实习已被企业标记为结束，无需重复标记");
+                }
+                return;
+            }
+        }
+        
+        throw new BusinessException("无权标记该实习申请（仅企业管理员/企业导师/班主任可以标记）");
+    }
+    
+    /**
+     * 自主实习权限检查
+     */
+    private void checkSelfInternshipPermission(InternshipApply apply) {
+        // 学校管理员可以标记本校学生的申请
+        if (dataPermissionUtil.hasRole(Constants.ROLE_SCHOOL_ADMIN)) {
+            return;
+        }
+        
+        // 学院负责人可以标记本院学生的申请
+        if (dataPermissionUtil.hasRole(Constants.ROLE_COLLEGE_LEADER)) {
+            if (apply.getStudentId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            Student student = studentMapper.selectById(apply.getStudentId());
+            if (student == null || student.getCollegeId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+            if (currentUserCollegeId != null && currentUserCollegeId.equals(student.getCollegeId())) {
+                return;
+            }
+        }
+        
+        // 班主任可以标记本班学生的申请
+        if (dataPermissionUtil.hasRole(Constants.ROLE_CLASS_TEACHER)) {
+            if (apply.getStudentId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            Student student = studentMapper.selectById(apply.getStudentId());
+            if (student == null || student.getClassId() == null) {
+                throw new BusinessException("无权标记该实习申请");
+            }
+            List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+            if (classIds != null && classIds.contains(student.getClassId())) {
+                return;
+            }
+        }
+        
+        throw new BusinessException("无权标记该实习申请（仅班主任/学校管理员可以标记自主实习）");
+    }
+    
+    /**
+     * 状态验证：只有符合条件的状态才能标记为结束
+     */
+    private void validateStatusForComplete(InternshipApply apply) {
+        Integer status = apply.getStatus();
+        Integer applyType = apply.getApplyType();
+        
+        if (applyType == null) {
+            throw new BusinessException("申请类型不能为空");
+        }
+        
+        // 检查是否已解绑（已解绑说明已经提前离职，不能标记为实习结束）
+        if (apply.getUnbindStatus() != null && apply.getUnbindStatus().equals(UnbindStatus.UNBOUND.getCode())) {
+            throw new BusinessException("已解绑的实习申请不能标记为结束，已解绑表示学生已提前离职");
+        }
+        
+        // 合作企业：只有"已录用"（status=3）才能标记为结束
+        if (applyType.equals(ApplyType.COOPERATION.getCode())) {
+            if (status == null || !status.equals(InternshipApplyStatus.ACCEPTED.getCode())) {
+                throw new BusinessException("只有已录用的合作企业实习申请才能标记为结束");
+            }
+        }
+        
+        // 自主实习：只有"实习中"（status=11）才能标记为结束
+        if (applyType.equals(ApplyType.SELF.getCode())) {
+            if (status == null || !status.equals(SelfInternshipApplyStatus.IN_PROGRESS.getCode())) {
+                throw new BusinessException("只有实习中的自主实习申请才能标记为结束");
+            }
+        }
+    }
+    
+    /**
+     * 更新申请信息
+     */
+    private void updateApplyForComplete(InternshipApply apply, LocalDate endDate, String remark) {
+        // 设置实习结束日期
+        if (endDate != null) {
+            // 验证结束日期不能早于开始日期
+            LocalDate startDate = apply.getInternshipStartDate();
+            if (startDate != null && endDate.isBefore(startDate)) {
+                throw new BusinessException("实习结束日期不能早于开始日期");
+            }
+            apply.setInternshipEndDate(endDate);
+        } else {
+            // 如果没有传入结束日期，使用当前日期
+            apply.setInternshipEndDate(LocalDate.now());
+        }
+        
+        // 根据申请类型设置状态
+        if (apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+            // 合作企业：设置为实习结束（status=7）
+            apply.setStatus(InternshipApplyStatus.COMPLETED.getCode());
+        } else if (apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+            // 自主实习：设置为实习结束（status=13）
+            apply.setStatus(SelfInternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        // 保存备注（使用 unbindAuditOpinion 字段存储）
+        if (remark != null && !remark.trim().isEmpty()) {
+            apply.setUnbindAuditOpinion(remark);
+        }
+        
+        // ⚠️ 注意：不更新 unbindStatus
+        // 原因：通过 status 字段即可区分"提前离职"和"实习结束"
+        // - 提前离职：status=3 + unbindStatus=2 → 显示"已离职"
+        // - 实习结束：status=7 或 13 + unbindStatus 保持原值 → 显示"实习结束"
+        
+        this.updateById(apply);
+    }
+    
+    /**
+     * 触发联动操作
+     */
+    private void triggerCompleteActions(InternshipApply apply) {
+        // 1. 更新学生实习状态
+        updateStudentAfterComplete(apply.getStudentId());
+    }
+    
+    /**
+     * 更新学生实习状态
+     */
+    private void updateStudentAfterComplete(Long studentId) {
+        if (studentId == null) {
+            return;
+        }
+        
+        Student student = studentMapper.selectById(studentId);
+        if (student != null) {
+            // 更新学生实习状态为"已结束"
+            student.setInternshipStatus(StudentInternshipStatus.COMPLETED.getCode());
+            // 注意：不修改 currentApplyId 和 currentEnterpriseId，保留历史记录
+            studentMapper.updateById(student);
+        }
+    }
+    
+    /**
+     * 判断实习是否已结束
+     */
+    private boolean isInternshipCompleted(InternshipApply apply) {
+        if (apply == null || apply.getStatus() == null) {
+            return false;
+        }
+        
+        Integer status = apply.getStatus();
+        Integer applyType = apply.getApplyType();
+        
+        // 合作企业：status=7
+        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+            return status.equals(InternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        // 自主实习：status=13
+        if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            return status.equals(SelfInternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        return false;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchCompleteInternship(List<Long> applyIds, LocalDate endDate, String remark) {
+        if (applyIds == null || applyIds.isEmpty()) {
+            throw new BusinessException("申请ID列表不能为空");
+        }
+        
+        int successCount = 0;
+        int failCount = 0;
+        List<String> errorMessages = new ArrayList<>();
+        
+        for (Long applyId : applyIds) {
+            try {
+                completeInternship(applyId, endDate, remark);
+                successCount++;
+            } catch (Exception e) {
+                failCount++;
+                errorMessages.add("申请ID " + applyId + ": " + e.getMessage());
+            }
+        }
+        
+        if (failCount > 0) {
+            String message = String.format("批量标记完成：成功 %d 条，失败 %d 条。", successCount, failCount);
+            if (successCount > 0) {
+                throw new BusinessException(message + "失败详情：" + String.join("; ", errorMessages));
+            } else {
+                throw new BusinessException("批量标记全部失败：" + String.join("; ", errorMessages));
+            }
+        }
     }
 }
 

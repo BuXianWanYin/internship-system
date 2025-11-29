@@ -74,6 +74,15 @@
           >
             查看
           </el-button>
+          <el-button
+            v-if="canMarkAsCompleted(row)"
+            link
+            type="success"
+            size="small"
+            @click="handleMarkAsCompleted(row)"
+          >
+            结束实习
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -90,6 +99,68 @@
         @current-change="handlePageChange"
       />
     </div>
+
+    <!-- 结束实习对话框 -->
+    <el-dialog
+      v-model="completeDialogVisible"
+      title="结束实习"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="completeFormRef"
+        :model="completeForm"
+        :rules="completeFormRules"
+        label-width="120px"
+      >
+        <el-form-item label="申请信息">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            <div><strong>学生：</strong>{{ currentCompleteApply.studentName }}（{{ currentCompleteApply.studentNo }}）</div>
+            <div style="margin-top: 5px">
+              <strong>企业：</strong>
+              {{ currentCompleteApply.enterpriseName || '-' }}
+            </div>
+            <div style="margin-top: 5px">
+              <strong>岗位：</strong>
+              {{ currentCompleteApply.postName || '-' }}
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="实习结束日期" prop="endDate">
+          <el-date-picker
+            v-model="completeForm.endDate"
+            type="date"
+            placeholder="请选择结束日期（不选则使用今天）"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="completeForm.remark"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入备注（可选）"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-top: 10px"
+        >
+          <template #default>
+            <div>结束实习后，学生的实习状态将更新为"已结束"，可以进行评价。</div>
+          </template>
+        </el-alert>
+      </el-form>
+      <template #footer>
+        <el-button @click="completeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="completeLoading" @click="handleSubmitComplete">确定</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 评价对话框 -->
     <el-dialog
@@ -120,6 +191,7 @@ import { applyApi } from '@/api/internship/apply'
 import { formatDate } from '@/utils/dateUtils'
 import { hasAnyRole } from '@/utils/permission'
 import { computed } from 'vue'
+import { isInternshipCompleted, isUnbound, getUnbindStatusText, getUnbindStatusType } from '@/utils/statusUtils'
 
 // 根据角色动态显示页面标题
 const pageTitle = computed(() => {

@@ -80,8 +80,9 @@
       </el-table-column>
       <el-table-column label="在职状态" width="120" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
-          <el-tag v-else type="info" size="small">在职</el-tag>
+          <el-tag :type="getUnbindStatusType(row)" size="small">
+            {{ getUnbindStatusText(row) }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="分配时间" width="180">
@@ -110,6 +111,15 @@
             v-if="row.applyId"
           >
             导出报告
+          </el-button>
+          <el-button
+            v-if="canMarkAsCompleted(row)"
+            link
+            type="success"
+            size="small"
+            @click="handleMarkAsCompleted(row)"
+          >
+            结束实习
           </el-button>
         </template>
       </el-table-column>
@@ -145,8 +155,16 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="在职状态">
-          <el-tag v-if="detailData.unbindStatus === 2" type="success" size="small">已解绑</el-tag>
-          <el-tag v-else type="info" size="small">在职</el-tag>
+          <el-tag :type="getUnbindStatusType(detailData)" size="small">
+            {{ getUnbindStatusText(detailData) }}
+          </el-tag>
+        </el-descriptions-item>
+        <!-- 如果是实习结束，显示结束日期和备注 -->
+        <el-descriptions-item v-if="isInternshipCompleted(detailData)" label="实习结束日期">
+          {{ formatDate(detailData.internshipEndDate) }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="isInternshipCompleted(detailData) && detailData.unbindAuditOpinion" label="结束备注" :span="2">
+          {{ detailData.unbindAuditOpinion }}
         </el-descriptions-item>
         <el-descriptions-item label="实习开始日期">
           {{ detailData.internshipStartDate ? formatDate(detailData.internshipStartDate) : '-' }}
@@ -249,6 +267,7 @@ import { attendanceGroupApi } from '@/api/internship/attendanceGroup'
 import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import { exportExcel } from '@/utils/exportUtils'
+import { isInternshipCompleted, isUnbound, getUnbindStatusText, getUnbindStatusType } from '@/utils/statusUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
@@ -267,6 +286,38 @@ const pagination = reactive({
 
 const detailDialogVisible = ref(false)
 const detailData = ref({})
+
+// 结束实习相关
+const completeDialogVisible = ref(false)
+const completeFormRef = ref(null)
+const currentCompleteApply = ref({})
+const completeLoading = ref(false)
+
+const completeForm = reactive({
+  endDate: null,
+  remark: ''
+})
+
+const completeFormRules = {
+  endDate: [
+    {
+      validator: (rule, value, callback) => {
+        if (value) {
+          const endDate = new Date(value)
+          const startDate = currentCompleteApply.value.internshipStartDate
+          if (startDate && endDate < new Date(startDate)) {
+            callback(new Error('实习结束日期不能早于开始日期'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
+}
 
 // 考勤组分配相关
 const assignGroupDialogVisible = ref(false)
