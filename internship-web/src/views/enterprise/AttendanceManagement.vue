@@ -238,7 +238,7 @@
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
             <el-button
-              v-if="row.confirmStatus === 0"
+              v-if="row.confirmStatus === 0 && canReview(row)"
               link
               type="primary"
               size="small"
@@ -247,7 +247,7 @@
               编辑
             </el-button>
             <el-button
-              v-if="row.confirmStatus === 0"
+              v-if="row.confirmStatus === 0 && canReview(row)"
               link
               type="success"
               size="small"
@@ -256,7 +256,7 @@
               确认
             </el-button>
             <el-button
-              v-if="row.confirmStatus === 0"
+              v-if="row.confirmStatus === 0 && canReview(row)"
               link
               type="danger"
               size="small"
@@ -605,6 +605,7 @@ import { attendanceApi } from '@/api/internship/attendance'
 import { applyApi } from '@/api/internship/apply'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -1455,6 +1456,28 @@ const getConfirmStatusTagType = (status) => {
     2: 'danger'
   }
   return statusMap[status] || 'info'
+}
+
+// 判断是否可以审核考勤
+const canReview = (row) => {
+  const authStore = useAuthStore()
+  const roles = authStore.roles || []
+  
+  // 系统管理员和学校管理员可以审核所有
+  if (roles.includes('ROLE_SYSTEM_ADMIN') || roles.includes('ROLE_SCHOOL_ADMIN')) {
+    return true
+  }
+  
+  // 根据申请类型判断
+  if (row.applyType === 1) {
+    // 合作企业实习：企业导师可以审核
+    return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
+  } else if (row.applyType === 2) {
+    // 自主实习：班主任可以审核
+    return roles.includes('ROLE_CLASS_TEACHER')
+  }
+  
+  return false
 }
 
 // 初始化

@@ -119,5 +119,9 @@ public class Attendance implements Serializable {
     @ApiModelProperty(value = "学号")
     @TableField(exist = false)
     private String studentNo;
+    
+    @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
+    @TableField(exist = false)
+    private Integer applyType;
 }
 

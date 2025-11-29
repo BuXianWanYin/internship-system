@@ -206,6 +206,50 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         InternshipLog log = this.getById(logId);
         EntityValidationUtil.validateEntityExists(log, "日志");
         
+        // 获取申请信息，判断申请类型
+        InternshipApply apply = null;
+        if (log.getApplyId() != null) {
+            apply = internshipApplyMapper.selectById(log.getApplyId());
+        }
+        
+        // 数据权限：根据申请类型判断权限
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        
+        if (!isAdmin && apply != null) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业导师可以审批
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权审批该日志");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以审批
+                if (currentUser == null) {
+                    throw new BusinessException("无权审批该日志");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权审批该日志");
+                }
+                // 验证学生是否属于班主任管理的班级
+                Student student = studentMapper.selectById(log.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权审批该日志");
+                }
+            }
+        }
+        
         // 验证评分范围
         if (reviewScore != null && (reviewScore.compareTo(new BigDecimal(Constants.SCORE_MIN)) < 0 || reviewScore.compareTo(new BigDecimal(Constants.SCORE_MAX)) > 0)) {
             throw new BusinessException("评分必须在" + Constants.SCORE_MIN + "-" + Constants.SCORE_MAX + "之间");
@@ -218,9 +262,8 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         log.setReviewScore(reviewScore);
         
         // 设置批阅人ID（指导教师）
-        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            log.setInstructorId(user.getUserId());
+        if (currentUser != null) {
+            log.setInstructorId(currentUser.getUserId());
         }
         
         return this.updateById(log);

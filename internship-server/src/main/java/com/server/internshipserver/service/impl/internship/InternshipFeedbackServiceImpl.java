@@ -196,12 +196,63 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         if (!StringUtils.hasText(replyContent)) {
             throw new BusinessException("回复内容不能为空");
         }
-        if (replyUserType == null || (!replyUserType.equals(ReplyUserType.ENTERPRISE_MENTOR.getCode()) && !replyUserType.equals(ReplyUserType.CLASS_TEACHER.getCode()))) {
-            throw new BusinessException("回复人类型无效");
-        }
         
         InternshipFeedback feedback = this.getById(feedbackId);
         EntityValidationUtil.validateEntityExists(feedback, "反馈");
+        
+        // 获取申请信息，判断申请类型
+        InternshipApply apply = null;
+        if (feedback.getApplyId() != null) {
+            apply = internshipApplyMapper.selectById(feedback.getApplyId());
+        }
+        
+        // 数据权限：根据申请类型判断权限
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        
+        // 根据申请类型自动设置回复人类型，并验证权限
+        if (!isAdmin && apply != null) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业导师可以回复
+                if (replyUserType == null || !replyUserType.equals(ReplyUserType.ENTERPRISE_MENTOR.getCode())) {
+                    replyUserType = ReplyUserType.ENTERPRISE_MENTOR.getCode();
+                }
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权回复该反馈");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以回复
+                if (replyUserType == null || !replyUserType.equals(ReplyUserType.CLASS_TEACHER.getCode())) {
+                    replyUserType = ReplyUserType.CLASS_TEACHER.getCode();
+                }
+                if (currentUser == null) {
+                    throw new BusinessException("无权回复该反馈");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权回复该反馈");
+                }
+                // 验证学生是否属于班主任管理的班级
+                Student student = studentMapper.selectById(feedback.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权回复该反馈");
+                }
+            }
+        } else if (replyUserType == null) {
+            // 系统管理员或学校管理员需要指定回复人类型
+            throw new BusinessException("回复人类型不能为空");
+        }
         
         // 设置回复信息
         feedback.setReplyContent(replyContent);
@@ -210,9 +261,8 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         feedback.setFeedbackStatus(FeedbackStatus.REPLIED.getCode());
         
         // 设置回复人ID
-        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
-        if (user != null) {
-            feedback.setReplyUserId(user.getUserId());
+        if (currentUser != null) {
+            feedback.setReplyUserId(currentUser.getUserId());
         }
         
         return this.updateById(feedback);

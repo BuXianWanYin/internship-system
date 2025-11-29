@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.AttendanceType;
 import com.server.internshipserver.common.enums.ConfirmStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
@@ -87,11 +88,43 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         InternshipApply apply = internshipApplyMapper.selectById(attendance.getApplyId());
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 数据权限：企业管理员或企业导师只能为本企业的实习生确认考勤
-        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-        if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
-                || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-            throw new BusinessException("无权为该申请确认考勤");
+        // 数据权限：根据申请类型判断权限
+        // 系统管理员和学校管理员可以添加所有考勤
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        if (!isAdmin) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业管理员或企业导师只能为本企业的实习生确认考勤
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权为该申请确认考勤");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以为所管理班级的学生确认考勤
+                UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+                if (user == null) {
+                    throw new BusinessException("无权为该申请确认考勤");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权为该申请确认考勤");
+                }
+                // 验证学生是否属于班主任管理的班级
+                Student student = studentMapper.selectById(attendance.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权为该学生确认考勤");
+                }
+            }
         }
         
         // 验证学生是否属于该申请
@@ -156,16 +189,45 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Attendance existAttendance = this.getById(attendance.getAttendanceId());
         EntityValidationUtil.validateEntityExists(existAttendance, "考勤");
         
-        // 数据权限：企业管理员或企业导师只能修改本企业的考勤
-        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-        if (currentUserEnterpriseId == null) {
-            throw new BusinessException("无权修改该考勤");
-        }
-        
         InternshipApply apply = internshipApplyMapper.selectById(existAttendance.getApplyId());
-        if (apply == null || apply.getEnterpriseId() == null
-                || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-            throw new BusinessException("无权修改该考勤");
+        EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 数据权限：根据申请类型判断权限
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        if (!isAdmin) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业管理员或企业导师只能修改本企业的考勤
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权修改该考勤");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以修改所管理班级学生的考勤
+                if (currentUser == null) {
+                    throw new BusinessException("无权修改该考勤");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权修改该考勤");
+                }
+                Student student = studentMapper.selectById(existAttendance.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权修改该考勤");
+                }
+            } else {
+                throw new BusinessException("申请类型无效");
+            }
         }
         
         // 已确认的考勤不允许修改
@@ -221,6 +283,14 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                 if (user != null) {
                     attendance.setStudentName(user.getRealName());
                 }
+            }
+        }
+        
+        // 查询申请信息获取申请类型
+        if (attendance.getApplyId() != null) {
+            InternshipApply apply = internshipApplyMapper.selectById(attendance.getApplyId());
+            if (apply != null) {
+                attendance.setApplyType(apply.getApplyType());
             }
         }
     }
@@ -361,16 +431,48 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Attendance attendance = this.getById(attendanceId);
         EntityValidationUtil.validateEntityExists(attendance, "考勤");
         
-        // 数据权限：企业管理员或企业导师只能确认本企业的考勤
-        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-        if (currentUserEnterpriseId == null) {
-            throw new BusinessException("无权确认该考勤");
-        }
-        
         InternshipApply apply = internshipApplyMapper.selectById(attendance.getApplyId());
-        if (apply == null || apply.getEnterpriseId() == null
-                || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-            throw new BusinessException("无权确认该考勤");
+        EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 数据权限：根据申请类型判断权限
+        // 系统管理员和学校管理员可以确认所有考勤
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        if (!isAdmin) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业管理员或企业导师只能确认本企业的考勤
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权确认该考勤");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以确认所管理班级学生的考勤
+                UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+                if (user == null) {
+                    throw new BusinessException("无权确认该考勤");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权确认该考勤");
+                }
+                // 验证学生是否属于班主任管理的班级
+                Student student = studentMapper.selectById(attendance.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权确认该考勤");
+                }
+            } else {
+                throw new BusinessException("申请类型无效");
+            }
         }
         
         // 如果提供了签到时间，更新签到时间
@@ -422,16 +524,45 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Attendance attendance = this.getById(attendanceId);
         EntityValidationUtil.validateEntityExists(attendance, "考勤");
         
-        // 数据权限：企业管理员或企业导师只能删除本企业的考勤
-        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
-        if (currentUserEnterpriseId == null) {
-            throw new BusinessException("无权删除该考勤");
-        }
-        
         InternshipApply apply = internshipApplyMapper.selectById(attendance.getApplyId());
-        if (apply == null || apply.getEnterpriseId() == null
-                || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
-            throw new BusinessException("无权删除该考勤");
+        EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 数据权限：根据申请类型判断权限
+        UserInfo currentUser = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isAdmin = false;
+        if (currentUser != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+            isAdmin = dataPermissionUtil.isSystemAdmin() || 
+                     DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_SCHOOL_ADMIN);
+        }
+        if (!isAdmin) {
+            if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                // 合作企业实习：企业管理员或企业导师只能删除本企业的考勤
+                Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (currentUserEnterpriseId == null || apply.getEnterpriseId() == null
+                        || !currentUserEnterpriseId.equals(apply.getEnterpriseId())) {
+                    throw new BusinessException("无权删除该考勤");
+                }
+            } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                // 自主实习：班主任可以删除所管理班级学生的考勤
+                if (currentUser == null) {
+                    throw new BusinessException("无权删除该考勤");
+                }
+                List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                if (!DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                    throw new BusinessException("无权删除该考勤");
+                }
+                Student student = studentMapper.selectById(attendance.getStudentId());
+                if (student == null || student.getClassId() == null) {
+                    throw new BusinessException("学生信息不完整");
+                }
+                List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
+                if (classIds == null || !classIds.contains(student.getClassId())) {
+                    throw new BusinessException("无权删除该考勤");
+                }
+            } else {
+                throw new BusinessException("申请类型无效");
+            }
         }
         
         // 软删除
@@ -614,35 +745,40 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendanceDate = LocalDate.now();
         }
         
-        // 获取学生所属的考勤组
-        AttendanceGroup group = attendanceGroupService.getGroupByApplyId(apply.getApplyId());
+        // 获取学生所属的考勤组（仅合作企业实习需要）
+        AttendanceGroup group = null;
         AttendanceGroupTimeSlot selectedTimeSlot = null;
         Long selectedTimeSlotId = timeSlotId;
         
-        if (group != null) {
-            // 获取考勤组的时间段列表
-            List<AttendanceGroupTimeSlot> timeSlots = group.getTimeSlots();
-            if (timeSlots == null || timeSlots.isEmpty()) {
-                throw new BusinessException("考勤组未配置时间段，无法打卡");
-            }
-            
-            // 如果提供了timeSlotId，验证它是否属于该考勤组
-            if (selectedTimeSlotId != null) {
-                final Long finalTimeSlotId = selectedTimeSlotId;
-                selectedTimeSlot = timeSlots.stream()
-                        .filter(slot -> slot.getSlotId().equals(finalTimeSlotId))
-                        .findFirst()
-                        .orElseThrow(() -> new BusinessException("时间段不存在或不属于该考勤组"));
-            } else {
-                // 如果没有提供timeSlotId，检查是否有唯一的时间段
-                if (timeSlots.size() == 1) {
-                    selectedTimeSlot = timeSlots.get(0);
-                    selectedTimeSlotId = selectedTimeSlot.getSlotId();
+        // 只有合作企业实习才需要考勤组
+        if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+            group = attendanceGroupService.getGroupByApplyId(apply.getApplyId());
+            if (group != null) {
+                // 获取考勤组的时间段列表
+                List<AttendanceGroupTimeSlot> timeSlots = group.getTimeSlots();
+                if (timeSlots == null || timeSlots.isEmpty()) {
+                    throw new BusinessException("考勤组未配置时间段，无法打卡");
+                }
+                
+                // 如果提供了timeSlotId，验证它是否属于该考勤组
+                if (selectedTimeSlotId != null) {
+                    final Long finalTimeSlotId = selectedTimeSlotId;
+                    selectedTimeSlot = timeSlots.stream()
+                            .filter(slot -> slot.getSlotId().equals(finalTimeSlotId))
+                            .findFirst()
+                            .orElseThrow(() -> new BusinessException("时间段不存在或不属于该考勤组"));
                 } else {
-                    throw new BusinessException("考勤组有多个时间段，请选择要使用的时间段");
+                    // 如果没有提供timeSlotId，检查是否有唯一的时间段
+                    if (timeSlots.size() == 1) {
+                        selectedTimeSlot = timeSlots.get(0);
+                        selectedTimeSlotId = selectedTimeSlot.getSlotId();
+                    } else {
+                        throw new BusinessException("考勤组有多个时间段，请选择要使用的时间段");
+                    }
                 }
             }
         }
+        // 自主实习不需要考勤组，可以直接打卡
         
         // 检查今天是否已经签到
         LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
