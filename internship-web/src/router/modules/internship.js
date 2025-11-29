@@ -59,7 +59,7 @@ export default [
     meta: {
       title: '实习申请审核',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
     }
   },
   {
@@ -129,7 +129,7 @@ export default [
     meta: {
       title: '实习日志批阅',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -139,7 +139,7 @@ export default [
     meta: {
       title: '考勤查看',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      roles: ['ROLE_CLASS_TEACHER']
     }
   },
   {
@@ -159,7 +159,7 @@ export default [
     meta: {
       title: '周报批阅',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -199,7 +199,7 @@ export default [
     meta: {
       title: '成果审核',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {
@@ -219,7 +219,7 @@ export default [
     meta: {
       title: '问题反馈处理',
       requiresAuth: true,
-      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
     }
   },
   {

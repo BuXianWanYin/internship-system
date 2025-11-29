@@ -291,41 +291,39 @@ export const menuItems = [
         index: '/admin/internship/apply/audit',
         title: '实习申请审核',
         icon: DocumentChecked,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/log',
         title: '实习日志批阅',
         icon: Document,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/weekly-report',
         title: '周报批阅',
         icon: Files,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/achievement',
         title: '成果审核',
         icon: Files,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/internship/attendance',
         title: '考勤查看',
         icon: Clock,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER']
+        roles: ['ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/evaluation/student',
         title: '学生评价',
         icon: Star,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER'],
         titleMap: {
           'ROLE_SYSTEM_ADMIN': '学生评价',
-          'ROLE_SCHOOL_ADMIN': '学生评价',
-          'ROLE_COLLEGE_LEADER': '学生评价',
           'ROLE_CLASS_TEACHER': '学生评价'
         }
       }
@@ -467,37 +465,37 @@ export const menuItems = [
         index: '/teacher/internship/log',
         title: '实习日志批阅',
         icon: Document,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/weekly-report',
         title: '周报批阅',
         icon: Files,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/achievement',
         title: '成果审核',
         icon: Files,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/attendance',
         title: '考勤查看',
         icon: Clock,
-        roles: ['ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_CLASS_TEACHER']
       },
       {
         index: '/teacher/internship/feedback',
         title: '问题反馈处理',
         icon: ChatLineRound,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR']
       },
       {
         index: '/teacher/evaluation/student',
         title: '学生评价',
         icon: Star,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
       }
     ]
   }
