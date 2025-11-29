@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.enums.ReviewStatus;
+import com.server.internshipserver.common.enums.SelfInternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -84,8 +87,9 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
             evaluation.setEnterpriseId(apply.getEnterpriseId());
         }
         
-        // 验证实习状态为"实习结束"（status=7）
-        if (apply.getStatus() == null || apply.getStatus() != 7) {
+        // 验证实习状态为"实习结束"
+        // 合作企业：status=7，自主实习：status=13
+        if (!isInternshipCompleted(apply)) {
             throw new BusinessException("只能评价实习已结束的学生");
         }
         
@@ -284,12 +288,16 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
     }
     
     /**
-     * 过滤实习状态：只显示实习已结束（status=7）的学生评价
+     * 过滤实习状态：只显示实习已结束的学生评价
+     * 合作企业：status=7，自主实习：status=13
      */
     private void filterByInternshipStatus(LambdaQueryWrapper<EnterpriseEvaluation> wrapper, Long enterpriseId) {
         // 查询实习已结束的申请ID列表
         LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        applyWrapper.eq(InternshipApply::getStatus, 7) // 实习结束
+        // 合作企业：status=7，自主实习：status=13
+        applyWrapper.and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
+                              .or()
+                              .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
                     .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                     .select(InternshipApply::getApplyId);
         
@@ -497,6 +505,31 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         }
         
         evaluation.setEvaluatorName(evaluator.getRealName());
+    }
+    
+    /**
+     * 判断实习是否已结束
+     * 合作企业：status=7，自主实习：status=13
+     */
+    private boolean isInternshipCompleted(InternshipApply apply) {
+        if (apply == null || apply.getStatus() == null) {
+            return false;
+        }
+        
+        Integer status = apply.getStatus();
+        Integer applyType = apply.getApplyType();
+        
+        // 合作企业：status=7
+        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+            return status.equals(InternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        // 自主实习：status=13
+        if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            return status.equals(SelfInternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        return false;
     }
 }
 

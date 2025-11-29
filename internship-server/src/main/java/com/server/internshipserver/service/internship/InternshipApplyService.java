@@ -79,14 +79,15 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     boolean deleteApply(Long applyId);
     
     /**
-     * 查询企业实习学生列表（仅显示已录用的学生）
+     * 查询企业实习学生列表
      * @param page 分页参数
      * @param studentName 学生姓名（可选）
      * @param studentNo 学号（可选）
      * @param postId 岗位ID（可选）
+     * @param status 申请状态（可选，不传则默认查询已录用的学生）
      * @return 申请列表
      */
-    Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId);
+    Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId, Integer status);
     
     /**
      * 查询企业导师指导的学生列表

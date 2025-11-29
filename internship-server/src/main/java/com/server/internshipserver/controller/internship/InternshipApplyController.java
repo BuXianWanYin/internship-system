@@ -136,7 +136,7 @@ public class InternshipApplyController {
         return Result.success("删除成功");
     }
     
-    @ApiOperation("查询企业实习学生列表（仅显示已录用的学生）")
+    @ApiOperation("查询企业实习学生列表")
     @PreAuthorize("hasAnyRole('ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/enterprise/students")
     public Result<Page<InternshipApply>> getEnterpriseStudents(
@@ -144,9 +144,10 @@ public class InternshipApplyController {
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
             @ApiParam(value = "学生姓名", required = false) @RequestParam(required = false) String studentName,
             @ApiParam(value = "学号", required = false) @RequestParam(required = false) String studentNo,
-            @ApiParam(value = "岗位ID", required = false) @RequestParam(required = false) Long postId) {
+            @ApiParam(value = "岗位ID", required = false) @RequestParam(required = false) Long postId,
+            @ApiParam(value = "申请状态（可选，不传则默认查询已录用的学生）", required = false) @RequestParam(required = false) Integer status) {
         Page<InternshipApply> page = new Page<>(current, size);
-        Page<InternshipApply> result = internshipApplyService.getEnterpriseStudents(page, studentName, studentNo, postId);
+        Page<InternshipApply> result = internshipApplyService.getEnterpriseStudents(page, studentName, studentNo, postId, status);
         return Result.success(result);
     }
     

@@ -1796,12 +1796,19 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
     }
     
     @Override
-    public Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId) {
+    public Page<InternshipApply> getEnterpriseStudents(Page<InternshipApply> page, String studentName, String studentNo, Long postId, Integer status) {
         LambdaQueryWrapper<InternshipApply> wrapper = new LambdaQueryWrapper<>();
         
         QueryWrapperUtil.notDeleted(wrapper, InternshipApply::getDeleteFlag);
         wrapper.eq(InternshipApply::getApplyType, ApplyType.COOPERATION.getCode());
-        wrapper.eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode());
+        
+        // 状态过滤：如果传了status参数，使用传入的值；否则默认查询已录用的学生
+        if (status != null) {
+            wrapper.eq(InternshipApply::getStatus, status);
+        } else {
+            wrapper.eq(InternshipApply::getStatus, InternshipApplyStatus.ACCEPTED.getCode());
+        }
+        
         wrapper.eq(InternshipApply::getStudentConfirmStatus, StudentConfirmStatus.CONFIRMED.getCode());
         
         // 数据权限过滤

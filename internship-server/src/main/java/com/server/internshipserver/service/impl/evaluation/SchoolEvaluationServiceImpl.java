@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.enums.ReviewStatus;
+import com.server.internshipserver.common.enums.SelfInternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -82,8 +85,9 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 验证实习状态为"实习结束"（status=7）
-        if (apply.getStatus() == null || apply.getStatus() != 7) {
+        // 验证实习状态为"实习结束"
+        // 合作企业：status=7，自主实习：status=13
+        if (!isInternshipCompleted(apply)) {
             throw new BusinessException("只能评价实习已结束的学生");
         }
         
@@ -129,8 +133,8 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (student != null) {
             evaluation.setStudentId(student.getStudentId());
         }
-    }
-    
+        }
+        
     /**
      * 保存或更新评价
      */
@@ -152,24 +156,24 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 更新现有评价
      */
     private void updateExistingEvaluation(SchoolEvaluation evaluation, SchoolEvaluation existEvaluation, UserInfo user) {
-        evaluation.setEvaluationId(existEvaluation.getEvaluationId());
-        evaluation.setEvaluatorId(user.getUserId());
-        evaluation.setDeleteFlag(DeleteFlag.NORMAL.getCode());
-        // 如果是草稿，不更新提交时间
-        if (evaluation.getEvaluationStatus() == null) {
-            evaluation.setEvaluationStatus(EvaluationStatus.DRAFT.getCode());
-        }
-        this.updateById(evaluation);
+            evaluation.setEvaluationId(existEvaluation.getEvaluationId());
+            evaluation.setEvaluatorId(user.getUserId());
+            evaluation.setDeleteFlag(DeleteFlag.NORMAL.getCode());
+            // 如果是草稿，不更新提交时间
+            if (evaluation.getEvaluationStatus() == null) {
+                evaluation.setEvaluationStatus(EvaluationStatus.DRAFT.getCode());
+            }
+            this.updateById(evaluation);
     }
     
     /**
      * 创建新评价
      */
     private void createNewEvaluation(SchoolEvaluation evaluation, UserInfo user) {
-        evaluation.setEvaluatorId(user.getUserId());
-        evaluation.setEvaluationStatus(EvaluationStatus.DRAFT.getCode());
-        EntityDefaultValueUtil.setDefaultValues(evaluation);
-        this.save(evaluation);
+            evaluation.setEvaluatorId(user.getUserId());
+            evaluation.setEvaluationStatus(EvaluationStatus.DRAFT.getCode());
+            EntityDefaultValueUtil.setDefaultValues(evaluation);
+            this.save(evaluation);
     }
     
     @Override
@@ -231,15 +235,15 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
     private void enrichEvaluationData(SchoolEvaluation evaluation) {
         if (evaluation.getApplyId() != null) {
             // 自动计算日志周报质量建议分数（用于前端显示参考）
-            BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
-            evaluation.setLogWeeklyReportScoreAuto(autoScore);
-            
-            // 填充综合成绩（如果已计算）
+                BigDecimal autoScore = calculateLogWeeklyReportScore(evaluation.getApplyId());
+                evaluation.setLogWeeklyReportScoreAuto(autoScore);
+                
+                // 填充综合成绩（如果已计算）
             fillComprehensiveScore(evaluation);
-        }
+                }
         
         // 填充关联字段
-        fillEvaluationRelatedFields(evaluation);
+            fillEvaluationRelatedFields(evaluation);
     }
     
     @Override
@@ -358,11 +362,11 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         
         if (sum.compareTo(BigDecimal.ZERO) == 0) {
             return null;
-        }
+                }
         
         return sum.divide(new BigDecimal(logs.size()), 2, RoundingMode.HALF_UP);
-    }
-    
+        }
+        
     /**
      * 从周报列表计算平均分
      */
@@ -378,11 +382,11 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         
         if (sum.compareTo(BigDecimal.ZERO) == 0) {
             return null;
-        }
+                }
         
         return sum.divide(new BigDecimal(reports.size()), 2, RoundingMode.HALF_UP);
-    }
-    
+        }
+        
     /**
      * 计算组合分数（日志平均分×50% + 周报平均分×50%）
      */
@@ -478,21 +482,21 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据班级ID列表获取申请ID列表
      */
     private List<Long> getApplyIdsByClassIds(List<Long> classIds) {
-        List<Student> students = studentMapper.selectList(
-                new LambdaQueryWrapper<Student>()
-                        .in(Student::getClassId, classIds)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        .select(Student::getStudentId)
-        );
+            List<Student> students = studentMapper.selectList(
+                    new LambdaQueryWrapper<Student>()
+                            .in(Student::getClassId, classIds)
+                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                            .select(Student::getStudentId)
+            );
         
         if (students == null || students.isEmpty()) {
             return null;
         }
         
-        List<Long> studentIds = students.stream()
-                .map(Student::getStudentId)
-                .collect(Collectors.toList());
-        
+                List<Long> studentIds = students.stream()
+                        .map(Student::getStudentId)
+                        .collect(Collectors.toList());
+                
         return getApplyIdsByStudentIds(studentIds);
     }
     
@@ -500,21 +504,21 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学院ID获取申请ID列表
      */
     private List<Long> getApplyIdsByCollegeId(Long collegeId) {
-        List<Student> students = studentMapper.selectList(
-                new LambdaQueryWrapper<Student>()
+                List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        .select(Student::getStudentId)
-        );
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
         
         if (students == null || students.isEmpty()) {
             return null;
         }
         
-        List<Long> studentIds = students.stream()
-                .map(Student::getStudentId)
-                .collect(Collectors.toList());
-        
+                    List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(Collectors.toList());
+                    
         return getApplyIdsByStudentIds(studentIds);
     }
     
@@ -522,50 +526,54 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学校ID获取申请ID列表
      */
     private List<Long> getApplyIdsBySchoolId(Long schoolId) {
-        List<Student> students = studentMapper.selectList(
-                new LambdaQueryWrapper<Student>()
+                List<Student> students = studentMapper.selectList(
+                        new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                        .select(Student::getStudentId)
-        );
+                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(Student::getStudentId)
+                );
         
         if (students == null || students.isEmpty()) {
             return null;
         }
         
-        List<Long> studentIds = students.stream()
-                .map(Student::getStudentId)
-                .collect(Collectors.toList());
-        
+                    List<Long> studentIds = students.stream()
+                            .map(Student::getStudentId)
+                            .collect(Collectors.toList());
+                    
         return getApplyIdsByStudentIds(studentIds);
     }
     
     /**
      * 根据学生ID列表获取实习结束状态的申请ID列表
+     * 合作企业：status=7，自主实习：status=13
      */
     private List<Long> getApplyIdsByStudentIds(List<Long> studentIds) {
         List<InternshipApply> applies = internshipApplyMapper.selectList(
                 new LambdaQueryWrapper<InternshipApply>()
                         .in(InternshipApply::getStudentId, studentIds)
-                        .eq(InternshipApply::getStatus, 7) // 实习结束
+                        // 合作企业：status=7，自主实习：status=13
+                        .and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
+                                  .or()
+                                  .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
                         .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(InternshipApply::getApplyId)
         );
-        
+                    
         if (applies == null || applies.isEmpty()) {
             return null;
         }
         
         return applies.stream()
-                .map(InternshipApply::getApplyId)
-                .collect(Collectors.toList());
+                                .map(InternshipApply::getApplyId)
+                                .collect(Collectors.toList());
     }
     
     /**
      * 设置空结果查询条件
      */
     private void setEmptyResult(LambdaQueryWrapper<SchoolEvaluation> wrapper) {
-        wrapper.eq(SchoolEvaluation::getEvaluationId, -1L);
+                wrapper.eq(SchoolEvaluation::getEvaluationId, -1L);
     }
     
     /**
@@ -585,19 +593,19 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
             return;
         }
         
-        Student student = studentMapper.selectById(evaluation.getStudentId());
+            Student student = studentMapper.selectById(evaluation.getStudentId());
         if (student == null) {
             return;
         }
         
-        UserInfo studentUser = userMapper.selectById(student.getUserId());
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
         if (studentUser == null) {
             return;
         }
         
-        evaluation.setStudentName(studentUser.getRealName());
-        evaluation.setStudentNo(student.getStudentNo());
-    }
+                    evaluation.setStudentName(studentUser.getRealName());
+                    evaluation.setStudentNo(student.getStudentNo());
+                }
     
     /**
      * 填充企业信息
@@ -607,25 +615,25 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
             return;
         }
         
-        InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
+            InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
         if (apply == null) {
             return;
         }
         
         // 合作企业申请，从企业表获取企业名称
-        if (apply.getEnterpriseId() != null) {
-            Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
-            if (enterprise != null) {
-                evaluation.setEnterpriseName(enterprise.getEnterpriseName());
-            }
+                if (apply.getEnterpriseId() != null) {
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        evaluation.setEnterpriseName(enterprise.getEnterpriseName());
+                    }
             return;
         }
         
-        // 自主实习，使用自主实习企业名称（学生申请时填写）
+                    // 自主实习，使用自主实习企业名称（学生申请时填写）
         if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
-            evaluation.setEnterpriseName(apply.getSelfEnterpriseName());
-        }
-    }
+                    evaluation.setEnterpriseName(apply.getSelfEnterpriseName());
+                }
+            }
     
     /**
      * 填充评价人信息
@@ -635,12 +643,37 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
             return;
         }
         
-        UserInfo evaluator = userMapper.selectById(evaluation.getEvaluatorId());
+            UserInfo evaluator = userMapper.selectById(evaluation.getEvaluatorId());
         if (evaluator == null) {
             return;
         }
         
         evaluation.setEvaluatorName(evaluator.getRealName());
+    }
+    
+    /**
+     * 判断实习是否已结束
+     * 合作企业：status=7，自主实习：status=13
+     */
+    private boolean isInternshipCompleted(InternshipApply apply) {
+        if (apply == null || apply.getStatus() == null) {
+            return false;
+        }
+        
+        Integer status = apply.getStatus();
+        Integer applyType = apply.getApplyType();
+        
+        // 合作企业：status=7
+        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+            return status.equals(InternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        // 自主实习：status=13
+        if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            return status.equals(SelfInternshipApplyStatus.COMPLETED.getCode());
+        }
+        
+        return false;
     }
 }
 

@@ -34,7 +34,13 @@ public enum InternshipApplyStatus {
     /**
      * 已取消
      */
-    CANCELLED(5, "已取消");
+    CANCELLED(5, "已取消"),
+    
+    /**
+     * 实习结束
+     * 合作企业实习已结束
+     */
+    COMPLETED(7, "实习结束");
 
     /**
      * 状态代码
