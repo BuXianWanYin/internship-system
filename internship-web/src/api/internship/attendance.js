@@ -48,16 +48,26 @@ export const attendanceApi = {
     return request.get('/internship/attendance/statistics', { params })
   },
   // 学生签到
-  studentCheckIn(attendanceDate) {
-    return request.post('/internship/attendance/check-in', null, {
-      params: attendanceDate ? { attendanceDate } : {}
-    })
+  studentCheckIn(attendanceDate, timeSlotId) {
+    const params = {}
+    if (attendanceDate) {
+      params.attendanceDate = attendanceDate
+    }
+    if (timeSlotId) {
+      params.timeSlotId = timeSlotId
+    }
+    return request.post('/internship/attendance/check-in', null, { params })
   },
   // 学生签退
-  studentCheckOut(attendanceDate) {
-    return request.post('/internship/attendance/check-out', null, {
-      params: attendanceDate ? { attendanceDate } : {}
-    })
+  studentCheckOut(attendanceDate, timeSlotId) {
+    const params = {}
+    if (attendanceDate) {
+      params.attendanceDate = attendanceDate
+    }
+    if (timeSlotId) {
+      params.timeSlotId = timeSlotId
+    }
+    return request.post('/internship/attendance/check-out', null, { params })
   },
   // 学生申请请假
   studentApplyLeave(attendanceDate, leaveType, leaveReason) {

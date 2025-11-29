@@ -18,8 +18,10 @@ import com.server.internshipserver.domain.internship.AttendanceGroupRule;
 import com.server.internshipserver.domain.internship.AttendanceGroupStudent;
 import com.server.internshipserver.domain.internship.AttendanceGroupTimeSlot;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.internship.AttendanceGroupMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.internship.AttendanceGroupRuleMapper;
 import com.server.internshipserver.mapper.internship.AttendanceGroupStudentMapper;
 import com.server.internshipserver.mapper.internship.AttendanceGroupTimeSlotMapper;
@@ -66,6 +68,9 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
     
     @Autowired
     private AttendanceMapper attendanceMapper;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -236,10 +241,11 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
         // 查询考勤组列表
         Page<AttendanceGroup> result = this.page(page, wrapper);
         
-        // 填充统计信息
+        // 填充统计信息和关联字段
         if (result.getRecords() != null && !result.getRecords().isEmpty()) {
             for (AttendanceGroup group : result.getRecords()) {
                 fillGroupStatistics(group);
+                fillGroupRelatedFields(group);
             }
         }
         
@@ -279,8 +285,9 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
         List<AttendanceGroupRule> rules = ruleMapper.selectList(ruleWrapper);
         group.setRules(rules);
         
-        // 填充统计信息
+        // 填充统计信息和关联字段
         fillGroupStatistics(group);
+        fillGroupRelatedFields(group);
         
         return group;
     }
@@ -472,12 +479,21 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
         
         // 数据权限检查
         AttendanceGroup group = this.getById(assignment.getGroupId());
+        EntityValidationUtil.validateEntityExists(group, "考勤组");
         UserInfo currentUser = UserUtil.getCurrentUser(userMapper);
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
         
         if (!dataPermissionUtil.isSystemAdmin() && !DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_ADMIN) 
                 && !DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_ENTERPRISE_MENTOR)) {
             throw new BusinessException("无权解除学生考勤组关联");
+        }
+        
+        // 检查企业ID权限
+        if (!dataPermissionUtil.isSystemAdmin()) {
+            Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+            if (currentUserEnterpriseId == null || !currentUserEnterpriseId.equals(group.getEnterpriseId())) {
+                throw new BusinessException("无权解除该学生的考勤组关联");
+            }
         }
         
         // 软删除
@@ -560,6 +576,9 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
                   .orderByDesc(AttendanceGroupTimeSlot::getIsDefault);
         List<AttendanceGroupTimeSlot> timeSlots = timeSlotMapper.selectList(slotWrapper);
         group.setTimeSlots(timeSlots);
+        
+        // 填充关联字段
+        fillGroupRelatedFields(group);
         
         return group;
     }
@@ -822,6 +841,31 @@ public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMappe
                   .eq(AttendanceGroupTimeSlot::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         long timeSlotCount = timeSlotMapper.selectCount(slotWrapper);
         group.setTimeSlotCount((int) timeSlotCount);
+    }
+    
+    /**
+     * 填充考勤组关联字段（企业名称、创建人姓名）
+     */
+    private void fillGroupRelatedFields(AttendanceGroup group) {
+        if (group == null) {
+            return;
+        }
+        
+        // 填充企业名称
+        if (group.getEnterpriseId() != null) {
+            Enterprise enterprise = enterpriseMapper.selectById(group.getEnterpriseId());
+            if (enterprise != null) {
+                group.setEnterpriseName(enterprise.getEnterpriseName());
+            }
+        }
+        
+        // 填充创建人姓名
+        if (group.getCreateUserId() != null) {
+            UserInfo user = userMapper.selectById(group.getCreateUserId());
+            if (user != null) {
+                group.setCreateUserName(user.getRealName());
+            }
+        }
     }
 }
 

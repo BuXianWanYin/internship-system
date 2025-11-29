@@ -15,8 +15,12 @@ import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.internship.Attendance;
+import com.server.internshipserver.domain.internship.AttendanceGroup;
+import com.server.internshipserver.domain.internship.AttendanceGroupTimeSlot;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.mapper.internship.AttendanceGroupTimeSlotMapper;
 import com.server.internshipserver.domain.internship.dto.AttendanceStatistics;
+import com.server.internshipserver.service.internship.AttendanceGroupService;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.mapper.internship.AttendanceMapper;
@@ -55,6 +59,12 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     
     @Autowired
     private InternshipApplyMapper internshipApplyMapper;
+    
+    @Autowired
+    private AttendanceGroupService attendanceGroupService;
+    
+    @Autowired
+    private AttendanceGroupTimeSlotMapper timeSlotMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -472,7 +482,6 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         
         // 统计计算
         AttendanceStatistics statistics = new AttendanceStatistics();
-        int totalDays = attendanceList.size();
         int normalDays = 0;
         int lateDays = 0;
         int earlyLeaveDays = 0;
@@ -481,6 +490,36 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         int restDays = 0;
         double totalWorkHours = 0.0;
         
+        // 获取实习申请信息，用于计算应出勤日期和缺勤天数
+        InternshipApply apply = null;
+        if (applyId != null) {
+            apply = internshipApplyMapper.selectById(applyId);
+        } else if (studentId != null && attendanceList.size() > 0) {
+            // 如果只提供了studentId，使用第一条记录的applyId
+            Long firstApplyId = attendanceList.get(0).getApplyId();
+            if (firstApplyId != null) {
+                apply = internshipApplyMapper.selectById(firstApplyId);
+            }
+        }
+        
+        // 计算应出勤日期和缺勤天数（如果提供了applyId和日期范围）
+        int expectedDays = 0;
+        if (apply != null && startDate != null && endDate != null) {
+            // 获取学生所属的考勤组
+            AttendanceGroup group = attendanceGroupService.getGroupByApplyId(apply.getApplyId());
+            if (group != null) {
+                // 计算应出勤日期
+                List<LocalDate> expectedDates = attendanceGroupService.calculateExpectedDates(
+                        group.getGroupId(), startDate, endDate);
+                expectedDays = expectedDates.size();
+                
+                // 使用考勤组规则计算缺勤天数
+                absentDays = attendanceGroupService.calculateAbsentDays(
+                        apply.getApplyId(), startDate, endDate);
+            }
+        }
+        
+        // 统计实际考勤记录
         for (Attendance attendance : attendanceList) {
             Integer type = attendance.getAttendanceType();
             if (type != null) {
@@ -493,7 +532,10 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                 } else if (type.equals(AttendanceType.LEAVE.getCode())) {
                     leaveDays++;
                 } else if (type.equals(AttendanceType.ABSENT.getCode())) {
-                    absentDays++;
+                    // 如果使用考勤组规则计算缺勤，这里不再累加
+                    if (expectedDays == 0) {
+                        absentDays++;
+                    }
                 } else if (type.equals(AttendanceType.REST.getCode())) {
                     restDays++;
                 }
@@ -504,9 +546,13 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             }
         }
         
-        // 计算出勤率（正常出勤天数 / (总天数 - 请假天数 - 休息天数) * 100）
+        // 总出勤天数 = 实际考勤记录数
+        int totalDays = attendanceList.size();
+        
+        // 计算出勤率（正常出勤天数 / (应出勤天数 - 请假天数 - 休息天数) * 100）
         double attendanceRate = 0.0;
-        int effectiveTotalDays = totalDays - leaveDays - restDays;
+        int effectiveTotalDays = expectedDays > 0 ? expectedDays : totalDays;
+        effectiveTotalDays = effectiveTotalDays - leaveDays - restDays;
         if (effectiveTotalDays > 0) {
             attendanceRate = (double) normalDays / effectiveTotalDays * 100;
         }
@@ -526,7 +572,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Attendance studentCheckIn(LocalDate attendanceDate) {
+    public Attendance studentCheckIn(LocalDate attendanceDate, Long timeSlotId) {
         // 获取当前学生ID
         Long studentId = dataPermissionUtil.getCurrentStudentId();
         if (studentId == null) {
@@ -568,6 +614,36 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendanceDate = LocalDate.now();
         }
         
+        // 获取学生所属的考勤组
+        AttendanceGroup group = attendanceGroupService.getGroupByApplyId(apply.getApplyId());
+        AttendanceGroupTimeSlot selectedTimeSlot = null;
+        Long selectedTimeSlotId = timeSlotId;
+        
+        if (group != null) {
+            // 获取考勤组的时间段列表
+            List<AttendanceGroupTimeSlot> timeSlots = group.getTimeSlots();
+            if (timeSlots == null || timeSlots.isEmpty()) {
+                throw new BusinessException("考勤组未配置时间段，无法打卡");
+            }
+            
+            // 如果提供了timeSlotId，验证它是否属于该考勤组
+            if (selectedTimeSlotId != null) {
+                final Long finalTimeSlotId = selectedTimeSlotId;
+                selectedTimeSlot = timeSlots.stream()
+                        .filter(slot -> slot.getSlotId().equals(finalTimeSlotId))
+                        .findFirst()
+                        .orElseThrow(() -> new BusinessException("时间段不存在或不属于该考勤组"));
+            } else {
+                // 如果没有提供timeSlotId，检查是否有唯一的时间段
+                if (timeSlots.size() == 1) {
+                    selectedTimeSlot = timeSlots.get(0);
+                    selectedTimeSlotId = selectedTimeSlot.getSlotId();
+                } else {
+                    throw new BusinessException("考勤组有多个时间段，请选择要使用的时间段");
+                }
+            }
+        }
+        
         // 检查今天是否已经签到
         LambdaQueryWrapper<Attendance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Attendance::getApplyId, apply.getApplyId())
@@ -576,6 +652,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Attendance existAttendance = this.getOne(wrapper);
         
         LocalDateTime now = LocalDateTime.now();
+        LocalTime checkInTime = now.toLocalTime();
         
         if (existAttendance != null) {
             // 如果已存在考勤记录，更新签到时间
@@ -583,13 +660,15 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                 throw new BusinessException("今天已经签到过了");
             }
             existAttendance.setCheckInTime(now);
+            existAttendance.setGroupId(group != null ? group.getGroupId() : null);
+            existAttendance.setTimeSlotId(selectedTimeSlotId);
+            
             // 如果考勤类型是缺勤，改为出勤
             if (existAttendance.getAttendanceType() != null && existAttendance.getAttendanceType().equals(AttendanceType.ABSENT.getCode())) {
                 existAttendance.setAttendanceType(AttendanceType.ATTENDANCE.getCode());
             } else if (existAttendance.getAttendanceType() == null) {
-                // 判断是否迟到（假设9:00为上班时间）
-                LocalTime checkInTime = now.toLocalTime();
-                LocalTime workStartTime = LocalTime.of(9, 0);
+                // 判断是否迟到（使用时间段的startTime）
+                LocalTime workStartTime = selectedTimeSlot != null ? selectedTimeSlot.getStartTime() : LocalTime.of(9, 0);
                 if (checkInTime.isAfter(workStartTime)) {
                     existAttendance.setAttendanceType(AttendanceType.LATE.getCode());
                 } else {
@@ -606,12 +685,13 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             attendance.setApplyId(apply.getApplyId());
             attendance.setAttendanceDate(attendanceDate);
             attendance.setCheckInTime(now);
+            attendance.setGroupId(group != null ? group.getGroupId() : null);
+            attendance.setTimeSlotId(selectedTimeSlotId);
             attendance.setConfirmStatus(ConfirmStatus.PENDING.getCode());
             EntityDefaultValueUtil.setDefaultValues(attendance);
             
-            // 判断是否迟到（假设9:00为上班时间）
-            LocalTime checkInTime = now.toLocalTime();
-            LocalTime workStartTime = LocalTime.of(9, 0);
+            // 判断是否迟到（使用时间段的startTime）
+            LocalTime workStartTime = selectedTimeSlot != null ? selectedTimeSlot.getStartTime() : LocalTime.of(9, 0);
             if (checkInTime.isAfter(workStartTime)) {
                 attendance.setAttendanceType(AttendanceType.LATE.getCode());
             } else {
@@ -625,7 +705,7 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Attendance studentCheckOut(LocalDate attendanceDate) {
+    public Attendance studentCheckOut(LocalDate attendanceDate, Long timeSlotId) {
         // 获取当前学生ID
         Long studentId = dataPermissionUtil.getCurrentStudentId();
         if (studentId == null) {
@@ -676,8 +756,26 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             throw new BusinessException("今天已经签退过了");
         }
         
+        // 获取考勤组和时间段信息
+        AttendanceGroup group = null;
+        AttendanceGroupTimeSlot timeSlot = null;
+        if (attendance.getGroupId() != null) {
+            group = attendanceGroupService.getById(attendance.getGroupId());
+            if (group != null && attendance.getTimeSlotId() != null) {
+                timeSlot = timeSlotMapper.selectById(attendance.getTimeSlotId());
+            }
+        }
+        
         LocalDateTime now = LocalDateTime.now();
         attendance.setCheckOutTime(now);
+        
+        // 如果签到时没有设置时间段，现在设置
+        if (attendance.getTimeSlotId() == null && timeSlotId != null) {
+            attendance.setTimeSlotId(timeSlotId);
+            if (timeSlot == null) {
+                timeSlot = timeSlotMapper.selectById(timeSlotId);
+            }
+        }
         
         // 计算工作时长
         if (attendance.getCheckInTime() != null) {
@@ -685,9 +783,9 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
             double hours = duration.toMinutes() / 60.0;
             attendance.setWorkHours(BigDecimal.valueOf(hours).setScale(2, BigDecimal.ROUND_HALF_UP));
             
-            // 判断是否早退（假设18:00为下班时间）
+            // 判断是否早退（使用时间段的endTime）
             LocalTime checkOutTime = now.toLocalTime();
-            LocalTime workEndTime = LocalTime.of(18, 0);
+            LocalTime workEndTime = timeSlot != null ? timeSlot.getEndTime() : LocalTime.of(18, 0);
             if (checkOutTime.isBefore(workEndTime) && attendance.getAttendanceType() != null && attendance.getAttendanceType().equals(AttendanceType.ATTENDANCE.getCode())) {
                 attendance.setAttendanceType(AttendanceType.EARLY_LEAVE.getCode());
             }

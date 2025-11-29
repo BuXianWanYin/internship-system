@@ -86,16 +86,18 @@ public interface AttendanceService extends IService<Attendance> {
     /**
      * 学生签到
      * @param attendanceDate 考勤日期（可选，默认为今天）
+     * @param timeSlotId 时间段ID（可选，如果考勤组只有一个时间段则自动使用）
      * @return 考勤信息
      */
-    Attendance studentCheckIn(java.time.LocalDate attendanceDate);
+    Attendance studentCheckIn(java.time.LocalDate attendanceDate, Long timeSlotId);
     
     /**
      * 学生签退
      * @param attendanceDate 考勤日期（可选，默认为今天）
+     * @param timeSlotId 时间段ID（可选，如果考勤组只有一个时间段则自动使用）
      * @return 考勤信息
      */
-    Attendance studentCheckOut(java.time.LocalDate attendanceDate);
+    Attendance studentCheckOut(java.time.LocalDate attendanceDate, Long timeSlotId);
     
     /**
      * 学生申请请假

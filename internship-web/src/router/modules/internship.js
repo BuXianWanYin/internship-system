@@ -103,6 +103,16 @@ export default [
     }
   },
   {
+    path: '/enterprise/admin/attendance-group',
+    name: 'AttendanceGroupManagement',
+    component: () => import('@/views/enterprise/AttendanceGroupManagement.vue'),
+    meta: {
+      title: '考勤组管理',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_ADMIN']
+    }
+  },
+  {
     path: '/student/internship/interview',
     name: 'StudentInterviewList',
     component: () => import('@/views/student/InterviewList.vue'),

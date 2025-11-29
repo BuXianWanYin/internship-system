@@ -122,8 +122,9 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/check-in")
     public Result<Attendance> studentCheckIn(
-            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate) {
-        Attendance attendance = attendanceService.studentCheckIn(attendanceDate);
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate,
+            @ApiParam(value = "时间段ID", required = false) @RequestParam(required = false) Long timeSlotId) {
+        Attendance attendance = attendanceService.studentCheckIn(attendanceDate, timeSlotId);
         return Result.success("签到成功", attendance);
     }
     
@@ -131,8 +132,9 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @PostMapping("/check-out")
     public Result<Attendance> studentCheckOut(
-            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate) {
-        Attendance attendance = attendanceService.studentCheckOut(attendanceDate);
+            @ApiParam(value = "考勤日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate attendanceDate,
+            @ApiParam(value = "时间段ID", required = false) @RequestParam(required = false) Long timeSlotId) {
+        Attendance attendance = attendanceService.studentCheckOut(attendanceDate, timeSlotId);
         return Result.success("签退成功", attendance);
     }
     

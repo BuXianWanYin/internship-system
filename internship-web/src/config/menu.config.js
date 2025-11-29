@@ -264,6 +264,12 @@ export const menuItems = [
         title: '面试管理',
         icon: ChatLineRound,
         roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/admin/attendance-group',
+        title: '考勤组管理',
+        icon: Calendar,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
       }
     ]
   },

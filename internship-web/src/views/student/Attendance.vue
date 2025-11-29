@@ -9,7 +9,7 @@
               type="success" 
               :icon="Check" 
               :disabled="!canCheckIn"
-              @click="handleCheckIn"
+              @click="showCheckInDialog = true"
             >
               上班打卡
             </el-button>
@@ -17,7 +17,7 @@
               type="primary" 
               :icon="Close" 
               :disabled="!canCheckOut"
-              @click="handleCheckOut"
+              @click="showCheckOutDialog = true"
             >
               下班打卡
             </el-button>
@@ -290,6 +290,84 @@
         <el-button type="primary" @click="handleSelectRest">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 上班打卡对话框 -->
+    <el-dialog
+      v-model="showCheckInDialog"
+      title="上班打卡"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form label-width="100px">
+        <el-form-item v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1" label="选择时间段" required>
+          <el-select
+            v-model="selectedTimeSlotId"
+            placeholder="请选择时间段"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="slot in attendanceGroup.timeSlots"
+              :key="slot.slotId"
+              :label="`${slot.slotName}（${slot.startTime} - ${slot.endTime}）`"
+              :value="slot.slotId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" label="时间段">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
+          </div>
+        </el-form-item>
+        <el-form-item v-if="!attendanceGroup" label="提示">
+          <el-alert type="warning" :closable="false">
+            您尚未分配到考勤组，请联系企业导师
+          </el-alert>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCheckInDialog = false">取消</el-button>
+        <el-button type="primary" :disabled="!attendanceGroup || (attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)" @click="handleCheckIn">确定打卡</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 下班打卡对话框 -->
+    <el-dialog
+      v-model="showCheckOutDialog"
+      title="下班打卡"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form label-width="100px">
+        <el-form-item v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1" label="选择时间段" required>
+          <el-select
+            v-model="selectedTimeSlotId"
+            placeholder="请选择时间段"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="slot in attendanceGroup.timeSlots"
+              :key="slot.slotId"
+              :label="`${slot.slotName}（${slot.startTime} - ${slot.endTime}）`"
+              :value="slot.slotId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" label="时间段">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
+          </div>
+        </el-form-item>
+        <el-form-item v-if="!attendanceGroup" label="提示">
+          <el-alert type="warning" :closable="false">
+            您尚未分配到考勤组，请联系企业导师
+          </el-alert>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCheckOutDialog = false">取消</el-button>
+        <el-button type="primary" :disabled="!attendanceGroup || (attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)" @click="handleCheckOut">确定打卡</el-button>
+      </template>
+    </el-dialog>
   </PageLayout>
 </template>
 
@@ -298,6 +376,8 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Calendar, Sunny } from '@element-plus/icons-vue'
 import { attendanceApi } from '@/api/internship/attendance'
+import { attendanceGroupApi } from '@/api/internship/attendanceGroup'
+import { applyApi } from '@/api/internship/apply'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
@@ -305,8 +385,13 @@ const loading = ref(false)
 const detailDialogVisible = ref(false)
 const showLeaveDialog = ref(false)
 const showRestDialog = ref(false)
+const showCheckInDialog = ref(false)
+const showCheckOutDialog = ref(false)
 const todayAttendance = ref(null)
 const restDate = ref(null)
+const attendanceGroup = ref(null)
+const selectedTimeSlotId = ref(null)
+const currentApplyId = ref(null)
 
 
 const pagination = reactive({
@@ -436,6 +521,12 @@ const loadTodayAttendance = async () => {
     const res = await attendanceApi.getTodayAttendance()
     if (res.code === 200) {
       todayAttendance.value = res.data || null
+      // 如果获取到今天的考勤记录，更新申请ID
+      if (res.data && res.data.applyId && !currentApplyId.value) {
+        currentApplyId.value = res.data.applyId
+        // 重新加载考勤组
+        await loadAttendanceGroup()
+      }
     }
   } catch (error) {
     console.error('加载今天考勤记录失败:', error)
@@ -443,12 +534,58 @@ const loadTodayAttendance = async () => {
   }
 }
 
+// 加载考勤组信息
+const loadAttendanceGroup = async () => {
+  try {
+    // 获取当前学生的实习申请ID（从考勤记录中获取，或从申请列表获取）
+    if (!currentApplyId.value) {
+      // 优先从今天的考勤记录中获取
+      if (todayAttendance.value && todayAttendance.value.applyId) {
+        currentApplyId.value = todayAttendance.value.applyId
+      } else {
+        // 从申请列表获取已录用的申请
+        const applyRes = await applyApi.getApplyPage({
+          current: 1,
+          size: 1,
+          status: 3 // 已录用
+        })
+        if (applyRes.code === 200 && applyRes.data.records && applyRes.data.records.length > 0) {
+          currentApplyId.value = applyRes.data.records[0].applyId
+        }
+      }
+    }
+    
+    if (currentApplyId.value) {
+      const groupRes = await attendanceGroupApi.getGroupByApplyId(currentApplyId.value)
+      if (groupRes.code === 200 && groupRes.data) {
+        attendanceGroup.value = groupRes.data
+        // 如果只有一个时间段，自动选择
+        if (groupRes.data.timeSlots && groupRes.data.timeSlots.length === 1) {
+          selectedTimeSlotId.value = groupRes.data.timeSlots[0].slotId
+        }
+      } else {
+        attendanceGroup.value = null
+      }
+    }
+  } catch (error) {
+    console.error('加载考勤组失败:', error)
+    attendanceGroup.value = null
+  }
+}
+
 // 上班打卡
 const handleCheckIn = async () => {
   try {
-    const res = await attendanceApi.studentCheckIn()
+    // 如果只有一个时间段，使用自动选择的；如果有多个，使用用户选择的
+    const timeSlotId = attendanceGroup.value && attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+      ? attendanceGroup.value.timeSlots[0].slotId
+      : selectedTimeSlotId.value
+    
+    const res = await attendanceApi.studentCheckIn(null, timeSlotId)
     if (res.code === 200) {
       ElMessage.success('上班打卡成功')
+      showCheckInDialog.value = false
+      selectedTimeSlotId.value = null
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
@@ -461,9 +598,16 @@ const handleCheckIn = async () => {
 // 下班打卡
 const handleCheckOut = async () => {
   try {
-    const res = await attendanceApi.studentCheckOut()
+    // 如果只有一个时间段，使用自动选择的；如果有多个，使用用户选择的
+    const timeSlotId = attendanceGroup.value && attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+      ? attendanceGroup.value.timeSlots[0].slotId
+      : selectedTimeSlotId.value
+    
+    const res = await attendanceApi.studentCheckOut(null, timeSlotId)
     if (res.code === 200) {
       ElMessage.success('下班打卡成功')
+      showCheckOutDialog.value = false
+      selectedTimeSlotId.value = null
       await loadTodayAttendance()
       await loadData()
       await loadStatistics()
@@ -582,10 +726,11 @@ const getAttendanceTypeTagType = (type) => {
 }
 
 // 初始化
-onMounted(() => {
-  loadData()
-  loadStatistics()
-  loadTodayAttendance()
+onMounted(async () => {
+  await loadTodayAttendance() // 先加载今天的考勤记录，可能包含applyId
+  await loadAttendanceGroup() // 然后加载考勤组
+  await loadData()
+  await loadStatistics()
 })
 </script>
 

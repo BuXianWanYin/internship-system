@@ -63,6 +63,14 @@
       <el-table-column prop="studentNo" label="学号" min-width="120" />
       <el-table-column prop="enterpriseName" label="企业名称" min-width="150" show-overflow-tooltip />
       <el-table-column prop="postName" label="岗位名称" min-width="150" show-overflow-tooltip />
+      <el-table-column label="考勤组" width="150" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.attendanceGroupName" type="success" size="small">
+            {{ row.attendanceGroupName }}
+          </el-tag>
+          <el-tag v-else type="danger" size="small">未分配</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="120" align="center">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status)" size="small">
@@ -81,9 +89,18 @@
           {{ formatDateTime(row.createTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="250" fixed="right" align="center">
+      <el-table-column label="操作" width="350" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
+          <el-button 
+            link 
+            type="warning" 
+            size="small" 
+            @click="handleAssignAttendanceGroup(row)"
+            v-if="row.applyId && row.status === 3"
+          >
+            分配考勤组
+          </el-button>
           <el-button 
             link 
             type="success" 
@@ -149,7 +166,75 @@
         <el-descriptions-item v-if="detailData.unbindAuditTime" label="解绑时间">
           {{ formatDateTime(detailData.unbindAuditTime) }}
         </el-descriptions-item>
+        <el-descriptions-item label="考勤组">
+          <el-tag v-if="detailData.attendanceGroupName" type="success" size="small">
+            {{ detailData.attendanceGroupName }}
+          </el-tag>
+          <el-tag v-else type="danger" size="small">未分配</el-tag>
+        </el-descriptions-item>
       </el-descriptions>
+    </el-dialog>
+
+    <!-- 分配考勤组对话框 -->
+    <el-dialog
+      v-model="assignGroupDialogVisible"
+      title="分配考勤组"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="assignGroupFormRef"
+        :model="assignGroupForm"
+        :rules="assignGroupFormRules"
+        label-width="120px"
+      >
+        <el-form-item label="学生信息">
+          <div style="padding: 10px; background: #f5f7fa; border-radius: 4px">
+            <div><strong>学生姓名：</strong>{{ currentStudent.studentName }}</div>
+            <div style="margin-top: 5px"><strong>学号：</strong>{{ currentStudent.studentNo }}</div>
+            <div style="margin-top: 5px" v-if="currentStudent.internshipStartDate && currentStudent.internshipEndDate">
+              <strong>实习日期：</strong>{{ formatDate(currentStudent.internshipStartDate) }} 至 {{ formatDate(currentStudent.internshipEndDate) }}
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="选择考勤组" prop="groupId">
+          <el-select
+            v-model="assignGroupForm.groupId"
+            placeholder="请选择考勤组"
+            style="width: 100%"
+            filterable
+          >
+            <el-option
+              v-for="group in attendanceGroupList"
+              :key="group.groupId"
+              :label="`${group.groupName}（${getWorkDaysTypeText(group.workDaysType)}，${group.timeSlotCount || 0}个时间段）`"
+              :value="group.groupId"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="生效开始日期" prop="effectiveStartDate">
+          <el-date-picker
+            v-model="assignGroupForm.effectiveStartDate"
+            type="date"
+            placeholder="选择开始日期"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="生效结束日期" prop="effectiveEndDate">
+          <el-date-picker
+            v-model="assignGroupForm.effectiveEndDate"
+            type="date"
+            placeholder="选择结束日期（可选）"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="assignGroupDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="assignGroupSubmitLoading" @click="handleSubmitAssignGroup">确定</el-button>
+      </template>
     </el-dialog>
 
   </PageLayout>
@@ -157,15 +242,17 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Download } from '@element-plus/icons-vue'
 import { applyApi } from '@/api/internship/apply'
+import { attendanceGroupApi } from '@/api/internship/attendanceGroup'
 import { reportApi } from '@/api/report'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import { exportExcel } from '@/utils/exportUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
+const exportLoading = ref(false)
 const tableData = ref([])
 const searchForm = reactive({
   studentName: '',
@@ -180,6 +267,23 @@ const pagination = reactive({
 
 const detailDialogVisible = ref(false)
 const detailData = ref({})
+
+// 考勤组分配相关
+const assignGroupDialogVisible = ref(false)
+const assignGroupForm = reactive({
+  groupId: null,
+  effectiveStartDate: null,
+  effectiveEndDate: null
+})
+const assignGroupFormRef = ref(null)
+const assignGroupSubmitLoading = ref(false)
+const currentStudent = ref({})
+const attendanceGroupList = ref([])
+
+const assignGroupFormRules = {
+  groupId: [{ required: true, message: '请选择考勤组', trigger: 'change' }],
+  effectiveStartDate: [{ required: true, message: '请选择生效开始日期', trigger: 'change' }]
+}
 
 // 获取状态文本
 const getStatusText = (status) => {
@@ -217,7 +321,22 @@ const loadData = async () => {
       status: searchForm.status !== null ? searchForm.status : undefined
     })
     if (res.code === 200) {
-      tableData.value = res.data.records || []
+      const records = res.data.records || []
+      // 为每个学生加载考勤组信息
+      for (const record of records) {
+        if (record.applyId) {
+          try {
+            const groupRes = await attendanceGroupApi.getGroupByApplyId(record.applyId)
+            if (groupRes.code === 200 && groupRes.data) {
+              record.attendanceGroupName = groupRes.data.groupName
+              record.attendanceGroupId = groupRes.data.groupId
+            }
+          } catch (error) {
+            // 忽略错误，可能学生未分配考勤组
+          }
+        }
+      }
+      tableData.value = records
       pagination.total = res.data.total || 0
     } else {
       ElMessage.error(res.message || '加载数据失败')
@@ -261,6 +380,17 @@ const handleView = async (row) => {
     const res = await applyApi.getApplyById(row.applyId)
     if (res.code === 200) {
       detailData.value = res.data || {}
+      // 加载考勤组信息
+      if (row.applyId) {
+        try {
+          const groupRes = await attendanceGroupApi.getGroupByApplyId(row.applyId)
+          if (groupRes.code === 200 && groupRes.data) {
+            detailData.value.attendanceGroupName = groupRes.data.groupName
+          }
+        } catch (error) {
+          // 忽略错误
+        }
+      }
       detailDialogVisible.value = true
     } else {
       ElMessage.error(res.message || '获取详情失败')
@@ -269,6 +399,72 @@ const handleView = async (row) => {
     console.error('获取详情失败:', error)
     ElMessage.error(error.response?.data?.message || '获取详情失败')
   }
+}
+
+// 分配考勤组
+const handleAssignAttendanceGroup = async (row) => {
+  currentStudent.value = row
+  try {
+    // 加载可用的考勤组列表（只显示已启用的）
+    const groupRes = await attendanceGroupApi.getAttendanceGroupPage({
+      current: 1,
+      size: 1000
+    })
+    if (groupRes.code === 200) {
+      attendanceGroupList.value = (groupRes.data.records || []).filter(g => g.status === 1)
+      if (attendanceGroupList.value.length === 0) {
+        ElMessage.warning('暂无可用的考勤组，请先创建考勤组')
+        return
+      }
+      
+      // 设置默认值
+      assignGroupForm.groupId = row.attendanceGroupId || null
+      assignGroupForm.effectiveStartDate = row.internshipStartDate || null
+      assignGroupForm.effectiveEndDate = row.internshipEndDate || null
+      
+      assignGroupDialogVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('加载考勤组列表失败：' + (error.message || '未知错误'))
+  }
+}
+
+// 提交分配考勤组
+const handleSubmitAssignGroup = async () => {
+  if (!assignGroupFormRef.value) return
+  await assignGroupFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    assignGroupSubmitLoading.value = true
+    try {
+      const res = await attendanceGroupApi.assignStudentToGroup(
+        assignGroupForm.groupId,
+        currentStudent.value.applyId,
+        assignGroupForm.effectiveStartDate,
+        assignGroupForm.effectiveEndDate || null
+      )
+      if (res.code === 200) {
+        ElMessage.success('分配成功')
+        assignGroupDialogVisible.value = false
+        loadData() // 重新加载数据
+      }
+    } catch (error) {
+      ElMessage.error('分配失败：' + (error.message || '未知错误'))
+    } finally {
+      assignGroupSubmitLoading.value = false
+    }
+  })
+}
+
+// 获取工作日类型文本
+const getWorkDaysTypeText = (type) => {
+  const map = {
+    1: '周一到周五',
+    2: '周一到周六',
+    3: '周一到周日',
+    4: '自定义'
+  }
+  return map[type] || '-'
 }
 
 // 导出学生列表
