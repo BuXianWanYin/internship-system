@@ -7,12 +7,12 @@
         <el-descriptions-item label="学号">{{ student?.studentNo || '-' }}</el-descriptions-item>
         <el-descriptions-item label="企业名称">{{ student?.enterpriseName || '-' }}</el-descriptions-item>
         <el-descriptions-item label="实习时间">
-          {{ formatDate(student?.startDate) }} 至 {{ formatDate(student?.endDate) }}
+          {{ formatDate(student?.internshipStartDate || student?.startDate) }} 至 {{ formatDate(student?.internshipEndDate || student?.endDate) }}
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
 
-    <!-- 参考信息（可折叠） -->
+    <!-- 参考信息（Tab标签切换） -->
     <el-card class="reference-info-card" shadow="never" style="margin-top: 15px;">
       <template #header>
         <div class="card-header">
@@ -20,40 +20,132 @@
           <el-button link type="primary" size="small" @click="loadSuggestedScore">一键填入建议分数</el-button>
         </div>
       </template>
-      <el-collapse v-model="activeCollapse">
-        <el-collapse-item title="日志周报情况" name="logs">
-          <div v-if="referenceInfo.logs.length > 0">
+      <el-tabs v-model="activeReferenceTab" type="border-card">
+        <!-- 日志周报情况 -->
+        <el-tab-pane label="日志周报情况" name="logs">
+          <div v-if="referenceInfo.logs.length > 0" style="padding: 10px 0;">
             <p>日志：已提交{{ referenceInfo.logs.length }}篇</p>
             <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.logs) }}分</p>
             <el-button link type="primary" size="small" @click="viewLogs">查看日志列表</el-button>
+            <!-- 日志列表 -->
+            <el-table :data="referenceInfo.logs" border style="margin-top: 10px" max-height="300">
+              <el-table-column prop="logTitle" label="日志标题" min-width="200" />
+              <el-table-column prop="logDate" label="日期" width="120">
+                <template #default="{ row }">
+                  {{ formatDate(row.logDate) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+                <template #default="{ row }">
+                  {{ row.reviewScore || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+                  <el-tag v-else type="warning" size="small">未批阅</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-          <div v-else style="color: #909399;">暂无日志数据</div>
-        </el-collapse-item>
-        <el-collapse-item title="周报情况" name="reports">
-          <div v-if="referenceInfo.reports.length > 0">
+          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无日志数据</div>
+        </el-tab-pane>
+        
+        <!-- 周报情况 -->
+        <el-tab-pane label="周报情况" name="reports">
+          <div v-if="referenceInfo.reports.length > 0" style="padding: 10px 0;">
             <p>周报：已提交{{ referenceInfo.reports.length }}篇</p>
             <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.reports) }}分</p>
             <el-button link type="primary" size="small" @click="viewReports">查看周报列表</el-button>
+            <!-- 周报列表 -->
+            <el-table :data="referenceInfo.reports" border style="margin-top: 10px" max-height="300">
+              <el-table-column prop="reportTitle" label="周报标题" min-width="200" />
+              <el-table-column prop="reportWeek" label="周次" width="100" align="center" />
+              <el-table-column prop="reportDate" label="日期" width="120">
+                <template #default="{ row }">
+                  {{ formatDate(row.reportDate) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+                <template #default="{ row }">
+                  {{ row.reviewScore || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+                  <el-tag v-else type="warning" size="small">未批阅</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-          <div v-else style="color: #909399;">暂无周报数据</div>
-        </el-collapse-item>
-        <el-collapse-item title="阶段性成果" name="achievements">
-          <div v-if="referenceInfo.achievements.length > 0">
+          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无周报数据</div>
+        </el-tab-pane>
+        
+        <!-- 阶段性成果 -->
+        <el-tab-pane label="阶段性成果" name="achievements">
+          <div v-if="referenceInfo.achievements.length > 0" style="padding: 10px 0;">
             <p>已提交{{ referenceInfo.achievements.length }}个成果</p>
             <el-button link type="primary" size="small" @click="viewAchievements">查看成果列表</el-button>
+            <!-- 成果列表 -->
+            <el-table :data="referenceInfo.achievements" border style="margin-top: 10px" max-height="300">
+              <el-table-column prop="achievementTitle" label="成果标题" min-width="200" />
+              <el-table-column prop="achievementType" label="成果类型" width="120" />
+              <el-table-column prop="submitTime" label="提交时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.submitTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="reviewStatus" label="审核状态" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已通过</el-tag>
+                  <el-tag v-else-if="row.reviewStatus === 2" type="danger" size="small">已拒绝</el-tag>
+                  <el-tag v-else type="warning" size="small">待审核</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-          <div v-else style="color: #909399;">暂无成果数据</div>
-        </el-collapse-item>
-        <el-collapse-item title="考勤记录" name="attendance">
-          <div v-if="referenceInfo.attendance">
-            <p>出勤率：{{ referenceInfo.attendance.attendanceRate }}%</p>
-            <p>迟到：{{ referenceInfo.attendance.lateCount }}次</p>
-            <p>请假：{{ referenceInfo.attendance.leaveCount }}次</p>
+          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无成果数据</div>
+        </el-tab-pane>
+        
+        <!-- 考勤记录 -->
+        <el-tab-pane label="考勤记录" name="attendance">
+          <div v-if="referenceInfo.attendance" style="padding: 10px 0;">
+            <p>出勤率：{{ referenceInfo.attendance.attendanceRate || 0 }}%</p>
+            <p>迟到：{{ referenceInfo.attendance.lateCount || 0 }}次</p>
+            <p>请假：{{ referenceInfo.attendance.leaveCount || 0 }}次</p>
             <el-button link type="primary" size="small" @click="viewAttendance">查看考勤记录</el-button>
+            <!-- 考勤记录列表 -->
+            <el-table v-if="referenceInfo.attendanceRecords && referenceInfo.attendanceRecords.length > 0" 
+                      :data="referenceInfo.attendanceRecords" border style="margin-top: 10px" max-height="300">
+              <el-table-column prop="attendanceDate" label="日期" width="120">
+                <template #default="{ row }">
+                  {{ formatDate(row.attendanceDate) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="attendanceStatus" label="状态" width="100" align="center">
+                <template #default="{ row }">
+                  <el-tag v-if="row.attendanceStatus === 1" type="success" size="small">正常</el-tag>
+                  <el-tag v-else-if="row.attendanceStatus === 2" type="warning" size="small">迟到</el-tag>
+                  <el-tag v-else-if="row.attendanceStatus === 3" type="info" size="small">请假</el-tag>
+                  <el-tag v-else type="danger" size="small">缺勤</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="checkInTime" label="签到时间" width="180">
+                <template #default="{ row }">
+                  {{ row.checkInTime ? formatDateTime(row.checkInTime) : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="checkOutTime" label="签退时间" width="180">
+                <template #default="{ row }">
+                  {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
-          <div v-else style="color: #909399;">暂无考勤数据</div>
-        </el-collapse-item>
-      </el-collapse>
+          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤数据</div>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <!-- 评价表单 -->
@@ -143,7 +235,11 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { schoolEvaluationApi } from '@/api/evaluation/school'
-import { formatDate } from '@/utils/dateUtils'
+import { logApi } from '@/api/internship/log'
+import { weeklyReportApi } from '@/api/internship/weeklyReport'
+import { achievementApi } from '@/api/internship/achievement'
+import { attendanceApi } from '@/api/internship/attendance'
+import { formatDate, formatDateTime } from '@/utils/dateUtils'
 
 const props = defineProps({
   student: {
@@ -161,7 +257,7 @@ const emit = defineEmits(['save', 'submit'])
 const formRef = ref(null)
 const saving = ref(false)
 const submitting = ref(false)
-const activeCollapse = ref([])
+const activeReferenceTab = ref('logs')
 
 const formData = reactive({
   evaluationId: null,
@@ -193,7 +289,8 @@ const referenceInfo = reactive({
   logs: [],
   reports: [],
   achievements: [],
-  attendance: null
+  attendance: null,
+  attendanceRecords: []
 })
 
 // 加载参考信息
@@ -201,8 +298,70 @@ const loadReferenceInfo = async () => {
   if (!props.student || !props.student.applyId) return
   
   try {
-    // TODO: 加载日志、周报、成果、考勤数据
-    // 这里需要调用相应的API
+    const applyId = props.student.applyId
+    const studentId = props.student.studentId
+    
+    // 并行加载所有参考信息
+    const [logsRes, reportsRes, achievementsRes, attendanceData] = await Promise.all([
+      // 加载日志列表
+      logApi.getLogPage({ 
+        current: 1, 
+        size: 1000, 
+        applyId: applyId 
+      }).catch(() => ({ code: 200, data: { records: [] } })),
+      
+      // 加载周报列表
+      weeklyReportApi.getReportPage({ 
+        current: 1, 
+        size: 1000, 
+        applyId: applyId 
+      }).catch(() => ({ code: 200, data: { records: [] } })),
+      
+      // 加载成果列表
+      achievementApi.getAchievementPage({ 
+        current: 1, 
+        size: 1000, 
+        applyId: applyId 
+      }).catch(() => ({ code: 200, data: { records: [] } })),
+      
+      // 加载考勤统计和考勤记录
+      Promise.all([
+        attendanceApi.getAttendanceStatistics({ 
+          applyId: applyId 
+        }).catch(() => ({ code: 200, data: null })),
+        attendanceApi.getAttendancePage({ 
+          current: 1, 
+          size: 1000, 
+          applyId: applyId 
+        }).catch(() => ({ code: 200, data: { records: [] } }))
+      ])
+    ])
+    
+    // 更新日志数据
+    if (logsRes.code === 200 && logsRes.data && logsRes.data.records) {
+      referenceInfo.logs = logsRes.data.records
+    }
+    
+    // 更新周报数据
+    if (reportsRes.code === 200 && reportsRes.data && reportsRes.data.records) {
+      referenceInfo.reports = reportsRes.data.records
+    }
+    
+    // 更新成果数据
+    if (achievementsRes.code === 200 && achievementsRes.data && achievementsRes.data.records) {
+      referenceInfo.achievements = achievementsRes.data.records
+    }
+    
+    // 更新考勤数据
+    if (attendanceData && attendanceData.length === 2) {
+      const [attendanceStatsRes, attendanceRecordsRes] = attendanceData
+      if (attendanceStatsRes.code === 200 && attendanceStatsRes.data) {
+        referenceInfo.attendance = attendanceStatsRes.data
+      }
+      if (attendanceRecordsRes.code === 200 && attendanceRecordsRes.data && attendanceRecordsRes.data.records) {
+        referenceInfo.attendanceRecords = attendanceRecordsRes.data.records
+      }
+    }
   } catch (error) {
     console.error('加载参考信息失败:', error)
   }

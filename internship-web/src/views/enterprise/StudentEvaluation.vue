@@ -45,7 +45,7 @@
       <el-table-column prop="enterpriseName" label="企业" min-width="200" show-overflow-tooltip />
       <el-table-column label="实习时间" width="200">
         <template #default="{ row }">
-          {{ formatDate(row.startDate) }} 至 {{ formatDate(row.endDate) }}
+          {{ formatDate(row.internshipStartDate || row.startDate) }} 至 {{ formatDate(row.internshipEndDate || row.endDate) }}
         </template>
       </el-table-column>
       <el-table-column prop="evaluationStatus" label="状态" width="100" align="center">
@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
@@ -190,7 +190,6 @@ import { enterpriseEvaluationApi } from '@/api/evaluation/enterprise'
 import { applyApi } from '@/api/internship/apply'
 import { formatDate } from '@/utils/dateUtils'
 import { hasAnyRole } from '@/utils/permission'
-import { computed } from 'vue'
 import { isInternshipCompleted, isUnbound, getUnbindStatusText, getUnbindStatusType } from '@/utils/statusUtils'
 
 // 根据角色动态显示页面标题
@@ -208,6 +207,38 @@ const evaluationDialogVisible = ref(false)
 const evaluationDialogTitle = ref('企业评价')
 const currentStudent = ref(null)
 const currentEvaluation = ref(null)
+
+// 结束实习相关
+const completeDialogVisible = ref(false)
+const completeFormRef = ref(null)
+const currentCompleteApply = ref({})
+const completeLoading = ref(false)
+
+const completeForm = reactive({
+  endDate: null,
+  remark: ''
+})
+
+const completeFormRules = {
+  endDate: [
+    {
+      validator: (rule, value, callback) => {
+        if (value) {
+          const endDate = new Date(value)
+          const startDate = currentCompleteApply.value.internshipStartDate || currentCompleteApply.value.startDate
+          if (startDate && endDate < new Date(startDate)) {
+            callback(new Error('实习结束日期不能早于开始日期'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
+}
 
 const searchForm = reactive({
   studentName: '',
@@ -235,7 +266,13 @@ const loadData = async () => {
     
     const res = await enterpriseEvaluationApi.getEvaluationPage(params)
     if (res.code === 200) {
-      tableData.value = res.data.records || []
+      const records = res.data.records || []
+      // 确保每条记录都有实习时间字段
+      tableData.value = records.map(item => ({
+        ...item,
+        startDate: item.internshipStartDate || item.startDate,
+        endDate: item.internshipEndDate || item.endDate
+      }))
       pagination.total = res.data.total || 0
       
       // 如果没有评价记录，从申请列表加载
@@ -268,8 +305,8 @@ const loadStudentList = async () => {
         studentName: item.studentName,
         enterpriseId: item.enterpriseId, // 确保包含企业ID
         enterpriseName: item.enterpriseName,
-        startDate: item.internshipStartDate,
-        endDate: item.internshipEndDate,
+        startDate: item.internshipStartDate || item.startDate,
+        endDate: item.internshipEndDate || item.endDate,
         evaluationStatus: null
       }))
       
@@ -410,6 +447,61 @@ const handleSizeChange = (size) => {
 const handlePageChange = (page) => {
   pagination.current = page
   loadData()
+}
+
+// 判断是否可以标记为结束
+const canMarkAsCompleted = (row) => {
+  if (!row) return false
+  // 不能标记已删除的
+  if (row.deleteFlag === 1) return false
+  // 不能标记已解绑的
+  if (row.unbindStatus === 2) return false
+  // 不能标记已结束的
+  if (isInternshipCompleted(row)) return false
+  // 只有合作企业的实习才能标记（企业评价页面只显示合作企业）
+  if (row.applyType !== 1) return false
+  // 只有已录用状态才能标记
+  if (row.status !== 3) return false
+  return true
+}
+
+// 处理结束实习
+const handleMarkAsCompleted = (row) => {
+  currentCompleteApply.value = { ...row }
+  completeForm.endDate = null
+  completeForm.remark = ''
+  completeDialogVisible.value = true
+}
+
+// 提交结束实习
+const handleSubmitComplete = async () => {
+  if (!completeFormRef.value) return
+  
+  try {
+    await completeFormRef.value.validate()
+    
+    completeLoading.value = true
+    try {
+      const res = await applyApi.completeInternship(
+        currentCompleteApply.value.applyId,
+        completeForm.endDate,
+        completeForm.remark
+      )
+      if (res.code === 200) {
+        ElMessage.success('结束实习成功')
+        completeDialogVisible.value = false
+        // 刷新列表
+        await loadData()
+      }
+    } catch (error) {
+      console.error('结束实习失败:', error)
+      ElMessage.error(error.response?.data?.message || '结束实习失败')
+    } finally {
+      completeLoading.value = false
+    }
+  } catch (error) {
+    // 表单验证失败
+  }
 }
 
 onMounted(() => {

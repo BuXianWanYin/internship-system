@@ -119,5 +119,15 @@ public class EnterpriseEvaluation implements Serializable {
     @ApiModelProperty(value = "评价人姓名")
     @TableField(exist = false)
     private String evaluatorName;
+    
+    @ApiModelProperty(value = "实习开始日期")
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private java.time.LocalDate internshipStartDate;
+    
+    @ApiModelProperty(value = "实习结束日期")
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private java.time.LocalDate internshipEndDate;
 }
 

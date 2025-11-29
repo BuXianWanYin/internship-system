@@ -451,6 +451,7 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         fillStudentInfo(evaluation);
         fillEnterpriseInfo(evaluation);
         fillEvaluatorInfo(evaluation);
+        fillInternshipDateInfo(evaluation);
     }
     
     /**
@@ -505,6 +506,23 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
         }
         
         evaluation.setEvaluatorName(evaluator.getRealName());
+    }
+    
+    /**
+     * 填充实习时间信息
+     */
+    private void fillInternshipDateInfo(EnterpriseEvaluation evaluation) {
+        if (evaluation.getApplyId() == null) {
+            return;
+        }
+        
+        InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
+        if (apply == null) {
+            return;
+        }
+        
+        evaluation.setInternshipStartDate(apply.getInternshipStartDate());
+        evaluation.setInternshipEndDate(apply.getInternshipEndDate());
     }
     
     /**

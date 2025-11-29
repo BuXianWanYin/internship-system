@@ -778,9 +778,10 @@ const getStatusText = (status, applyType) => {
     2: '已拒绝',
     3: '已录用',
     4: '已拒绝录用',
-    5: '已取消'
+    5: '已取消',
+    7: '实习结束'
   }
-  return statusMap[status] || '未知'
+  return statusMap[status] || '未知状态'
 }
 
 // 获取状态类型（根据状态文本动态判断颜色）
