@@ -2,7 +2,7 @@
   <PageLayout title="实习计划管理">
     <template #actions>
       <el-button 
-        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+        v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
         type="primary" 
         :icon="Plus" 
         @click="handleAdd"
@@ -181,7 +181,7 @@
             查看
           </el-button>
           <el-button
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) || (hasAnyRole(['ROLE_COLLEGE_LEADER']) && canEditPlan(row))"
             link
             type="primary"
             size="small"
@@ -190,7 +190,7 @@
             编辑
           </el-button>
           <el-button
-            v-if="row.status === 0 && hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="row.status === 0 && (hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) || (hasAnyRole(['ROLE_COLLEGE_LEADER']) && canEditPlan(row)))"
             link
             type="warning"
             size="small"
@@ -199,7 +199,7 @@
             发布
           </el-button>
           <el-button
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])"
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) || (hasAnyRole(['ROLE_COLLEGE_LEADER']) && canEditPlan(row))"
             link
             type="danger"
             size="small"
@@ -286,7 +286,11 @@
                 style="width: 100%"
                 @change="handlePlanScopeChange"
               >
-                <el-option label="全校计划" value="school" />
+                <el-option 
+                  v-if="!hasAnyRole(['ROLE_COLLEGE_LEADER'])" 
+                  label="全校计划" 
+                  value="school" 
+                />
                 <el-option label="学院计划" value="college" />
                 <el-option label="专业计划" value="major" />
               </el-select>
@@ -298,6 +302,7 @@
                 v-model="formData.schoolId"
                 placeholder="请选择学校"
                 style="width: 100%"
+                :disabled="isSchoolDisabled"
                 @change="handleFormSchoolChange"
               >
                 <el-option
@@ -321,7 +326,7 @@
                 v-model="formData.collegeId"
                 placeholder="请选择学院"
                 style="width: 100%"
-                :disabled="!formData.schoolId"
+                :disabled="isCollegeDisabled || !formData.schoolId"
                 @change="handleFormCollegeChange"
               >
                 <el-option
@@ -467,6 +472,7 @@ import PageLayout from '@/components/common/PageLayout.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const exportLoading = ref(false)
 const dialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 const dialogTitle = ref('创建实习计划')
@@ -510,6 +516,15 @@ const isSchoolDisabled = computed(() => {
 const isCollegeDisabled = computed(() => {
   return hasAnyRole(['ROLE_COLLEGE_LEADER'])
 })
+
+// 判断学院负责人是否可以编辑该计划（只能编辑自己学院的计划）
+const canEditPlan = (row) => {
+  if (!hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    return false
+  }
+  // 学院负责人只能编辑自己学院的计划（学院计划或专业计划）
+  return row.collegeId === currentOrgInfo.value.collegeId
+}
 
 const formData = reactive({
   planId: null,
@@ -753,11 +768,32 @@ const handleFormCollegeChange = () => {
 const handleAdd = () => {
   dialogTitle.value = '创建实习计划'
   resetFormData()
+  
+  // 学院负责人：自动设置学校和学院，并限制只能创建学院计划或专业计划
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    if (currentOrgInfo.value.schoolId) {
+      formData.schoolId = currentOrgInfo.value.schoolId
+      // 加载该学校的学院列表
+      loadCollegeList(currentOrgInfo.value.schoolId)
+    }
+    if (currentOrgInfo.value.collegeId) {
+      formData.collegeId = currentOrgInfo.value.collegeId
+      // 加载该学院的专业列表
+      loadMajorList(currentOrgInfo.value.collegeId)
+    }
+  }
+  
   dialogVisible.value = true
 }
 
 // 编辑
 const handleEdit = (row) => {
+  // 学院负责人只能编辑自己学院的计划
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER']) && !canEditPlan(row)) {
+    ElMessage.error('只能编辑本学院的实习计划')
+    return
+  }
+  
   dialogTitle.value = '编辑实习计划'
   
   // 根据现有数据判断计划范围
@@ -813,6 +849,12 @@ const handleView = async (row) => {
 
 // 发布
 const handlePublish = async (row) => {
+  // 学院负责人只能发布自己学院的计划
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER']) && !canEditPlan(row)) {
+    ElMessage.error('只能发布本学院的实习计划')
+    return
+  }
+  
   try {
     await ElMessageBox.confirm('确定要发布该实习计划吗？', '提示', {
       type: 'warning'
@@ -832,6 +874,12 @@ const handlePublish = async (row) => {
 
 // 删除
 const handleDelete = async (row) => {
+  // 学院负责人只能删除自己学院的计划
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER']) && !canEditPlan(row)) {
+    ElMessage.error('只能删除本学院的实习计划')
+    return
+  }
+  
   try {
     await ElMessageBox.confirm('确定要删除该实习计划吗？', '提示', {
       type: 'warning'
@@ -854,6 +902,19 @@ const handleSubmitForm = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      // 学院负责人只能创建学院计划或专业计划
+      if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+        if (formData.planScope === 'school') {
+          ElMessage.error('学院负责人只能创建学院计划或专业计划')
+          return
+        }
+        // 确保学院负责人只能选择自己学院的计划
+        if (formData.collegeId !== currentOrgInfo.value.collegeId) {
+          ElMessage.error('只能创建本学院的实习计划')
+          return
+        }
+      }
+      
       // 根据计划范围设置字段值
       const submitData = { ...formData }
       
@@ -895,14 +956,22 @@ const handleSubmitForm = async () => {
 
 // 重置表单数据
 const resetFormData = () => {
+  // 学院负责人：保持学校和学院信息
+  const schoolId = hasAnyRole(['ROLE_COLLEGE_LEADER']) && currentOrgInfo.value.schoolId 
+    ? currentOrgInfo.value.schoolId 
+    : null
+  const collegeId = hasAnyRole(['ROLE_COLLEGE_LEADER']) && currentOrgInfo.value.collegeId 
+    ? currentOrgInfo.value.collegeId 
+    : null
+    
   Object.assign(formData, {
     planId: null,
     planName: '',
     planCode: '',
     semesterId: null,
     planScope: '',
-    schoolId: null,
-    collegeId: null,
+    schoolId: schoolId,
+    collegeId: collegeId,
     majorId: null,
     planType: '',
     startDate: '',
@@ -912,8 +981,20 @@ const resetFormData = () => {
     assessmentStandards: '',
     status: 0
   })
-  collegeList.value = []
-  majorList.value = []
+  
+  // 如果学院负责人，需要加载相关列表
+  if (hasAnyRole(['ROLE_COLLEGE_LEADER'])) {
+    if (schoolId) {
+      loadCollegeList(schoolId)
+    }
+    if (collegeId) {
+      loadMajorList(collegeId)
+    }
+  } else {
+    collegeList.value = []
+    majorList.value = []
+  }
+  
   if (formRef.value) {
     formRef.value.clearValidate()
   }

@@ -274,18 +274,26 @@ export const menuItems = [
     ]
   },
   
+  // ========== 实习计划管理（学院负责人主菜单） ==========
+  {
+    index: '/admin/internship/plan',
+    title: '实习计划管理',
+    icon: Document,
+    roles: ['ROLE_COLLEGE_LEADER']
+  },
+  
   // ========== 实习管理（管理员） ==========
   {
     index: 'internship-admin',
     title: '实习管理',
     icon: Document,
-    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'],
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_CLASS_TEACHER'],
     children: [
       {
         index: '/admin/internship/plan',
         title: '实习计划管理',
         icon: Document,
-        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
       },
       {
         index: '/admin/internship/apply/audit',
