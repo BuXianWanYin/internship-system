@@ -79,7 +79,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.feedbackStatus === 0 || row.feedbackStatus === 1"
+            v-if="(row.feedbackStatus === 0 || row.feedbackStatus === 1) && canReview(row)"
             link
             type="success"
             size="small"
@@ -149,7 +149,7 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.feedbackStatus === 0 || detailData.feedbackStatus === 1"
+          v-if="(detailData.feedbackStatus === 0 || detailData.feedbackStatus === 1) && canReview(detailData)"
           type="primary"
           @click="handleReplyFromDetail"
         >
@@ -202,6 +202,7 @@ import { Search, Refresh } from '@element-plus/icons-vue'
 import { feedbackApi } from '@/api/internship/feedback'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const replyLoading = ref(false)
@@ -337,6 +338,28 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   loadData()
+}
+
+// 判断是否可以回复反馈
+const canReview = (row) => {
+  const authStore = useAuthStore()
+  const roles = authStore.roles || []
+  
+  // 系统管理员和学校管理员可以回复所有
+  if (roles.includes('ROLE_SYSTEM_ADMIN') || roles.includes('ROLE_SCHOOL_ADMIN')) {
+    return true
+  }
+  
+  // 根据申请类型判断
+  if (row.applyType === 1) {
+    // 合作企业实习：企业导师可以回复
+    return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
+  } else if (row.applyType === 2) {
+    // 自主实习：班主任可以回复
+    return roles.includes('ROLE_CLASS_TEACHER')
+  }
+  
+  return false
 }
 
 // 获取反馈类型文本

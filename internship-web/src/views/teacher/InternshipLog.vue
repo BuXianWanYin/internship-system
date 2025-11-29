@@ -100,7 +100,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.reviewStatus === 0"
+            v-if="row.reviewStatus === 0 && canReview(row)"
             link
             type="success"
             size="small"
@@ -191,7 +191,7 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.reviewStatus === 0"
+          v-if="detailData.reviewStatus === 0 && canReview(detailData)"
           type="primary"
           @click="handleReviewFromDetail"
         >
@@ -255,6 +255,7 @@ import { logApi } from '@/api/internship/log'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const reviewLoading = ref(false)
@@ -400,6 +401,28 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   loadData()
+}
+
+// 判断是否可以批阅日志
+const canReview = (row) => {
+  const authStore = useAuthStore()
+  const roles = authStore.roles || []
+  
+  // 系统管理员和学校管理员可以批阅所有
+  if (roles.includes('ROLE_SYSTEM_ADMIN') || roles.includes('ROLE_SCHOOL_ADMIN')) {
+    return true
+  }
+  
+  // 根据申请类型判断
+  if (row.applyType === 1) {
+    // 合作企业实习：企业导师可以批阅
+    return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
+  } else if (row.applyType === 2) {
+    // 自主实习：班主任可以批阅
+    return roles.includes('ROLE_CLASS_TEACHER')
+  }
+  
+  return false
 }
 
 // 获取内容预览（用于表格显示，去除HTML标签，只显示纯文本）

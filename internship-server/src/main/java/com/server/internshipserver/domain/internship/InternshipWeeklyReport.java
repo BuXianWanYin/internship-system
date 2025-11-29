@@ -129,5 +129,9 @@ public class InternshipWeeklyReport implements Serializable {
     @TableField(exist = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate weekEndDate;
+    
+    @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
+    @TableField(exist = false)
+    private Integer applyType;
 }
 

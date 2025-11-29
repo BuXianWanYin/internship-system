@@ -107,5 +107,9 @@ public class InternshipFeedback implements Serializable {
     @ApiModelProperty(value = "企业名称")
     @TableField(exist = false)
     private String enterpriseName;
+    
+    @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
+    @TableField(exist = false)
+    private Integer applyType;
 }
 

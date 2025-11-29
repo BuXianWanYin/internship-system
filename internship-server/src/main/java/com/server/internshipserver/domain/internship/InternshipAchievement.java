@@ -108,5 +108,9 @@ public class InternshipAchievement implements Serializable {
     @ApiModelProperty(value = "成果标题（用于显示）")
     @TableField(exist = false)
     private String achievementTitle;
+    
+    @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
+    @TableField(exist = false)
+    private Integer applyType;
 }
 

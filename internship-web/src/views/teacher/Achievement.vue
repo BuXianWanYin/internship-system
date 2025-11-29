@@ -185,14 +185,14 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.reviewStatus === 0"
+          v-if="detailData.reviewStatus === 0 && canReview(detailData)"
           type="success"
           @click="handleReviewFromDetail(1)"
         >
           通过
         </el-button>
         <el-button
-          v-if="detailData.reviewStatus === 0"
+          v-if="detailData.reviewStatus === 0 && canReview(detailData)"
           type="danger"
           @click="handleReviewFromDetail(2)"
         >
@@ -246,6 +246,7 @@ import { achievementApi } from '@/api/internship/achievement'
 import { fileApi } from '@/api/common/file'
 import { formatDateTime } from '@/utils/dateUtils'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { useAuthStore } from '@/store/modules/auth'
 
 const loading = ref(false)
 const reviewLoading = ref(false)
@@ -401,6 +402,28 @@ const handleSizeChange = () => {
 
 const handlePageChange = () => {
   loadData()
+}
+
+// 判断是否可以审核成果
+const canReview = (row) => {
+  const authStore = useAuthStore()
+  const roles = authStore.roles || []
+  
+  // 系统管理员和学校管理员可以审核所有
+  if (roles.includes('ROLE_SYSTEM_ADMIN') || roles.includes('ROLE_SCHOOL_ADMIN')) {
+    return true
+  }
+  
+  // 根据申请类型判断
+  if (row.applyType === 1) {
+    // 合作企业实习：企业导师可以审核
+    return roles.includes('ROLE_ENTERPRISE_MENTOR') || roles.includes('ROLE_ENTERPRISE_ADMIN')
+  } else if (row.applyType === 2) {
+    // 自主实习：班主任可以审核
+    return roles.includes('ROLE_CLASS_TEACHER')
+  }
+  
+  return false
 }
 
 // 获取成果类型文本（直接返回字符串，如果为空则返回'-'）

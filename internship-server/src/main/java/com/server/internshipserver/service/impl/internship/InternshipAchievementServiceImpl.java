@@ -453,10 +453,11 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             }
         }
         
-        // 填充企业信息
+        // 填充企业信息和申请类型
         if (achievement.getApplyId() != null) {
             InternshipApply apply = internshipApplyMapper.selectById(achievement.getApplyId());
             if (apply != null) {
+                achievement.setApplyType(apply.getApplyType());
                 if (apply.getEnterpriseId() != null) {
                     // 合作企业申请，从企业表获取企业信息
                     Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());

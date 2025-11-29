@@ -482,10 +482,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             }
         }
         
-        // 填充企业信息和日期信息
+        // 填充企业信息、日期信息和申请类型
         if (report.getApplyId() != null) {
             InternshipApply apply = internshipApplyMapper.selectById(report.getApplyId());
             if (apply != null) {
+                report.setApplyType(apply.getApplyType());
                 if (apply.getEnterpriseId() != null) {
                     // 合作企业申请，从企业表获取企业信息
                     Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
