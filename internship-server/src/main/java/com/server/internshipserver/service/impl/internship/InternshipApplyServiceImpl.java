@@ -935,14 +935,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return;
         }
         
-        // 判断是否审核通过：APPROVED（已通过）、ACCEPTED（已录用）、REJECTED_ACCEPTANCE（已拒绝录用）都表示审核通过
-        // 只有REJECTED（已拒绝）表示审核被拒绝
+        // 判断是否审核通过：
+        // 对于自主实习，使用SelfInternshipApplyStatus枚举
+        // 只有REJECTED(12)表示学校审核被拒绝
+        // 其他状态（IN_PROGRESS、COMPLETED等）都表示学校审核通过
         Integer status = apply.getStatus();
-        boolean isApproved = status != null && (
-                status.equals(InternshipApplyStatus.APPROVED.getCode()) ||
-                status.equals(InternshipApplyStatus.ACCEPTED.getCode()) ||
-                status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())
-        );
+        boolean isRejected = status != null && status.equals(SelfInternshipApplyStatus.REJECTED.getCode());
+        boolean isApproved = !isRejected;
+        
         String actionName = isApproved ? "学校审核通过" : "学校审核拒绝";
         String description = apply.getAuditOpinion() != null 
                 ? apply.getAuditOpinion() 
@@ -966,14 +966,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return;
         }
         
-        // 判断是否审核通过：APPROVED（已通过）、ACCEPTED（已录用）、REJECTED_ACCEPTANCE（已拒绝录用）都表示审核通过
-        // 只有REJECTED（已拒绝）表示审核被拒绝
+        // 判断是否审核通过：
+        // 只有REJECTED(2)表示学校审核被拒绝
+        // 其他状态（APPROVED、ACCEPTED、COMPLETED、EVALUATED等）都表示学校审核通过
+        // REJECTED_ACCEPTANCE(4)是企业拒绝录用，不是学校审核拒绝，学校审核应该是通过的
         Integer status = apply.getStatus();
-        boolean isApproved = status != null && (
-                status.equals(InternshipApplyStatus.APPROVED.getCode()) ||
-                status.equals(InternshipApplyStatus.ACCEPTED.getCode()) ||
-                status.equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())
-        );
+        boolean isRejected = status != null && status.equals(InternshipApplyStatus.REJECTED.getCode());
+        boolean isApproved = !isRejected;
+        
         String actionName = isApproved ? "学校审核通过" : "学校审核拒绝";
         String description = apply.getAuditOpinion() != null 
                 ? apply.getAuditOpinion() 
