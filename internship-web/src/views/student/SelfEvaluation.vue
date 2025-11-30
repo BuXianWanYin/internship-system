@@ -29,6 +29,7 @@
           <el-form-item label="自我反思和总结" prop="reflectionSummary">
             <RichTextEditor
               v-model="formData.reflectionSummary"
+              :disabled="isSubmitted"
               placeholder="请填写：&#10;1. 实习期间的主要工作内容和收获&#10;2. 遇到的困难和解决方法&#10;3. 对实习过程的反思和总结&#10;4. 未来的职业规划"
               :height="'400px'"
             />
@@ -41,6 +42,7 @@
               :max="100"
               :precision="2"
               :controls="false"
+              :disabled="isSubmitted"
               placeholder="请输入分数（0-100）"
               style="width: 100%"
             />
@@ -50,11 +52,19 @@
           </el-form-item>
 
           <el-form-item>
-            <el-button type="primary" :loading="saving" @click="handleSaveDraft">保存草稿</el-button>
-            <el-button type="success" :loading="submitting" @click="handleSubmit">提交自评</el-button>
-            <el-button v-if="evaluation && evaluation.evaluationStatus === 1" disabled>
-              已提交（提交后7天内可修改）
-            </el-button>
+            <el-button type="primary" :loading="saving" :disabled="isSubmitted" @click="handleSaveDraft">保存草稿</el-button>
+            <el-button type="success" :loading="submitting" :disabled="isSubmitted" @click="handleSubmit">提交自评</el-button>
+            <el-alert
+              v-if="isSubmitted"
+              type="success"
+              :closable="false"
+              show-icon
+              style="margin-top: 10px"
+            >
+              <template #title>
+                <span>评价已提交，无法修改</span>
+              </template>
+            </el-alert>
           </el-form-item>
         </el-form>
       </div>
@@ -63,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageLayout from '@/components/common/PageLayout.vue'
 import RichTextEditor from '@/components/common/RichTextEditor.vue'
@@ -98,6 +108,11 @@ const formRules = {
     { required: true, message: '请填写自我反思和总结', trigger: 'blur' }
   ]
 }
+
+// 判断评价是否已提交（evaluationStatus === 1 表示已提交）
+const isSubmitted = computed(() => {
+  return evaluation.value && evaluation.value.evaluationStatus === 1
+})
 
 // 加载实习信息和评价
 const loadData = async () => {

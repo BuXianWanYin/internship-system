@@ -9,6 +9,7 @@ import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
 import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
+import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
@@ -64,6 +65,9 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
     
     @Autowired
     private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private DataPermissionUtil dataPermissionUtil;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -237,6 +241,19 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
     @Override
     public ComprehensiveScore getScoreByApplyId(Long applyId) {
         EntityValidationUtil.validateIdNotNull(applyId, "申请ID");
+        
+        // 验证申请是否存在
+        InternshipApply apply = internshipApplyMapper.selectById(applyId);
+        EntityValidationUtil.validateEntityExists(apply, "申请");
+        
+        // 权限验证：如果是学生，只能查询自己的成绩
+        Long currentStudentId = dataPermissionUtil.getCurrentStudentId();
+        if (currentStudentId != null) {
+            // 当前用户是学生，验证申请是否属于该学生
+            if (!apply.getStudentId().equals(currentStudentId)) {
+                throw new BusinessException("无权查看该综合成绩");
+            }
+        }
         
         LambdaQueryWrapper<ComprehensiveScore> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ComprehensiveScore::getApplyId, applyId)

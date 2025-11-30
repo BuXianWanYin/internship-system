@@ -18,7 +18,6 @@ import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.evaluation.ComprehensiveScore;
 import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
-import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.InternshipLog;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
@@ -156,6 +155,11 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 更新现有评价
      */
     private void updateExistingEvaluation(SchoolEvaluation evaluation, SchoolEvaluation existEvaluation, UserInfo user) {
+            // 如果已提交，不允许修改
+            if (existEvaluation.getEvaluationStatus() != null && 
+                existEvaluation.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode())) {
+                throw new BusinessException("评价已提交，不允许修改");
+            }
             evaluation.setEvaluationId(existEvaluation.getEvaluationId());
             evaluation.setEvaluatorId(user.getUserId());
             evaluation.setDeleteFlag(DeleteFlag.NORMAL.getCode());
@@ -196,7 +200,21 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         evaluation.setEvaluationStatus(EvaluationStatus.SUBMITTED.getCode());
         evaluation.setSubmitTime(LocalDateTime.now());
         
-        return this.updateById(evaluation);
+        boolean updated = this.updateById(evaluation);
+        
+        // 提交成功后，检查是否所有评价都完成，如果完成则自动触发综合成绩计算
+        if (updated) {
+            try {
+                if (comprehensiveScoreService.checkAllEvaluationsCompleted(evaluation.getApplyId())) {
+                    comprehensiveScoreService.calculateComprehensiveScore(evaluation.getApplyId());
+                }
+            } catch (Exception e) {
+                // 自动计算失败不影响提交，只记录日志
+                // 可以后续手动触发计算
+            }
+        }
+        
+        return updated;
     }
     
     @Override

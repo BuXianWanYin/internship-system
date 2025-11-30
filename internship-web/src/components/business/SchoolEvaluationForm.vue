@@ -29,6 +29,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入日志周报质量评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -44,6 +45,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入过程表现评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -56,6 +58,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入成果展示评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -68,6 +71,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入总结反思评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -86,13 +90,25 @@
           v-model="formData.evaluationComment"
           type="textarea"
           :rows="4"
+          :disabled="isSubmitted"
           placeholder="请输入评价意见（可选）"
         />
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
-        <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
+        <el-button type="primary" :loading="saving" :disabled="isSubmitted" @click="handleSave">保存草稿</el-button>
+        <el-button type="success" :loading="submitting" :disabled="isSubmitted" @click="handleSubmit">提交评价</el-button>
+        <el-alert
+          v-if="isSubmitted"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-top: 10px"
+        >
+          <template #title>
+            <span>评价已提交，无法修改</span>
+          </template>
+        </el-alert>
       </el-form-item>
     </el-form>
   </div>
@@ -416,7 +432,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { schoolEvaluationApi } from '@/api/evaluation/school'
 import { logApi } from '@/api/internship/log'
@@ -474,6 +490,11 @@ const formRules = {
     { required: true, message: '请输入总结反思评分', trigger: 'blur' }
   ]
 }
+
+// 判断评价是否已提交（evaluationStatus === 1 表示已提交）
+const isSubmitted = computed(() => {
+  return props.evaluation && props.evaluation.evaluationStatus === 1
+})
 
 const referenceInfo = reactive({
   logs: [],

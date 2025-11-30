@@ -233,10 +233,12 @@ const loadData = async () => {
     })
     
     if (res.code === 200 && res.data && res.data.records) {
-      // 查找实习已结束的申请（合作企业：status=7，自主实习：status=13）
+      // 查找实习已结束或已评价的申请
+      // 合作企业：status=7（实习结束）或 status=8（已评价）
+      // 自主实习：status=13（实习结束）
       const endedApply = res.data.records.find(apply => {
-        // 合作企业：status=7
-        if (apply.applyType === 1 && apply.status === 7) {
+        // 合作企业：status=7 或 status=8
+        if (apply.applyType === 1 && (apply.status === 7 || apply.status === 8)) {
           return true
         }
         // 自主实习：status=13
@@ -247,24 +249,17 @@ const loadData = async () => {
       })
       
       if (endedApply && endedApply.applyId) {
-        // 加载综合成绩（可能还未计算）
-        const scoreRes = await comprehensiveScoreApi.getScoreByApplyId(endedApply.applyId)
+        // 并行加载综合成绩和评价信息
+        const [scoreRes] = await Promise.all([
+          comprehensiveScoreApi.getScoreByApplyId(endedApply.applyId).catch(() => ({ code: 200, data: null })),
+          loadEnterpriseEvaluation(endedApply.applyId),
+          loadSchoolEvaluation(endedApply.applyId),
+          loadSelfEvaluation(endedApply.applyId)
+        ])
+        
+        // 如果查询到综合成绩，设置score
         if (scoreRes.code === 200 && scoreRes.data) {
           score.value = scoreRes.data
-          
-          // 加载详细评价信息
-          await Promise.all([
-            loadEnterpriseEvaluation(endedApply.applyId),
-            loadSchoolEvaluation(endedApply.applyId),
-            loadSelfEvaluation(endedApply.applyId)
-          ])
-        } else {
-          // 如果综合成绩未计算，仍然加载评价信息（用于查看评价详情）
-          await Promise.all([
-            loadEnterpriseEvaluation(endedApply.applyId),
-            loadSchoolEvaluation(endedApply.applyId),
-            loadSelfEvaluation(endedApply.applyId)
-          ])
         }
       }
     }

@@ -30,6 +30,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入工作态度评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -42,6 +43,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入专业知识应用评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -54,6 +56,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入专业技能评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -66,6 +69,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入团队协作评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -78,6 +82,7 @@
           :min="0"
           :max="100"
           :precision="2"
+          :disabled="isSubmitted"
           placeholder="请输入创新意识评分（0-100分）"
           style="width: 100%"
           @change="calculateTotalScore"
@@ -91,12 +96,13 @@
             :min="0"
             :max="100"
             :precision="2"
+            :disabled="isSubmitted"
             placeholder="请输入日志周报质量评分（0-100分）"
             style="flex: 1"
             @change="calculateTotalScore"
           />
           <el-button
-            v-if="formData.logWeeklyReportScoreAuto !== null && formData.logWeeklyReportScoreAuto !== undefined"
+            v-if="formData.logWeeklyReportScoreAuto !== null && formData.logWeeklyReportScoreAuto !== undefined && !isSubmitted"
             type="info"
             size="small"
             @click="useAutoScore"
@@ -122,13 +128,25 @@
           v-model="formData.evaluationComment"
           type="textarea"
           :rows="4"
+          :disabled="isSubmitted"
           placeholder="请输入评价意见（可选）"
         />
       </el-form-item>
 
       <el-form-item>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
-        <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
+        <el-button type="primary" :loading="saving" :disabled="isSubmitted" @click="handleSave">保存草稿</el-button>
+        <el-button type="success" :loading="submitting" :disabled="isSubmitted" @click="handleSubmit">提交评价</el-button>
+        <el-alert
+          v-if="isSubmitted"
+          type="success"
+          :closable="false"
+          show-icon
+          style="margin-top: 10px"
+        >
+          <template #title>
+            <span>评价已提交，无法修改</span>
+          </template>
+        </el-alert>
       </el-form-item>
     </el-form>
   </div>
@@ -449,7 +467,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { logApi } from '@/api/internship/log'
 import { weeklyReportApi } from '@/api/internship/weeklyReport'
@@ -469,6 +487,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['save', 'submit'])
+
+// 判断评价是否已提交（evaluationStatus === 1 表示已提交）
+const isSubmitted = computed(() => {
+  return props.evaluation && props.evaluation.evaluationStatus === 1
+})
 
 const formRef = ref(null)
 const saving = ref(false)

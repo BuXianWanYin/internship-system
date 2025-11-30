@@ -22,6 +22,7 @@ import com.server.internshipserver.mapper.evaluation.SelfEvaluationMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.service.evaluation.ComprehensiveScoreService;
 import com.server.internshipserver.service.evaluation.SelfEvaluationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,9 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
     
     @Autowired
     private StudentMapper studentMapper;
+    
+    @Autowired
+    private ComprehensiveScoreService comprehensiveScoreService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -129,6 +133,11 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
         SelfEvaluation existEvaluation = this.getOne(wrapper);
         
         if (existEvaluation != null) {
+            // 如果已提交，不允许修改
+            if (existEvaluation.getEvaluationStatus() != null && 
+                existEvaluation.getEvaluationStatus().equals(EvaluationStatus.SUBMITTED.getCode())) {
+                throw new BusinessException("评价已提交，不允许修改");
+            }
             // 更新现有自评
             evaluation.setEvaluationId(existEvaluation.getEvaluationId());
             evaluation.setDeleteFlag(DeleteFlag.NORMAL.getCode());
@@ -164,7 +173,21 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
         evaluation.setEvaluationStatus(EvaluationStatus.SUBMITTED.getCode());
         evaluation.setSubmitTime(LocalDateTime.now());
         
-        return this.updateById(evaluation);
+        boolean updated = this.updateById(evaluation);
+        
+        // 提交成功后，检查是否所有评价都完成，如果完成则自动触发综合成绩计算
+        if (updated) {
+            try {
+                if (comprehensiveScoreService.checkAllEvaluationsCompleted(evaluation.getApplyId())) {
+                    comprehensiveScoreService.calculateComprehensiveScore(evaluation.getApplyId());
+                }
+            } catch (Exception e) {
+                // 自动计算失败不影响提交，只记录日志
+                // 可以后续手动触发计算
+            }
+        }
+        
+        return updated;
     }
     
     @Override
