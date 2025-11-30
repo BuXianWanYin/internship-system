@@ -121,7 +121,7 @@
           </div>
           <div style="display: flex; gap: 10px">
             <el-button 
-              v-if="currentInternship.applyId && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
+              v-if="currentInternship.applyId && !isInternshipCompleted(currentInternship) && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)"
               type="danger" 
               @click="handleResign"
               :loading="resignLoading"

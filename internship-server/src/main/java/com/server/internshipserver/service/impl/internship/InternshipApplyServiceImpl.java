@@ -1124,16 +1124,41 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
      * 添加录用/拒绝历史项
      */
     private void addAcceptHistoryItem(InternshipApply apply, List<InternshipApply.StatusHistoryItem> history) {
+        // 如果状态是REJECTED_ACCEPTANCE，但acceptTime为null，使用企业反馈时间
+        if (apply.getStatus() != null && 
+            apply.getStatus().equals(InternshipApplyStatus.REJECTED_ACCEPTANCE.getCode())) {
+            // 企业拒绝时，使用企业反馈时间作为操作时间
+            LocalDateTime actionTime = apply.getEnterpriseFeedbackTime() != null 
+                    ? apply.getEnterpriseFeedbackTime() 
+                    : apply.getUpdateTime() != null ? apply.getUpdateTime() : LocalDateTime.now();
+            
+            String description = apply.getEnterpriseFeedback() != null 
+                    ? apply.getEnterpriseFeedback() 
+                    : "企业已拒绝录用";
+            
+            InternshipApply.StatusHistoryItem item = createHistoryItem(
+                    "企业拒绝",
+                    actionTime,
+                    apply.getEnterpriseName(),
+                    description,
+                    apply.getStatus()
+            );
+            history.add(item);
+            return;
+        }
+        
+        // 如果有acceptTime，说明企业已经录用
         if (apply.getAcceptTime() == null) {
             return;
         }
         
-        boolean isAccepted = apply.getStatus().equals(InternshipApplyStatus.ACCEPTED.getCode());
-        String actionName = isAccepted ? "企业录用" : "企业拒绝";
-        String description = isAccepted ? "企业已录用" : "企业已拒绝录用";
+        // 只要有acceptTime，就表示"企业录用"（包括ACCEPTED、COMPLETED等状态）
+        String description = apply.getEnterpriseFeedback() != null 
+                ? apply.getEnterpriseFeedback() 
+                : "企业已录用";
         
         InternshipApply.StatusHistoryItem item = createHistoryItem(
-                actionName,
+                "企业录用",
                 apply.getAcceptTime(),
                 apply.getEnterpriseName(),
                 description,
