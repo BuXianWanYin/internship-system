@@ -136,7 +136,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         report.setReviewStatus(ReviewStatus.PENDING.getCode()); // 未批阅
         EntityDefaultValueUtil.setDefaultValues(report);
         
-        // 保存
+        // 保存（weekStartDate 和 weekEndDate 现在是数据库字段，会自动保存）
         this.save(report);
         
         // 填充关联字段（包括日期信息）
@@ -627,13 +627,17 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
     
     /**
      * 根据周次和实习开始日期计算该周的开始和结束日期
+     * 注意：如果数据库中已经有 weekStartDate 和 weekEndDate，则不会重新计算
      * @param report 周报对象
      */
     private void calculateWeekDates(InternshipWeeklyReport report) {
+        // 如果数据库中已经有 weekStartDate 和 weekEndDate，直接使用它们，不重新计算
+        if (report.getWeekStartDate() != null && report.getWeekEndDate() != null) {
+            return;
+        }
+        
         if (report.getStartDate() == null || report.getWeekNumber() == null || report.getWeekNumber() <= 0) {
             // 如果开始日期或周次为空，则无法计算
-            report.setWeekStartDate(report.getStartDate());
-            report.setWeekEndDate(report.getEndDate());
             return;
         }
         
@@ -657,8 +661,13 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             weekEndDate = report.getEndDate();
         }
         
-        report.setWeekStartDate(weekStartDate);
-        report.setWeekEndDate(weekEndDate);
+        // 只有在没有设置的情况下才设置（用于查询时填充）
+        if (report.getWeekStartDate() == null) {
+            report.setWeekStartDate(weekStartDate);
+        }
+        if (report.getWeekEndDate() == null) {
+            report.setWeekEndDate(weekEndDate);
+        }
     }
 }
 

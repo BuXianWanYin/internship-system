@@ -45,6 +45,16 @@ public class InternshipWeeklyReport implements Serializable {
     @TableField("week_number")
     private Integer weekNumber;
     
+    @ApiModelProperty(value = "周开始日期", example = "2024-03-01")
+    @TableField("week_start_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate weekStartDate;
+    
+    @ApiModelProperty(value = "周结束日期", example = "2024-03-07")
+    @TableField("week_end_date")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate weekEndDate;
+    
     @ApiModelProperty(value = "周报日期", required = true, example = "2024-03-08")
     @TableField("report_date")
     @JsonFormat(pattern = "yyyy-MM-dd")
@@ -119,16 +129,6 @@ public class InternshipWeeklyReport implements Serializable {
     @TableField(exist = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate endDate;
-    
-    @ApiModelProperty(value = "周开始日期（用于前端显示，等同于startDate）")
-    @TableField(exist = false)
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate weekStartDate;
-    
-    @ApiModelProperty(value = "周结束日期（用于前端显示，等同于endDate）")
-    @TableField(exist = false)
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate weekEndDate;
     
     @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
     @TableField(exist = false)

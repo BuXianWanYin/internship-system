@@ -139,9 +139,15 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
             BigDecimal selfPart = selfScore.multiply(selfWeight);
             comprehensiveScore = enterprisePart.add(schoolPart).add(selfPart).setScale(2, RoundingMode.HALF_UP);
         } else {
-            // 自主实习：学校评价×60% + 自评×40%
-            BigDecimal schoolWeight = new BigDecimal("0.6");
-            BigDecimal selfWeight = new BigDecimal("0.4");
+            // 自主实习：从系统配置读取权重，默认值：学校80%、自评20%
+            BigDecimal schoolWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.SELF_INTERNSHIP_SCHOOL_WEIGHT, "0.8"));
+            BigDecimal selfWeight = new BigDecimal(SystemConfigUtil.getConfigValue(ConfigKeys.SELF_INTERNSHIP_SELF_WEIGHT, "0.2"));
+            
+            // 验证权重总和是否为1.0（允许0.01的误差）
+            BigDecimal totalWeight = schoolWeight.add(selfWeight);
+            if (totalWeight.compareTo(new BigDecimal("1.0")) < 0 || totalWeight.compareTo(new BigDecimal("1.01")) > 0) {
+                throw new BusinessException("自主实习评价权重配置错误，两个权重之和必须等于1.0");
+            }
             
             BigDecimal schoolPart = schoolScore.multiply(schoolWeight);
             BigDecimal selfPart = selfScore.multiply(selfWeight);
@@ -179,9 +185,18 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
             this.save(score);
         }
         
-        // 更新实习申请状态为"已评价"（status=8）
-        apply.setStatus(InternshipApplyStatus.EVALUATED.getCode());
-        internshipApplyMapper.updateById(apply);
+        // 更新实习申请状态为"已评价"
+        // 合作企业：status=8（已评价），自主实习：保持 status=13（实习结束），不更新状态
+        Integer applyType = apply.getApplyType();
+        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+            // 合作企业：更新为已评价状态（status=8）
+            apply.setStatus(InternshipApplyStatus.EVALUATED.getCode());
+            internshipApplyMapper.updateById(apply);
+        } else if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            // 自主实习：保持实习结束状态（status=13），不更新为已评价
+            // 因为自主实习没有单独的"已评价"状态，使用 COMPLETED 状态即可
+            // 不需要更新状态
+        }
         
         // 填充关联字段
         fillScoreRelatedFields(score);

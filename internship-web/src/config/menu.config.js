@@ -30,12 +30,12 @@ import {
  * 菜单项定义
  */
 export const menuItems = [
-  // 仪表盘 - 所有角色可见
+  // 仪表盘 - 所有角色可见（学生除外）
   {
     index: '/dashboard',
     title: '仪表盘',
     icon: House,
-    roles: ['*'] // * 表示所有角色
+    roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'] // 学生不显示仪表盘
   },
   
   // ========== 学校管理（系统管理员、学校管理员） ==========
@@ -420,11 +420,11 @@ export const menuItems = [
     ]
   },
   
-  // ========== 实习管理（学生） ==========
+  // ========== 实习申请（学生） ==========
   {
-    index: 'internship-student',
-    title: '实习管理',
-    icon: Document,
+    index: 'internship-apply-student',
+    title: '实习申请',
+    icon: EditPen,
     roles: ['ROLE_STUDENT'],
     children: [
       {
@@ -438,7 +438,17 @@ export const menuItems = [
         title: '我的面试',
         icon: ChatLineRound,
         roles: ['ROLE_STUDENT']
-      },
+      }
+    ]
+  },
+  
+  // ========== 实习过程（学生） ==========
+  {
+    index: 'internship-process-student',
+    title: '实习过程',
+    icon: Briefcase,
+    roles: ['ROLE_STUDENT'],
+    children: [
       {
         index: '/student/internship/my',
         title: '我的实习',
@@ -458,23 +468,37 @@ export const menuItems = [
         roles: ['ROLE_STUDENT']
       },
       {
-        index: '/student/internship/attendance',
-        title: '我的考勤',
-        icon: Clock,
-        roles: ['ROLE_STUDENT']
-      },
-      {
         index: '/student/internship/achievement',
         title: '阶段性成果',
         icon: Files,
         roles: ['ROLE_STUDENT']
-      },
-      {
-        index: '/student/internship/feedback',
-        title: '问题反馈',
-        icon: ChatLineRound,
-        roles: ['ROLE_STUDENT']
-      },
+      }
+    ]
+  },
+  
+  // ========== 考勤管理（学生） ==========
+  {
+    index: '/student/internship/attendance',
+    title: '我的考勤',
+    icon: Clock,
+    roles: ['ROLE_STUDENT']
+  },
+  
+  // ========== 问题反馈（学生） ==========
+  {
+    index: '/student/internship/feedback',
+    title: '问题反馈',
+    icon: ChatLineRound,
+    roles: ['ROLE_STUDENT']
+  },
+  
+  // ========== 评价管理（学生） ==========
+  {
+    index: 'evaluation-student',
+    title: '评价管理',
+    icon: Star,
+    roles: ['ROLE_STUDENT'],
+    children: [
       {
         index: '/student/evaluation/self',
         title: '自我评价',

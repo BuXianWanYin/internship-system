@@ -2550,10 +2550,21 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             apply.setUnbindAuditOpinion(remark);
         }
         
-        // ⚠️ 注意：不更新 unbindStatus
-        // 原因：通过 status 字段即可区分"提前离职"和"实习结束"
-        // - 提前离职：status=3 + unbindStatus=2 → 显示"已离职"
-        // - 实习结束：status=7 或 13 + unbindStatus 保持原值 → 显示"实习结束"
+        // 自动更新解绑状态和解绑原因（仅在未解绑的情况下）
+        // 如果之前已经解绑过（提前离职），不覆盖原有的解绑信息，保持现有功能
+        if (apply.getUnbindStatus() == null || apply.getUnbindStatus().equals(UnbindStatus.NOT_APPLIED.getCode())) {
+            // 只有在未解绑的情况下，才设置为已解绑，原因为"实习结束"
+            apply.setUnbindStatus(UnbindStatus.UNBOUND.getCode());
+            apply.setUnbindReason("实习结束");
+            
+            // 设置解绑操作人和时间（使用当前用户）
+            Long currentUserId = dataPermissionUtil.getCurrentUserId();
+            if (currentUserId != null) {
+                apply.setUnbindAuditUserId(currentUserId);
+            }
+            apply.setUnbindAuditTime(LocalDateTime.now());
+        }
+        // 如果已经解绑过（提前离职），保持原有的解绑信息不变，不影响现有功能
         
         this.updateById(apply);
     }

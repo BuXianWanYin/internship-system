@@ -138,8 +138,8 @@
             {{ currentInternship.unbindReason || '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="解绑状态">
-            <el-tag :type="getUnbindStatusType(currentInternship.unbindStatus)" size="small">
-              {{ getUnbindStatusText(currentInternship.unbindStatus) }}
+            <el-tag :type="getUnbindStatusType(currentInternship)" size="small">
+              {{ getUnbindStatusText(currentInternship) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item v-if="currentInternship.unbindAuditTime" label="解绑时间">
@@ -186,6 +186,7 @@ import { applyApi } from '@/api/internship/apply'
 import { formatDateTime, formatDate } from '@/utils/dateUtils'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import PageLayout from '@/components/common/PageLayout.vue'
+import { getUnbindStatusText, getUnbindStatusType } from '@/utils/statusUtils'
 
 const router = useRouter()
 const loading = ref(false)
@@ -258,24 +259,6 @@ const getInternshipStatusType = (status) => {
     0: 'info',
     1: 'success',
     3: 'info'
-  }
-  return typeMap[status] || 'info'
-}
-
-// 获取解绑状态文本
-const getUnbindStatusText = (status) => {
-  const statusMap = {
-    0: '未解绑',
-    2: '已解绑'
-  }
-  return statusMap[status] || '未知'
-}
-
-// 获取解绑状态类型
-const getUnbindStatusType = (status) => {
-  const typeMap = {
-    0: 'info',
-    2: 'success'
   }
   return typeMap[status] || 'info'
 }

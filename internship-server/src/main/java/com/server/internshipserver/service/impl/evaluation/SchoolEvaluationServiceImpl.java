@@ -564,29 +564,59 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
     
     /**
      * 根据学生ID列表获取实习结束状态的申请ID列表
-     * 合作企业：status=7，自主实习：status=13
+     * 合作企业：status=7（实习结束）或 status=8（已评价）
+     * 自主实习：status=13（实习结束）或 status=8（已评价，兼容历史数据）
      */
     private List<Long> getApplyIdsByStudentIds(List<Long> studentIds) {
-                    List<InternshipApply> applies = internshipApplyMapper.selectList(
-                            new LambdaQueryWrapper<InternshipApply>()
-                                    .in(InternshipApply::getStudentId, studentIds)
-                        // 合作企业：status=7（实习结束）或 status=8（已评价），自主实习：status=13（实习结束）
+        // 查询所有符合条件的申请（包括合作企业和自主实习）
+        List<InternshipApply> applies = internshipApplyMapper.selectList(
+                new LambdaQueryWrapper<InternshipApply>()
+                        .in(InternshipApply::getStudentId, studentIds)
+                        // 查询条件：状态为 7（合作企业实习结束）、8（已评价）或 13（自主实习结束）
                         .and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
                                   .or()
                                   .eq(InternshipApply::getStatus, InternshipApplyStatus.EVALUATED.getCode())
                                   .or()
                                   .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
-                                    .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                    .select(InternshipApply::getApplyId)
-                    );
-                    
+                        .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(InternshipApply::getApplyId, InternshipApply::getApplyType, InternshipApply::getStatus)
+        );
+        
         if (applies == null || applies.isEmpty()) {
             return null;
         }
         
+        // 过滤：对于状态为 8 的申请，需要检查申请类型
+        // 如果是自主实习（apply_type=2）且状态为 8，说明是历史数据，应该包含
+        // 如果是合作企业（apply_type=1）且状态为 8，正常包含
+        // 状态为 7 或 13 的申请，直接包含
         return applies.stream()
-                                .map(InternshipApply::getApplyId)
-                                .collect(Collectors.toList());
+                .filter(apply -> {
+                    Integer status = apply.getStatus();
+                    Integer applyType = apply.getApplyType();
+                    
+                    // 状态为 7（合作企业实习结束）或 13（自主实习结束），直接包含
+                    if (status != null && (status.equals(InternshipApplyStatus.COMPLETED.getCode()) 
+                            || status.equals(SelfInternshipApplyStatus.COMPLETED.getCode()))) {
+                        return true;
+                    }
+                    
+                    // 状态为 8（已评价），需要根据申请类型判断
+                    if (status != null && status.equals(InternshipApplyStatus.EVALUATED.getCode())) {
+                        // 合作企业：状态 8 正常
+                        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+                            return true;
+                        }
+                        // 自主实习：状态 8 是历史数据，也应该包含（兼容历史数据）
+                        if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+                            return true;
+                        }
+                    }
+                    
+                    return false;
+                })
+                .map(InternshipApply::getApplyId)
+                .collect(Collectors.toList());
     }
     
     /**

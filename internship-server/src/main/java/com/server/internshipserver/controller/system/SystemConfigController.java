@@ -88,5 +88,35 @@ public class SystemConfigController {
         systemConfigService.deleteConfig(id);
         return Result.success("删除配置成功");
     }
+    
+    @ApiOperation("获取评价权重配置（公开接口，所有已登录用户可访问）")
+    @GetMapping("/evaluation-weights")
+    public Result<java.util.Map<String, String>> getEvaluationWeights() {
+        java.util.Map<String, String> weights = new java.util.HashMap<>();
+        
+        // 合作企业实习权重
+        SystemConfig enterpriseWeight = systemConfigService.getConfigByKey("enterprise_evaluation_weight");
+        weights.put("enterprise", enterpriseWeight != null && enterpriseWeight.getConfigValue() != null 
+            ? enterpriseWeight.getConfigValue() : "0.4");
+        
+        SystemConfig schoolWeight = systemConfigService.getConfigByKey("school_evaluation_weight");
+        weights.put("school", schoolWeight != null && schoolWeight.getConfigValue() != null 
+            ? schoolWeight.getConfigValue() : "0.4");
+        
+        SystemConfig selfWeight = systemConfigService.getConfigByKey("student_self_evaluation_weight");
+        weights.put("self", selfWeight != null && selfWeight.getConfigValue() != null 
+            ? selfWeight.getConfigValue() : "0.2");
+        
+        // 自主实习权重
+        SystemConfig selfInternshipSchoolWeight = systemConfigService.getConfigByKey("self_internship_school_weight");
+        weights.put("selfInternshipSchool", selfInternshipSchoolWeight != null && selfInternshipSchoolWeight.getConfigValue() != null 
+            ? selfInternshipSchoolWeight.getConfigValue() : "0.8");
+        
+        SystemConfig selfInternshipSelfWeight = systemConfigService.getConfigByKey("self_internship_self_weight");
+        weights.put("selfInternshipSelf", selfInternshipSelfWeight != null && selfInternshipSelfWeight.getConfigValue() != null 
+            ? selfInternshipSelfWeight.getConfigValue() : "0.2");
+        
+        return Result.success(weights);
+    }
 }
 

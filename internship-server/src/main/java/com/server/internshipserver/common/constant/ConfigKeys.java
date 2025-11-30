@@ -46,6 +46,16 @@ public class ConfigKeys {
      */
     public static final String STUDENT_SELF_EVALUATION_WEIGHT = "student_self_evaluation_weight";
     
+    /**
+     * 自主实习学校评价权重（综合成绩计算用，小数形式，如0.8表示80%）
+     */
+    public static final String SELF_INTERNSHIP_SCHOOL_WEIGHT = "self_internship_school_weight";
+    
+    /**
+     * 自主实习学生自评权重（综合成绩计算用，小数形式，如0.2表示20%）
+     */
+    public static final String SELF_INTERNSHIP_SELF_WEIGHT = "self_internship_self_weight";
+    
     private ConfigKeys() {
         // 工具类，禁止实例化
     }

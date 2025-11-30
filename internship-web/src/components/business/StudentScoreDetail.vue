@@ -1,7 +1,7 @@
 <template>
   <div class="score-detail" v-loading="loading">
-    <!-- 企业评价详情 -->
-    <el-card v-if="comprehensiveScore?.enterpriseScore !== null && comprehensiveScore?.enterpriseScore !== undefined" class="detail-card">
+    <!-- 企业评价详情（仅合作企业实习显示） -->
+    <el-card v-if="comprehensiveScore?.enterpriseScore !== null && comprehensiveScore?.enterpriseScore !== undefined && isCooperation" class="detail-card">
       <template #header>
         <div class="card-header">
           <span>企业评价：{{ comprehensiveScore?.enterpriseScore }}分</span>
@@ -86,9 +86,7 @@
           {{ getCalculationFormula() }}
         </div>
         <div class="calculation-result">
-          = {{ calculatePart(comprehensiveScore.enterpriseScore, getEnterpriseWeight() / 100) }} 
-          + {{ calculatePart(comprehensiveScore.schoolScore, getSchoolWeight() / 100) }} 
-          + {{ calculatePart(comprehensiveScore.selfScore, getSelfWeight() / 100) }} 
+          = {{ getCalculationResult() }} 
           = <strong style="color: #409eff; font-size: 18px;">{{ comprehensiveScore.comprehensiveScore }}分</strong>
         </div>
         <div style="margin-top: 15px;">
@@ -105,13 +103,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { comprehensiveScoreApi } from '@/api/evaluation/comprehensiveScore'
 import { enterpriseEvaluationApi } from '@/api/evaluation/enterprise'
 import { schoolEvaluationApi } from '@/api/evaluation/school'
 import { selfEvaluationApi } from '@/api/evaluation/self'
 import { applyApi } from '@/api/internship/apply'
+import { getEvaluationWeights } from '@/utils/configUtils'
 
 const props = defineProps({
   applyId: {
@@ -126,11 +125,37 @@ const enterpriseEvaluation = ref(null)
 const schoolEvaluation = ref(null)
 const selfEvaluation = ref(null)
 const applyInfo = ref(null)
+const weights = ref({
+  enterprise: 0.4,
+  school: 0.4,
+  self: 0.2,
+  selfInternshipSchool: 0.8,
+  selfInternshipSelf: 0.2
+})
+
+// 判断是否为合作企业实习
+const isCooperation = computed(() => {
+  return applyInfo.value && applyInfo.value.applyType === 1
+})
 
 // 加载数据
 const loadData = async () => {
+  // 重置数据，避免缓存问题
+  comprehensiveScore.value = null
+  enterpriseEvaluation.value = null
+  schoolEvaluation.value = null
+  selfEvaluation.value = null
+  applyInfo.value = null
+  
   loading.value = true
   try {
+    // 加载权重配置
+    try {
+      weights.value = await getEvaluationWeights()
+    } catch (error) {
+      console.warn('加载权重配置失败，使用默认值:', error)
+    }
+    
     // 并行加载所有数据
     const [scoreRes, applyRes] = await Promise.all([
       comprehensiveScoreApi.getScoreByApplyId(props.applyId),
@@ -197,35 +222,46 @@ const loadSelfEvaluation = async () => {
 
 // 获取企业权重
 const getEnterpriseWeight = () => {
-  if (!applyInfo.value) return 40
-  // 合作企业：40%，自主实习：0%
-  return applyInfo.value.applyType === 1 ? 40 : 0
+  if (!applyInfo.value) return (weights.value.enterprise * 100).toFixed(0)
+  return applyInfo.value.applyType === 1 ? (weights.value.enterprise * 100).toFixed(0) : 0
 }
 
 // 获取学校权重
 const getSchoolWeight = () => {
-  if (!applyInfo.value) return 40
-  // 合作企业：40%，自主实习：60%
-  return applyInfo.value.applyType === 1 ? 40 : 60
+  if (!applyInfo.value) return (weights.value.school * 100).toFixed(0)
+  return applyInfo.value.applyType === 1 ? (weights.value.school * 100).toFixed(0) : (weights.value.selfInternshipSchool * 100).toFixed(0)
 }
 
 // 获取自评权重
 const getSelfWeight = () => {
-  if (!applyInfo.value) return 20
-  // 合作企业：20%，自主实习：40%
-  return applyInfo.value.applyType === 1 ? 20 : 40
+  if (!applyInfo.value) return (weights.value.self * 100).toFixed(0)
+  return applyInfo.value.applyType === 1 ? (weights.value.self * 100).toFixed(0) : (weights.value.selfInternshipSelf * 100).toFixed(0)
 }
 
 // 获取计算公式
 const getCalculationFormula = () => {
   if (!comprehensiveScore.value || !applyInfo.value) return ''
   
-  const isCooperation = applyInfo.value.applyType === 1
-  
-  if (isCooperation) {
-    return `综合成绩 = 企业评价${comprehensiveScore.value.enterpriseScore || 0}分 × 40% + 学校评价${comprehensiveScore.value.schoolScore || 0}分 × 40% + 自评${comprehensiveScore.value.selfScore || 0}分 × 20%`
+  if (isCooperation.value) {
+    return `综合成绩 = 企业评价${comprehensiveScore.value.enterpriseScore || 0}分 × ${(weights.value.enterprise * 100).toFixed(0)}% + 学校评价${comprehensiveScore.value.schoolScore || 0}分 × ${(weights.value.school * 100).toFixed(0)}% + 自评${comprehensiveScore.value.selfScore || 0}分 × ${(weights.value.self * 100).toFixed(0)}%`
   } else {
-    return `综合成绩 = 学校评价${comprehensiveScore.value.schoolScore || 0}分 × 60% + 自评${comprehensiveScore.value.selfScore || 0}分 × 40%`
+    return `综合成绩 = 学校评价${comprehensiveScore.value.schoolScore || 0}分 × ${(weights.value.selfInternshipSchool * 100).toFixed(0)}% + 自评${comprehensiveScore.value.selfScore || 0}分 × ${(weights.value.selfInternshipSelf * 100).toFixed(0)}%`
+  }
+}
+
+// 获取计算结果
+const getCalculationResult = () => {
+  if (!comprehensiveScore.value || !applyInfo.value) return ''
+  
+  if (isCooperation.value) {
+    const enterprisePart = calculatePart(comprehensiveScore.value.enterpriseScore, weights.value.enterprise)
+    const schoolPart = calculatePart(comprehensiveScore.value.schoolScore, weights.value.school)
+    const selfPart = calculatePart(comprehensiveScore.value.selfScore, weights.value.self)
+    return `${enterprisePart} + ${schoolPart} + ${selfPart}`
+  } else {
+    const schoolPart = calculatePart(comprehensiveScore.value.schoolScore, weights.value.selfInternshipSchool)
+    const selfPart = calculatePart(comprehensiveScore.value.selfScore, weights.value.selfInternshipSelf)
+    return `${schoolPart} + ${selfPart}`
   }
 }
 
@@ -248,8 +284,17 @@ const getGradeTagType = (gradeLevel) => {
   return typeMap[gradeLevel] || ''
 }
 
+// 监听 applyId 变化，重新加载数据
+watch(() => props.applyId, (newId) => {
+  if (newId) {
+    loadData()
+  }
+}, { immediate: true })
+
 onMounted(() => {
-  loadData()
+  if (props.applyId) {
+    loadData()
+  }
 })
 </script>
 

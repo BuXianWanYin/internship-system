@@ -28,6 +28,10 @@ export const systemConfigApi = {
   // 删除配置
   deleteConfig(id) {
     return request.delete(`/system/config/${id}`)
+  },
+  // 获取评价权重配置（公开接口）
+  getEvaluationWeights() {
+    return request.get('/system/config/evaluation-weights')
   }
 }
 
