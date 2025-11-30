@@ -292,10 +292,12 @@ public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvalu
      * 合作企业：status=7，自主实习：status=13
      */
     private void filterByInternshipStatus(LambdaQueryWrapper<EnterpriseEvaluation> wrapper, Long enterpriseId) {
-        // 查询实习已结束的申请ID列表
+        // 查询实习已结束的申请ID列表（包括已评价）
         LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
-        // 合作企业：status=7，自主实习：status=13
+        // 合作企业：status=7（实习结束）或 status=8（已评价），自主实习：status=13（实习结束）
         applyWrapper.and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
+                              .or()
+                              .eq(InternshipApply::getStatus, InternshipApplyStatus.EVALUATED.getCode())
                               .or()
                               .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
                     .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())

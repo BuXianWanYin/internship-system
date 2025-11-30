@@ -17,85 +17,85 @@
       <!-- 标签页1: 评分填写 -->
       <el-tab-pane label="评分填写" name="evaluation">
         <div style="padding: 20px;">
-          <el-form
-            ref="formRef"
-            :model="formData"
-            :rules="formRules"
-            label-width="150px"
-          >
-            <el-form-item label="日志周报质量" prop="logWeeklyReportScore">
-              <el-input-number
-                v-model="formData.logWeeklyReportScore"
-                :min="0"
-                :max="100"
-                :precision="2"
-                placeholder="请输入日志周报质量评分（0-100分）"
-                style="width: 100%"
-                @change="calculateTotalScore"
-              />
-              <div style="margin-top: 5px; font-size: 12px; color: #909399;">
-                说明：可参考建议分数，日志平均分×50% + 周报平均分×50%
-              </div>
-            </el-form-item>
-
-            <el-form-item label="过程表现" prop="processPerformanceScore">
-              <el-input-number
-                v-model="formData.processPerformanceScore"
-                :min="0"
-                :max="100"
-                :precision="2"
-                placeholder="请输入过程表现评分（0-100分）"
-                style="width: 100%"
-                @change="calculateTotalScore"
-              />
-            </el-form-item>
-
-            <el-form-item label="成果展示" prop="achievementScore">
-              <el-input-number
-                v-model="formData.achievementScore"
-                :min="0"
-                :max="100"
-                :precision="2"
-                placeholder="请输入成果展示评分（0-100分）"
-                style="width: 100%"
-                @change="calculateTotalScore"
-              />
-            </el-form-item>
-
-            <el-form-item label="总结反思" prop="summaryReflectionScore">
-              <el-input-number
-                v-model="formData.summaryReflectionScore"
-                :min="0"
-                :max="100"
-                :precision="2"
-                placeholder="请输入总结反思评分（0-100分）"
-                style="width: 100%"
-                @change="calculateTotalScore"
-              />
-            </el-form-item>
-
-            <el-form-item label="总分">
-              <el-input :value="formData.totalScore" disabled />
-              <div style="margin-top: 5px; font-size: 12px; color: #909399;">
-                自动计算（4项指标的平均分）
-              </div>
-            </el-form-item>
-
-            <el-form-item label="评价意见">
-              <el-input
-                v-model="formData.evaluationComment"
-                type="textarea"
-                :rows="4"
-                placeholder="请输入评价意见（可选）"
-              />
-            </el-form-item>
-
-            <el-form-item>
-              <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
-              <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
-            </el-form-item>
-          </el-form>
+    <el-form
+      ref="formRef"
+      :model="formData"
+      :rules="formRules"
+      label-width="150px"
+    >
+      <el-form-item label="日志周报质量" prop="logWeeklyReportScore">
+        <el-input-number
+          v-model="formData.logWeeklyReportScore"
+          :min="0"
+          :max="100"
+          :precision="2"
+          placeholder="请输入日志周报质量评分（0-100分）"
+          style="width: 100%"
+          @change="calculateTotalScore"
+        />
+        <div style="margin-top: 5px; font-size: 12px; color: #909399;">
+          说明：可参考建议分数，日志平均分×50% + 周报平均分×50%
         </div>
+      </el-form-item>
+
+      <el-form-item label="过程表现" prop="processPerformanceScore">
+        <el-input-number
+          v-model="formData.processPerformanceScore"
+          :min="0"
+          :max="100"
+          :precision="2"
+          placeholder="请输入过程表现评分（0-100分）"
+          style="width: 100%"
+          @change="calculateTotalScore"
+        />
+      </el-form-item>
+
+      <el-form-item label="成果展示" prop="achievementScore">
+        <el-input-number
+          v-model="formData.achievementScore"
+          :min="0"
+          :max="100"
+          :precision="2"
+          placeholder="请输入成果展示评分（0-100分）"
+          style="width: 100%"
+          @change="calculateTotalScore"
+        />
+      </el-form-item>
+
+      <el-form-item label="总结反思" prop="summaryReflectionScore">
+        <el-input-number
+          v-model="formData.summaryReflectionScore"
+          :min="0"
+          :max="100"
+          :precision="2"
+          placeholder="请输入总结反思评分（0-100分）"
+          style="width: 100%"
+          @change="calculateTotalScore"
+        />
+      </el-form-item>
+
+      <el-form-item label="总分">
+        <el-input :value="formData.totalScore" disabled />
+        <div style="margin-top: 5px; font-size: 12px; color: #909399;">
+          自动计算（4项指标的平均分）
+        </div>
+      </el-form-item>
+
+      <el-form-item label="评价意见">
+        <el-input
+          v-model="formData.evaluationComment"
+          type="textarea"
+          :rows="4"
+          placeholder="请输入评价意见（可选）"
+        />
+      </el-form-item>
+
+      <el-form-item>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
+        <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
+      </el-form-item>
+    </el-form>
+  </div>
       </el-tab-pane>
       
       <!-- 标签页2: 参考信息 -->

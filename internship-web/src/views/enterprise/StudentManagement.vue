@@ -450,7 +450,8 @@ const getStatusText = (status, applyType) => {
       3: '已录用',
       4: '已拒绝录用',
       5: '已取消',
-      7: '实习结束'
+      7: '实习结束',
+      8: '已评价'
     }
     return statusMap[status] || '-'
   }
@@ -461,7 +462,7 @@ const getStatusText = (status, applyType) => {
 const getStatusType = (status, applyType) => {
   if (status === null || status === undefined) return 'info'
   if (applyType === 1) {
-    if (status === 7) return 'info'
+    if (status === 7 || status === 8) return 'info'
     if (status === 3) return 'success'
     if (status === 1) return 'success'
     if (status === 2 || status === 4 || status === 5) return 'danger'

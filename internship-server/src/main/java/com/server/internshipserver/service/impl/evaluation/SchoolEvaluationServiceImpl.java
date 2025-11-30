@@ -552,8 +552,10 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
                     List<InternshipApply> applies = internshipApplyMapper.selectList(
                             new LambdaQueryWrapper<InternshipApply>()
                                     .in(InternshipApply::getStudentId, studentIds)
-                        // 合作企业：status=7，自主实习：status=13
+                        // 合作企业：status=7（实习结束）或 status=8（已评价），自主实习：status=13（实习结束）
                         .and(w -> w.eq(InternshipApply::getStatus, InternshipApplyStatus.COMPLETED.getCode())
+                                  .or()
+                                  .eq(InternshipApply::getStatus, InternshipApplyStatus.EVALUATED.getCode())
                                   .or()
                                   .eq(InternshipApply::getStatus, SelfInternshipApplyStatus.COMPLETED.getCode()))
                                     .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())

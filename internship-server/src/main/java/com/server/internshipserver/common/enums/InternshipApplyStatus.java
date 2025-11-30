@@ -40,7 +40,13 @@ public enum InternshipApplyStatus {
      * 实习结束
      * 合作企业实习已结束
      */
-    COMPLETED(7, "实习结束");
+    COMPLETED(7, "实习结束"),
+    
+    /**
+     * 已评价
+     * 所有评价已完成，综合成绩已计算
+     */
+    EVALUATED(8, "已评价");
 
     /**
      * 状态代码

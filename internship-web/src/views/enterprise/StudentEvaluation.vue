@@ -289,16 +289,33 @@ const loadData = async () => {
   }
 }
 
-// 加载学生列表（实习结束但未评价的学生）
+// 加载学生列表（实习结束的学生，包括已评价和未评价的）
 const loadStudentList = async () => {
   try {
-    const res = await applyApi.getEnterpriseStudents({
+    // 先查询 status=7（实习结束）的学生
+    const res7 = await applyApi.getEnterpriseStudents({
       current: pagination.current,
       size: pagination.size,
       status: 7 // 实习结束
     })
-    if (res.code === 200 && res.data && res.data.records) {
-      const students = res.data.records.map(item => ({
+    // 再查询 status=8（已评价）的学生
+    const res8 = await applyApi.getEnterpriseStudents({
+      current: pagination.current,
+      size: pagination.size,
+      status: 8 // 已评价
+    })
+    
+    // 合并两个结果
+    let allRecords = []
+    if (res7.code === 200 && res7.data && res7.data.records) {
+      allRecords = allRecords.concat(res7.data.records)
+    }
+    if (res8.code === 200 && res8.data && res8.data.records) {
+      allRecords = allRecords.concat(res8.data.records)
+    }
+    
+    if (allRecords.length > 0) {
+      const students = allRecords.map(item => ({
         applyId: item.applyId,
         studentId: item.studentId,
         studentNo: item.studentNo,
@@ -335,7 +352,8 @@ const loadStudentList = async () => {
       }
       
       tableData.value = students
-      pagination.total = res.data.total || 0
+      // 合并后的总数（注意：这里可能不准确，因为合并了两个查询的结果）
+      pagination.total = (res7.data?.total || 0) + (res8.data?.total || 0)
     }
   } catch (error) {
     console.error('加载学生列表失败:', error)

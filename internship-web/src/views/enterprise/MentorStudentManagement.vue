@@ -410,7 +410,8 @@ const getStatusText = (status) => {
     2: '已拒绝',
     3: '已录用',
     4: '已拒绝录用',
-    7: '实习结束'
+    7: '实习结束',
+    8: '已评价'
   }
   return statusMap[status] || '-'
 }

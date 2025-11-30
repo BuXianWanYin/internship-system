@@ -1,10 +1,10 @@
 <template>
   <div class="score-detail" v-loading="loading">
     <!-- 企业评价详情 -->
-    <el-card v-if="comprehensiveScore && comprehensiveScore.enterpriseScore !== null && comprehensiveScore.enterpriseScore !== undefined" class="detail-card">
+    <el-card v-if="comprehensiveScore?.enterpriseScore !== null && comprehensiveScore?.enterpriseScore !== undefined" class="detail-card">
       <template #header>
         <div class="card-header">
-          <span>企业评价：{{ comprehensiveScore.enterpriseScore }}分</span>
+          <span>企业评价：{{ comprehensiveScore?.enterpriseScore }}分</span>
           <el-tag type="info" size="small">权重{{ getEnterpriseWeight() }}%</el-tag>
         </div>
       </template>
@@ -17,7 +17,7 @@
           <el-descriptions-item label="创新意识">{{ enterpriseEvaluation.innovationScore }}分</el-descriptions-item>
           <el-descriptions-item label="日志周报质量">{{ enterpriseEvaluation.logWeeklyReportScore }}分</el-descriptions-item>
           <el-descriptions-item label="总分" :span="2">
-            <strong style="color: #409eff;">{{ enterpriseEvaluation.totalScore }}分</strong>
+            <strong style="color: #409eff; font-size: 16px;">{{ enterpriseEvaluation.totalScore }}分</strong>
           </el-descriptions-item>
         </el-descriptions>
         <div v-if="enterpriseEvaluation.evaluationComment" style="margin-top: 15px;">
@@ -25,14 +25,14 @@
           <div style="color: #606266;">{{ enterpriseEvaluation.evaluationComment }}</div>
         </div>
       </div>
-      <div v-else style="color: #909399;">暂无评价详情</div>
+      <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无评价详情</div>
     </el-card>
 
     <!-- 学校评价详情 -->
-    <el-card v-if="comprehensiveScore && comprehensiveScore.schoolScore !== null && comprehensiveScore.schoolScore !== undefined" class="detail-card" style="margin-top: 15px;">
+    <el-card v-if="comprehensiveScore?.schoolScore !== null && comprehensiveScore?.schoolScore !== undefined" class="detail-card" style="margin-top: 15px;">
       <template #header>
         <div class="card-header">
-          <span>学校评价：{{ comprehensiveScore.schoolScore }}分</span>
+          <span>学校评价：{{ comprehensiveScore?.schoolScore }}分</span>
           <el-tag type="info" size="small">权重{{ getSchoolWeight() }}%</el-tag>
         </div>
       </template>
@@ -43,7 +43,7 @@
           <el-descriptions-item label="成果展示">{{ schoolEvaluation.achievementScore }}分</el-descriptions-item>
           <el-descriptions-item label="总结反思">{{ schoolEvaluation.summaryReflectionScore }}分</el-descriptions-item>
           <el-descriptions-item label="总分" :span="2">
-            <strong style="color: #409eff;">{{ schoolEvaluation.totalScore }}分</strong>
+            <strong style="color: #409eff; font-size: 16px;">{{ schoolEvaluation.totalScore }}分</strong>
           </el-descriptions-item>
         </el-descriptions>
         <div v-if="schoolEvaluation.evaluationComment" style="margin-top: 15px;">
@@ -51,21 +51,21 @@
           <div style="color: #606266;">{{ schoolEvaluation.evaluationComment }}</div>
         </div>
       </div>
-      <div v-else style="color: #909399;">暂无评价详情</div>
+      <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无评价详情</div>
     </el-card>
 
     <!-- 学生自评详情 -->
-    <el-card v-if="comprehensiveScore && comprehensiveScore.selfScore !== null && comprehensiveScore.selfScore !== undefined" class="detail-card" style="margin-top: 15px;">
+    <el-card v-if="comprehensiveScore?.selfScore !== null && comprehensiveScore?.selfScore !== undefined" class="detail-card" style="margin-top: 15px;">
       <template #header>
         <div class="card-header">
-          <span>学生自评：{{ comprehensiveScore.selfScore }}分</span>
+          <span>学生自评：{{ comprehensiveScore?.selfScore }}分</span>
           <el-tag type="info" size="small">权重{{ getSelfWeight() }}%</el-tag>
         </div>
       </template>
       <div v-if="selfEvaluation">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="自评分数">
-            <strong style="color: #409eff;">{{ selfEvaluation.selfScore }}分</strong>
+            <strong style="color: #409eff; font-size: 16px;">{{ selfEvaluation.selfScore }}分</strong>
           </el-descriptions-item>
         </el-descriptions>
         <div v-if="selfEvaluation.reflectionSummary" style="margin-top: 15px;">
@@ -73,7 +73,7 @@
           <div class="reflection-content" v-html="selfEvaluation.reflectionSummary"></div>
         </div>
       </div>
-      <div v-else style="color: #909399;">暂无评价详情</div>
+      <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无评价详情</div>
     </el-card>
 
     <!-- 综合成绩计算 -->
@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { comprehensiveScoreApi } from '@/api/evaluation/comprehensiveScore'
 import { enterpriseEvaluationApi } from '@/api/evaluation/enterprise'
@@ -129,8 +129,6 @@ const applyInfo = ref(null)
 
 // 加载数据
 const loadData = async () => {
-  if (!props.applyId) return
-  
   loading.value = true
   try {
     // 并行加载所有数据
@@ -163,7 +161,6 @@ const loadData = async () => {
 
 // 加载企业评价
 const loadEnterpriseEvaluation = async () => {
-  if (!props.applyId) return
   try {
     const res = await enterpriseEvaluationApi.getEvaluationByApplyId(props.applyId)
     if (res.code === 200 && res.data) {
@@ -176,7 +173,6 @@ const loadEnterpriseEvaluation = async () => {
 
 // 加载学校评价
 const loadSchoolEvaluation = async () => {
-  if (!props.applyId) return
   try {
     const res = await schoolEvaluationApi.getEvaluationByApplyId(props.applyId)
     if (res.code === 200 && res.data) {
@@ -189,7 +185,6 @@ const loadSchoolEvaluation = async () => {
 
 // 加载学生自评
 const loadSelfEvaluation = async () => {
-  if (!props.applyId) return
   try {
     const res = await selfEvaluationApi.getEvaluationByApplyId(props.applyId)
     if (res.code === 200 && res.data) {
@@ -253,25 +248,12 @@ const getGradeTagType = (gradeLevel) => {
   return typeMap[gradeLevel] || ''
 }
 
-// 监听 applyId 变化
-watch(() => props.applyId, (newVal) => {
-  if (newVal) {
-    loadData()
-  }
-}, { immediate: true })
-
 onMounted(() => {
-  if (props.applyId) {
-    loadData()
-  }
+  loadData()
 })
 </script>
 
 <style scoped>
-.score-detail {
-  padding: 0;
-}
-
 .detail-card {
   margin-bottom: 15px;
 }
@@ -290,7 +272,7 @@ onMounted(() => {
 }
 
 .calculation-section {
-  padding: 0;
+  padding: 10px 0;
 }
 
 .calculation-formula,
@@ -299,6 +281,7 @@ onMounted(() => {
   color: #606266;
   line-height: 2;
   font-family: monospace;
+  margin-bottom: 10px;
 }
 </style>
 

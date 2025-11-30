@@ -72,7 +72,7 @@
       </el-table-column>
       <el-table-column label="企业评分" width="120" align="center">
         <template #default="{ row }">
-          <span v-if="row.enterpriseScore !== null && row.enterpriseScore !== undefined">
+          <span v-if="row.enterpriseScore !== null && row.enterpriseScore !== undefined" style="font-weight: 500;">
             {{ row.enterpriseScore }}分
           </span>
           <span v-else style="color: #909399;">-</span>
@@ -80,7 +80,7 @@
       </el-table-column>
       <el-table-column label="班主任评分" width="120" align="center">
         <template #default="{ row }">
-          <span v-if="row.schoolScore !== null && row.schoolScore !== undefined">
+          <span v-if="row.schoolScore !== null && row.schoolScore !== undefined" style="font-weight: 500;">
             {{ row.schoolScore }}分
           </span>
           <span v-else style="color: #909399;">-</span>
@@ -88,7 +88,7 @@
       </el-table-column>
       <el-table-column label="学生自评" width="120" align="center">
         <template #default="{ row }">
-          <span v-if="row.selfScore !== null && row.selfScore !== undefined">
+          <span v-if="row.selfScore !== null && row.selfScore !== undefined" style="font-weight: 500;">
             {{ row.selfScore }}分
           </span>
           <span v-else style="color: #909399;">-</span>
@@ -194,50 +194,29 @@ const loadData = async () => {
     })
     
     if (res.code === 200 && res.data) {
-      let records = res.data.records || []
+      let records = res.data.records.map(item => ({
+        ...item,
+        startDate: item.internshipStartDate || item.startDate,
+        endDate: item.internshipEndDate || item.endDate
+      }))
       
-      // 前端过滤：企业名称、成绩等级、实习类型
+      // 前端筛选（后端暂不支持这些参数）
       if (searchForm.enterpriseName) {
         records = records.filter(item => 
           item.enterpriseName && item.enterpriseName.includes(searchForm.enterpriseName)
         )
       }
-      
       if (searchForm.gradeLevel) {
         records = records.filter(item => item.gradeLevel === searchForm.gradeLevel)
       }
-      
-      if (searchForm.applyType !== null) {
-        records = records.filter(item => {
-          // 根据是否有企业评分判断实习类型
-          if (searchForm.applyType === 1) {
-            // 合作企业：有企业评分
-            return item.enterpriseScore !== null && item.enterpriseScore !== undefined
-          } else {
-            // 自主实习：无企业评分
-            return item.enterpriseScore === null || item.enterpriseScore === undefined
-          }
-        })
+      if (searchForm.applyType !== null && searchForm.applyType !== undefined) {
+        records = records.filter(item => item.applyType === searchForm.applyType)
       }
       
-      // 转换数据格式
-      tableData.value = records.map(item => ({
-        applyId: item.applyId,
-        studentId: item.studentId,
-        studentNo: item.studentNo || '-',
-        studentName: item.studentName || '-',
-        enterpriseName: item.enterpriseName || '-',
-        startDate: item.startDate,
-        endDate: item.endDate,
-        enterpriseScore: item.enterpriseScore,
-        schoolScore: item.schoolScore,
-        selfScore: item.selfScore,
-        comprehensiveScore: item.comprehensiveScore,
-        gradeLevel: item.gradeLevel
-      }))
-      
-      pagination.total = res.data.total || 0
+      tableData.value = records
+      pagination.total = records.length // 注意：前端筛选后总数可能不准确
     } else {
+      ElMessage.error(res.message || '加载失败')
       tableData.value = []
       pagination.total = 0
     }

@@ -508,7 +508,8 @@ public class DataPermissionUtil {
                                 .eq(InternshipApply::getEnterpriseId, enterpriseId)
                                 .in(InternshipApply::getStatus, 
                                     InternshipApplyStatus.ACCEPTED.getCode(), 
-                                    InternshipApplyStatus.COMPLETED.getCode())
+                                    InternshipApplyStatus.COMPLETED.getCode(),
+                                    InternshipApplyStatus.EVALUATED.getCode())
                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(InternshipApply::getStudentId)
                 );
@@ -531,7 +532,8 @@ public class DataPermissionUtil {
                                 .eq(InternshipApply::getMentorId, mentorId)
                                 .in(InternshipApply::getStatus, 
                                     InternshipApplyStatus.ACCEPTED.getCode(), 
-                                    InternshipApplyStatus.COMPLETED.getCode())
+                                    InternshipApplyStatus.COMPLETED.getCode(),
+                                    InternshipApplyStatus.EVALUATED.getCode())
                                 .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                                 .select(InternshipApply::getStudentId)
                 );

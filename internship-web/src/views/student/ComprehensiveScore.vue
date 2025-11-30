@@ -1,8 +1,95 @@
 <template>
   <PageLayout title="我的综合成绩">
     <el-card v-loading="loading" shadow="never">
-      <div v-if="!score && !loading">
-        <el-empty description="暂无综合成绩信息" />
+      <div v-if="!score && !loading && !enterpriseEvaluation && !schoolEvaluation && !selfEvaluation">
+        <el-empty description="暂无综合成绩信息，请等待所有评价完成后计算综合成绩" />
+      </div>
+      <div v-else-if="!score && (enterpriseEvaluation || schoolEvaluation || selfEvaluation) && !loading">
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 20px;"
+        >
+          <template #title>
+            <span>评价已完成，但综合成绩尚未计算。请联系班主任计算综合成绩。</span>
+          </template>
+        </el-alert>
+        
+        <!-- 显示已完成的评价信息 -->
+        <div class="evaluation-details">
+          <h3>评价详情</h3>
+          
+          <!-- 企业评价 -->
+          <el-card v-if="enterpriseEvaluation" class="evaluation-card">
+            <template #header>
+              <div class="card-header">
+                <span>企业评价：{{ enterpriseEvaluation.totalScore }}分</span>
+                <el-tag v-if="enterpriseEvaluation.evaluationStatus === 1" type="success" size="small">已提交</el-tag>
+                <el-tag v-else type="warning" size="small">草稿</el-tag>
+              </div>
+            </template>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="工作态度">{{ enterpriseEvaluation.workAttitudeScore }}分</el-descriptions-item>
+              <el-descriptions-item label="专业知识应用">{{ enterpriseEvaluation.knowledgeApplicationScore }}分</el-descriptions-item>
+              <el-descriptions-item label="专业技能">{{ enterpriseEvaluation.professionalSkillScore }}分</el-descriptions-item>
+              <el-descriptions-item label="团队协作">{{ enterpriseEvaluation.teamworkScore }}分</el-descriptions-item>
+              <el-descriptions-item label="创新意识">{{ enterpriseEvaluation.innovationScore }}分</el-descriptions-item>
+              <el-descriptions-item label="日志周报质量">{{ enterpriseEvaluation.logWeeklyReportScore }}分</el-descriptions-item>
+              <el-descriptions-item label="总分" :span="2">
+                <strong style="color: #409eff;">{{ enterpriseEvaluation.totalScore }}分</strong>
+              </el-descriptions-item>
+            </el-descriptions>
+            <div v-if="enterpriseEvaluation.evaluationComment" style="margin-top: 15px;">
+              <div style="font-weight: 600; margin-bottom: 5px;">评价意见：</div>
+              <div style="color: #606266;">{{ enterpriseEvaluation.evaluationComment }}</div>
+            </div>
+          </el-card>
+
+          <!-- 学校评价 -->
+          <el-card v-if="schoolEvaluation" class="evaluation-card" style="margin-top: 15px;">
+            <template #header>
+              <div class="card-header">
+                <span>学校评价：{{ schoolEvaluation.totalScore }}分</span>
+                <el-tag v-if="schoolEvaluation.evaluationStatus === 1" type="success" size="small">已提交</el-tag>
+                <el-tag v-else type="warning" size="small">草稿</el-tag>
+              </div>
+            </template>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="日志周报质量">{{ schoolEvaluation.logWeeklyReportScore }}分</el-descriptions-item>
+              <el-descriptions-item label="过程表现">{{ schoolEvaluation.processPerformanceScore }}分</el-descriptions-item>
+              <el-descriptions-item label="成果展示">{{ schoolEvaluation.achievementScore }}分</el-descriptions-item>
+              <el-descriptions-item label="总结反思">{{ schoolEvaluation.summaryReflectionScore }}分</el-descriptions-item>
+              <el-descriptions-item label="总分" :span="2">
+                <strong style="color: #409eff;">{{ schoolEvaluation.totalScore }}分</strong>
+              </el-descriptions-item>
+            </el-descriptions>
+            <div v-if="schoolEvaluation.evaluationComment" style="margin-top: 15px;">
+              <div style="font-weight: 600; margin-bottom: 5px;">评价意见：</div>
+              <div style="color: #606266;">{{ schoolEvaluation.evaluationComment }}</div>
+            </div>
+          </el-card>
+
+          <!-- 学生自评 -->
+          <el-card v-if="selfEvaluation" class="evaluation-card" style="margin-top: 15px;">
+            <template #header>
+              <div class="card-header">
+                <span>学生自评：{{ selfEvaluation.selfScore }}分</span>
+                <el-tag v-if="selfEvaluation.evaluationStatus === 1" type="success" size="small">已提交</el-tag>
+                <el-tag v-else type="warning" size="small">草稿</el-tag>
+              </div>
+            </template>
+            <el-descriptions :column="1" border>
+              <el-descriptions-item label="自评分数">
+                <strong style="color: #409eff;">{{ selfEvaluation.selfScore }}分</strong>
+              </el-descriptions-item>
+            </el-descriptions>
+            <div v-if="selfEvaluation.reflectionSummary" style="margin-top: 15px;">
+              <div style="font-weight: 600; margin-bottom: 5px;">自我反思和总结：</div>
+              <div class="reflection-content" v-html="selfEvaluation.reflectionSummary"></div>
+            </div>
+          </el-card>
+        </div>
       </div>
       
       <div v-else-if="score">
@@ -139,27 +226,44 @@ const selfEvaluation = ref(null)
 const loadData = async () => {
   loading.value = true
   try {
-    // 获取当前学生的实习申请（状态为"已评价"）
+    // 获取当前学生的实习申请（查询所有，然后过滤出实习结束的）
     const res = await applyApi.getApplyPage({
       current: 1,
-      size: 1,
-      status: 8 // 已评价
+      size: 10
     })
     
-    if (res.code === 200 && res.data && res.data.records && res.data.records.length > 0) {
-      const apply = res.data.records[0]
+    if (res.code === 200 && res.data && res.data.records) {
+      // 查找实习已结束的申请（合作企业：status=7，自主实习：status=13）
+      const endedApply = res.data.records.find(apply => {
+        // 合作企业：status=7
+        if (apply.applyType === 1 && apply.status === 7) {
+          return true
+        }
+        // 自主实习：status=13
+        if (apply.applyType === 2 && apply.status === 13) {
+          return true
+        }
+        return false
+      })
       
-      // 加载综合成绩
-      if (apply.applyId) {
-        const scoreRes = await comprehensiveScoreApi.getScoreByApplyId(apply.applyId)
+      if (endedApply && endedApply.applyId) {
+        // 加载综合成绩（可能还未计算）
+        const scoreRes = await comprehensiveScoreApi.getScoreByApplyId(endedApply.applyId)
         if (scoreRes.code === 200 && scoreRes.data) {
           score.value = scoreRes.data
           
           // 加载详细评价信息
           await Promise.all([
-            loadEnterpriseEvaluation(apply.applyId),
-            loadSchoolEvaluation(apply.applyId),
-            loadSelfEvaluation(apply.applyId)
+            loadEnterpriseEvaluation(endedApply.applyId),
+            loadSchoolEvaluation(endedApply.applyId),
+            loadSelfEvaluation(endedApply.applyId)
+          ])
+        } else {
+          // 如果综合成绩未计算，仍然加载评价信息（用于查看评价详情）
+          await Promise.all([
+            loadEnterpriseEvaluation(endedApply.applyId),
+            loadSchoolEvaluation(endedApply.applyId),
+            loadSelfEvaluation(endedApply.applyId)
           ])
         }
       }

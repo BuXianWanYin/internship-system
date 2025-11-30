@@ -154,13 +154,27 @@ const loadData = async () => {
 // 加载学生列表（实习结束的学生，包括已评价和未评价的）
 const loadStudentList = async () => {
   try {
+    // 不传status参数，查询所有状态，然后在前端过滤出 status=7（实习结束）或 status=8（已评价）
     const res = await applyApi.getApplyPage({
       current: pagination.current,
-      size: pagination.size,
-      status: 7 // 实习结束
+      size: pagination.size
+      // 不传status，查询所有状态
     })
     if (res.code === 200 && res.data && res.data.records) {
-      let students = res.data.records.map(item => ({
+      // 过滤出实习结束（status=7）或已评价（status=8）的学生
+      const filteredRecords = res.data.records.filter(item => {
+        // 合作企业：status=7（实习结束）或 status=8（已评价）
+        if (item.applyType === 1 && (item.status === 7 || item.status === 8)) {
+          return true
+        }
+        // 自主实习：status=13（实习结束），暂时不考虑已评价状态
+        if (item.applyType === 2 && item.status === 13) {
+          return true
+        }
+        return false
+      })
+      
+      let students = filteredRecords.map(item => ({
         applyId: item.applyId,
         studentId: item.studentId,
         studentNo: item.studentNo,
@@ -172,7 +186,7 @@ const loadStudentList = async () => {
         evaluationId: null
       }))
       
-      // 为每个学生查询评价记录
+      // 为每个学生查询评价记录和综合成绩
       for (const student of students) {
         try {
           // 查询学校评价
@@ -312,6 +326,7 @@ const handlePageChange = (page) => {
   pagination.current = page
   loadData()
 }
+
 
 onMounted(() => {
   loadData()

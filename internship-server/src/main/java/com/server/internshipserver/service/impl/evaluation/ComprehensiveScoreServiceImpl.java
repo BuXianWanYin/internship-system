@@ -7,6 +7,7 @@ import com.server.internshipserver.common.constant.ConfigKeys;
 import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
@@ -17,7 +18,6 @@ import com.server.internshipserver.domain.evaluation.EnterpriseEvaluation;
 import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
 import com.server.internshipserver.domain.evaluation.SelfEvaluation;
 import com.server.internshipserver.domain.internship.InternshipApply;
-import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.evaluation.ComprehensiveScoreMapper;
@@ -28,6 +28,7 @@ import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.service.evaluation.ComprehensiveScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -175,7 +176,7 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
         }
         
         // 更新实习申请状态为"已评价"（status=8）
-        apply.setStatus(8);
+        apply.setStatus(InternshipApplyStatus.EVALUATED.getCode());
         internshipApplyMapper.updateById(apply);
         
         // 填充关联字段
@@ -357,26 +358,27 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
             }
         }
         
-        // 填充企业信息和实习时间
+        // 填充申请信息（企业名称、实习时间等）
         if (score.getApplyId() != null) {
             InternshipApply apply = internshipApplyMapper.selectById(score.getApplyId());
             if (apply != null) {
+                // 填充申请类型
+                score.setApplyType(apply.getApplyType());
+                
                 // 填充企业名称
-                if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
-                    // 合作企业
-                    if (apply.getEnterpriseId() != null) {
-                        Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
-                        if (enterprise != null) {
-                            score.setEnterpriseName(enterprise.getEnterpriseName());
-                        }
+                if (apply.getEnterpriseId() != null) {
+                    Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                    if (enterprise != null) {
+                        score.setEnterpriseName(enterprise.getEnterpriseName());
                     }
-                } else {
-                    // 自主实习
+                } else if (apply.getSelfEnterpriseName() != null) {
+                    // 自主实习的企业名称
                     score.setEnterpriseName(apply.getSelfEnterpriseName());
                 }
+                
                 // 填充实习时间
-                score.setStartDate(apply.getInternshipStartDate());
-                score.setEndDate(apply.getInternshipEndDate());
+                score.setInternshipStartDate(apply.getInternshipStartDate());
+                score.setInternshipEndDate(apply.getInternshipEndDate());
             }
         }
     }
