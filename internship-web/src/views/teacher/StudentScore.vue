@@ -94,22 +94,23 @@
           <span v-else style="color: #909399;">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="综合成绩" width="140" align="center">
+      <el-table-column label="综合成绩" width="120" align="center">
         <template #default="{ row }">
-          <div v-if="row.comprehensiveScore !== null && row.comprehensiveScore !== undefined">
-            <div style="font-weight: bold; color: #409eff; font-size: 14px;">
-              {{ row.comprehensiveScore }}分
-            </div>
-            <el-tag 
-              v-if="row.gradeLevel"
-              :type="getGradeTagType(row.gradeLevel)" 
-              size="small"
-              style="margin-top: 4px;"
-            >
-              {{ row.gradeLevel }}
-            </el-tag>
-            <span v-else style="color: #909399; font-size: 12px;">未评级</span>
-          </div>
+          <span v-if="row.comprehensiveScore !== null && row.comprehensiveScore !== undefined" style="font-weight: bold; color: #409eff; font-size: 14px;">
+            {{ row.comprehensiveScore }}分
+          </span>
+          <span v-else style="color: #909399;">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="成绩等级" width="120" align="center">
+        <template #default="{ row }">
+          <el-tag 
+            v-if="row.gradeLevel"
+            :type="getGradeTagType(row.gradeLevel)" 
+            size="small"
+          >
+            {{ row.gradeLevel }}
+          </el-tag>
           <span v-else style="color: #909399;">-</span>
         </template>
       </el-table-column>
