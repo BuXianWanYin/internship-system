@@ -17,6 +17,7 @@ import com.server.internshipserver.domain.evaluation.EnterpriseEvaluation;
 import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
 import com.server.internshipserver.domain.evaluation.SelfEvaluation;
 import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.domain.user.Enterprise;
 import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.evaluation.ComprehensiveScoreMapper;
@@ -24,6 +25,7 @@ import com.server.internshipserver.mapper.evaluation.EnterpriseEvaluationMapper;
 import com.server.internshipserver.mapper.evaluation.SchoolEvaluationMapper;
 import com.server.internshipserver.mapper.evaluation.SelfEvaluationMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
+import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.evaluation.ComprehensiveScoreService;
@@ -58,6 +60,9 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private EnterpriseMapper enterpriseMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -352,11 +357,26 @@ public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScor
             }
         }
         
-        // 填充企业信息
+        // 填充企业信息和实习时间
         if (score.getApplyId() != null) {
             InternshipApply apply = internshipApplyMapper.selectById(score.getApplyId());
-            if (apply != null && apply.getEnterpriseId() != null) {
-                // TODO: 填充企业名称
+            if (apply != null) {
+                // 填充企业名称
+                if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.COOPERATION.getCode())) {
+                    // 合作企业
+                    if (apply.getEnterpriseId() != null) {
+                        Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                        if (enterprise != null) {
+                            score.setEnterpriseName(enterprise.getEnterpriseName());
+                        }
+                    }
+                } else {
+                    // 自主实习
+                    score.setEnterpriseName(apply.getSelfEnterpriseName());
+                }
+                // 填充实习时间
+                score.setStartDate(apply.getInternshipStartDate());
+                score.setEndDate(apply.getInternshipEndDate());
             }
         }
     }

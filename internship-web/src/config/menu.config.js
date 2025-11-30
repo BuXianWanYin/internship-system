@@ -532,6 +532,12 @@ export const menuItems = [
         title: '学生评价',
         icon: Star,
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
+      },
+      {
+        index: '/teacher/evaluation/student-score',
+        title: '学生成绩',
+        icon: DataAnalysis,
+        roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
   }

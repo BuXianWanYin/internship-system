@@ -154,6 +154,29 @@
           </el-descriptions-item>
         </el-descriptions>
       </el-card>
+      
+      <!-- 自我评价入口（实习结束时显示） -->
+      <el-card v-if="isInternshipCompleted(currentInternship)" class="self-evaluation-card" shadow="hover">
+        <template #header>
+          <span class="card-title">自我评价</span>
+        </template>
+        <div class="self-evaluation-content">
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+          >
+            <template #title>
+              <span>实习已结束，请填写自我评价，总结实习期间的收获和反思</span>
+            </template>
+          </el-alert>
+          <div style="margin-top: 15px; text-align: right">
+            <el-button type="primary" @click="goToSelfEvaluation">
+              填写自我评价
+            </el-button>
+          </div>
+        </div>
+      </el-card>
     </div>
     
   </PageLayout>
@@ -173,15 +196,43 @@ const loading = ref(false)
 const resignLoading = ref(false)
 const currentInternship = ref(null)
 
-// 加载当前实习信息
+// 加载当前实习信息（包括已结束的实习）
 const loadCurrentInternship = async () => {
   loading.value = true
   try {
+    // 先尝试获取当前实习（正在进行的）
     const res = await applyApi.getCurrentInternship()
-    if (res.code === 200) {
+    if (res.code === 200 && res.data) {
       currentInternship.value = res.data
     } else {
-      currentInternship.value = null
+      // 如果当前实习不存在，查询已结束的实习
+      const applyRes = await applyApi.getApplyPage({
+        current: 1,
+        size: 10
+      })
+      
+      if (applyRes.code === 200 && applyRes.data && applyRes.data.records) {
+        // 查找最近已结束的实习（status=7 或 status=13）
+        const completedApply = applyRes.data.records.find(apply => {
+          // 合作企业：status=7
+          if (apply.applyType === 1 && apply.status === 7) {
+            return true
+          }
+          // 自主实习：status=13
+          if (apply.applyType === 2 && apply.status === 13) {
+            return true
+          }
+          return false
+        })
+        
+        if (completedApply) {
+          currentInternship.value = completedApply
+        } else {
+          currentInternship.value = null
+        }
+      } else {
+        currentInternship.value = null
+      }
     }
   } catch (error) {
     console.error('加载当前实习信息失败:', error)
@@ -252,6 +303,11 @@ const goToApply = () => {
   router.push('/student/internship/apply')
 }
 
+// 去填写自我评价
+const goToSelfEvaluation = () => {
+  router.push('/student/evaluation/self')
+}
+
 // 离职
 const handleResign = async () => {
   if (!currentInternship.value || !currentInternship.value.applyId) {
@@ -313,6 +369,14 @@ onMounted(() => {
 
 .unbind-info-card {
   margin-top: 20px;
+}
+
+.self-evaluation-card {
+  margin-top: 20px;
+}
+
+.self-evaluation-content {
+  padding: 0;
 }
 
 .card-header {

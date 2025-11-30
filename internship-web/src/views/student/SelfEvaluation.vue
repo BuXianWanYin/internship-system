@@ -26,26 +26,27 @@
           label-width="150px"
           style="margin-top: 20px"
         >
-          <el-form-item label="自评分数" prop="selfScore">
-            <el-input-number
-              v-model="formData.selfScore"
-              :min="0"
-              :max="100"
-              :precision="2"
-              placeholder="请根据自己在实习期间的表现，给自己打分（0-100分）"
-              style="width: 100%"
-            />
-            <div style="margin-top: 5px; font-size: 12px; color: #909399;">
-              说明：请根据自己在实习期间的表现，给自己打分（0-100分）
-            </div>
-          </el-form-item>
-
           <el-form-item label="自我反思和总结" prop="reflectionSummary">
             <RichTextEditor
               v-model="formData.reflectionSummary"
               placeholder="请填写：&#10;1. 实习期间的主要工作内容和收获&#10;2. 遇到的困难和解决方法&#10;3. 对实习过程的反思和总结&#10;4. 未来的职业规划"
               :height="'400px'"
             />
+          </el-form-item>
+
+          <el-form-item label="自评分数" prop="selfScore">
+            <el-input-number
+              v-model="formData.selfScore"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :controls="false"
+              placeholder="请输入分数（0-100）"
+              style="width: 100%"
+            />
+            <div style="margin-top: 5px; font-size: 12px; color: #909399;">
+              说明：请根据自己在实习期间的表现，给自己打分（0-100分）
+            </div>
           </el-form-item>
 
           <el-form-item>
@@ -102,46 +103,58 @@ const formRules = {
 const loadData = async () => {
   loading.value = true
   try {
-    // 获取当前学生的实习申请（状态为"已录用"）
-    const res = await applyApi.getApplyPage({
+    // 先查询已结束的实习（合作企业：status=7，自主实习：status=13）
+    const completedRes = await applyApi.getApplyPage({
       current: 1,
-      size: 10,
-      status: 3 // 已录用
+      size: 10
+      // 不限制status，查询所有，然后过滤
     })
     
-    if (res.code === 200 && res.data && res.data.records && res.data.records.length > 0) {
-      // 查找实习已结束的申请（实习结束日期已过或今天）
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      const endedApply = res.data.records.find(apply => {
-        if (!apply.internshipEndDate) {
-          return false
+    let endedApply = null
+    
+    if (completedRes.code === 200 && completedRes.data && completedRes.data.records) {
+      // 查找实习已结束的申请（status=7 或 status=13）
+      endedApply = completedRes.data.records.find(apply => {
+        // 合作企业：status=7
+        if (apply.applyType === 1 && apply.status === 7) {
+          return true
         }
-        const endDate = new Date(apply.internshipEndDate)
-        endDate.setHours(0, 0, 0, 0)
-        return endDate <= today
-      })
-      
-      if (endedApply) {
-        formData.applyId = endedApply.applyId
-        
-        // 填充实习信息
-        internshipInfo.value = {
-          enterpriseName: endedApply.enterpriseName || '-',
-          startDate: endedApply.internshipStartDate ? formatDate(endedApply.internshipStartDate) : '-',
-          endDate: endedApply.internshipEndDate ? formatDate(endedApply.internshipEndDate) : '-',
-          postName: endedApply.postName || '-'
+        // 自主实习：status=13
+        if (apply.applyType === 2 && apply.status === 13) {
+          return true
         }
-        
-        // 加载已有评价
-        if (endedApply.applyId) {
-          const evalRes = await selfEvaluationApi.getEvaluationByApplyId(endedApply.applyId)
-          if (evalRes.code === 200 && evalRes.data) {
-            evaluation.value = evalRes.data
-            formData.selfScore = evalRes.data.selfScore
-            formData.reflectionSummary = evalRes.data.reflectionSummary || ''
+        // 如果没有标记为结束，检查结束日期（兼容旧逻辑）
+        if (apply.internshipEndDate) {
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          const endDate = new Date(apply.internshipEndDate)
+          endDate.setHours(0, 0, 0, 0)
+          if (endDate <= today && (apply.status === 3 || apply.status === 11)) {
+            return true
           }
+        }
+        return false
+      })
+    }
+    
+    if (endedApply) {
+      formData.applyId = endedApply.applyId
+      
+      // 填充实习信息
+      internshipInfo.value = {
+        enterpriseName: endedApply.enterpriseName || endedApply.selfEnterpriseName || '-',
+        startDate: endedApply.internshipStartDate ? formatDate(endedApply.internshipStartDate) : (endedApply.selfStartDate ? formatDate(endedApply.selfStartDate) : '-'),
+        endDate: endedApply.internshipEndDate ? formatDate(endedApply.internshipEndDate) : (endedApply.selfEndDate ? formatDate(endedApply.selfEndDate) : '-'),
+        postName: endedApply.postName || endedApply.selfPostName || '-'
+      }
+      
+      // 加载已有评价
+      if (endedApply.applyId) {
+        const evalRes = await selfEvaluationApi.getEvaluationByApplyId(endedApply.applyId)
+        if (evalRes.code === 200 && evalRes.data) {
+          evaluation.value = evalRes.data
+          formData.selfScore = evalRes.data.selfScore
+          formData.reflectionSummary = evalRes.data.reflectionSummary || ''
         }
       }
     }

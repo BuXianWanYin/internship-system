@@ -12,226 +12,17 @@
       </el-descriptions>
     </el-card>
 
-    <!-- 主标签页：参考信息和评分表单 -->
+    <!-- 主标签页：评分填写和参考信息 -->
     <el-tabs v-model="activeMainTab" type="border-card" style="margin-top: 15px;">
-      <!-- 标签页1: 参考信息 -->
-      <el-tab-pane label="参考信息" name="reference">
-        <div style="padding: 20px;">
-          <h3 style="margin: 0 0 15px 0;">参考信息</h3>
-          
-          <el-tabs v-model="activeReferenceTab" type="border-card">
-        <!-- 日志情况 -->
-        <el-tab-pane label="日志情况" name="logs">
-          <div v-if="referenceInfo.logs.length > 0" style="padding: 10px 0;">
-            <p>日志：已提交{{ referenceInfo.logs.length }}篇</p>
-            <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.logs) }}分</p>
-            <el-button link type="primary" size="small" @click="viewLogs">查看日志列表</el-button>
-            <!-- 日志列表 -->
-            <el-table :data="referenceInfo.logs" border style="margin-top: 10px" max-height="300">
-              <el-table-column prop="logTitle" label="日志标题" min-width="200" />
-              <el-table-column prop="logDate" label="日期" width="120">
-                <template #default="{ row }">
-                  {{ formatDate(row.logDate) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
-                <template #default="{ row }">
-                  {{ row.reviewScore || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
-                  <el-tag v-else type="warning" size="small">未批阅</el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无日志数据</div>
-        </el-tab-pane>
-        
-        <!-- 周报情况 -->
-        <el-tab-pane label="周报情况" name="reports">
-          <div v-if="referenceInfo.reports.length > 0" style="padding: 10px 0;">
-            <p>周报：已提交{{ referenceInfo.reports.length }}篇</p>
-            <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.reports) }}分</p>
-            <el-button link type="primary" size="small" @click="viewReports">查看周报列表</el-button>
-            <!-- 周报列表 -->
-            <el-table :data="referenceInfo.reports" border style="margin-top: 10px" max-height="300">
-              <el-table-column prop="reportTitle" label="周报标题" min-width="200" />
-              <el-table-column prop="reportWeek" label="周次" width="100" align="center" />
-              <el-table-column prop="reportDate" label="日期" width="120">
-                <template #default="{ row }">
-                  {{ formatDate(row.reportDate) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
-                <template #default="{ row }">
-                  {{ row.reviewScore || '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
-                  <el-tag v-else type="warning" size="small">未批阅</el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无周报数据</div>
-        </el-tab-pane>
-        
-        <!-- 阶段性成果 -->
-        <el-tab-pane label="阶段性成果" name="achievements">
-          <div v-if="referenceInfo.achievements.length > 0" style="padding: 10px 0;">
-            <p>已提交{{ referenceInfo.achievements.length }}个成果</p>
-            <el-button link type="primary" size="small" @click="viewAchievements">查看成果列表</el-button>
-            <!-- 成果列表 -->
-            <el-table :data="referenceInfo.achievements" border style="margin-top: 10px" max-height="300">
-              <el-table-column prop="achievementTitle" label="成果标题" min-width="200" />
-              <el-table-column prop="achievementType" label="成果类型" width="120" />
-              <el-table-column prop="submitTime" label="提交时间" width="180">
-                <template #default="{ row }">
-                  {{ formatDateTime(row.submitTime) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="reviewStatus" label="审核状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已通过</el-tag>
-                  <el-tag v-else-if="row.reviewStatus === 2" type="danger" size="small">已拒绝</el-tag>
-                  <el-tag v-else type="warning" size="small">待审核</el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无成果数据</div>
-        </el-tab-pane>
-        
-        <!-- 考勤记录 -->
-        <el-tab-pane label="考勤记录" name="attendance">
-          <div v-if="referenceInfo.attendance" style="padding: 10px 0;">
-            <!-- 考勤统计卡片 -->
-            <el-row :gutter="12" style="margin-bottom: 15px;">
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">总出勤天数</div>
-                    <div class="stat-value">{{ referenceInfo.attendance.totalDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">正常出勤</div>
-                    <div class="stat-value" style="color: #67c23a">{{ referenceInfo.attendance.normalDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">迟到</div>
-                    <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.lateDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">早退</div>
-                    <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.earlyLeaveDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">请假</div>
-                    <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.leaveDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">缺勤</div>
-                    <div class="stat-value" style="color: #f56c6c">{{ referenceInfo.attendance.absentDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">休息</div>
-                    <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.restDays || 0 }}</div>
-                  </div>
-                </el-card>
-              </el-col>
-              <el-col :span="6">
-                <el-card shadow="hover">
-                  <div class="stat-item">
-                    <div class="stat-label">出勤率</div>
-                    <div class="stat-value" style="color: #409eff">
-                      {{ referenceInfo.attendance.attendanceRate ? referenceInfo.attendance.attendanceRate.toFixed(2) + '%' : '0%' }}
-                    </div>
-                  </div>
-                </el-card>
-              </el-col>
-            </el-row>
-            
-            <!-- 考勤记录列表 -->
-            <el-table v-if="referenceInfo.attendanceRecords && referenceInfo.attendanceRecords.length > 0" 
-                      :data="referenceInfo.attendanceRecords" border style="margin-top: 10px" max-height="300">
-              <el-table-column prop="attendanceDate" label="日期" width="120">
-                <template #default="{ row }">
-                  {{ formatDate(row.attendanceDate) }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="attendanceType" label="状态" width="100" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.attendanceType === 1" type="success" size="small">正常</el-tag>
-                  <el-tag v-else-if="row.attendanceType === 2" type="warning" size="small">迟到</el-tag>
-                  <el-tag v-else-if="row.attendanceType === 3" type="warning" size="small">早退</el-tag>
-                  <el-tag v-else-if="row.attendanceType === 4" type="info" size="small">请假</el-tag>
-                  <el-tag v-else-if="row.attendanceType === 5" type="danger" size="small">缺勤</el-tag>
-                  <el-tag v-else-if="row.attendanceType === 6" type="info" size="small">休息</el-tag>
-                  <el-tag v-else size="small">未知</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="checkInTime" label="签到时间" width="180">
-                <template #default="{ row }">
-                  {{ row.checkInTime ? formatDateTime(row.checkInTime) : '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="checkOutTime" label="签退时间" width="180">
-                <template #default="{ row }">
-                  {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
-                </template>
-              </el-table-column>
-              <el-table-column prop="workHours" label="工作时长" width="100" align="center">
-                <template #default="{ row }">
-                  {{ row.workHours ? row.workHours + '小时' : '-' }}
-                </template>
-              </el-table-column>
-            </el-table>
-            <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤记录</div>
-          </div>
-          <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤数据</div>
-        </el-tab-pane>
-          </el-tabs>
-        </div>
-      </el-tab-pane>
-      
-      <!-- 标签页2: 评分填写 -->
+      <!-- 标签页1: 评分填写 -->
       <el-tab-pane label="评分填写" name="evaluation">
         <div style="padding: 20px;">
-          <el-form
-            ref="formRef"
-            :model="formData"
-            :rules="formRules"
-            label-width="150px"
-          >
+    <el-form
+      ref="formRef"
+      :model="formData"
+      :rules="formRules"
+      label-width="150px"
+    >
       <!-- 评价指标 -->
       <el-form-item label="工作态度" prop="workAttitudeScore">
         <el-input-number
@@ -335,15 +126,326 @@
         />
       </el-form-item>
 
-            <el-form-item>
-              <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
-              <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
-            </el-form-item>
-          </el-form>
+      <el-form-item>
+        <el-button type="primary" :loading="saving" @click="handleSave">保存草稿</el-button>
+        <el-button type="success" :loading="submitting" @click="handleSubmit">提交评价</el-button>
+      </el-form-item>
+    </el-form>
+        </div>
+      </el-tab-pane>
+      
+      <!-- 标签页2: 参考信息 -->
+      <el-tab-pane label="参考信息" name="reference">
+        <div style="padding: 20px;">
+          <h3 style="margin: 0 0 15px 0;">参考信息</h3>
+          
+          <el-tabs v-model="activeReferenceTab" type="border-card">
+            <!-- 日志情况 -->
+            <el-tab-pane label="日志情况" name="logs">
+              <div v-if="referenceInfo.logs.length > 0" style="padding: 10px 0;">
+                <p>日志：已提交{{ referenceInfo.logs.length }}篇</p>
+                <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.logs) }}分</p>
+                <el-button link type="primary" size="small" @click="viewLogs">查看日志列表</el-button>
+                <!-- 日志列表 -->
+                <el-table :data="referenceInfo.logs" border style="margin-top: 10px" max-height="300">
+                  <el-table-column prop="logTitle" label="日志标题" min-width="200" />
+                  <el-table-column prop="logDate" label="日期" width="120">
+                    <template #default="{ row }">
+                      {{ formatDate(row.logDate) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+                    <template #default="{ row }">
+                      {{ row.reviewScore || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+                      <el-tag v-else type="warning" size="small">未批阅</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无日志数据</div>
+            </el-tab-pane>
+            
+            <!-- 周报情况 -->
+            <el-tab-pane label="周报情况" name="reports">
+              <div v-if="referenceInfo.reports.length > 0" style="padding: 10px 0;">
+                <p>周报：已提交{{ referenceInfo.reports.length }}篇</p>
+                <p>平均批阅分数：{{ calculateAverageScore(referenceInfo.reports) }}分</p>
+                <el-button link type="primary" size="small" @click="viewReports">查看周报列表</el-button>
+                <!-- 周报列表 -->
+                <el-table :data="referenceInfo.reports" border style="margin-top: 10px" max-height="300">
+                  <el-table-column prop="reportTitle" label="周报标题" min-width="200" />
+                  <el-table-column prop="weekNumber" label="周次" width="100" align="center">
+                    <template #default="{ row }">
+                      {{ row.weekNumber ? `第${row.weekNumber}周` : '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reportDate" label="日期" width="120">
+                    <template #default="{ row }">
+                      {{ formatDate(row.reportDate) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+                    <template #default="{ row }">
+                      {{ row.reviewScore || '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+                      <el-tag v-else type="warning" size="small">未批阅</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无周报数据</div>
+            </el-tab-pane>
+            
+            <!-- 阶段性成果 -->
+            <el-tab-pane label="阶段性成果" name="achievements">
+              <div v-if="referenceInfo.achievements.length > 0" style="padding: 10px 0;">
+                <p>已提交{{ referenceInfo.achievements.length }}个成果</p>
+                <el-button link type="primary" size="small" @click="viewAchievements">查看成果列表</el-button>
+                <!-- 成果列表 -->
+                <el-table :data="referenceInfo.achievements" border style="margin-top: 10px" max-height="300">
+                  <el-table-column prop="achievementName" label="成果名称" min-width="200" />
+                  <el-table-column prop="achievementType" label="成果类型" width="120" />
+                  <el-table-column prop="submitDate" label="提交时间" width="180">
+                    <template #default="{ row }">
+                      {{ row.submitDate ? formatDate(row.submitDate) : (row.createTime ? formatDateTime(row.createTime) : '-') }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="reviewStatus" label="审核状态" width="100" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已通过</el-tag>
+                      <el-tag v-else-if="row.reviewStatus === 2" type="danger" size="small">已拒绝</el-tag>
+                      <el-tag v-else type="warning" size="small">待审核</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无成果数据</div>
+            </el-tab-pane>
+            
+            <!-- 考勤记录 -->
+            <el-tab-pane label="考勤记录" name="attendance">
+              <div v-if="referenceInfo.attendance" style="padding: 10px 0;">
+                <!-- 考勤统计卡片 -->
+                <el-row :gutter="12" style="margin-bottom: 15px;">
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">总出勤天数</div>
+                        <div class="stat-value">{{ referenceInfo.attendance.totalDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">正常出勤</div>
+                        <div class="stat-value" style="color: #67c23a">{{ referenceInfo.attendance.normalDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">迟到</div>
+                        <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.lateDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">早退</div>
+                        <div class="stat-value" style="color: #e6a23c">{{ referenceInfo.attendance.earlyLeaveDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">请假</div>
+                        <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.leaveDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">缺勤</div>
+                        <div class="stat-value" style="color: #f56c6c">{{ referenceInfo.attendance.absentDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">休息</div>
+                        <div class="stat-value" style="color: #909399">{{ referenceInfo.attendance.restDays || 0 }}</div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  <el-col :span="6">
+                    <el-card shadow="hover">
+                      <div class="stat-item">
+                        <div class="stat-label">出勤率</div>
+                        <div class="stat-value" style="color: #409eff">
+                          {{ referenceInfo.attendance.attendanceRate ? referenceInfo.attendance.attendanceRate.toFixed(2) + '%' : '0%' }}
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                </el-row>
+                
+                <!-- 考勤记录列表 -->
+                <el-table v-if="referenceInfo.attendanceRecords && referenceInfo.attendanceRecords.length > 0" 
+                          :data="referenceInfo.attendanceRecords" border style="margin-top: 10px" max-height="300">
+                  <el-table-column prop="attendanceDate" label="日期" width="120">
+                    <template #default="{ row }">
+                      {{ formatDate(row.attendanceDate) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="attendanceType" label="状态" width="100" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.attendanceType === 1" type="success" size="small">正常</el-tag>
+                      <el-tag v-else-if="row.attendanceType === 2" type="warning" size="small">迟到</el-tag>
+                      <el-tag v-else-if="row.attendanceType === 3" type="warning" size="small">早退</el-tag>
+                      <el-tag v-else-if="row.attendanceType === 4" type="info" size="small">请假</el-tag>
+                      <el-tag v-else-if="row.attendanceType === 5" type="danger" size="small">缺勤</el-tag>
+                      <el-tag v-else-if="row.attendanceType === 6" type="info" size="small">休息</el-tag>
+                      <el-tag v-else size="small">未知</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="checkInTime" label="签到时间" width="180">
+                    <template #default="{ row }">
+                      {{ row.checkInTime ? formatDateTime(row.checkInTime) : '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="checkOutTime" label="签退时间" width="180">
+                    <template #default="{ row }">
+                      {{ row.checkOutTime ? formatDateTime(row.checkOutTime) : '-' }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="workHours" label="工作时长" width="100" align="center">
+                    <template #default="{ row }">
+                      {{ row.workHours ? row.workHours + '小时' : '-' }}
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤记录</div>
+              </div>
+              <div v-else style="color: #909399; padding: 20px; text-align: center;">暂无考勤数据</div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
       </el-tab-pane>
     </el-tabs>
   </div>
+
+  <!-- 日志详情对话框 -->
+  <el-dialog
+    v-model="logDialogVisible"
+    title="日志列表"
+    width="80%"
+    :close-on-click-modal="false"
+  >
+    <el-table :data="referenceInfo.logs" border max-height="500">
+      <el-table-column prop="logTitle" label="日志标题" min-width="200" />
+      <el-table-column prop="logDate" label="日期" width="120">
+        <template #default="{ row }">
+          {{ formatDate(row.logDate) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+        <template #default="{ row }">
+          {{ row.reviewScore || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+          <el-tag v-else type="warning" size="small">未批阅</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewComment" label="批阅意见" min-width="200" show-overflow-tooltip />
+    </el-table>
+    <template #footer>
+      <el-button @click="logDialogVisible = false">关闭</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 周报详情对话框 -->
+  <el-dialog
+    v-model="reportDialogVisible"
+    title="周报列表"
+    width="80%"
+    :close-on-click-modal="false"
+  >
+    <el-table :data="referenceInfo.reports" border max-height="500">
+      <el-table-column prop="reportTitle" label="周报标题" min-width="200" />
+      <el-table-column prop="weekNumber" label="周次" width="100" align="center">
+        <template #default="{ row }">
+          {{ row.weekNumber ? `第${row.weekNumber}周` : '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reportDate" label="日期" width="120">
+        <template #default="{ row }">
+          {{ formatDate(row.reportDate) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewScore" label="批阅分数" width="100" align="center">
+        <template #default="{ row }">
+          {{ row.reviewScore || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewStatus" label="批阅状态" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已批阅</el-tag>
+          <el-tag v-else type="warning" size="small">未批阅</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewComment" label="批阅意见" min-width="200" show-overflow-tooltip />
+    </el-table>
+    <template #footer>
+      <el-button @click="reportDialogVisible = false">关闭</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 成果详情对话框 -->
+  <el-dialog
+    v-model="achievementDialogVisible"
+    title="成果列表"
+    width="80%"
+    :close-on-click-modal="false"
+  >
+    <el-table :data="referenceInfo.achievements" border max-height="500">
+      <el-table-column prop="achievementName" label="成果名称" min-width="200" />
+      <el-table-column prop="achievementType" label="成果类型" width="120" />
+      <el-table-column prop="submitDate" label="提交时间" width="180">
+        <template #default="{ row }">
+          {{ row.submitDate ? formatDate(row.submitDate) : (row.createTime ? formatDateTime(row.createTime) : '-') }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewStatus" label="审核状态" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.reviewStatus === 1" type="success" size="small">已通过</el-tag>
+          <el-tag v-else-if="row.reviewStatus === 2" type="danger" size="small">已拒绝</el-tag>
+          <el-tag v-else type="warning" size="small">待审核</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="reviewComment" label="审核意见" min-width="200" show-overflow-tooltip />
+    </el-table>
+    <template #footer>
+      <el-button @click="achievementDialogVisible = false">关闭</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -371,8 +473,13 @@ const emit = defineEmits(['save', 'submit'])
 const formRef = ref(null)
 const saving = ref(false)
 const submitting = ref(false)
-const activeMainTab = ref('reference') // 主标签页：参考信息/评分填写
+const activeMainTab = ref('evaluation') // 主标签页：评分填写/参考信息，默认显示评分填写
 const activeReferenceTab = ref('logs') // 参考信息内部标签页
+
+// 对话框显示状态
+const logDialogVisible = ref(false)
+const reportDialogVisible = ref(false)
+const achievementDialogVisible = ref(false)
 
 const referenceInfo = reactive({
   logs: [],
@@ -647,20 +754,17 @@ const calculateAverageScore = (items) => {
 
 // 查看日志
 const viewLogs = () => {
-  // TODO: 跳转到日志列表页面
-  ElMessage.info('功能开发中')
+  logDialogVisible.value = true
 }
 
 // 查看周报
 const viewReports = () => {
-  // TODO: 跳转到周报列表页面
-  ElMessage.info('功能开发中')
+  reportDialogVisible.value = true
 }
 
 // 查看成果
 const viewAchievements = () => {
-  // TODO: 跳转到成果列表页面
-  ElMessage.info('功能开发中')
+  achievementDialogVisible.value = true
 }
 
 // 查看考勤

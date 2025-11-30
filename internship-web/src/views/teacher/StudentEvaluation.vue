@@ -54,25 +54,6 @@
           <el-tag v-else type="warning" size="small">待评价</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="综合成绩" width="140" align="center">
-        <template #default="{ row }">
-          <div v-if="row.comprehensiveScore !== null && row.comprehensiveScore !== undefined">
-            <div style="font-weight: bold; color: #409eff; font-size: 14px;">
-              {{ row.comprehensiveScore }}
-            </div>
-            <el-tag 
-              v-if="row.gradeLevel"
-              :type="getGradeTagType(row.gradeLevel)" 
-              size="small"
-              style="margin-top: 4px;"
-            >
-              {{ row.gradeLevel }}
-            </el-tag>
-            <span v-else style="color: #909399; font-size: 12px;">未评级</span>
-          </div>
-          <span v-else style="color: #909399;">-</span>
-        </template>
-      </el-table-column>
       <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
           <el-button
@@ -188,12 +169,10 @@ const loadStudentList = async () => {
         startDate: item.internshipStartDate,
         endDate: item.internshipEndDate,
         evaluationStatus: null,
-        evaluationId: null,
-        comprehensiveScore: null,
-        gradeLevel: null
+        evaluationId: null
       }))
       
-      // 为每个学生查询评价记录和综合成绩
+      // 为每个学生查询评价记录
       for (const student of students) {
         try {
           // 查询学校评价
@@ -201,8 +180,6 @@ const loadStudentList = async () => {
           if (evalRes.code === 200 && evalRes.data) {
             student.evaluationStatus = evalRes.data.evaluationStatus
             student.evaluationId = evalRes.data.evaluationId
-            student.comprehensiveScore = evalRes.data.comprehensiveScore
-            student.gradeLevel = evalRes.data.gradeLevel
           }
         } catch (error) {
           console.error(`查询学生 ${student.studentName} 的评价失败:`, error)
@@ -334,19 +311,6 @@ const handleSizeChange = (size) => {
 const handlePageChange = (page) => {
   pagination.current = page
   loadData()
-}
-
-// 获取等级标签类型
-const getGradeTagType = (gradeLevel) => {
-  if (!gradeLevel) return ''
-  const typeMap = {
-    '优秀': 'success',
-    '良好': '',
-    '中等': 'warning',
-    '及格': 'info',
-    '不及格': 'danger'
-  }
-  return typeMap[gradeLevel] || ''
 }
 
 onMounted(() => {

@@ -4,8 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.EvaluationStatus;
+import com.server.internshipserver.common.enums.InternshipApplyStatus;
+import com.server.internshipserver.common.enums.SelfInternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
@@ -52,18 +55,41 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
         InternshipApply apply = internshipApplyMapper.selectById(evaluation.getApplyId());
         EntityValidationUtil.validateEntityExists(apply, "申请");
         
-        // 验证实习状态为"已录用"（status=3）
-        if (apply.getStatus() == null || apply.getStatus() != 3) {
-            throw new BusinessException("只能评价已录用的实习申请");
+        // 验证实习状态：允许已录用（status=3）或已结束（status=7合作企业，status=13自主实习）
+        Integer status = apply.getStatus();
+        if (status == null) {
+            throw new BusinessException("实习申请状态异常，无法填写自我评价");
         }
         
-        // 验证实习是否已结束（实习结束日期已过或今天）
-        if (apply.getInternshipEndDate() == null) {
-            throw new BusinessException("实习结束日期未设置，无法填写自我评价");
+        Integer applyType = apply.getApplyType();
+        boolean isCompleted = false;
+        
+        // 判断是否为实习结束状态
+        if (applyType != null && applyType.equals(ApplyType.COOPERATION.getCode())) {
+            // 合作企业：status=3（已录用）或 status=7（实习结束）
+            isCompleted = status.equals(InternshipApplyStatus.COMPLETED.getCode());
+            if (!status.equals(InternshipApplyStatus.ACCEPTED.getCode()) && !isCompleted) {
+                throw new BusinessException("只能评价已录用或已结束的实习申请");
+            }
+        } else if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            // 自主实习：status=11（实习中）或 status=13（实习结束）
+            isCompleted = status.equals(SelfInternshipApplyStatus.COMPLETED.getCode());
+            if (!status.equals(SelfInternshipApplyStatus.IN_PROGRESS.getCode()) && !isCompleted) {
+                throw new BusinessException("只能评价实习中或已结束的实习申请");
+            }
+        } else {
+            throw new BusinessException("实习申请类型异常，无法填写自我评价");
         }
-        java.time.LocalDate today = java.time.LocalDate.now();
-        if (apply.getInternshipEndDate().isAfter(today)) {
-            throw new BusinessException("实习尚未结束，请在实习结束后填写自我评价");
+        
+        // 验证实习是否已结束（实习结束日期已过或今天，或者状态为已结束）
+        if (!isCompleted) {
+            if (apply.getInternshipEndDate() == null) {
+                throw new BusinessException("实习结束日期未设置，无法填写自我评价");
+            }
+            java.time.LocalDate today = java.time.LocalDate.now();
+            if (apply.getInternshipEndDate().isAfter(today)) {
+                throw new BusinessException("实习尚未结束，请在实习结束后填写自我评价");
+            }
         }
         
         // 获取当前登录用户（学生）

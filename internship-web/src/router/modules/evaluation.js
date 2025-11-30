@@ -24,6 +24,17 @@ export default [
       roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER']
     }
   },
+  // 学生成绩（教师端）
+  {
+    path: '/teacher/evaluation/student-score',
+    name: 'StudentScore',
+    component: () => import('@/views/teacher/StudentScore.vue'),
+    meta: {
+      title: '学生成绩',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+    }
+  },
   // 学生自评
   {
     path: '/student/evaluation/self',
