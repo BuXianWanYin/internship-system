@@ -62,10 +62,6 @@
           <el-descriptions-item label="实习结束日期">
             {{ formatDate(currentInternship.internshipEndDate) || formatDate(currentInternship.selfEndDate) || '-' }}
           </el-descriptions-item>
-          <!-- 如果是实习结束，显示结束日期和备注 -->
-          <el-descriptions-item v-if="isInternshipCompleted(currentInternship)" label="实习结束日期">
-            {{ formatDate(currentInternship.internshipEndDate) }}
-          </el-descriptions-item>
           <el-descriptions-item v-if="isInternshipCompleted(currentInternship) && currentInternship.unbindAuditOpinion" label="结束备注" :span="2">
             {{ currentInternship.unbindAuditOpinion }}
           </el-descriptions-item>
@@ -78,7 +74,7 @@
               已解绑
             </el-tag>
             <el-tag 
-              v-else-if="currentInternship.studentInternshipStatus === 1" 
+              v-else-if="currentInternship.studentConfirmStatus === 1" 
               type="success" 
               size="small"
             >
@@ -212,10 +208,10 @@ const loadCurrentInternship = async () => {
       })
       
       if (applyRes.code === 200 && applyRes.data && applyRes.data.records) {
-        // 查找最近已结束的实习（status=7 或 status=13）
+        // 查找最近已结束的实习（status=7、status=8 或 status=13）
         const completedApply = applyRes.data.records.find(apply => {
-          // 合作企业：status=7
-          if (apply.applyType === 1 && apply.status === 7) {
+          // 合作企业：status=7（实习结束）或 status=8（已评价）
+          if (apply.applyType === 1 && (apply.status === 7 || apply.status === 8)) {
             return true
           }
           // 自主实习：status=13
@@ -287,9 +283,9 @@ const getUnbindStatusType = (status) => {
 // 判断实习是否已结束
 const isInternshipCompleted = (internship) => {
   if (!internship) return false
-  // 合作企业：status=7
+  // 合作企业：status=7（实习结束）或 status=8（已评价）
   if (internship.applyType === 1) {
-    return internship.status === 7
+    return internship.status === 7 || internship.status === 8
   }
   // 自主实习：status=13
   if (internship.applyType === 2) {

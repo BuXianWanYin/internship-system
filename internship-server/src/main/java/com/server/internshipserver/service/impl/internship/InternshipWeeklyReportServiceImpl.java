@@ -1,13 +1,13 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
-import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -34,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -121,6 +123,13 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("该周次周报已提交");
         }
         
+        // 如果前端传了 weekStartDate，根据它和 weekNumber 反推出实习开始日期，并更新申请表的日期字段
+        if (report.getWeekStartDate() != null && report.getWeekNumber() != null && report.getWeekNumber() > 0) {
+            updateApplyDatesFromWeekStartDate(apply, report.getWeekStartDate(), report.getWeekNumber());
+            // 重新查询申请数据，获取更新后的日期
+            apply = internshipApplyMapper.selectById(report.getApplyId());
+        }
+        
         // 设置周报信息
         report.setStudentId(student.getStudentId());
         report.setUserId(user.getUserId());
@@ -129,6 +138,10 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 保存
         this.save(report);
+        
+        // 填充关联字段（包括日期信息）
+        fillReportRelatedFields(report);
+        
         return report;
     }
     
@@ -139,8 +152,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("周报ID不能为空");
         }
         
-        // 检查周报是否存在
-        InternshipWeeklyReport existReport = this.getById(report.getReportId());
+        // 检查周报是否存在（只查询未删除的记录）
+        LambdaQueryWrapper<InternshipWeeklyReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipWeeklyReport::getReportId, report.getReportId())
+               .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipWeeklyReport existReport = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(existReport, "周报");
         
         // 数据权限：学生只能修改自己的周报
@@ -168,7 +184,14 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         
         // 更新
         this.updateById(report);
-        return this.getById(report.getReportId());
+        
+        // 重新查询更新后的记录（只查询未删除的记录）
+        wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipWeeklyReport::getReportId, report.getReportId())
+               .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipWeeklyReport updatedReport = this.getOne(wrapper);
+        fillReportRelatedFields(updatedReport);
+        return updatedReport;
     }
     
     @Override
@@ -177,7 +200,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("周报ID不能为空");
         }
         
-        InternshipWeeklyReport report = this.getById(reportId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipWeeklyReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipWeeklyReport::getReportId, reportId)
+               .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipWeeklyReport report = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 填充关联字段
@@ -234,7 +261,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("周报ID不能为空");
         }
         
-        InternshipWeeklyReport report = this.getById(reportId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipWeeklyReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipWeeklyReport::getReportId, reportId)
+               .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipWeeklyReport report = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 获取申请信息，判断申请类型
@@ -325,7 +356,11 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("周报ID不能为空");
         }
         
-        InternshipWeeklyReport report = this.getById(reportId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipWeeklyReport> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipWeeklyReport::getReportId, reportId)
+               .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipWeeklyReport report = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(report, "周报");
         
         // 数据权限：学生只能删除自己的周报
@@ -334,9 +369,16 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             throw new BusinessException("无权删除该周报");
         }
         
-        // 软删除
-        report.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(report);
+        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
+        LambdaUpdateWrapper<InternshipWeeklyReport> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipWeeklyReport::getReportId, reportId)
+                     .eq(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .set(InternshipWeeklyReport::getDeleteFlag, DeleteFlag.DELETED.getCode());
+        boolean result = this.update(updateWrapper);
+        if (!result) {
+            throw new BusinessException("删除周报失败");
+        }
+        return result;
     }
     
     /**
@@ -526,19 +568,97 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
                 } else if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
                     // 自主实习，使用自主实习企业名称和日期
                     report.setEnterpriseName(apply.getSelfEnterpriseName());
+                    // 优先使用 selfStartDate 和 selfEndDate，如果为 null 则使用 internshipStartDate 和 internshipEndDate
                     if (apply.getSelfStartDate() != null) {
                         report.setStartDate(apply.getSelfStartDate());
+                    } else if (apply.getInternshipStartDate() != null) {
+                        report.setStartDate(apply.getInternshipStartDate());
                     }
                     if (apply.getSelfEndDate() != null) {
                         report.setEndDate(apply.getSelfEndDate());
+                    } else if (apply.getInternshipEndDate() != null) {
+                        report.setEndDate(apply.getInternshipEndDate());
                     }
                 }
             }
         }
         
-        // 设置周开始和结束日期（用于前端显示）
-        report.setWeekStartDate(report.getStartDate());
-        report.setWeekEndDate(report.getEndDate());
+        // 根据周次和实习开始日期计算该周的开始和结束日期
+        calculateWeekDates(report);
+    }
+    
+    /**
+     * 根据前端传入的 weekStartDate 和 weekNumber 反推出实习开始日期，并更新申请表的日期字段
+     * @param apply 申请对象
+     * @param weekStartDate 周开始日期
+     * @param weekNumber 周次
+     */
+    private void updateApplyDatesFromWeekStartDate(InternshipApply apply, LocalDate weekStartDate, Integer weekNumber) {
+        if (apply == null || weekStartDate == null || weekNumber == null || weekNumber <= 0) {
+            return;
+        }
+        
+        // 计算实习开始日期：weekStartDate 是第 weekNumber 周的周一
+        // 实习开始日期应该是第1周的周一，所以需要往前推 (weekNumber - 1) 周
+        LocalDate calculatedStartDate = weekStartDate.minusWeeks(weekNumber - 1);
+        
+        // 如果是自主实习，且 selfStartDate 或 internshipStartDate 为 null，则更新它们
+        if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+            boolean needUpdate = false;
+            
+            if (apply.getSelfStartDate() == null) {
+                apply.setSelfStartDate(calculatedStartDate);
+                needUpdate = true;
+            }
+            
+            if (apply.getInternshipStartDate() == null) {
+                apply.setInternshipStartDate(calculatedStartDate);
+                needUpdate = true;
+            }
+            
+            // 如果前端还传了 weekEndDate，可以计算实习结束日期
+            // 但这里我们只更新开始日期，结束日期由用户后续填写或系统自动计算
+            
+            if (needUpdate) {
+                internshipApplyMapper.updateById(apply);
+            }
+        }
+    }
+    
+    /**
+     * 根据周次和实习开始日期计算该周的开始和结束日期
+     * @param report 周报对象
+     */
+    private void calculateWeekDates(InternshipWeeklyReport report) {
+        if (report.getStartDate() == null || report.getWeekNumber() == null || report.getWeekNumber() <= 0) {
+            // 如果开始日期或周次为空，则无法计算
+            report.setWeekStartDate(report.getStartDate());
+            report.setWeekEndDate(report.getEndDate());
+            return;
+        }
+        
+        LocalDate internshipStartDate = report.getStartDate();
+        
+        // 计算第 weekNumber 周的开始日期
+        // 第1周从实习开始日期所在周的周一开始
+        // 找到实习开始日期所在周的周一
+        DayOfWeek startDayOfWeek = internshipStartDate.getDayOfWeek();
+        int daysToMonday = startDayOfWeek.getValue() - 1; // 0=周一, 6=周日
+        LocalDate firstWeekMonday = internshipStartDate.minusDays(daysToMonday);
+        
+        // 计算第 weekNumber 周的开始日期（周一）
+        LocalDate weekStartDate = firstWeekMonday.plusWeeks(report.getWeekNumber() - 1);
+        
+        // 计算该周的结束日期（周日）
+        LocalDate weekEndDate = weekStartDate.plusDays(6);
+        
+        // 如果实习结束日期不为空，且计算出的周结束日期超过了实习结束日期，则使用实习结束日期
+        if (report.getEndDate() != null && weekEndDate.isAfter(report.getEndDate())) {
+            weekEndDate = report.getEndDate();
+        }
+        
+        report.setWeekStartDate(weekStartDate);
+        report.setWeekEndDate(weekEndDate);
     }
 }
 

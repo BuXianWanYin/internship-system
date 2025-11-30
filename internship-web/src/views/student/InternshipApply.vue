@@ -1474,7 +1474,9 @@ const getApplyStatusText = (status, applyType) => {
     2: '已拒绝',
     3: '已录用',
     4: '已拒绝录用',
-    5: '已取消'
+    5: '已取消',
+    7: '实习结束',
+    8: '实习结束' // 已评价状态也显示为实习结束
   }
   return statusMap[status] || '未知'
 }
@@ -1517,7 +1519,9 @@ const getApplyStatusType = (status, statusText) => {
       2: 'danger',  // 已拒绝 - 红色
       3: 'success', // 已录用 - 绿色
       4: 'danger',  // 已拒绝录用 - 红色
-      5: 'info'     // 已取消 - 灰色
+      5: 'info',    // 已取消 - 灰色
+      7: 'info',    // 实习结束 - 灰色
+      8: 'info'     // 已评价 - 灰色（显示为实习结束）
     }
     return typeMap[status] || 'info'
   }

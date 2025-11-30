@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
@@ -116,8 +117,11 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             throw new BusinessException("日志ID不能为空");
         }
         
-        // 检查日志是否存在
-        InternshipLog existLog = this.getById(log.getLogId());
+        // 检查日志是否存在（只查询未删除的记录）
+        LambdaQueryWrapper<InternshipLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipLog::getLogId, log.getLogId())
+               .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipLog existLog = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(existLog, "日志");
         
         // 数据权限：学生只能修改自己的日志
@@ -138,7 +142,14 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         
         // 更新
         this.updateById(log);
-        return this.getById(log.getLogId());
+        
+        // 重新查询更新后的记录（只查询未删除的记录）
+        wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipLog::getLogId, log.getLogId())
+               .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipLog updatedLog = this.getOne(wrapper);
+        fillLogRelatedFields(updatedLog);
+        return updatedLog;
     }
     
     @Override
@@ -147,7 +158,11 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             throw new BusinessException("日志ID不能为空");
         }
         
-        InternshipLog log = this.getById(logId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipLog::getLogId, logId)
+               .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipLog log = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 填充关联字段
@@ -203,7 +218,11 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             throw new BusinessException("日志ID不能为空");
         }
         
-        InternshipLog log = this.getById(logId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipLog::getLogId, logId)
+               .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipLog log = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 获取申请信息，判断申请类型
@@ -294,7 +313,11 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             throw new BusinessException("日志ID不能为空");
         }
         
-        InternshipLog log = this.getById(logId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipLog::getLogId, logId)
+               .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipLog log = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(log, "日志");
         
         // 数据权限：学生只能删除自己的日志
@@ -303,9 +326,16 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             throw new BusinessException("无权删除该日志");
         }
         
-        // 软删除
-        log.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(log);
+        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
+        LambdaUpdateWrapper<InternshipLog> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipLog::getLogId, logId)
+                     .eq(InternshipLog::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .set(InternshipLog::getDeleteFlag, DeleteFlag.DELETED.getCode());
+        boolean result = this.update(updateWrapper);
+        if (!result) {
+            throw new BusinessException("删除日志失败");
+        }
+        return result;
     }
     
     /**

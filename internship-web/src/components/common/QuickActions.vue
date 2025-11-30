@@ -38,6 +38,7 @@ import {
   ArrowRight,
   School,
   User,
+  UserFilled,
   OfficeBuilding,
   DataAnalysis,
   Document,
@@ -70,6 +71,7 @@ const props = defineProps({
 const iconMap = {
   School,
   User,
+  UserFilled,
   OfficeBuilding,
   DataAnalysis,
   Document,
@@ -115,11 +117,12 @@ const handleAction = (action) => {
 <style scoped>
 .quick-actions-card {
   border-radius: 12px;
-  border: 1px solid #e4e7ed;
-  height: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .quick-actions-card:hover {
@@ -136,29 +139,33 @@ const handleAction = (action) => {
   font-size: 16px;
   font-weight: 500;
   color: #303133;
+  letter-spacing: 0.3px;
 }
 
 .quick-actions-icon {
-  color: #409eff;
+  color: #606266;
+  opacity: 0.7;
 }
 
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
+  flex: 1;
 }
 
 .quick-action-item {
   display: flex;
   align-items: center;
-  padding: 18px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 20px;
+  background: #ffffff;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid #e4e7ed;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: hidden;
+  min-height: 80px;
 }
 
 .quick-action-item::before {
@@ -177,28 +184,28 @@ const handleAction = (action) => {
 }
 
 .quick-action-item:hover {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e6f4ff 100%);
-  border-color: #409eff;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(64, 158, 255, 0.25);
+  background: #f8f9fa;
+  border-color: rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .quick-action-icon {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  margin-right: 14px;
+  border-radius: 10px;
+  margin-right: 16px;
   flex-shrink: 0;
   transition: transform 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .quick-action-item:hover .quick-action-icon {
-  transform: scale(1.1) rotate(5deg);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  transform: scale(1.08) rotate(3deg);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 .quick-action-content {
@@ -211,41 +218,45 @@ const handleAction = (action) => {
   font-weight: 500;
   color: #303133;
   margin-bottom: 4px;
+  letter-spacing: 0.2px;
 }
 
 .quick-action-desc {
   font-size: 12px;
-  color: #909399;
+  color: #606266;
+  opacity: 0.7;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .quick-action-arrow {
-  color: #c0c4cc;
+  color: #909399;
+  opacity: 0.5;
   margin-left: 8px;
   flex-shrink: 0;
   transition: all 0.3s;
 }
 
 .quick-action-item:hover .quick-action-arrow {
-  color: #409eff;
-  transform: translateX(4px);
+  color: #606266;
+  opacity: 0.8;
+  transform: translateX(3px);
 }
 
-@media (max-width: 768px) {
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 :deep(.el-card__header) {
   padding: 16px 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: transparent;
 }
 
 :deep(.el-card__body) {
   padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 </style>
 

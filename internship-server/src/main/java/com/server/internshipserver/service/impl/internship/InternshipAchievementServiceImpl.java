@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
@@ -150,7 +151,11 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             throw new BusinessException("成果ID不能为空");
         }
         
-        InternshipAchievement achievement = this.getById(achievementId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipAchievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipAchievement::getAchievementId, achievementId)
+               .eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipAchievement achievement = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 填充关联字段
@@ -206,7 +211,11 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             throw new BusinessException("审核状态无效");
         }
         
-        InternshipAchievement achievement = this.getById(achievementId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipAchievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipAchievement::getAchievementId, achievementId)
+               .eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipAchievement achievement = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 只有待审核状态的成果才能审核
@@ -296,7 +305,11 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             throw new BusinessException("成果ID不能为空");
         }
         
-        InternshipAchievement achievement = this.getById(achievementId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipAchievement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipAchievement::getAchievementId, achievementId)
+               .eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipAchievement achievement = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(achievement, "成果");
         
         // 数据权限：学生只能删除自己的成果
@@ -305,9 +318,16 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             throw new BusinessException("无权删除该成果");
         }
         
-        // 软删除
-        achievement.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(achievement);
+        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
+        LambdaUpdateWrapper<InternshipAchievement> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipAchievement::getAchievementId, achievementId)
+                     .eq(InternshipAchievement::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .set(InternshipAchievement::getDeleteFlag, DeleteFlag.DELETED.getCode());
+        boolean result = this.update(updateWrapper);
+        if (!result) {
+            throw new BusinessException("删除成果失败");
+        }
+        return result;
     }
     
     /**

@@ -5,8 +5,8 @@
       <el-card shadow="hover">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px">
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
-            <!-- 时间段选择 -->
-            <div v-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 0" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
+            <!-- 时间段选择（仅合作企业实习显示） -->
+            <div v-if="currentApplyType === 1 && attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 0" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
               <span style="font-size: 14px; color: #606266; white-space: nowrap">时间段：</span>
               <el-select
                 v-model="selectedTimeSlotId"
@@ -22,7 +22,7 @@
                 />
               </el-select>
             </div>
-            <div v-else-if="attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
+            <div v-else-if="currentApplyType === 1 && attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length === 1" style="display: flex; align-items: center; gap: 8px; margin-right: 8px">
               <span style="font-size: 14px; color: #606266; white-space: nowrap">时间段：</span>
               <span style="font-size: 14px; color: #303133; padding: 0 12px; background: #f5f7fa; border-radius: 4px; white-space: nowrap">
                 {{ attendanceGroup.timeSlots[0].slotName }}（{{ attendanceGroup.timeSlots[0].startTime }} - {{ attendanceGroup.timeSlots[0].endTime }}）
@@ -31,7 +31,7 @@
             <el-button 
               type="success" 
               :icon="Check" 
-              :disabled="!canCheckIn || (attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
+              :disabled="!canCheckIn || (currentApplyType === 1 && attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
               @click="handleCheckIn"
             >
               上班打卡
@@ -39,7 +39,7 @@
             <el-button 
               type="primary" 
               :icon="Close" 
-              :disabled="!canCheckOut || (attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
+              :disabled="!canCheckOut || (currentApplyType === 1 && attendanceGroup && attendanceGroup.timeSlots && attendanceGroup.timeSlots.length > 1 && !selectedTimeSlotId)"
               @click="handleCheckOut"
             >
               下班打卡
@@ -375,6 +375,7 @@ const restDate = ref(null)
 const attendanceGroup = ref(null)
 const selectedTimeSlotId = ref(null)
 const currentApplyId = ref(null)
+const currentApplyType = ref(null) // 当前实习申请类型：1-合作企业，2-自主实习
 
 
 const pagination = reactive({
@@ -498,6 +499,23 @@ const loadStatistics = async () => {
   }
 }
 
+// 加载当前实习申请信息
+const loadCurrentApply = async () => {
+  try {
+    const res = await applyApi.getCurrentInternship()
+    if (res.code === 200 && res.data) {
+      currentApplyId.value = res.data.applyId
+      currentApplyType.value = res.data.applyType
+      // 如果是合作企业实习，加载考勤组
+      if (res.data.applyType === 1) {
+        await loadAttendanceGroup()
+      }
+    }
+  } catch (error) {
+    console.error('加载当前实习申请失败:', error)
+  }
+}
+
 // 加载今天的考勤记录
 const loadTodayAttendance = async () => {
   try {
@@ -505,10 +523,22 @@ const loadTodayAttendance = async () => {
     if (res.code === 200) {
       todayAttendance.value = res.data || null
       // 如果获取到今天的考勤记录，更新申请ID
-      if (res.data && res.data.applyId && !currentApplyId.value) {
+      if (res.data && res.data.applyId) {
         currentApplyId.value = res.data.applyId
-        // 重新加载考勤组
-        await loadAttendanceGroup()
+        // 如果还没有获取到申请类型，尝试获取申请详情
+        if (!currentApplyType.value) {
+          try {
+            const applyRes = await applyApi.getApplyById(res.data.applyId)
+            if (applyRes.code === 200 && applyRes.data) {
+              currentApplyType.value = applyRes.data.applyType
+              if (applyRes.data.applyType === 1) {
+                await loadAttendanceGroup()
+              }
+            }
+          } catch (error) {
+            console.error('获取申请详情失败:', error)
+          }
+        }
       }
     }
   } catch (error) {
@@ -517,8 +547,14 @@ const loadTodayAttendance = async () => {
   }
 }
 
-// 加载考勤组信息
+// 加载考勤组信息（仅合作企业实习需要）
 const loadAttendanceGroup = async () => {
+  // 只有合作企业实习才需要考勤组
+  if (currentApplyType.value !== 1) {
+    attendanceGroup.value = null
+    return
+  }
+  
   try {
     // 获取当前学生的实习申请ID
     if (!currentApplyId.value) {
@@ -564,32 +600,38 @@ const loadAttendanceGroup = async () => {
 
 // 上班打卡
 const handleCheckIn = async () => {
-  // 确保考勤组已加载
-  if (!attendanceGroup.value) {
-    await loadAttendanceGroup()
-  }
-  
-  // 如果没有考勤组，提示用户
-  if (!attendanceGroup.value) {
-    ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
-    return
-  }
-  
-  // 如果只有一个时间段，自动选择
-  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
-    selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
-  }
-  
-  // 如果有多个时间段但未选择，提示用户
-  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
-    ElMessage.warning('请先选择时间段')
-    return
+  // 如果是合作企业实习，需要考勤组
+  if (currentApplyType.value === 1) {
+    // 确保考勤组已加载
+    if (!attendanceGroup.value) {
+      await loadAttendanceGroup()
+    }
+    
+    // 如果没有考勤组，提示用户
+    if (!attendanceGroup.value) {
+      ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
+      return
+    }
+    
+    // 如果只有一个时间段，自动选择
+    if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
+      selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
+    }
+    
+    // 如果有多个时间段但未选择，提示用户
+    if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
+      ElMessage.warning('请先选择时间段')
+      return
+    }
   }
   
   try {
-    const timeSlotId = attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
-      ? attendanceGroup.value.timeSlots[0].slotId
-      : selectedTimeSlotId.value
+    // 合作企业实习需要传递时间段ID，自主实习传null
+    const timeSlotId = currentApplyType.value === 1 && attendanceGroup.value
+      ? (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+        ? attendanceGroup.value.timeSlots[0].slotId
+        : selectedTimeSlotId.value)
+      : null
     
     const res = await attendanceApi.studentCheckIn(null, timeSlotId)
     if (res.code === 200) {
@@ -605,32 +647,38 @@ const handleCheckIn = async () => {
 
 // 下班打卡
 const handleCheckOut = async () => {
-  // 确保考勤组已加载
-  if (!attendanceGroup.value) {
-    await loadAttendanceGroup()
-  }
-  
-  // 如果没有考勤组，提示用户
-  if (!attendanceGroup.value) {
-    ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
-    return
-  }
-  
-  // 如果只有一个时间段，自动选择
-  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
-    selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
-  }
-  
-  // 如果有多个时间段但未选择，提示用户
-  if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
-    ElMessage.warning('请先选择时间段')
-    return
+  // 如果是合作企业实习，需要考勤组
+  if (currentApplyType.value === 1) {
+    // 确保考勤组已加载
+    if (!attendanceGroup.value) {
+      await loadAttendanceGroup()
+    }
+    
+    // 如果没有考勤组，提示用户
+    if (!attendanceGroup.value) {
+      ElMessage.warning('您尚未分配到考勤组，请联系企业导师')
+      return
+    }
+    
+    // 如果只有一个时间段，自动选择
+    if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1) {
+      selectedTimeSlotId.value = attendanceGroup.value.timeSlots[0].slotId
+    }
+    
+    // 如果有多个时间段但未选择，提示用户
+    if (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length > 1 && !selectedTimeSlotId.value) {
+      ElMessage.warning('请先选择时间段')
+      return
+    }
   }
   
   try {
-    const timeSlotId = attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
-      ? attendanceGroup.value.timeSlots[0].slotId
-      : selectedTimeSlotId.value
+    // 合作企业实习需要传递时间段ID，自主实习传null
+    const timeSlotId = currentApplyType.value === 1 && attendanceGroup.value
+      ? (attendanceGroup.value.timeSlots && attendanceGroup.value.timeSlots.length === 1
+        ? attendanceGroup.value.timeSlots[0].slotId
+        : selectedTimeSlotId.value)
+      : null
     
     const res = await attendanceApi.studentCheckOut(null, timeSlotId)
     if (res.code === 200) {
@@ -754,14 +802,28 @@ const getAttendanceTypeTagType = (type) => {
 
 // 初始化
 onMounted(async () => {
-  // 并行加载数据，提高效率
+  // 先加载当前实习申请信息
+  await loadCurrentApply()
+  // 并行加载其他数据，提高效率
   await Promise.all([
     loadTodayAttendance(), // 加载今天的考勤记录
     loadData(), // 加载考勤列表
     loadStatistics() // 加载统计数据
   ])
-  // 加载考勤组（依赖 todayAttendance 中的 applyId）
-  await loadAttendanceGroup()
+  // 如果没有获取到申请类型，再次尝试加载
+  if (!currentApplyType.value && currentApplyId.value) {
+    try {
+      const applyRes = await applyApi.getApplyById(currentApplyId.value)
+      if (applyRes.code === 200 && applyRes.data) {
+        currentApplyType.value = applyRes.data.applyType
+        if (applyRes.data.applyType === 1) {
+          await loadAttendanceGroup()
+        }
+      }
+    } catch (error) {
+      console.error('获取申请详情失败:', error)
+    }
+  }
 })
 </script>
 

@@ -780,6 +780,8 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             return "已拒绝录用";
         } else if (status.equals(InternshipApplyStatus.COMPLETED.getCode())) {
             return "实习结束";
+        } else if (status.equals(InternshipApplyStatus.EVALUATED.getCode())) {
+            return "实习结束";
         }
         
         return "未知状态";

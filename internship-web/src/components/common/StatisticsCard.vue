@@ -81,11 +81,11 @@ const handleClick = () => {
   position: relative;
   border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
   overflow: hidden;
-  border: 1px solid rgba(64, 158, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .statistics-card::before {
@@ -94,16 +94,16 @@ const handleClick = () => {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--card-color), rgba(64, 158, 255, 0.6));
+  height: 3px;
+  background: linear-gradient(90deg, var(--card-color), rgba(64, 158, 255, 0.4));
   opacity: 0;
   transition: opacity 0.3s;
 }
 
 .statistics-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(64, 158, 255, 0.2);
-  border-color: var(--card-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .statistics-card:hover::before {
@@ -120,14 +120,14 @@ const handleClick = () => {
   right: -20%;
   width: 120px;
   height: 120px;
-  background: linear-gradient(135deg, var(--card-color)15, transparent);
+  background: linear-gradient(135deg, var(--card-color)12, transparent);
   border-radius: 50%;
-  opacity: 0.3;
+  opacity: 0.2;
   transition: transform 0.3s;
 }
 
 .statistics-card:hover .card-background {
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
 .card-content {
@@ -146,8 +146,8 @@ const handleClick = () => {
 .card-icon-wrapper {
   width: 48px;
   height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--card-color)20, var(--card-color)05);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--card-color)15, var(--card-color)08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,7 +155,7 @@ const handleClick = () => {
 }
 
 .statistics-card:hover .card-icon-wrapper {
-  transform: scale(1.1) rotate(5deg);
+  transform: scale(1.08) rotate(3deg);
 }
 
 .card-icon {
@@ -164,21 +164,23 @@ const handleClick = () => {
 
 .card-title {
   font-size: 14px;
-  color: #909399;
+  color: #606266;
   font-weight: 500;
   flex: 1;
   text-align: right;
+  opacity: 0.8;
 }
 
 .card-value {
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 8px;
   line-height: 1.2;
   color: #303133;
   display: flex;
   align-items: baseline;
   gap: 4px;
+  letter-spacing: -0.5px;
 }
 
 .statistics-card:hover .card-value {
@@ -190,13 +192,14 @@ const handleClick = () => {
   font-size: 16px;
   font-weight: 500;
   color: #909399;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .card-description {
   font-size: 12px;
-  color: #c0c4cc;
+  color: #909399;
   margin-top: 8px;
+  opacity: 0.7;
 }
 </style>
 

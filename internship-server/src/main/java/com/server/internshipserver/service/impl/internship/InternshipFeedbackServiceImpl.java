@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.impl.internship;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
@@ -112,8 +113,11 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             throw new BusinessException("反馈ID不能为空");
         }
         
-        // 检查反馈是否存在
-        InternshipFeedback existFeedback = this.getById(feedback.getFeedbackId());
+        // 检查反馈是否存在（只查询未删除的记录）
+        LambdaQueryWrapper<InternshipFeedback> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipFeedback::getFeedbackId, feedback.getFeedbackId())
+               .eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipFeedback existFeedback = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(existFeedback, "反馈");
         
         // 数据权限：学生只能修改自己的反馈
@@ -129,7 +133,14 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         
         // 更新
         this.updateById(feedback);
-        return this.getById(feedback.getFeedbackId());
+        
+        // 重新查询更新后的记录（只查询未删除的记录）
+        wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipFeedback::getFeedbackId, feedback.getFeedbackId())
+               .eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipFeedback updatedFeedback = this.getOne(wrapper);
+        fillFeedbackRelatedFields(updatedFeedback);
+        return updatedFeedback;
     }
     
     @Override
@@ -138,7 +149,11 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             throw new BusinessException("反馈ID不能为空");
         }
         
-        InternshipFeedback feedback = this.getById(feedbackId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipFeedback> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipFeedback::getFeedbackId, feedbackId)
+               .eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipFeedback feedback = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 填充关联字段
@@ -311,7 +326,11 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             throw new BusinessException("反馈ID不能为空");
         }
         
-        InternshipFeedback feedback = this.getById(feedbackId);
+        // 使用查询条件确保只查询未删除的记录
+        LambdaQueryWrapper<InternshipFeedback> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InternshipFeedback::getFeedbackId, feedbackId)
+               .eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        InternshipFeedback feedback = this.getOne(wrapper);
         EntityValidationUtil.validateEntityExists(feedback, "反馈");
         
         // 数据权限：学生只能删除自己的反馈
@@ -320,9 +339,16 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             throw new BusinessException("无权删除该反馈");
         }
         
-        // 软删除
-        feedback.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(feedback);
+        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
+        LambdaUpdateWrapper<InternshipFeedback> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InternshipFeedback::getFeedbackId, feedbackId)
+                     .eq(InternshipFeedback::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .set(InternshipFeedback::getDeleteFlag, DeleteFlag.DELETED.getCode());
+        boolean result = this.update(updateWrapper);
+        if (!result) {
+            throw new BusinessException("删除反馈失败");
+        }
+        return result;
     }
     
     /**

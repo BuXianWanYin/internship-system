@@ -114,7 +114,8 @@ export function getApplyStatusText(status, applyType) {
       3: '已录用',
       4: '已拒绝录用',
       5: '已取消',
-      7: '实习结束'
+      7: '实习结束',
+      8: '实习结束' // 已评价状态也显示为实习结束
     }
     return statusMap[status] || '-'
   }
@@ -146,7 +147,7 @@ export function getApplyStatusType(status, applyType) {
   
   // 合作企业
   if (applyType === 1) {
-    if (status === 7) return 'info' // 实习结束
+    if (status === 7 || status === 8) return 'info' // 实习结束、已评价
     if (status === 3) return 'success' // 已录用
     if (status === 1) return 'success' // 已通过
     if (status === 2 || status === 4 || status === 5) return 'danger' // 已拒绝/已拒绝录用/已取消
