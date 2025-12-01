@@ -254,11 +254,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
+import PageLayout from '@/components/common/PageLayout.vue'
 import { cooperationApplyApi } from '@/api/cooperationApply'
 import { formatDateTime } from '@/utils/dateUtils'
 
 export default {
   name: 'CooperationManagement',
+  components: {
+    PageLayout
+  },
   setup() {
     const activeTab = ref('cooperation')
     const loading = ref(false)

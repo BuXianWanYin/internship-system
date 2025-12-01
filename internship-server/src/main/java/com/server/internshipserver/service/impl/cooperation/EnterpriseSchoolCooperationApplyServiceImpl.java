@@ -176,8 +176,8 @@ public class EnterpriseSchoolCooperationApplyServiceImpl extends ServiceImpl<Ent
         
         // 如果审核通过，创建合作关系
         if (updateResult && auditStatus.equals(AuditStatus.APPROVED.getCode())) {
-            // 检查合作关系是否已存在
-            if (!cooperationService.hasCooperation(apply.getEnterpriseId(), apply.getSchoolId())) {
+            // 检查相同合作类型的合作关系是否已存在（允许不同合作类型）
+            if (!cooperationService.hasCooperationByType(apply.getEnterpriseId(), apply.getSchoolId(), apply.getCooperationType())) {
                 // 创建合作关系
                 EnterpriseSchoolCooperation cooperation = new EnterpriseSchoolCooperation();
                 cooperation.setEnterpriseId(apply.getEnterpriseId());

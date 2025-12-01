@@ -359,10 +359,12 @@
         stripe
         style="width: 100%"
         :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+        empty-text="暂无数据"
       >
+        <el-table-column type="index" label="序号" width="60" align="center" />
         <el-table-column label="合作学校" min-width="150">
           <template #default="{ row }">
-            {{ schoolMap[row.schoolId]?.schoolName || '-' }}
+            {{ row.schoolName || schoolMap[row.schoolId]?.schoolName || '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="cooperationType" label="合作类型" min-width="120" />

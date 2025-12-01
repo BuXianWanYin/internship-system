@@ -62,6 +62,15 @@ public interface EnterpriseSchoolCooperationService extends IService<EnterpriseS
     boolean hasCooperation(Long enterpriseId, Long schoolId);
     
     /**
+     * 检查企业和学校是否有指定类型的合作关系
+     * @param enterpriseId 企业ID
+     * @param schoolId 学校ID
+     * @param cooperationType 合作类型
+     * @return 是否有该类型的合作关系
+     */
+    boolean hasCooperationByType(Long enterpriseId, Long schoolId, String cooperationType);
+    
+    /**
      * 根据企业ID查询合作关系列表（包含完整信息）
      * @param enterpriseId 企业ID
      * @return 合作关系列表

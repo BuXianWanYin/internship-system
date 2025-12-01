@@ -52,14 +52,15 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
             }
         }
         
-        // 检查合作关系是否已存在（企业+学校的组合唯一）
+        // 检查相同合作类型的合作关系是否已存在（允许不同合作类型）
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, cooperation.getEnterpriseId())
                .eq(EnterpriseSchoolCooperation::getSchoolId, cooperation.getSchoolId())
+               .eq(EnterpriseSchoolCooperation::getCooperationType, cooperation.getCooperationType())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         EnterpriseSchoolCooperation existCooperation = this.getOne(wrapper);
         if (existCooperation != null) {
-            throw new BusinessException("该合作关系已存在");
+            throw new BusinessException("该合作类型的合作关系已存在");
         }
         
         // 设置默认值
@@ -97,19 +98,23 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
             }
         }
         
-        // 如果修改了企业ID或学校ID，检查新关系是否已存在
+        // 如果修改了企业ID、学校ID或合作类型，检查新关系是否已存在
+        Long newEnterpriseId = cooperation.getEnterpriseId() != null ? cooperation.getEnterpriseId() : existCooperation.getEnterpriseId();
+        Long newSchoolId = cooperation.getSchoolId() != null ? cooperation.getSchoolId() : existCooperation.getSchoolId();
+        String newCooperationType = cooperation.getCooperationType() != null ? cooperation.getCooperationType() : existCooperation.getCooperationType();
+        
         if ((cooperation.getEnterpriseId() != null && !cooperation.getEnterpriseId().equals(existCooperation.getEnterpriseId()))
-                || (cooperation.getSchoolId() != null && !cooperation.getSchoolId().equals(existCooperation.getSchoolId()))) {
+                || (cooperation.getSchoolId() != null && !cooperation.getSchoolId().equals(existCooperation.getSchoolId()))
+                || (cooperation.getCooperationType() != null && !cooperation.getCooperationType().equals(existCooperation.getCooperationType()))) {
             LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, 
-                    cooperation.getEnterpriseId() != null ? cooperation.getEnterpriseId() : existCooperation.getEnterpriseId())
-                   .eq(EnterpriseSchoolCooperation::getSchoolId, 
-                    cooperation.getSchoolId() != null ? cooperation.getSchoolId() : existCooperation.getSchoolId())
+            wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, newEnterpriseId)
+                   .eq(EnterpriseSchoolCooperation::getSchoolId, newSchoolId)
+                   .eq(EnterpriseSchoolCooperation::getCooperationType, newCooperationType)
                    .ne(EnterpriseSchoolCooperation::getId, cooperation.getId())
                    .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
             EnterpriseSchoolCooperation duplicateCooperation = this.getOne(wrapper);
             if (duplicateCooperation != null) {
-                throw new BusinessException("该合作关系已存在");
+                throw new BusinessException("该合作类型的合作关系已存在");
             }
         }
         
@@ -227,6 +232,21 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
                .eq(EnterpriseSchoolCooperation::getSchoolId, schoolId)
+               .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
+               .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        return this.count(wrapper) > 0;
+    }
+    
+    @Override
+    public boolean hasCooperationByType(Long enterpriseId, Long schoolId, String cooperationType) {
+        if (enterpriseId == null || schoolId == null || cooperationType == null) {
+            return false;
+        }
+        
+        LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
+               .eq(EnterpriseSchoolCooperation::getSchoolId, schoolId)
+               .eq(EnterpriseSchoolCooperation::getCooperationType, cooperationType)
                .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         return this.count(wrapper) > 0;

@@ -40,7 +40,9 @@
       stripe
       style="width: 100%"
       :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+      empty-text="暂无数据"
     >
+      <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" />
       <el-table-column prop="cooperationType" label="合作类型" width="150" />
       <el-table-column label="合作时间" width="280">
@@ -135,11 +137,15 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh } from '@element-plus/icons-vue'
+import PageLayout from '@/components/common/PageLayout.vue'
 import { cooperationApplyApi } from '@/api/cooperationApply'
 import { formatDateTime } from '@/utils/dateUtils'
 
 export default {
   name: 'CooperationAudit',
+  components: {
+    PageLayout
+  },
   setup() {
     const loading = ref(false)
     const auditing = ref(false)
@@ -274,5 +280,14 @@ export default {
 </script>
 
 <style scoped>
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-form {
+  background: #f5f7fa;
+  padding: 20px;
+  border-radius: 8px;
+}
 </style>
 
