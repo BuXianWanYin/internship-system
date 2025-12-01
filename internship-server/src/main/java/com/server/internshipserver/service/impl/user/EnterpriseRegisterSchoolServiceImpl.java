@@ -23,6 +23,7 @@ import com.server.internshipserver.common.utils.DataPermissionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -124,7 +125,8 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean auditEnterpriseRegister(Long id, Integer auditStatus, String auditOpinion, Long auditorId) {
+    public boolean auditEnterpriseRegister(Long id, Integer auditStatus, String auditOpinion, Long auditorId,
+                                            String startTime, String endTime, String cooperationDesc) {
         if (id == null) {
             throw new BusinessException("关联ID不能为空");
         }
@@ -133,6 +135,19 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
         }
         if (auditorId == null) {
             throw new BusinessException("审核人ID不能为空");
+        }
+        
+        // 如果审核通过，验证必填字段
+        if (auditStatus.equals(AuditStatus.APPROVED.getCode())) {
+            if (!StringUtils.hasText(startTime)) {
+                throw new BusinessException("合作开始时间不能为空");
+            }
+            if (!StringUtils.hasText(endTime)) {
+                throw new BusinessException("合作结束时间不能为空");
+            }
+            if (!StringUtils.hasText(cooperationDesc)) {
+                throw new BusinessException("合作描述不能为空");
+            }
         }
         
         EnterpriseRegisterSchool record = this.getById(id);
@@ -161,13 +176,23 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                 cooperation.setSchoolId(record.getSchoolId());
                 cooperation.setCooperationType("实习基地");
                 cooperation.setCooperationStatus(CooperationStatus.IN_PROGRESS.getCode());
-                cooperation.setStartTime(LocalDateTime.now());
+                
+                // 解析时间字符串
+                try {
+                    java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    cooperation.setStartTime(LocalDateTime.parse(startTime, formatter));
+                    cooperation.setEndTime(LocalDateTime.parse(endTime, formatter));
+                } catch (Exception e) {
+                    throw new BusinessException("时间格式错误，请使用 yyyy-MM-dd HH:mm:ss 格式");
+                }
+                
+                cooperation.setCooperationDesc(cooperationDesc);
                 cooperationService.addCooperation(cooperation);
             }
             
-            // 检查是否有任何一个院校审核通过，如果有则激活企业账号
+            // 检查是否有任何一个院校审核通过，如果有则激活企业账号和企业状态，并更新企业审核状态
             Enterprise enterprise = enterpriseMapper.selectById(record.getEnterpriseId());
-            if (enterprise != null && enterprise.getUserId() != null) {
+            if (enterprise != null) {
                 // 查询该企业是否有任何一个院校审核通过
                 LambdaQueryWrapper<EnterpriseRegisterSchool> checkWrapper = new LambdaQueryWrapper<>();
                 checkWrapper.eq(EnterpriseRegisterSchool::getEnterpriseId, record.getEnterpriseId())
@@ -175,13 +200,26 @@ public class EnterpriseRegisterSchoolServiceImpl extends ServiceImpl<EnterpriseR
                            .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode());
                 long approvedCount = this.count(checkWrapper);
                 
-                // 如果有任何一个院校审核通过，激活企业账号
+                // 如果有任何一个院校审核通过，激活企业账号和企业状态，并更新企业审核状态
                 if (approvedCount > 0) {
-                    UserInfo user = userMapper.selectById(enterprise.getUserId());
-                    if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode()) && user.getStatus() != null && user.getStatus().equals(UserStatus.DISABLED.getCode())) {
-                        user.setStatus(UserStatus.ENABLED.getCode()); // 激活账号
-                        userMapper.updateById(user);
+                    // 更新企业审核状态为已通过
+                    enterprise.setAuditStatus(AuditStatus.APPROVED.getCode());
+                    
+                    // 激活用户账号
+                    if (enterprise.getUserId() != null) {
+                        UserInfo user = userMapper.selectById(enterprise.getUserId());
+                        if (user != null && user.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode()) && user.getStatus() != null && user.getStatus().equals(UserStatus.DISABLED.getCode())) {
+                            user.setStatus(UserStatus.ENABLED.getCode()); // 激活账号
+                            userMapper.updateById(user);
+                        }
                     }
+                    
+                    // 激活企业状态
+                    if (enterprise.getStatus() != null && enterprise.getStatus().equals(UserStatus.DISABLED.getCode())) {
+                        enterprise.setStatus(UserStatus.ENABLED.getCode()); // 启用企业
+                    }
+                    
+                    enterpriseMapper.updateById(enterprise);
                 }
             }
         }

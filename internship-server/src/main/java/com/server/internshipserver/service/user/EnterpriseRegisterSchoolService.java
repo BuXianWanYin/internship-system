@@ -38,9 +38,13 @@ public interface EnterpriseRegisterSchoolService extends IService<EnterpriseRegi
      * @param auditStatus 审核状态：1-通过，2-拒绝
      * @param auditOpinion 审核意见
      * @param auditorId 审核人ID
+     * @param startTime 合作开始时间（审核通过时必填）
+     * @param endTime 合作结束时间（审核通过时必填）
+     * @param cooperationDesc 合作描述（审核通过时必填）
      * @return 是否成功
      */
-    boolean auditEnterpriseRegister(Long id, Integer auditStatus, String auditOpinion, Long auditorId);
+    boolean auditEnterpriseRegister(Long id, Integer auditStatus, String auditOpinion, Long auditorId, 
+                                    String startTime, String endTime, String cooperationDesc);
     
     /**
      * 根据企业ID和学校ID查询关联记录

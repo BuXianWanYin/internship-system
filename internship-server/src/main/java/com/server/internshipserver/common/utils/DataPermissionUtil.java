@@ -12,9 +12,11 @@ import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
+import com.server.internshipserver.mapper.user.EnterpriseRegisterSchoolMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
+import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
@@ -83,6 +85,12 @@ public class DataPermissionUtil {
      */
     @Autowired
     private EnterpriseSchoolCooperationMapper cooperationMapper;
+    
+    /**
+     * 企业注册申请院校关联Mapper
+     */
+    @Autowired
+    private EnterpriseRegisterSchoolMapper enterpriseRegisterSchoolMapper;
     
     /**
      * 班级Mapper
@@ -591,22 +599,41 @@ public class DataPermissionUtil {
         Long currentUserSchoolId = getCurrentUserSchoolId();
         Long currentUserClassId = getCurrentUserClassId();
         
-        // 学校管理员：获取和本校有合作关系的企业ID列表
+        // 学校管理员：获取和本校有合作关系的企业ID列表（包括已建立合作关系的和待审核的）
         if (currentUserSchoolId != null && currentUserClassId == null) {
-            // 查询合作关系
-            LambdaQueryWrapper<EnterpriseSchoolCooperation> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(EnterpriseSchoolCooperation::getSchoolId, currentUserSchoolId)
+            List<Long> enterpriseIds = new java.util.ArrayList<>();
+            
+            // 1. 查询已建立合作关系的企业
+            LambdaQueryWrapper<EnterpriseSchoolCooperation> cooperationWrapper = new LambdaQueryWrapper<>();
+            cooperationWrapper.eq(EnterpriseSchoolCooperation::getSchoolId, currentUserSchoolId)
                    .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
                    .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            List<EnterpriseSchoolCooperation> cooperations = cooperationMapper.selectList(wrapper);
+            List<EnterpriseSchoolCooperation> cooperations = cooperationMapper.selectList(cooperationWrapper);
+            if (cooperations != null && !cooperations.isEmpty()) {
+                enterpriseIds.addAll(cooperations.stream()
+                        .map(EnterpriseSchoolCooperation::getEnterpriseId)
+                        .collect(Collectors.toList()));
+            }
             
-            if (cooperations.isEmpty()) {
-                // 如果没有合作关系，返回空列表（表示没有可查看的企业）
+            // 2. 查询待审核的企业注册申请
+            LambdaQueryWrapper<EnterpriseRegisterSchool> registerWrapper = new LambdaQueryWrapper<>();
+            registerWrapper.eq(EnterpriseRegisterSchool::getSchoolId, currentUserSchoolId)
+                   .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+            // 包括所有状态的注册申请（待审核、已通过、已拒绝），因为学校管理员需要看到所有申请
+            List<EnterpriseRegisterSchool> registerSchools = enterpriseRegisterSchoolMapper.selectList(registerWrapper);
+            if (registerSchools != null && !registerSchools.isEmpty()) {
+                enterpriseIds.addAll(registerSchools.stream()
+                        .map(EnterpriseRegisterSchool::getEnterpriseId)
+                        .distinct()
+                        .collect(Collectors.toList()));
+            }
+            
+            // 去重并返回
+            if (enterpriseIds.isEmpty()) {
                 return Collections.emptyList();
             }
             
-            return cooperations.stream()
-                    .map(EnterpriseSchoolCooperation::getEnterpriseId)
+            return enterpriseIds.stream()
                     .distinct()
                     .collect(Collectors.toList());
         }

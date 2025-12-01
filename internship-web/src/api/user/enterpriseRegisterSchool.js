@@ -14,9 +14,9 @@ export const enterpriseRegisterSchoolApi = {
     return request.get(`/user/enterprise-register-school/school/${schoolId}/pending`)
   },
   // 审核企业注册申请（按院校）
-  auditEnterpriseRegister(id, auditStatus, auditOpinion) {
+  auditEnterpriseRegister(id, params) {
     return request.post(`/user/enterprise-register-school/${id}/audit`, null, {
-      params: { auditStatus, auditOpinion }
+      params: params
     })
   }
 }

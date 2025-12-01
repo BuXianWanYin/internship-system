@@ -410,6 +410,18 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     }
     
     @Override
+    public boolean enableEnterprise(Long enterpriseId) {
+        EntityValidationUtil.validateIdNotNull(enterpriseId, "企业ID");
+        
+        Enterprise enterprise = this.getById(enterpriseId);
+        EntityValidationUtil.validateEntityExists(enterprise, "企业");
+        
+        // 启用企业
+        enterprise.setStatus(UserStatus.ENABLED.getCode());
+        return this.updateById(enterprise);
+    }
+    
+    @Override
     public List<School> getCooperationSchoolsByEnterpriseId(Long enterpriseId) {
         return cooperationService.getCooperationSchoolsByEnterpriseId(enterpriseId);
     }

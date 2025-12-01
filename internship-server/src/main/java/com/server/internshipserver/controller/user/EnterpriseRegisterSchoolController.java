@@ -58,7 +58,10 @@ public class EnterpriseRegisterSchoolController {
     public Result<?> auditEnterpriseRegister(
             @ApiParam(value = "关联ID", required = true) @PathVariable Long id,
             @ApiParam(value = "审核状态：1-通过，2-拒绝", required = true) @RequestParam Integer auditStatus,
-            @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
+            @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion,
+            @ApiParam(value = "合作开始时间（审核通过时必填）") @RequestParam(required = false) String startTime,
+            @ApiParam(value = "合作结束时间（审核通过时必填）") @RequestParam(required = false) String endTime,
+            @ApiParam(value = "合作描述（审核通过时必填）") @RequestParam(required = false) String cooperationDesc) {
         // 将Integer转换为枚举
         AuditStatus status = AuditStatus.getByCode(auditStatus);
         if (status == null) {
@@ -69,7 +72,7 @@ public class EnterpriseRegisterSchoolController {
         
         // 注意：Service接口还未优化，暂时传递Integer，待Service接口优化后改为传递枚举
         boolean success = enterpriseRegisterSchoolService.auditEnterpriseRegister(
-            id, status.getCode(), auditOpinion, user.getUserId());
+            id, status.getCode(), auditOpinion, user.getUserId(), startTime, endTime, cooperationDesc);
         return success ? Result.success("审核成功") : Result.error("审核失败");
     }
 }

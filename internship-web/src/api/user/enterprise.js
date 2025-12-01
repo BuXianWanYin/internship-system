@@ -39,6 +39,10 @@ export const enterpriseApi = {
   deleteEnterprise(enterpriseId) {
     return request.delete(`/user/enterprise/${enterpriseId}`)
   },
+  // 启用企业
+  enableEnterprise(enterpriseId) {
+    return request.put(`/user/enterprise/${enterpriseId}/enable`)
+  },
   // 根据企业ID查询合作学校列表
   getCooperationSchoolsByEnterpriseId(enterpriseId) {
     return request.get(`/user/enterprise/${enterpriseId}/cooperation-schools`)

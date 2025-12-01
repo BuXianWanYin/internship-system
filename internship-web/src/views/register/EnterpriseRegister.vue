@@ -37,6 +37,14 @@
           />
         </el-form-item>
 
+        <el-form-item label="法人代表" prop="legalPerson">
+          <el-input
+            v-model="registerForm.legalPerson"
+            placeholder="请输入法人代表姓名"
+            clearable
+          />
+        </el-form-item>
+
         <el-form-item label="企业代码" prop="enterpriseCode">
           <el-input
             v-model="registerForm.enterpriseCode"
@@ -214,6 +222,7 @@ export default {
     const registerForm = reactive({
       enterpriseName: '',
       unifiedSocialCreditCode: '',
+      legalPerson: '',
       enterpriseCode: '',
       enterpriseScale: '',
       industryCategory: '',
@@ -234,6 +243,9 @@ export default {
         { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
         { pattern: /^[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}$/, message: '请输入正确的统一社会信用代码', trigger: 'blur' }
       ],
+      legalPerson: [
+        { required: true, message: '请输入法人代表', trigger: 'blur' }
+      ],
       contactPerson: [
         { required: true, message: '请输入联系人', trigger: 'blur' }
       ],
@@ -253,11 +265,23 @@ export default {
 
     // 提交注册
     const handleRegister = async () => {
-      if (!registerFormRef.value) return
+      if (!registerFormRef.value) {
+        ElMessage.warning('表单未初始化，请刷新页面重试')
+        return
+      }
 
-      await registerFormRef.value.validate(async (valid) => {
+      try {
+        // 先验证表单
+        const valid = await registerFormRef.value.validate()
         if (!valid) {
-          return false
+          ElMessage.warning('请检查表单填写是否正确')
+          return
+        }
+
+        // 检查是否选择了意向合作院校
+        if (!registerForm.schoolIds || registerForm.schoolIds.length === 0) {
+          ElMessage.warning('请至少选择一个意向合作院校')
+          return
         }
 
         registering.value = true
@@ -267,6 +291,7 @@ export default {
             enterprise: {
               enterpriseName: registerForm.enterpriseName,
               unifiedSocialCreditCode: registerForm.unifiedSocialCreditCode,
+              legalPerson: registerForm.legalPerson,
               enterpriseCode: registerForm.enterpriseCode,
               enterpriseScale: registerForm.enterpriseScale,
               industry: registerForm.industryCategory,
@@ -279,7 +304,10 @@ export default {
             schoolIds: registerForm.schoolIds
           }
           
+          console.log('准备提交企业注册数据:', submitData)
+          
           const res = await enterpriseApi.registerEnterprise(submitData)
+          console.log('企业注册API响应:', res)
           if (res.code === 200) {
             ElMessage.success('注册成功，请等待院校管理员审核')
             setTimeout(() => {
@@ -289,11 +317,16 @@ export default {
             ElMessage.error(res.message || '注册失败')
           }
         } catch (error) {
-          ElMessage.error('注册失败：' + (error.message || '未知错误'))
+          console.error('注册失败:', error)
+          ElMessage.error('注册失败：' + (error.response?.data?.message || error.message || '未知错误'))
         } finally {
           registering.value = false
         }
-      })
+      } catch (error) {
+        // 表单验证失败
+        console.error('表单验证失败:', error)
+        ElMessage.warning('请检查表单填写是否正确')
+      }
     }
 
     const goBack = () => {

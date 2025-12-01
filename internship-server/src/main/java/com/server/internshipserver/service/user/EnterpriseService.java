@@ -89,6 +89,13 @@ public interface EnterpriseService extends IService<Enterprise> {
     boolean deleteEnterprise(Long enterpriseId);
     
     /**
+     * 启用企业
+     * @param enterpriseId 企业ID
+     * @return 是否成功
+     */
+    boolean enableEnterprise(Long enterpriseId);
+    
+    /**
      * 根据企业ID查询合作学校列表
      * @param enterpriseId 企业ID
      * @return 合作学校列表

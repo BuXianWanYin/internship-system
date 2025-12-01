@@ -114,6 +114,15 @@ public class EnterpriseController {
         return success ? Result.success("停用成功") : Result.error("停用失败");
     }
     
+    @ApiOperation("启用企业")
+    @PutMapping("/{enterpriseId}/enable")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    public Result<?> enableEnterprise(
+            @ApiParam(value = "企业ID", required = true) @PathVariable Long enterpriseId) {
+        boolean success = enterpriseService.enableEnterprise(enterpriseId);
+        return success ? Result.success("启用成功") : Result.error("启用失败");
+    }
+    
     @ApiOperation("根据企业ID查询合作学校列表")
     @GetMapping("/{enterpriseId}/cooperation-schools")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN')")

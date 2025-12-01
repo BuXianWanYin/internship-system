@@ -238,7 +238,6 @@ export default {
         shareCodeInfo.value = null
         shareCodeError.value = ''
         registerForm.enrollmentYear = null
-        enrollmentYearDate.value = null
         return
       }
 
@@ -250,34 +249,47 @@ export default {
           // 自动设置入学年份（从班级信息中获取）
           if (res.data.enrollmentYear) {
             registerForm.enrollmentYear = res.data.enrollmentYear
-            enrollmentYearDate.value = String(res.data.enrollmentYear)
           }
           shareCodeError.value = ''
         } else {
           shareCodeError.value = res.message || '分享码无效或已过期'
           shareCodeInfo.value = null
           registerForm.enrollmentYear = null
-          enrollmentYearDate.value = null
         }
       } catch (error) {
         shareCodeError.value = '分享码验证失败：' + (error.message || '未知错误')
         shareCodeInfo.value = null
         registerForm.enrollmentYear = null
-        enrollmentYearDate.value = null
       }
     }
 
     // 提交注册
     const handleRegister = async () => {
-      if (!registerFormRef.value) return
+      if (!registerFormRef.value) {
+        ElMessage.warning('表单未初始化，请刷新页面重试')
+        return
+      }
 
-      await registerFormRef.value.validate(async (valid) => {
+      try {
+        // 先验证表单
+        const valid = await registerFormRef.value.validate()
         if (!valid) {
-          return false
+          ElMessage.warning('请检查表单填写是否正确')
+          return
         }
 
         if (!shareCodeInfo.value) {
           ElMessage.warning('请先验证班级分享码')
+          return
+        }
+
+        // 确保入学年份已设置
+        if (!registerForm.enrollmentYear && shareCodeInfo.value?.enrollmentYear) {
+          registerForm.enrollmentYear = shareCodeInfo.value.enrollmentYear
+        }
+
+        if (!registerForm.enrollmentYear) {
+          ElMessage.warning('入学年份未设置，请先验证班级分享码')
           return
         }
 
@@ -289,7 +301,11 @@ export default {
           }
           delete submitData.confirmPassword
           
+          console.log('准备提交注册数据:', submitData)
+          console.log('分享码:', registerForm.shareCode)
+          
           const res = await studentApi.registerStudent(submitData, registerForm.shareCode)
+          console.log('注册API响应:', res)
           if (res.code === 200) {
             ElMessage.success('注册成功，请等待班主任审核')
             setTimeout(() => {
@@ -299,11 +315,16 @@ export default {
             ElMessage.error(res.message || '注册失败')
           }
         } catch (error) {
-          ElMessage.error('注册失败：' + (error.message || '未知错误'))
+          console.error('注册失败:', error)
+          ElMessage.error('注册失败：' + (error.response?.data?.message || error.message || '未知错误'))
         } finally {
           registering.value = false
         }
-      })
+      } catch (error) {
+        // 表单验证失败
+        console.error('表单验证失败:', error)
+        ElMessage.warning('请检查表单填写是否正确')
+      }
     }
 
     const goBack = () => {
@@ -317,9 +338,7 @@ export default {
       registering,
       shareCodeInfo,
       shareCodeError,
-      enrollmentYearDate,
       validateShareCode,
-      handleEnrollmentYearChange,
       handleRegister,
       goBack
     }
@@ -477,6 +496,13 @@ export default {
 .share-code-info,
 .share-code-error {
   margin-top: 10px;
+}
+
+.form-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
 }
 
 :deep(.el-alert) {

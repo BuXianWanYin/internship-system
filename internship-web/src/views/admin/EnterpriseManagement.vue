@@ -164,13 +164,22 @@
             审核
           </el-button>
           <el-button 
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])" 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) && row.status === 1" 
             link 
             type="danger" 
             size="small" 
             @click="handleDelete(row)"
           >
             停用
+          </el-button>
+          <el-button 
+            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) && row.status === 0" 
+            link 
+            type="success" 
+            size="small" 
+            @click="handleEnable(row)"
+          >
+            启用
           </el-button>
         </template>
       </el-table-column>
@@ -383,27 +392,59 @@
       <!-- 审核意见输入对话框 -->
       <el-dialog
         v-model="auditOpinionDialogVisible"
-        :title="currentAuditSchool && currentAuditSchool.auditStatus === 1 ? '审核通过' : '审核拒绝'"
-        width="500px"
+        :title="auditForm.auditStatus === 1 ? '建立合作关系' : '审核拒绝'"
+        width="600px"
         append-to-body
       >
         <el-form
           ref="auditFormRef"
           :model="auditForm"
-          label-width="100px"
+          :rules="auditFormRules"
+          label-width="120px"
         >
           <el-form-item label="院校名称">
             <span>{{ currentAuditSchool && currentAuditSchool.schoolName }}</span>
           </el-form-item>
+          <template v-if="auditForm.auditStatus === 1">
+            <el-form-item label="合作开始时间" prop="startTime">
+              <el-date-picker
+                v-model="auditForm.startTime"
+                type="datetime"
+                placeholder="选择合作开始时间"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%;"
+              />
+            </el-form-item>
+            <el-form-item label="合作结束时间" prop="endTime">
+              <el-date-picker
+                v-model="auditForm.endTime"
+                type="datetime"
+                placeholder="选择合作结束时间"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%;"
+              />
+            </el-form-item>
+            <el-form-item label="合作描述" prop="cooperationDesc">
+              <el-input
+                v-model="auditForm.cooperationDesc"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入合作描述"
+              />
+            </el-form-item>
+          </template>
           <el-form-item
+            v-else
             label="审核意见"
-            :prop="auditForm.auditStatus === 1 ? '' : 'auditOpinion'"
+            prop="auditOpinion"
           >
             <el-input
               v-model="auditForm.auditOpinion"
               type="textarea"
               :rows="4"
-              :placeholder="auditForm.auditStatus === 1 ? '审核意见' : '请输入拒绝原因'"
+              placeholder="请输入拒绝原因"
             />
           </el-form-item>
         </el-form>
@@ -672,8 +713,26 @@ const formData = reactive({
 // 审核表单
 const auditForm = reactive({
   auditStatus: 1,
-  auditOpinion: ''
+  auditOpinion: '',
+  startTime: null,
+  endTime: null,
+  cooperationDesc: ''
 })
+
+const auditFormRules = {
+  startTime: [
+    { required: true, message: '请选择合作开始时间', trigger: 'change' }
+  ],
+  endTime: [
+    { required: true, message: '请选择合作结束时间', trigger: 'change' }
+  ],
+  cooperationDesc: [
+    { required: true, message: '请输入合作描述', trigger: 'blur' }
+  ],
+  auditOpinion: [
+    { required: true, message: '请输入拒绝原因', trigger: 'blur' }
+  ]
+}
 
 // 表单验证规则（动态规则，根据isEdit判断）
 const getFormRules = () => {
@@ -989,22 +1048,40 @@ const handleAuditSchool = (school, auditStatus) => {
   currentAuditSchool.value = school
   auditForm.auditStatus = auditStatus
   auditForm.auditOpinion = ''
+  auditForm.startTime = null
+  auditForm.endTime = null
+  auditForm.cooperationDesc = ''
   auditOpinionDialogVisible.value = true
 }
 
 // 确认院校审核
 const handleConfirmSchoolAudit = async () => {
-  if (auditForm.auditStatus === 2 && !auditForm.auditOpinion) {
-    ElMessage.warning('请输入拒绝原因')
+  // 验证表单
+  if (!auditFormRef.value) return
+  
+  try {
+    await auditFormRef.value.validate()
+  } catch (error) {
     return
   }
 
   auditing.value = true
   try {
+    const params = {
+      auditStatus: auditForm.auditStatus,
+      auditOpinion: auditForm.auditOpinion
+    }
+    
+    // 如果审核通过，添加合作关系参数
+    if (auditForm.auditStatus === 1) {
+      params.startTime = auditForm.startTime
+      params.endTime = auditForm.endTime
+      params.cooperationDesc = auditForm.cooperationDesc
+    }
+    
     const res = await enterpriseRegisterSchoolApi.auditEnterpriseRegister(
       currentAuditSchool.value.id,
-      auditForm.auditStatus,
-      auditForm.auditOpinion
+      params
     )
     if (res.code === 200) {
       ElMessage.success('审核成功')
@@ -1042,6 +1119,29 @@ const handleDelete = async (row) => {
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('停用失败：' + (error.message || '未知错误'))
+    }
+  }
+}
+
+// 启用
+const handleEnable = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要启用该企业吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const res = await enterpriseApi.enableEnterprise(row.enterpriseId)
+    if (res.code === 200) {
+      ElMessage.success('启用成功')
+      loadData()
+    } else {
+      ElMessage.error(res.message || '启用失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('启用失败：' + (error.message || '未知错误'))
     }
   }
 }
