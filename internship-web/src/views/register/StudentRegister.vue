@@ -63,6 +63,24 @@
         <el-form-item label="姓名" prop="realName">
           <el-input
             v-model="registerForm.realName"
+            placeholder="请输入姓名"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="性别" prop="gender">
+          <el-select
+            v-model="registerForm.gender"
+            placeholder="请选择性别"
+            style="width: 100%;"
+            clearable
+          >
+            <el-option label="男" value="男" />
+            <el-option label="女" value="女" />
+          </el-select>
+        </el-form-item>
+          <el-input
+            v-model="registerForm.realName"
             placeholder="请输入真实姓名"
             clearable
           />
@@ -166,6 +184,7 @@ export default {
       shareCode: '',
       studentNo: '',
       realName: '',
+      gender: '',
       idCard: '',
       phone: '',
       email: '',

@@ -541,6 +541,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setUsername(username);
         user.setPassword(password); // UserService会自动加密
         user.setRealName(dto.getRealName());
+        user.setGender(dto.getGender());
         user.setIdCard(dto.getIdCard());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());

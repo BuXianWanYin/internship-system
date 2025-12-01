@@ -64,16 +64,17 @@ public class ExcelUtil {
                 dto.setRowNum(rowNum + 1); // Excel行号从1开始
                 
                 // 读取各列数据
-                // 列顺序：学号、姓名、身份证号、手机号、邮箱、入学年份、密码（可选）
+                // 列顺序：学号、姓名、性别、身份证号、手机号、邮箱、入学年份、密码（可选）
                 try {
                     dto.setStudentNo(getCellValue(row.getCell(0)));
                     dto.setRealName(getCellValue(row.getCell(1)));
-                    dto.setIdCard(getCellValue(row.getCell(2)));
-                    dto.setPhone(getCellValue(row.getCell(3)));
-                    dto.setEmail(getCellValue(row.getCell(4)));
+                    dto.setGender(getCellValue(row.getCell(2)));
+                    dto.setIdCard(getCellValue(row.getCell(3)));
+                    dto.setPhone(getCellValue(row.getCell(4)));
+                    dto.setEmail(getCellValue(row.getCell(5)));
                     
                     // 入学年份
-                    String enrollmentYearStr = getCellValue(row.getCell(5));
+                    String enrollmentYearStr = getCellValue(row.getCell(6));
                     if (enrollmentYearStr != null && !enrollmentYearStr.isEmpty()) {
                         try {
                             dto.setEnrollmentYear(Integer.parseInt(enrollmentYearStr.trim()));
@@ -82,8 +83,8 @@ public class ExcelUtil {
                         }
                     }
                     
-                    // 密码（可选，第7列，索引6）
-                    String password = getCellValue(row.getCell(6));
+                    // 密码（可选，第8列，索引7）
+                    String password = getCellValue(row.getCell(7));
                     if (password != null && !password.trim().isEmpty()) {
                         dto.setPassword(password.trim());
                     }
@@ -168,8 +169,8 @@ public class ExcelUtil {
         
         // 创建表头行
         Row headerRow = sheet.createRow(0);
-        // 列顺序：学号、姓名、身份证号、手机号、邮箱、入学年份、密码（必填）
-        String[] headers = {"学号*", "姓名*", "身份证号", "手机号", "邮箱", "入学年份*", "初始密码*"};
+        // 列顺序：学号、姓名、性别、身份证号、手机号、邮箱、入学年份、密码（必填）
+        String[] headers = {"学号*", "姓名*", "性别", "身份证号", "手机号", "邮箱", "入学年份*", "初始密码*"};
         
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
@@ -180,21 +181,23 @@ public class ExcelUtil {
         // 设置列宽
         sheet.setColumnWidth(0, 4000); // 学号
         sheet.setColumnWidth(1, 3000); // 姓名
-        sheet.setColumnWidth(2, 5000); // 身份证号
-        sheet.setColumnWidth(3, 4000); // 手机号
-        sheet.setColumnWidth(4, 5000); // 邮箱
-        sheet.setColumnWidth(5, 3000); // 入学年份
-        sheet.setColumnWidth(6, 6000); // 密码
+        sheet.setColumnWidth(2, 2000); // 性别
+        sheet.setColumnWidth(3, 5000); // 身份证号
+        sheet.setColumnWidth(4, 4000); // 手机号
+        sheet.setColumnWidth(5, 5000); // 邮箱
+        sheet.setColumnWidth(6, 3000); // 入学年份
+        sheet.setColumnWidth(7, 6000); // 密码
         
         // 添加示例数据行
         Row exampleRow = sheet.createRow(1);
         exampleRow.createCell(0).setCellValue("202101001");
         exampleRow.createCell(1).setCellValue("张三");
-        exampleRow.createCell(2).setCellValue("110101199001011234");
-        exampleRow.createCell(3).setCellValue("13800000001");
-        exampleRow.createCell(4).setCellValue("zhangsan@example.com");
-        exampleRow.createCell(5).setCellValue("2021");
-        exampleRow.createCell(6).setCellValue("123456"); // 示例密码，必填
+        exampleRow.createCell(2).setCellValue("男");
+        exampleRow.createCell(3).setCellValue("110101199001011234");
+        exampleRow.createCell(4).setCellValue("13800000001");
+        exampleRow.createCell(5).setCellValue("zhangsan@example.com");
+        exampleRow.createCell(6).setCellValue("2021");
+        exampleRow.createCell(7).setCellValue("123456"); // 示例密码，必填
         
         // 设置响应头
         String safeFileName = "学生导入模板";

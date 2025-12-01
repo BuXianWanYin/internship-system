@@ -102,6 +102,14 @@
           <span v-else>加载中...</span>
         </template>
       </el-table-column>
+      <el-table-column label="性别" width="80" align="center">
+        <template #default="{ row }">
+          <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].gender">
+            {{ userInfoMap[row.userId].gender }}
+          </span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="所属学院" min-width="150">
         <template #default="{ row }">
           <span v-if="collegeMap[row.collegeId]">{{ collegeMap[row.collegeId].collegeName }}</span>
@@ -186,6 +194,14 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="性别" prop="gender">
+              <el-select v-model="formData.gender" placeholder="请选择性别" style="width: 100%">
+                <el-option label="男" value="男" />
+                <el-option label="女" value="女" />
+              </el-select>
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="身份证号" prop="idCard">
               <el-input v-model="formData.idCard" placeholder="请输入身份证号" />
@@ -370,6 +386,7 @@ const formData = reactive({
   teacherNo: '',
   userId: null,
   realName: '',
+  gender: '',
   idCard: '',
   phone: '',
   email: '',
@@ -575,6 +592,7 @@ const handleEdit = async (row) => {
         teacherNo: res.data.teacherNo,
         userId: res.data.userId,
         realName: userInfoMap.value[res.data.userId]?.realName || '',
+        gender: userInfoMap.value[res.data.userId]?.gender || '',
         idCard: userInfoMap.value[res.data.userId]?.idCard || '',
         phone: userInfoMap.value[res.data.userId]?.phone || '',
         email: userInfoMap.value[res.data.userId]?.email || '',
@@ -599,6 +617,7 @@ const resetFormData = () => {
     teacherNo: '',
     userId: null,
     realName: '',
+    gender: '',
     idCard: '',
     phone: '',
     email: '',
@@ -660,6 +679,7 @@ const handleSubmit = async () => {
       const submitData = {
         teacherNo: formData.teacherNo,
         realName: formData.realName,
+        gender: formData.gender || null,
         idCard: formData.idCard,
         phone: formData.phone,
         email: formData.email,

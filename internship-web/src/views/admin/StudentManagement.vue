@@ -330,6 +330,12 @@
         <el-form-item label="真实姓名" prop="realName">
           <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
         </el-form-item>
+        <el-form-item label="性别" prop="gender">
+          <el-select v-model="formData.gender" placeholder="请选择性别" style="width: 100%">
+            <el-option label="男" value="男" />
+            <el-option label="女" value="女" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="身份证号" prop="idCard">
           <el-input v-model="formData.idCard" placeholder="请输入身份证号" />
         </el-form-item>
@@ -390,6 +396,9 @@
         <el-descriptions-item label="入学年份">{{ currentStudent.enrollmentYear }}</el-descriptions-item>
         <el-descriptions-item label="姓名" v-if="userInfoMap[currentStudent.userId]">
           {{ userInfoMap[currentStudent.userId].realName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="性别" v-if="userInfoMap[currentStudent.userId]">
+          {{ userInfoMap[currentStudent.userId].gender || '未填写' }}
         </el-descriptions-item>
         <el-descriptions-item label="身份证号" v-if="userInfoMap[currentStudent.userId]">
           {{ userInfoMap[currentStudent.userId].idCard || '未填写' }}
@@ -470,7 +479,7 @@
             <div>
               <div>请先下载模板，按照模板格式填写学生信息后上传。</div>
               <div style="margin-top: 8px; font-size: 12px; color: #909399;">
-                模板列说明：学号*、姓名*、身份证号、手机号、邮箱、入学年份*、初始密码*
+                模板列说明：学号*、姓名*、性别、身份证号、手机号、邮箱、入学年份*、初始密码*
               </div>
             </div>
           </template>
@@ -710,6 +719,7 @@ const formData = reactive({
   studentNo: '',
   userId: null,
   realName: '',
+  gender: '',
   idCard: '',
   phone: '',
   email: '',
@@ -904,6 +914,7 @@ const handleEdit = async (row) => {
             studentNo: student.studentNo,
             userId: student.userId,
             realName: userRes.data.realName,
+            gender: userRes.data.gender || '',
             idCard: userRes.data.idCard || '',
             phone: userRes.data.phone || '',
             email: userRes.data.email || '',
@@ -927,6 +938,7 @@ const resetFormData = () => {
     studentNo: '',
     userId: null,
     realName: '',
+    gender: '',
     idCard: '',
     phone: '',
     email: '',
@@ -953,6 +965,7 @@ const handleSubmit = async () => {
           const userUpdateData = {
             userId: formData.userId,
             realName: formData.realName,
+            gender: formData.gender || null,
             idCard: formData.idCard,
             phone: formData.phone,
             email: formData.email,
@@ -997,6 +1010,7 @@ const handleSubmit = async () => {
           username: formData.studentNo,
           password: formData.password,
           realName: formData.realName,
+          gender: formData.gender || null,
           idCard: formData.idCard,
           phone: formData.phone,
           email: formData.email,

@@ -178,6 +178,12 @@
     >
       <el-table-column prop="username" label="用户名" min-width="120" />
       <el-table-column prop="realName" label="真实姓名" min-width="120" />
+      <el-table-column prop="gender" label="性别" width="80" align="center">
+        <template #default="{ row }">
+          <span v-if="row.gender">{{ row.gender }}</span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="phone" label="手机号" min-width="120" />
       <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
       <el-table-column prop="status" label="状态" width="80" align="center">
@@ -257,6 +263,12 @@
         </el-form-item>
         <el-form-item label="真实姓名" prop="realName">
           <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
+        </el-form-item>
+        <el-form-item label="性别" prop="gender">
+          <el-select v-model="formData.gender" placeholder="请选择性别" style="width: 100%">
+            <el-option label="男" value="男" />
+            <el-option label="女" value="女" />
+          </el-select>
         </el-form-item>
         <el-form-item label="身份证号" prop="idCard">
           <el-input v-model="formData.idCard" placeholder="请输入身份证号" />
@@ -658,6 +670,7 @@ const formData = reactive({
   username: '',
   password: '',
   realName: '',
+  gender: '',
   idCard: '',
   phone: '',
   email: '',
@@ -1119,6 +1132,7 @@ const handleEdit = async (row) => {
         username: res.data.username,
         password: '',
         realName: res.data.realName || '',
+        gender: res.data.gender || '',
         idCard: res.data.idCard || '',
         phone: res.data.phone || '',
         email: res.data.email || '',
@@ -1206,6 +1220,7 @@ const resetFormData = () => {
     username: '',
     password: '',
     realName: '',
+    gender: '',
     idCard: '',
     phone: '',
     email: '',
@@ -1447,6 +1462,7 @@ const handleSubmit = async () => {
         username: formData.username,
         password: formData.password,
         realName: formData.realName,
+        gender: formData.gender || null,
         idCard: formData.idCard,
         phone: formData.phone,
         email: formData.email,
