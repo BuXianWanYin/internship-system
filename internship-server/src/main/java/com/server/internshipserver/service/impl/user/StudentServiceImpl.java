@@ -21,7 +21,10 @@ import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
 import com.server.internshipserver.domain.user.Enterprise;
+import com.server.internshipserver.domain.internship.InternshipApply;
+import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
+import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.service.system.ClassService;
 import com.server.internshipserver.service.system.CollegeService;
 import com.server.internshipserver.service.system.MajorService;
@@ -57,6 +60,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     
     @Autowired
     private EnterpriseMapper enterpriseMapper;
+    
+    @Autowired
+    private InternshipApplyMapper internshipApplyMapper;
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
@@ -244,10 +250,20 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 填充企业信息（如果有当前实习企业）
         if (EntityValidationUtil.hasRecords(result)) {
             for (Student student : result.getRecords()) {
+                // 优先从企业表获取企业名称（合作企业）
                 if (student.getCurrentEnterpriseId() != null) {
                     Enterprise enterprise = enterpriseMapper.selectById(student.getCurrentEnterpriseId());
                     if (enterprise != null) {
                         student.setCurrentEnterpriseName(enterprise.getEnterpriseName());
+                    }
+                } 
+                // 如果是自主实习，从申请表中获取企业名称
+                else if (student.getCurrentApplyId() != null) {
+                    InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+                    if (apply != null && apply.getApplyType() != null 
+                        && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                        // 自主实习，使用自主实习企业名称
+                        student.setCurrentEnterpriseName(apply.getSelfEnterpriseName());
                     }
                 }
             }

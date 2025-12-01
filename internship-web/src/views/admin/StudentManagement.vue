@@ -576,6 +576,7 @@ import { majorApi } from '@/api/system/major'
 import { userApi } from '@/api/user/user'
 import { reportApi } from '@/api/report'
 import { exportExcel } from '@/utils/exportUtils'
+import request from '@/utils/request'
 
 // 权限相关
 const authStore = useAuthStore()
