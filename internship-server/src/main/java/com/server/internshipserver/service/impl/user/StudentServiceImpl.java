@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -250,22 +251,55 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 填充企业信息（如果有当前实习企业）
         if (EntityValidationUtil.hasRecords(result)) {
             for (Student student : result.getRecords()) {
+                String enterpriseName = null;
+                
                 // 优先从企业表获取企业名称（合作企业）
                 if (student.getCurrentEnterpriseId() != null) {
                     Enterprise enterprise = enterpriseMapper.selectById(student.getCurrentEnterpriseId());
                     if (enterprise != null) {
-                        student.setCurrentEnterpriseName(enterprise.getEnterpriseName());
-                    }
-                } 
-                // 如果是自主实习，从申请表中获取企业名称
-                else if (student.getCurrentApplyId() != null) {
-                    InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
-                    if (apply != null && apply.getApplyType() != null 
-                        && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
-                        // 自主实习，使用自主实习企业名称
-                        student.setCurrentEnterpriseName(apply.getSelfEnterpriseName());
+                        enterpriseName = enterprise.getEnterpriseName();
                     }
                 }
+                
+                // 如果企业表中没有找到，或者当前企业ID为null，尝试从申请表中获取
+                if (enterpriseName == null && student.getCurrentApplyId() != null) {
+                    InternshipApply apply = internshipApplyMapper.selectById(student.getCurrentApplyId());
+                    if (apply != null) {
+                        if (apply.getApplyType() != null && apply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                            // 自主实习，使用自主实习企业名称
+                            enterpriseName = apply.getSelfEnterpriseName();
+                        } else if (apply.getEnterpriseId() != null) {
+                            // 合作企业，如果企业表中没找到，再尝试从申请关联的企业获取
+                            Enterprise enterprise = enterpriseMapper.selectById(apply.getEnterpriseId());
+                            if (enterprise != null) {
+                                enterpriseName = enterprise.getEnterpriseName();
+                            }
+                        }
+                    }
+                }
+                
+                // 如果还是没有找到，尝试查询学生最新的有效申请
+                if (enterpriseName == null && student.getStudentId() != null) {
+                    LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
+                    applyWrapper.eq(InternshipApply::getStudentId, student.getStudentId())
+                               .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                               .in(InternshipApply::getStatus, Arrays.asList(3, 7, 8, 11, 13)) // 已录用、实习结束、已评价、实习中、实习结束
+                               .orderByDesc(InternshipApply::getCreateTime)
+                               .last("LIMIT 1");
+                    InternshipApply latestApply = internshipApplyMapper.selectOne(applyWrapper);
+                    if (latestApply != null) {
+                        if (latestApply.getApplyType() != null && latestApply.getApplyType().equals(ApplyType.SELF.getCode())) {
+                            enterpriseName = latestApply.getSelfEnterpriseName();
+                        } else if (latestApply.getEnterpriseId() != null) {
+                            Enterprise enterprise = enterpriseMapper.selectById(latestApply.getEnterpriseId());
+                            if (enterprise != null) {
+                                enterpriseName = enterprise.getEnterpriseName();
+                            }
+                        }
+                    }
+                }
+                
+                student.setCurrentEnterpriseName(enterpriseName);
             }
         }
         

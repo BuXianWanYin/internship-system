@@ -318,9 +318,7 @@ const quickActions = computed(() => {
       { key: 'college', title: '学院管理', desc: '管理本学校学院', icon: 'OfficeBuilding', color: '#409EFF', path: '/admin/system/college' },
       { key: 'major', title: '专业管理', desc: '管理本学校专业', icon: 'Reading', color: '#67C23A', path: '/admin/system/major' },
       { key: 'class', title: '班级管理', desc: '管理本学校班级', icon: 'User', color: '#F7BA2A', path: '/admin/system/class' },
-      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#E6A23C', path: '/admin/internship/plan' },
-      { key: 'audit', title: '申请审核', desc: '审核实习申请', icon: 'DocumentChecked', color: '#909399', path: '/admin/internship/apply/audit' },
-      { key: 'evaluation', title: '学生评价', desc: '评价学生实习', icon: 'Star', color: '#409EFF', path: '/teacher/student/evaluation' }
+      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#E6A23C', path: '/admin/internship/plan' }
     )
   }
   
@@ -330,9 +328,7 @@ const quickActions = computed(() => {
       { key: 'major', title: '专业管理', desc: '管理本院专业', icon: 'Reading', color: '#409EFF', path: '/admin/system/major' },
       { key: 'class', title: '班级管理', desc: '管理本院班级', icon: 'User', color: '#67C23A', path: '/admin/system/class' },
       { key: 'teacher', title: '班主任任命', desc: '任命班级班主任', icon: 'UserFilled', color: '#F7BA2A', path: '/admin/system/class-teacher' },
-      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#E6A23C', path: '/admin/internship/plan' },
-      { key: 'audit', title: '申请审核', desc: '审核实习申请', icon: 'DocumentChecked', color: '#909399', path: '/admin/internship/apply/audit' },
-      { key: 'evaluation', title: '学生评价', desc: '评价学生实习', icon: 'Star', color: '#409EFF', path: '/teacher/student/evaluation' }
+      { key: 'plan', title: '实习计划', desc: '查看实习计划', icon: 'Calendar', color: '#E6A23C', path: '/admin/internship/plan' }
     )
   }
   
@@ -597,22 +593,6 @@ const loadSchoolAdminStatistics = async () => {
           unit: '人',
           icon: 'UserFilled',
           color: '#E6A23C'
-        },
-        {
-          key: 'maleCount',
-          title: '男生人数',
-          value: dashboard.maleCount || 0,
-          unit: '人',
-          icon: 'User',
-          color: '#409EFF'
-        },
-        {
-          key: 'femaleCount',
-          title: '女生人数',
-          value: dashboard.femaleCount || 0,
-          unit: '人',
-          icon: 'User',
-          color: '#F56C6C'
         }
       ]
       
@@ -631,9 +611,39 @@ const loadSchoolAdminStatistics = async () => {
         }
       }
     }
+    
+    // 加载岗位类型分布统计
+    const params = buildQueryParams()
+    try {
+      const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
+        chartData.postType = {
+          data: postRes.data.pieChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载岗位类型分布统计失败:', error)
+    }
+    
+    // 加载评价分数分布统计
+    try {
+      const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData) {
+        chartData.scoreDistribution = {
+          data: scoreRes.data.barChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
+    }
   } catch (error) {
     console.error('加载学校管理员统计数据失败:', error)
-    ElMessage.error('加载仪表盘数据失败')
+    // 检查是否是连接错误
+    if (error.code === 'ERR_NETWORK' || error.code === 'ERR_CONNECTION_REFUSED' || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+      ElMessage.error('无法连接到后端服务，请确保后端服务已启动（端口8080）')
+    } else {
+      ElMessage.error('加载仪表盘数据失败：' + (error.message || '未知错误'))
+    }
   }
 }
 
@@ -680,6 +690,46 @@ const loadCollegeLeaderStatistics = async () => {
           color: '#E6A23C'
         }
       ]
+    }
+    
+    // 加载岗位类型分布统计
+    const params = buildQueryParams()
+    try {
+      const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
+        chartData.postType = {
+          data: postRes.data.pieChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载岗位类型分布统计失败:', error)
+    }
+    
+    // 加载评价分数分布统计
+    try {
+      const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
+        chartData.scoreDistribution = {
+          data: scoreRes.data.barChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
+    }
+    
+    // 加载实习时长统计
+    try {
+      const durationRes = await statisticsApi.getInternshipDurationStatistics(params)
+      if (durationRes.code === 200 && durationRes.data && durationRes.data.lineChartData && durationRes.data.lineChartData.length > 0) {
+        chartData.duration = {
+          data: durationRes.data.lineChartData.map(item => ({
+            name: item.month,
+            value: item.averageDays
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('加载实习时长统计失败:', error)
     }
   } catch (error) {
     console.error('加载学院负责人统计数据失败:', error)
@@ -900,9 +950,13 @@ const loadEnterpriseMentorStatistics = async () => {
     
     // 加载实习时长统计
     const durationRes = await statisticsApi.getInternshipDurationStatistics(params)
-    if (durationRes.code === 200 && durationRes.data) {
-      // TODO: 根据实际返回的数据格式处理
-      chartData.duration = null
+    if (durationRes.code === 200 && durationRes.data && durationRes.data.lineChartData && durationRes.data.lineChartData.length > 0) {
+      chartData.duration = {
+        data: durationRes.data.lineChartData.map(item => ({
+          name: item.month,
+          value: item.averageDays
+        }))
+      }
     }
     
     // 加载待批阅统计

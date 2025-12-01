@@ -109,13 +109,22 @@ public class InternshipPostController {
         return Result.success("发布成功");
     }
     
-    @ApiOperation("关闭岗位")
+    @ApiOperation("取消发布岗位")
+    @PreAuthorize("hasRole('ROLE_ENTERPRISE_ADMIN')")
+    @PostMapping("/{postId}/unpublish")
+    public Result<?> unpublishPost(
+            @ApiParam(value = "岗位ID", required = true) @PathVariable Long postId) {
+        internshipPostService.unpublishPost(postId);
+        return Result.success("取消发布成功");
+    }
+    
+    @ApiOperation("下架岗位")
     @PreAuthorize("hasRole('ROLE_ENTERPRISE_ADMIN')")
     @PostMapping("/{postId}/close")
     public Result<?> closePost(
             @ApiParam(value = "岗位ID", required = true) @PathVariable Long postId) {
         internshipPostService.closePost(postId);
-        return Result.success("关闭成功");
+        return Result.success("下架成功");
     }
     
     @ApiOperation("删除岗位")

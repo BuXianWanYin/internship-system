@@ -157,13 +157,21 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         if (currentUserEnterpriseId != null) {
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
         }
-        // 学生端：只显示合作企业的岗位
+        // 学生端：只显示合作企业的已发布岗位，且招聘人数未满
         else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly() && cooperationEnterpriseIds != null) {
             if (cooperationEnterpriseIds.isEmpty()) {
                 // 如果没有合作关系，返回空列表
                 return page;
             }
             wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+            // 学生只能看到已发布的岗位
+            wrapper.eq(InternshipPost::getStatus, InternshipPostStatus.PUBLISHED.getCode());
+            // 过滤掉招聘人数已满的岗位（acceptedCount >= recruitCount）
+            // 逻辑：如果recruitCount为null，则认为未满；如果acceptedCount为null，则认为0
+            // SQL: (recruit_count IS NULL) OR (IFNULL(accepted_count, 0) < recruit_count)
+            wrapper.and(w -> w.isNull(InternshipPost::getRecruitCount)
+                    .or()
+                    .apply("IFNULL(accepted_count, 0) < recruit_count"));
         }
         // 学校管理员和班主任：只显示合作企业的岗位
         else if (EntityValidationUtil.isNotEmpty(cooperationEnterpriseIds)) {
@@ -215,8 +223,17 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         // 只有待审核状态才能审核
         EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PENDING.getCode(), "岗位", "只有待审核状态的岗位才能审核");
         
-        // 设置审核信息
+        // 设置审核信息（审核人、审核时间、审核意见）
         AuditUtil.setAuditInfo(post, auditStatus, auditOpinion, userMapper);
+        
+        // 根据审核结果设置岗位状态
+        if (auditStatus.equals(AuditStatus.APPROVED.getCode())) {
+            // 审核通过：设置为已通过状态，等待企业管理员发布
+            post.setStatus(InternshipPostStatus.APPROVED.getCode());
+        } else if (auditStatus.equals(AuditStatus.REJECTED.getCode())) {
+            // 审核拒绝：设置为已拒绝状态
+            post.setStatus(InternshipPostStatus.REJECTED.getCode());
+        }
         
         return this.updateById(post);
     }
@@ -248,6 +265,34 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public boolean unpublishPost(Long postId) {
+        if (postId == null) {
+            throw new BusinessException("岗位ID不能为空");
+        }
+        
+        InternshipPost post = this.getById(postId);
+        EntityValidationUtil.validateEntityExists(post, "岗位");
+        
+        // 数据权限：企业管理员只能取消发布自己企业的岗位
+        Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+        if (currentUserEnterpriseId != null && !currentUserEnterpriseId.equals(post.getEnterpriseId())) {
+            throw new BusinessException("无权取消发布该岗位");
+        }
+        
+        // 只有已发布的才能取消发布
+        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PUBLISHED.getCode(), 
+            "岗位", "只有已发布的岗位才能取消发布");
+        
+        // 更新状态为已通过（审核通过但未发布）
+        post.setStatus(InternshipPostStatus.APPROVED.getCode());
+        // 清空发布时间
+        post.setPublishTime(null);
+        
+        return this.updateById(post);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean closePost(Long postId) {
         if (postId == null) {
             throw new BusinessException("岗位ID不能为空");
@@ -256,18 +301,20 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         InternshipPost post = this.getById(postId);
         EntityValidationUtil.validateEntityExists(post, "岗位");
         
-        // 数据权限：企业管理员只能关闭自己企业的岗位
+        // 数据权限：企业管理员只能下架自己企业的岗位
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         if (currentUserEnterpriseId != null && !currentUserEnterpriseId.equals(post.getEnterpriseId())) {
-            throw new BusinessException("无权关闭该岗位");
+            throw new BusinessException("无权下架该岗位");
         }
         
-        // 只有已发布的才能关闭
-        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PUBLISHED.getCode(), "岗位", "只有已发布的岗位才能关闭");
+        // 只有已发布的才能下架（无论报名人数和录用人数是否已满）
+        EntityValidationUtil.validateStatusEquals(post, InternshipPostStatus.PUBLISHED.getCode(), 
+            "岗位", "只有已发布的岗位才能下架");
         
         // 更新状态为已关闭
         post.setStatus(InternshipPostStatus.CLOSED.getCode());
         post.setCloseTime(LocalDateTime.now());
+        
         return this.updateById(post);
     }
     

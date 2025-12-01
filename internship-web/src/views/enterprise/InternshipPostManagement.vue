@@ -142,11 +142,20 @@
           <el-button
             v-if="row.status === 3 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
             link
-            type="info"
+            type="warning"
+            size="small"
+            @click="handleUnpublish(row)"
+          >
+            取消发布
+          </el-button>
+          <el-button
+            v-if="row.status === 3 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
+            link
+            type="danger"
             size="small"
             @click="handleClose(row)"
           >
-            关闭
+            下架
           </el-button>
           <el-button
             v-if="row.status !== 3 && hasAnyRole(['ROLE_ENTERPRISE_ADMIN'])"
@@ -602,8 +611,10 @@ const handleView = async (row) => {
 // 发布
 const handlePublish = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要发布该岗位吗？', '提示', {
-      type: 'warning'
+    await ElMessageBox.confirm('确定要发布该岗位吗？发布后，学生可以看到并申请该岗位。', '发布确认', {
+      type: 'warning',
+      confirmButtonText: '确定发布',
+      cancelButtonText: '取消'
     })
     const res = await postApi.publishPost(row.postId)
     if (res.code === 200) {
@@ -618,21 +629,52 @@ const handlePublish = async (row) => {
   }
 }
 
-// 关闭
-const handleClose = async (row) => {
+// 取消发布
+const handleUnpublish = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要关闭该岗位吗？', '提示', {
-      type: 'warning'
-    })
-    const res = await postApi.closePost(row.postId)
+    await ElMessageBox.confirm(
+      '取消发布后，学生将无法看到该岗位，但您可以重新发布。确定要取消发布吗？',
+      '取消发布确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消'
+      }
+    )
+    const res = await postApi.unpublishPost(row.postId)
     if (res.code === 200) {
-      ElMessage.success('关闭成功')
+      ElMessage.success('取消发布成功')
       loadData()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('关闭失败:', error)
-      ElMessage.error(error.response?.data?.message || '关闭失败')
+      console.error('取消发布失败:', error)
+      ElMessage.error(error.response?.data?.message || '取消发布失败')
+    }
+  }
+}
+
+// 下架岗位
+const handleClose = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要下架该岗位吗？下架后，学生将无法看到该岗位，且无法重新发布。\n\n当前状态：\n- 招聘人数：${row.recruitCount || 0}\n- 已申请：${row.appliedCount || 0}\n- 已录用：${row.acceptedCount || 0}`,
+      '下架岗位确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确定下架',
+        cancelButtonText: '取消'
+      }
+    )
+    const res = await postApi.closePost(row.postId)
+    if (res.code === 200) {
+      ElMessage.success('下架成功')
+      loadData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('下架失败:', error)
+      ElMessage.error(error.response?.data?.message || '下架失败')
     }
   }
 }

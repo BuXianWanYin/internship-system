@@ -31,7 +31,11 @@ export const postApi = {
   publishPost(postId) {
     return request.post(`/internship/post/${postId}/publish`)
   },
-  // 关闭岗位
+  // 取消发布岗位
+  unpublishPost(postId) {
+    return request.post(`/internship/post/${postId}/unpublish`)
+  },
+  // 下架岗位
   closePost(postId) {
     return request.post(`/internship/post/${postId}/close`)
   },

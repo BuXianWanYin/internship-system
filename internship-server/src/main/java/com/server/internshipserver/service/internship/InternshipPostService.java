@@ -59,7 +59,14 @@ public interface InternshipPostService extends IService<InternshipPost> {
     boolean publishPost(Long postId);
     
     /**
-     * 关闭岗位
+     * 取消发布岗位
+     * @param postId 岗位ID
+     * @return 是否成功
+     */
+    boolean unpublishPost(Long postId);
+    
+    /**
+     * 关闭岗位（下架）
      * @param postId 岗位ID
      * @return 是否成功
      */
