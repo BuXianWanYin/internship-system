@@ -60,10 +60,10 @@ public class TeacherController {
     public Result<Page<Teacher>> getTeacherPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "工号（可选）") @RequestParam(required = false) String teacherNo,
-            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "状态：1-启用，0-禁用（可选）") @RequestParam(required = false) Integer status) {
+            @ApiParam(value = "工号") @RequestParam(required = false) String teacherNo,
+            @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "学校ID") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "状态：1-启用，0-禁用") @RequestParam(required = false) Integer status) {
         Page<Teacher> page = new Page<>(current, size);
         Page<Teacher> result = teacherService.getTeacherPage(page, teacherNo, collegeId, schoolId, status);
         return Result.success("查询成功", result);
@@ -116,8 +116,8 @@ public class TeacherController {
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<List<Teacher>> getTeacherList(
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId) {
+            @ApiParam(value = "学校ID") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId) {
         List<Teacher> list = teacherService.getTeacherListBySchool(schoolId, collegeId);
         return Result.success("查询成功", list);
     }

@@ -81,8 +81,8 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
     /**
      * 根据组织架构和时间范围查询已发布的实习计划
      * @param schoolId 学校ID
-     * @param collegeId 学院ID（可选）
-     * @param majorId 专业ID（可选）
+     * @param collegeId 学院ID
+     * @param majorId 专业ID
      * @param currentDate 当前日期（用于判断计划是否有效）
      * @return 实习计划列表
      */

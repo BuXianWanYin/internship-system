@@ -165,7 +165,7 @@
             <el-input v-model="formData.newUserPhone" placeholder="请输入手机号" />
           </el-form-item>
           <el-form-item label="邮箱" prop="newUserEmail">
-            <el-input v-model="formData.newUserEmail" placeholder="请输入邮箱（可选）" />
+            <el-input v-model="formData.newUserEmail" placeholder="请输入邮箱" />
           </el-form-item>
         </template>
         <el-form-item label="状态" prop="status">

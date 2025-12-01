@@ -41,7 +41,7 @@ public interface AttendanceGroupService extends IService<AttendanceGroup> {
     /**
      * 分页查询考勤组列表
      * @param page 分页参数
-     * @param groupName 考勤组名称（可选）
+     * @param groupName 考勤组名称
      * @return 考勤组列表
      */
     Page<AttendanceGroup> getAttendanceGroupPage(Page<AttendanceGroup> page, String groupName);

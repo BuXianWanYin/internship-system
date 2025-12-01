@@ -35,8 +35,8 @@ public interface SchoolService extends IService<School> {
     /**
      * 分页查询学校列表
      * @param page 分页参数
-     * @param schoolName 学校名称（可选）
-     * @param schoolCode 学校代码（可选）
+     * @param schoolName 学校名称
+     * @param schoolCode 学校代码
      * @return 学校列表
      */
     Page<School> getSchoolPage(Page<School> page, String schoolName, String schoolCode);
@@ -50,10 +50,16 @@ public interface SchoolService extends IService<School> {
     
     /**
      * 查询所有学校列表（用于导出）
-     * @param schoolName 学校名称（可选）
-     * @param schoolCode 学校代码（可选）
+     * @param schoolName 学校名称
+     * @param schoolCode 学校代码
      * @return 学校列表
      */
     List<School> getAllSchools(String schoolName, String schoolCode);
+    
+    /**
+     * 公开查询所有学校列表（用于企业注册等公开场景，不进行权限过滤）
+     * @return 学校列表
+     */
+    List<School> getPublicSchoolList();
 }
 

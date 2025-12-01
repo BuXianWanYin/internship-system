@@ -73,9 +73,9 @@ public interface EnterpriseService extends IService<Enterprise> {
     /**
      * 分页查询企业列表
      * @param page 分页参数
-     * @param enterpriseName 企业名称（可选）
-     * @param enterpriseCode 企业代码（可选）
-     * @param auditStatus 审核状态（可选）
+     * @param enterpriseName 企业名称
+     * @param enterpriseCode 企业代码
+     * @param auditStatus 审核状态
      * @return 企业列表
      */
     Page<Enterprise> getEnterprisePage(Page<Enterprise> page, String enterpriseName, 

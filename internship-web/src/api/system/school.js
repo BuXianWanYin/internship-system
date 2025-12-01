@@ -21,6 +21,10 @@ export const schoolApi = {
   getSchoolPage(params) {
     return request.get('/system/school/page', { params })
   },
+  // 公开获取学校列表（用于企业注册等公开场景）
+  getPublicSchoolList() {
+    return request.get('/system/school/public/list')
+  },
   // 停用学校
   deleteSchool(id) {
     return request.delete(`/system/school/${id}`)

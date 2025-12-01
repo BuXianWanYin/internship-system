@@ -32,8 +32,15 @@ service.interceptors.request.use(
       config.url.includes('/auth/logout')
     )
     
-    // 如果正在处理401错误，取消所有后续请求（除了认证相关请求）
-    if (isHandling401 && !isAuthRequest) {
+    // 检查是否是公开接口（允许这些请求通过，无需token）
+    const isPublicRequest = config.url && (
+      config.url.includes('/public/') ||
+      config.url.includes('/system/school/public/') ||
+      config.url.includes('/system/class/share-code/')
+    )
+    
+    // 如果正在处理401错误，取消所有后续请求（除了认证相关请求和公开接口）
+    if (isHandling401 && !isAuthRequest && !isPublicRequest) {
       const cancelToken = axios.CancelToken.source()
       config.cancelToken = cancelToken.token
       cancelToken.cancel('Token已过期，正在跳转登录页')
@@ -41,8 +48,8 @@ service.interceptors.request.use(
       // 请求会被取消，错误会在响应拦截器中处理
     }
     
-    // 如果正在退出登录，取消所有后续请求（除了logout请求）
-    if (isLoggingOut && !isAuthRequest) {
+    // 如果正在退出登录，取消所有后续请求（除了logout请求和公开接口）
+    if (isLoggingOut && !isAuthRequest && !isPublicRequest) {
       const cancelToken = axios.CancelToken.source()
       config.cancelToken = cancelToken.token
       cancelToken.cancel('正在退出登录')
@@ -54,8 +61,8 @@ service.interceptors.request.use(
     const authStore = useAuthStore()
     const token = authStore.token || ''
     
-    // 如果不是登录相关请求且没有token，取消请求
-    if (!isAuthRequest && !token) {
+    // 如果不是登录相关请求或公开接口，且没有token，取消请求
+    if (!isAuthRequest && !isPublicRequest && !token) {
       const cancelToken = axios.CancelToken.source()
       config.cancelToken = cancelToken.token
       cancelToken.cancel('未登录，请先登录')

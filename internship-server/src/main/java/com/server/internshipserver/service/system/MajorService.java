@@ -35,7 +35,7 @@ public interface MajorService extends IService<Major> {
     /**
      * 分页查询专业列表
      * @param page 分页参数
-     * @param majorName 专业名称（可选）
+     * @param majorName 专业名称
      * @param collegeId 学院ID（可选，用于数据权限过滤）
      * @param schoolId 学校ID（可选，用于筛选）
      * @return 专业列表
@@ -51,9 +51,9 @@ public interface MajorService extends IService<Major> {
     
     /**
      * 查询所有专业列表（用于导出）
-     * @param majorName 专业名称（可选）
-     * @param collegeId 学院ID（可选）
-     * @param schoolId 学校ID（可选）
+     * @param majorName 专业名称
+     * @param collegeId 学院ID
+     * @param schoolId 学校ID
      * @return 专业列表
      */
     List<Major> getAllMajors(String majorName, Long collegeId, Long schoolId);

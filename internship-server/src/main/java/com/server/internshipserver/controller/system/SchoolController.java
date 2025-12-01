@@ -85,6 +85,13 @@ public class SchoolController {
         return Result.success("停用学校成功");
     }
     
+    @ApiOperation("公开获取学校列表（用于企业注册等公开场景）")
+    @GetMapping("/public/list")
+    public Result<List<School>> getPublicSchoolList() {
+        List<School> schools = schoolService.getPublicSchoolList();
+        return Result.success(schools);
+    }
+    
     @ApiOperation("导出学校列表")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/export")

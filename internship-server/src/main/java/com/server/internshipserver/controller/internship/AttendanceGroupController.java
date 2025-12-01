@@ -70,7 +70,7 @@ public class AttendanceGroupController {
     public Result<Page<AttendanceGroup>> getAttendanceGroupPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "考勤组名称（可选）") @RequestParam(required = false) String groupName) {
+            @ApiParam(value = "考勤组名称") @RequestParam(required = false) String groupName) {
         Page<AttendanceGroup> page = new Page<>(current, size);
         Page<AttendanceGroup> result = attendanceGroupService.getAttendanceGroupPage(page, groupName);
         return Result.success(result);

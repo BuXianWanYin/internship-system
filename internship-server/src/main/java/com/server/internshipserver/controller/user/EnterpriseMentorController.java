@@ -50,9 +50,9 @@ public class EnterpriseMentorController {
     public Result<Page<EnterpriseMentor>> getEnterpriseMentorPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "导师姓名（可选）") @RequestParam(required = false) String mentorName,
-            @ApiParam(value = "企业ID（可选）") @RequestParam(required = false) Long enterpriseId,
-            @ApiParam(value = "状态：1-启用，0-禁用（可选）") @RequestParam(required = false) Integer status) {
+            @ApiParam(value = "导师姓名") @RequestParam(required = false) String mentorName,
+            @ApiParam(value = "企业ID") @RequestParam(required = false) Long enterpriseId,
+            @ApiParam(value = "状态：1-启用，0-禁用") @RequestParam(required = false) Integer status) {
         Page<EnterpriseMentor> page = new Page<>(current, size);
         Page<EnterpriseMentor> result = enterpriseMentorService.getEnterpriseMentorPage(page, mentorName, enterpriseId, status);
         return Result.success("查询成功", result);

@@ -201,9 +201,9 @@ public class InternshipApplyController {
     public Result<Page<InternshipApply>> getMentorStudents(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "学生姓名（可选）") @RequestParam(required = false) String studentName,
-            @ApiParam(value = "学号（可选）") @RequestParam(required = false) String studentNo,
-            @ApiParam(value = "申请状态（可选）") @RequestParam(required = false) Integer status) {
+            @ApiParam(value = "学生姓名") @RequestParam(required = false) String studentName,
+            @ApiParam(value = "学号") @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "申请状态") @RequestParam(required = false) Integer status) {
         Page<InternshipApply> page = new Page<>(current, size);
         Page<InternshipApply> result = internshipApplyService.getMentorStudents(page, studentName, studentNo, status);
         return Result.success("查询成功", result);

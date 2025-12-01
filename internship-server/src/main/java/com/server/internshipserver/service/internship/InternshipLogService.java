@@ -33,10 +33,10 @@ public interface InternshipLogService extends IService<InternshipLog> {
     /**
      * 分页查询日志列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param applyId 申请ID（可选）
-     * @param logDate 日志日期（可选）
-     * @param reviewStatus 批阅状态（可选）
+     * @param studentId 学生ID
+     * @param applyId 申请ID
+     * @param logDate 日志日期
+     * @param reviewStatus 批阅状态
      * @return 日志列表
      */
     Page<InternshipLog> getLogPage(Page<InternshipLog> page, Long studentId, Long applyId, 

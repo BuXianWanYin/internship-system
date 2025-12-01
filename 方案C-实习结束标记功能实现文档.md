@@ -400,7 +400,7 @@ public Result<?> batchCompleteInternship(
  * 结束实习（单个）
  * @param applyId 申请ID
  * @param endDate 实习结束日期（可选，不传则使用当前日期）
- * @param remark 备注（可选）
+ * @param remark 备注
  */
 void completeInternship(Long applyId, LocalDate endDate, String remark);
 
@@ -408,7 +408,7 @@ void completeInternship(Long applyId, LocalDate endDate, String remark);
  * 批量结束实习
  * @param applyIds 申请ID列表
  * @param endDate 实习结束日期（可选，不传则使用当前日期）
- * @param remark 备注（可选）
+ * @param remark 备注
  */
 void batchCompleteInternship(List<Long> applyIds, LocalDate endDate, String remark);
 ```
@@ -695,7 +695,7 @@ private void triggerCompleteActions(InternshipApply apply) {
     // 1. 更新学生实习状态
     updateStudentAfterComplete(apply.getStudentId());
     
-    // 2. 记录操作日志（可选）
+    // 2. 记录操作日志
     // logOperation(apply, "结束实习");
 }
 
@@ -934,7 +934,7 @@ import { formatDate } from '@/utils/dateUtils'
         v-model="completeForm.remark"
         type="textarea"
         :rows="4"
-        placeholder="请输入备注（可选）"
+        placeholder="请输入备注"
         maxlength="500"
         show-word-limit
       />
@@ -2008,7 +2008,7 @@ const getUnbindStatusType = (row) => {
 
 ---
 
-## 十三、扩展功能（可选）
+## 十三、扩展功能
 
 1. **自动标记功能**
    - 定时任务：每天检查实习结束日期，自动标记已到期的实习

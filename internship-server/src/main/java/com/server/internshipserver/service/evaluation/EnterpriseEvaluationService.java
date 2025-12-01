@@ -40,9 +40,9 @@ public interface EnterpriseEvaluationService extends IService<EnterpriseEvaluati
     /**
      * 分页查询待评价学生列表
      * @param page 分页参数
-     * @param enterpriseId 企业ID（可选）
-     * @param studentName 学生姓名（可选）
-     * @param evaluationStatus 评价状态（可选）
+     * @param enterpriseId 企业ID
+     * @param studentName 学生姓名
+     * @param evaluationStatus 评价状态
      * @return 评价列表
      */
     Page<EnterpriseEvaluation> getEvaluationPage(Page<EnterpriseEvaluation> page, Long enterpriseId, 

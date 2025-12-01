@@ -370,7 +370,7 @@
             v-model="auditForm.auditOpinion"
             type="textarea"
             :rows="6"
-            :placeholder="auditForm.auditStatus === 1 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+            :placeholder="auditForm.auditStatus === 1 ? '请输入审核意见' : '请输入拒绝原因（必填）'"
           />
         </el-form-item>
       </el-form>
@@ -420,7 +420,7 @@
             v-model="completeForm.remark"
             type="textarea"
             :rows="4"
-            placeholder="请输入备注（可选）"
+            placeholder="请输入备注"
             maxlength="500"
             show-word-limit
           />
@@ -467,7 +467,7 @@
             v-model="unbindForm.reason"
             type="textarea"
             :rows="4"
-            placeholder="请输入解绑原因（可选）"
+            placeholder="请输入解绑原因"
             maxlength="500"
             show-word-limit
           />
@@ -477,7 +477,7 @@
             v-model="unbindForm.remark"
             type="textarea"
             :rows="3"
-            placeholder="请输入备注（可选）"
+            placeholder="请输入备注"
             maxlength="500"
             show-word-limit
           />

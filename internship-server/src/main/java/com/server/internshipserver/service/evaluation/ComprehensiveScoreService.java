@@ -33,7 +33,7 @@ public interface ComprehensiveScoreService extends IService<ComprehensiveScore> 
     /**
      * 分页查询综合成绩列表
      * @param page 分页参数
-     * @param studentName 学生姓名（可选）
+     * @param studentName 学生姓名
      * @return 综合成绩列表
      */
     Page<ComprehensiveScore> getScorePage(Page<ComprehensiveScore> page, String studentName);

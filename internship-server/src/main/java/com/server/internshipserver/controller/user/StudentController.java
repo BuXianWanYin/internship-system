@@ -45,13 +45,13 @@ public class StudentController {
     public Result<Page<Student>> getStudentPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "学号（可选）") @RequestParam(required = false) String studentNo,
-            @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId,
-            @ApiParam(value = "专业ID（可选）") @RequestParam(required = false) Long majorId,
-            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "状态：1-已审核，0-待审核（可选）") @RequestParam(required = false) Integer status,
-            @ApiParam(value = "入学年份（可选）") @RequestParam(required = false) Integer enrollmentYear) {
+            @ApiParam(value = "学号") @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "班级ID") @RequestParam(required = false) Long classId,
+            @ApiParam(value = "专业ID") @RequestParam(required = false) Long majorId,
+            @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "学校ID") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "状态：1-已审核，0-待审核") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "入学年份") @RequestParam(required = false) Integer enrollmentYear) {
         Page<Student> page = new Page<>(current, size);
         StudentQueryDTO queryDTO = new StudentQueryDTO();
         queryDTO.setStudentNo(studentNo);
@@ -142,8 +142,8 @@ public class StudentController {
     public Result<Page<Student>> getPendingApprovalStudentPage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "学号（可选）") @RequestParam(required = false) String studentNo,
-            @ApiParam(value = "姓名（可选）") @RequestParam(required = false) String realName) {
+            @ApiParam(value = "学号") @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "姓名") @RequestParam(required = false) String realName) {
         Page<Student> page = new Page<>(current, size);
         Page<Student> result = studentService.getPendingApprovalStudentPage(page, studentNo, realName);
         return Result.success("查询成功", result);
@@ -155,7 +155,7 @@ public class StudentController {
     public Result<?> approveStudentRegistration(
             @ApiParam(value = "学生ID", required = true) @PathVariable Long studentId,
             @ApiParam(value = "是否通过：true-通过，false-拒绝", required = true) @RequestParam Boolean approved,
-            @ApiParam(value = "审核意见（可选）") @RequestParam(required = false) String auditOpinion) {
+            @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
         boolean success = studentService.approveStudentRegistration(studentId, approved, auditOpinion);
         String message = approved ? "审核通过，学生账号已激活" : "审核已拒绝";
         return success ? Result.success(message) : Result.error("审核失败");
@@ -173,13 +173,13 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/export")
     public void exportStudents(
-            @ApiParam(value = "学号（可选）") @RequestParam(required = false) String studentNo,
-            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
-            @ApiParam(value = "专业ID（可选）") @RequestParam(required = false) Long majorId,
-            @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId,
-            @ApiParam(value = "状态：1-已审核，0-待审核（可选）") @RequestParam(required = false) Integer status,
-            @ApiParam(value = "入学年份（可选）") @RequestParam(required = false) Integer enrollmentYear,
+            @ApiParam(value = "学号") @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "学校ID") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "专业ID") @RequestParam(required = false) Long majorId,
+            @ApiParam(value = "班级ID") @RequestParam(required = false) Long classId,
+            @ApiParam(value = "状态：1-已审核，0-待审核") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "入学年份") @RequestParam(required = false) Integer enrollmentYear,
             HttpServletResponse response) throws IOException {
         StudentQueryDTO queryDTO = new StudentQueryDTO();
         queryDTO.setStudentNo(studentNo);

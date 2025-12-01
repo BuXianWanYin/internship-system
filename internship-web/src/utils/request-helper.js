@@ -39,7 +39,7 @@ export function isCanceledRequest(error) {
 /**
  * 在 catch 块中处理错误，如果是取消的请求则静默处理
  * @param {Error} error - 错误对象
- * @param {Function} errorHandler - 错误处理函数（可选）
+ * @param {Function} errorHandler - 错误处理函数
  * @returns {boolean} - 是否是取消的请求（如果是，则已静默处理）
  */
 export function handleRequestError(error, errorHandler) {

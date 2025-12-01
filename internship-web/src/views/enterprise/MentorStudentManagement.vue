@@ -237,7 +237,7 @@
             v-model="completeForm.remark"
             type="textarea"
             :rows="4"
-            placeholder="请输入备注（可选）"
+            placeholder="请输入备注"
             maxlength="500"
             show-word-limit
           />
@@ -309,7 +309,7 @@
           <el-date-picker
             v-model="assignGroupForm.effectiveEndDate"
             type="date"
-            placeholder="选择结束日期（可选）"
+            placeholder="选择结束日期"
             value-format="YYYY-MM-DD"
             style="width: 100%"
           />

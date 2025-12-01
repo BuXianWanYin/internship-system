@@ -403,7 +403,7 @@
               v-model="auditForm.auditOpinion"
               type="textarea"
               :rows="4"
-              :placeholder="auditForm.auditStatus === 1 ? '审核意见（可选）' : '请输入拒绝原因'"
+              :placeholder="auditForm.auditStatus === 1 ? '审核意见' : '请输入拒绝原因'"
             />
           </el-form-item>
         </el-form>

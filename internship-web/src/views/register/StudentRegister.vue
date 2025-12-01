@@ -19,7 +19,6 @@
         :model="registerForm"
         :rules="registerRules"
         label-width="120px"
-        size="large"
       >
         <el-form-item label="班级分享码" prop="shareCode">
           <el-input
@@ -78,12 +77,6 @@
             <el-option label="男" value="男" />
             <el-option label="女" value="女" />
           </el-select>
-        </el-form-item>
-          <el-input
-            v-model="registerForm.realName"
-            placeholder="请输入真实姓名"
-            clearable
-          />
         </el-form-item>
 
         <el-form-item label="身份证号" prop="idCard">
@@ -163,7 +156,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Key } from '@element-plus/icons-vue'
+import { Key, ArrowLeft } from '@element-plus/icons-vue'
 import { studentApi } from '@/api/user/student'
 import { classApi } from '@/api/system'
 
@@ -422,7 +415,8 @@ export default {
   border-radius: 8px;
   box-shadow: 0 0 0 1px #dcdfe6 inset;
   transition: all 0.3s;
-  padding: 12px 16px;
+  padding: 4px 12px;
+  min-height: 26px;
 }
 
 :deep(.el-input__wrapper:hover) {
@@ -438,7 +432,8 @@ export default {
 }
 
 :deep(.el-select .el-input__wrapper) {
-  padding: 12px 16px;
+  padding: 4px 12px;
+  min-height: 26px;
 }
 
 :deep(.el-date-editor) {
@@ -446,15 +441,16 @@ export default {
 }
 
 :deep(.el-date-editor .el-input__wrapper) {
-  padding: 12px 16px;
+  padding: 4px 12px;
+  min-height: 26px;
 }
 
 :deep(.el-button--primary) {
   background-color: #409eff;
   border-color: #409eff;
   border-radius: 4px;
-  height: 44px;
-  font-size: 16px;
+  height: 36px;
+  font-size: 14px;
   transition: all 0.3s;
 }
 
@@ -500,4 +496,5 @@ export default {
   }
 }
 </style>
+
 

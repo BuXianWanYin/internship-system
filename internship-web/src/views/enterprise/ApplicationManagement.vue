@@ -291,7 +291,7 @@
             v-model="filterForm.comment"
             type="textarea"
             :rows="6"
-            :placeholder="filterForm.action === 3 ? '请输入录用备注（可选）' : '请输入拒绝原因（必填）'"
+            :placeholder="filterForm.action === 3 ? '请输入录用备注' : '请输入拒绝原因（必填）'"
           />
         </el-form-item>
       </el-form>

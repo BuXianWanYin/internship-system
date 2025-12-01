@@ -97,8 +97,8 @@ public interface StudentService extends IService<Student> {
     /**
      * 分页查询待审核学生列表（班主任审核）
      * @param page 分页参数
-     * @param studentNo 学号（可选）
-     * @param realName 姓名（可选）
+     * @param studentNo 学号
+     * @param realName 姓名
      * @return 待审核学生列表
      */
     Page<Student> getPendingApprovalStudentPage(Page<Student> page, String studentNo, String realName);
@@ -107,7 +107,7 @@ public interface StudentService extends IService<Student> {
      * 审核学生注册申请
      * @param studentId 学生ID
      * @param approved 是否通过：true-通过，false-拒绝
-     * @param auditOpinion 审核意见（可选）
+     * @param auditOpinion 审核意见
      * @return 是否成功
      */
     boolean approveStudentRegistration(Long studentId, boolean approved, String auditOpinion);

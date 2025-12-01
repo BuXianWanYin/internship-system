@@ -19,7 +19,6 @@
         :model="registerForm"
         :rules="registerRules"
         label-width="140px"
-        size="large"
       >
         <el-form-item label="企业名称" prop="enterpriseName">
           <el-input
@@ -162,11 +161,15 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { enterpriseApi } from '@/api/user/enterprise'
 import { schoolApi } from '@/api/system/school'
 
 export default {
   name: 'EnterpriseRegister',
+  components: {
+    ArrowLeft
+  },
   setup() {
     const router = useRouter()
     const registerFormRef = ref(null)
@@ -300,13 +303,30 @@ export default {
     // 加载学校列表
     const loadSchoolList = async () => {
       try {
-        const res = await schoolApi.getSchoolPage({ current: 1, size: 1000 })
+        const res = await schoolApi.getPublicSchoolList()
+        console.log('学校列表API响应:', res)
         if (res.code === 200) {
-          schoolList.value = res.data.records || []
+          // 处理可能的数组或分页格式
+          let schools = res.data
+          if (Array.isArray(schools)) {
+            schoolList.value = schools
+          } else if (schools && Array.isArray(schools.records)) {
+            // 如果是分页格式
+            schoolList.value = schools.records
+          } else {
+            schoolList.value = []
+          }
+          console.log('加载到的学校列表:', schoolList.value)
+          if (schoolList.value.length === 0) {
+            console.warn('学校列表为空，可能是数据库中没有启用的学校')
+          }
+        } else {
+          console.error('加载学校列表失败，响应码:', res.code, '消息:', res.message)
+          ElMessage.error(res.message || '加载学校列表失败')
         }
       } catch (error) {
         console.error('加载学校列表失败:', error)
-        ElMessage.error('加载学校列表失败')
+        ElMessage.error('加载学校列表失败：' + (error.message || '未知错误'))
       }
     }
 
@@ -428,7 +448,8 @@ export default {
   border-radius: 8px;
   box-shadow: 0 0 0 1px #dcdfe6 inset;
   transition: all 0.3s;
-  padding: 12px 16px;
+  padding: 4px 12px;
+  min-height: 26px;
 }
 
 :deep(.el-input__wrapper:hover) {
@@ -444,14 +465,15 @@ export default {
 }
 
 :deep(.el-select .el-input__wrapper) {
-  padding: 12px 16px;
+  padding: 4px 12px;
+  min-height: 26px;
 }
 
 :deep(.el-textarea__inner) {
   border-radius: 8px;
   box-shadow: 0 0 0 1px #dcdfe6 inset;
   transition: all 0.3s;
-  padding: 12px 16px;
+  padding: 8px 12px;
 }
 
 :deep(.el-textarea__inner:hover) {
@@ -466,8 +488,8 @@ export default {
   background-color: #409eff;
   border-color: #409eff;
   border-radius: 4px;
-  height: 44px;
-  font-size: 16px;
+  height: 36px;
+  font-size: 14px;
   transition: all 0.3s;
 }
 

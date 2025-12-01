@@ -64,7 +64,7 @@ public class ExcelUtil {
                 dto.setRowNum(rowNum + 1); // Excel行号从1开始
                 
                 // 读取各列数据
-                // 列顺序：学号、姓名、性别、身份证号、手机号、邮箱、入学年份、密码（可选）
+                // 列顺序：学号、姓名、性别、身份证号、手机号、邮箱、入学年份、密码
                 try {
                     dto.setStudentNo(getCellValue(row.getCell(0)));
                     dto.setRealName(getCellValue(row.getCell(1)));

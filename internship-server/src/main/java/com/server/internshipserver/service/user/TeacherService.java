@@ -65,10 +65,10 @@ public interface TeacherService extends IService<Teacher> {
     /**
      * 分页查询教师列表
      * @param page 分页参数
-     * @param teacherNo 工号（可选）
-     * @param collegeId 学院ID（可选）
-     * @param schoolId 学校ID（可选）
-     * @param status 状态：1-启用，0-禁用（可选）
+     * @param teacherNo 工号
+     * @param collegeId 学院ID
+     * @param schoolId 学校ID
+     * @param status 状态：1-启用，0-禁用
      * @return 教师列表
      */
     Page<Teacher> getTeacherPage(Page<Teacher> page, String teacherNo, Long collegeId, Long schoolId, Integer status);
@@ -83,17 +83,17 @@ public interface TeacherService extends IService<Teacher> {
     /**
      * 根据学校ID查询教师列表（不分页，用于下拉选择）
      * @param schoolId 学校ID
-     * @param collegeId 学院ID（可选）
+     * @param collegeId 学院ID
      * @return 教师列表
      */
     List<Teacher> getTeacherListBySchool(Long schoolId, Long collegeId);
     
     /**
      * 查询所有教师列表（用于导出）
-     * @param teacherNo 工号（可选）
-     * @param collegeId 学院ID（可选）
-     * @param schoolId 学校ID（可选）
-     * @param status 状态：1-启用，0-禁用（可选）
+     * @param teacherNo 工号
+     * @param collegeId 学院ID
+     * @param schoolId 学校ID
+     * @param status 状态：1-启用，0-禁用
      * @return 教师列表
      */
     List<Teacher> getAllTeachers(String teacherNo, Long collegeId, Long schoolId, Integer status);

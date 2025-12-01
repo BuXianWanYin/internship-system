@@ -129,7 +129,7 @@
           type="textarea"
           :rows="4"
           :disabled="isSubmitted"
-          placeholder="请输入评价意见（可选）"
+          placeholder="请输入评价意见"
         />
       </el-form-item>
 

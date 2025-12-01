@@ -17,28 +17,28 @@ public class UserQueryDTO {
     @ApiModelProperty(value = "每页数量", example = "10")
     private Long size = 10L;
     
-    @ApiModelProperty("用户名（可选）")
+    @ApiModelProperty("用户名")
     private String username;
     
-    @ApiModelProperty("真实姓名（可选）")
+    @ApiModelProperty("真实姓名")
     private String realName;
     
-    @ApiModelProperty("手机号（可选）")
+    @ApiModelProperty("手机号")
     private String phone;
     
-    @ApiModelProperty("状态：1-启用，0-禁用（可选）")
+    @ApiModelProperty("状态：1-启用，0-禁用")
     private Integer status;
     
     @ApiModelProperty("角色代码（可选，多个用逗号分隔，如：ROLE_STUDENT,ROLE_TEACHER）")
     private String roleCodes;
     
-    @ApiModelProperty("学校ID（可选）")
+    @ApiModelProperty("学校ID")
     private Long schoolId;
     
-    @ApiModelProperty("学院ID（可选）")
+    @ApiModelProperty("学院ID")
     private Long collegeId;
     
-    @ApiModelProperty("班级ID（可选）")
+    @ApiModelProperty("班级ID")
     private Long classId;
 }
 

@@ -81,9 +81,9 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     /**
      * 查询企业实习学生列表
      * @param page 分页参数
-     * @param studentName 学生姓名（可选）
-     * @param studentNo 学号（可选）
-     * @param postId 岗位ID（可选）
+     * @param studentName 学生姓名
+     * @param studentNo 学号
+     * @param postId 岗位ID
      * @param status 申请状态（可选，不传则默认查询已录用的学生）
      * @return 申请列表
      */
@@ -92,9 +92,9 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     /**
      * 查询企业导师指导的学生列表
      * @param page 分页参数
-     * @param studentName 学生姓名（可选）
-     * @param studentNo 学号（可选）
-     * @param status 申请状态（可选）
+     * @param studentName 学生姓名
+     * @param studentNo 学号
+     * @param status 申请状态
      * @return 申请列表
      */
     Page<InternshipApply> getMentorStudents(Page<InternshipApply> page, String studentName, String studentNo, Integer status);
@@ -117,8 +117,8 @@ public interface InternshipApplyService extends IService<InternshipApply> {
     /**
      * 解绑企业（班主任/管理员）
      * @param applyId 申请ID
-     * @param reason 解绑原因（可选）
-     * @param remark 备注（可选）
+     * @param reason 解绑原因
+     * @param remark 备注
      * @return 是否成功
      */
     boolean unbindInternship(Long applyId, String reason, String remark);
@@ -133,7 +133,7 @@ public interface InternshipApplyService extends IService<InternshipApply> {
      * 结束实习（单个）
      * @param applyId 申请ID
      * @param endDate 实习结束日期（可选，不传则使用当前日期）
-     * @param remark 备注（可选）
+     * @param remark 备注
      */
     void completeInternship(Long applyId, java.time.LocalDate endDate, String remark);
     
@@ -141,7 +141,7 @@ public interface InternshipApplyService extends IService<InternshipApply> {
      * 批量结束实习
      * @param applyIds 申请ID列表
      * @param endDate 实习结束日期（可选，不传则使用当前日期）
-     * @param remark 备注（可选）
+     * @param remark 备注
      */
     void batchCompleteInternship(java.util.List<Long> applyIds, java.time.LocalDate endDate, String remark);
 }

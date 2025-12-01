@@ -366,7 +366,7 @@
             v-model="formData.remark"
             type="textarea"
             :rows="3"
-            placeholder="请输入备注（可选）"
+            placeholder="请输入备注"
           />
         </el-form-item>
       </el-form>
@@ -440,7 +440,7 @@
             v-model="confirmForm.confirmComment"
             type="textarea"
             :rows="3"
-            placeholder="请输入确认意见（可选）"
+            placeholder="请输入确认意见"
           />
         </el-form-item>
       </el-form>
@@ -465,7 +465,7 @@
             v-model="batchConfirmForm.comment"
             type="textarea"
             :rows="4"
-            :placeholder="batchConfirmAction === 'confirm' ? '请输入确认意见（可选）' : '请输入拒绝原因'"
+            :placeholder="batchConfirmAction === 'confirm' ? '请输入确认意见' : '请输入拒绝原因'"
           />
         </el-form-item>
       </el-form>

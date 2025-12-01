@@ -33,10 +33,10 @@ public interface InternshipFeedbackService extends IService<InternshipFeedback> 
     /**
      * 分页查询反馈列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param applyId 申请ID（可选）
-     * @param feedbackType 反馈类型（可选）
-     * @param feedbackStatus 反馈状态（可选）
+     * @param studentId 学生ID
+     * @param applyId 申请ID
+     * @param feedbackType 反馈类型
+     * @param feedbackStatus 反馈状态
      * @return 反馈列表
      */
     Page<InternshipFeedback> getFeedbackPage(Page<InternshipFeedback> page, Long studentId, Long applyId,

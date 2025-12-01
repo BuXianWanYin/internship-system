@@ -30,11 +30,11 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     @GetMapping("/internship-summary/export")
     public void exportInternshipSummaryReport(
-            @ApiParam(value = "学生ID（可选）") @RequestParam(required = false) Long studentId,
-            @ApiParam(value = "企业ID（可选）") @RequestParam(required = false) Long enterpriseId,
-            @ApiParam(value = "岗位ID（可选）") @RequestParam(required = false) Long postId,
-            @ApiParam(value = "申请类型（可选）") @RequestParam(required = false) Integer applyType,
-            @ApiParam(value = "状态（可选）") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "学生ID") @RequestParam(required = false) Long studentId,
+            @ApiParam(value = "企业ID") @RequestParam(required = false) Long enterpriseId,
+            @ApiParam(value = "岗位ID") @RequestParam(required = false) Long postId,
+            @ApiParam(value = "申请类型") @RequestParam(required = false) Integer applyType,
+            @ApiParam(value = "状态") @RequestParam(required = false) Integer status,
             HttpServletResponse response) throws IOException {
         InternshipApplyQueryDTO queryDTO = new InternshipApplyQueryDTO();
         queryDTO.setStudentId(studentId);

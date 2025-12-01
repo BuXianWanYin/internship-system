@@ -444,7 +444,7 @@
             v-model="approveForm.auditOpinion"
             type="textarea"
             :rows="4"
-            :placeholder="approveForm.approved ? '审核意见（可选）' : '请输入拒绝原因'"
+            :placeholder="approveForm.approved ? '审核意见' : '请输入拒绝原因'"
             :required="!approveForm.approved"
           />
         </el-form-item>

@@ -11,22 +11,22 @@ import lombok.Data;
 @ApiModel("学期查询DTO")
 public class SemesterQueryDTO {
     
-    @ApiModelProperty("学期名称（可选）")
+    @ApiModelProperty("学期名称")
     private String semesterName;
     
-    @ApiModelProperty("年份（可选）")
+    @ApiModelProperty("年份")
     private Integer year;
     
-    @ApiModelProperty("是否当前学期：1-是，0-否（可选）")
+    @ApiModelProperty("是否当前学期：1-是，0-否")
     private Integer isCurrent;
     
-    @ApiModelProperty("开始日期（可选）")
+    @ApiModelProperty("开始日期")
     private String startDate;
     
-    @ApiModelProperty("结束日期（可选）")
+    @ApiModelProperty("结束日期")
     private String endDate;
     
-    @ApiModelProperty("学校ID（可选）")
+    @ApiModelProperty("学校ID")
     private Long schoolId;
 }
 

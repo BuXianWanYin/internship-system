@@ -35,7 +35,7 @@ public interface CollegeService extends IService<College> {
     /**
      * 分页查询学院列表
      * @param page 分页参数
-     * @param collegeName 学院名称（可选）
+     * @param collegeName 学院名称
      * @param schoolId 学校ID（可选，用于数据权限过滤）
      * @return 学院列表
      */
@@ -50,8 +50,8 @@ public interface CollegeService extends IService<College> {
     
     /**
      * 查询所有学院列表（用于导出）
-     * @param collegeName 学院名称（可选）
-     * @param schoolId 学校ID（可选）
+     * @param collegeName 学院名称
+     * @param schoolId 学校ID
      * @return 学院列表
      */
     List<College> getAllColleges(String collegeName, Long schoolId);

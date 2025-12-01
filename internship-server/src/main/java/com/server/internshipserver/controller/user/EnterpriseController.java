@@ -49,9 +49,9 @@ public class EnterpriseController {
     public Result<Page<Enterprise>> getEnterprisePage(
             @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
             @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
-            @ApiParam(value = "企业名称（可选）") @RequestParam(required = false) String enterpriseName,
-            @ApiParam(value = "企业代码（可选）") @RequestParam(required = false) String enterpriseCode,
-            @ApiParam(value = "审核状态（可选）0-待审核，1-已通过，2-已拒绝") @RequestParam(required = false) Integer auditStatus) {
+            @ApiParam(value = "企业名称") @RequestParam(required = false) String enterpriseName,
+            @ApiParam(value = "企业代码") @RequestParam(required = false) String enterpriseCode,
+            @ApiParam(value = "审核状态0-待审核，1-已通过，2-已拒绝") @RequestParam(required = false) Integer auditStatus) {
         Page<Enterprise> page = new Page<>(current, size);
         Page<Enterprise> result = enterpriseService.getEnterprisePage(page, enterpriseName, enterpriseCode, auditStatus);
         return Result.success("查询成功", result);

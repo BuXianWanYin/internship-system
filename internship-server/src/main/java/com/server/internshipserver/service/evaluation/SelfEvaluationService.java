@@ -40,8 +40,8 @@ public interface SelfEvaluationService extends IService<SelfEvaluation> {
     /**
      * 分页查询自评列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param evaluationStatus 评价状态（可选）
+     * @param studentId 学生ID
+     * @param evaluationStatus 评价状态
      * @return 自评列表
      */
     Page<SelfEvaluation> getEvaluationPage(Page<SelfEvaluation> page, Long studentId, Integer evaluationStatus);

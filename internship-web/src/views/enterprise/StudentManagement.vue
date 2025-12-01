@@ -256,7 +256,7 @@
             v-model="completeForm.remark"
             type="textarea"
             :rows="4"
-            placeholder="请输入备注（可选）"
+            placeholder="请输入备注"
             maxlength="500"
             show-word-limit
           />

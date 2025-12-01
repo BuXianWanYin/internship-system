@@ -362,5 +362,15 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         
         return schools;
     }
+    
+    @Override
+    public List<School> getPublicSchoolList() {
+        // 公开接口，不进行权限过滤，只返回所有未删除且启用的学校
+        LambdaQueryWrapper<School> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(School::getDeleteFlag);
+        wrapper.eq(School::getStatus, UserStatus.ENABLED.getCode()); // 只返回启用的学校
+        wrapper.orderByAsc(School::getSchoolName); // 按学校名称排序
+        
+        return this.list(wrapper);
+    }
 }
 

@@ -11,25 +11,25 @@ import lombok.Data;
 @ApiModel("学生查询DTO")
 public class StudentQueryDTO {
     
-    @ApiModelProperty("学号（可选）")
+    @ApiModelProperty("学号")
     private String studentNo;
     
-    @ApiModelProperty("班级ID（可选）")
+    @ApiModelProperty("班级ID")
     private Long classId;
     
-    @ApiModelProperty("专业ID（可选）")
+    @ApiModelProperty("专业ID")
     private Long majorId;
     
-    @ApiModelProperty("学院ID（可选）")
+    @ApiModelProperty("学院ID")
     private Long collegeId;
     
-    @ApiModelProperty("学校ID（可选）")
+    @ApiModelProperty("学校ID")
     private Long schoolId;
     
-    @ApiModelProperty("状态：1-已审核，0-待审核（可选）")
+    @ApiModelProperty("状态：1-已审核，0-待审核")
     private Integer status;
     
-    @ApiModelProperty("入学年份（可选）")
+    @ApiModelProperty("入学年份")
     private Integer enrollmentYear;
 }
 

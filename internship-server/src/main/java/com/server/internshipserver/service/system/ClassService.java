@@ -35,7 +35,7 @@ public interface ClassService extends IService<Class> {
     /**
      * 分页查询班级列表
      * @param page 分页参数
-     * @param className 班级名称（可选）
+     * @param className 班级名称
      * @param majorId 专业ID（可选，用于数据权限过滤）
      * @param collegeId 学院ID（可选，用于筛选）
      * @param schoolId 学校ID（可选，用于筛选）
@@ -115,10 +115,10 @@ public interface ClassService extends IService<Class> {
     
     /**
      * 查询所有班级列表（用于导出）
-     * @param className 班级名称（可选）
-     * @param majorId 专业ID（可选）
-     * @param collegeId 学院ID（可选）
-     * @param schoolId 学校ID（可选）
+     * @param className 班级名称
+     * @param majorId 专业ID
+     * @param collegeId 学院ID
+     * @param schoolId 学校ID
      * @return 班级列表
      */
     List<Class> getAllClasses(String className, Long majorId, Long collegeId, Long schoolId);

@@ -226,7 +226,7 @@
             v-model="reviewForm.reviewComment"
             type="textarea"
             :rows="6"
-            :placeholder="reviewForm.reviewStatus === 1 ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+            :placeholder="reviewForm.reviewStatus === 1 ? '请输入审核意见' : '请输入拒绝原因（必填）'"
           />
         </el-form-item>
       </el-form>

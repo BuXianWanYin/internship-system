@@ -40,8 +40,8 @@ public interface SystemConfigService extends IService<SystemConfig> {
     /**
      * 分页查询配置列表
      * @param page 分页参数
-     * @param configKey 配置键（可选）
-     * @param configType 配置类型（可选）
+     * @param configKey 配置键
+     * @param configType 配置类型
      * @return 配置列表
      */
     Page<SystemConfig> getConfigPage(Page<SystemConfig> page, String configKey, String configType);

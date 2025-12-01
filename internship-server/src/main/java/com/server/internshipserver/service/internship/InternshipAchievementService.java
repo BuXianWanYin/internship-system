@@ -33,10 +33,10 @@ public interface InternshipAchievementService extends IService<InternshipAchieve
     /**
      * 分页查询成果列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param applyId 申请ID（可选）
-     * @param achievementType 成果类型（可选）
-     * @param reviewStatus 审核状态（可选）
+     * @param studentId 学生ID
+     * @param applyId 申请ID
+     * @param achievementType 成果类型
+     * @param reviewStatus 审核状态
      * @return 成果列表
      */
     Page<InternshipAchievement> getAchievementPage(Page<InternshipAchievement> page, Long studentId, Long applyId,

@@ -63,9 +63,9 @@ public interface EnterpriseMentorService extends IService<EnterpriseMentor> {
     /**
      * 分页查询企业导师列表
      * @param page 分页参数
-     * @param mentorName 导师姓名（可选）
-     * @param enterpriseId 企业ID（可选）
-     * @param status 状态：1-启用，0-禁用（可选）
+     * @param mentorName 导师姓名
+     * @param enterpriseId 企业ID
+     * @param status 状态：1-启用，0-禁用
      * @return 企业导师列表
      */
     Page<EnterpriseMentor> getEnterpriseMentorPage(Page<EnterpriseMentor> page, 
@@ -80,9 +80,9 @@ public interface EnterpriseMentorService extends IService<EnterpriseMentor> {
     
     /**
      * 查询所有企业导师列表（用于导出）
-     * @param mentorName 导师姓名（可选）
-     * @param enterpriseId 企业ID（可选）
-     * @param status 状态：1-启用，0-禁用（可选）
+     * @param mentorName 导师姓名
+     * @param enterpriseId 企业ID
+     * @param status 状态：1-启用，0-禁用
      * @return 企业导师列表
      */
     List<EnterpriseMentor> getAllEnterpriseMentors(String mentorName, Long enterpriseId, Integer status);

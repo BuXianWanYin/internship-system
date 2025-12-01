@@ -11,16 +11,16 @@ import lombok.Data;
 @ApiModel("实习周报查询DTO")
 public class InternshipWeeklyReportQueryDTO {
     
-    @ApiModelProperty("学生ID（可选）")
+    @ApiModelProperty("学生ID")
     private Long studentId;
     
-    @ApiModelProperty("申请ID（可选）")
+    @ApiModelProperty("申请ID")
     private Long applyId;
     
-    @ApiModelProperty("周次（可选）")
+    @ApiModelProperty("周次")
     private Integer weekNumber;
     
-    @ApiModelProperty("批阅状态（可选）")
+    @ApiModelProperty("批阅状态")
     private Integer reviewStatus;
 }
 

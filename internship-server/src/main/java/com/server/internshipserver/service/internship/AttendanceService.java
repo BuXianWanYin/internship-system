@@ -43,11 +43,11 @@ public interface AttendanceService extends IService<Attendance> {
     /**
      * 分页查询考勤列表
      * @param page 分页参数
-     * @param studentId 学生ID（可选）
-     * @param applyId 申请ID（可选）
-     * @param attendanceDate 考勤日期（可选）
-     * @param attendanceType 考勤类型（可选）
-     * @param confirmStatus 确认状态（可选）
+     * @param studentId 学生ID
+     * @param applyId 申请ID
+     * @param attendanceDate 考勤日期
+     * @param attendanceType 考勤类型
+     * @param confirmStatus 确认状态
      * @return 考勤列表
      */
     Page<Attendance> getAttendancePage(Page<Attendance> page, Long studentId, Long applyId,
@@ -75,9 +75,9 @@ public interface AttendanceService extends IService<Attendance> {
     /**
      * 查询考勤统计信息
      * @param studentId 学生ID（可选，学生端必填）
-     * @param applyId 申请ID（可选）
-     * @param startDate 开始日期（可选）
-     * @param endDate 结束日期（可选）
+     * @param applyId 申请ID
+     * @param startDate 开始日期
+     * @param endDate 结束日期
      * @return 考勤统计信息
      */
     AttendanceStatistics getAttendanceStatistics(
