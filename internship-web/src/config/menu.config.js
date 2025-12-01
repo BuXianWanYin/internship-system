@@ -23,7 +23,8 @@ import {
   ChatLineRound,
   List,
   Star,
-  DataAnalysis
+  DataAnalysis,
+  Connection
 } from '@element-plus/icons-vue'
 
 /**
@@ -208,6 +209,12 @@ export const menuItems = [
         title: '岗位管理',
         icon: Briefcase,
         roles: ['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
+      },
+      {
+        index: '/admin/cooperation/audit',
+        title: '合作申请审核',
+        icon: Connection,
+        roles: ['ROLE_SCHOOL_ADMIN']
       }
     ]
   },
@@ -253,6 +260,12 @@ export const menuItems = [
         index: '/enterprise/admin/attendance-group',
         title: '考勤组管理',
         icon: Calendar,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
+      {
+        index: '/enterprise/cooperation',
+        title: '合作管理',
+        icon: Connection,
         roles: ['ROLE_ENTERPRISE_ADMIN']
       }
     ]

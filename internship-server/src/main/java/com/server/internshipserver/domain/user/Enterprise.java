@@ -36,7 +36,7 @@ public class Enterprise implements Serializable {
     @TableField("enterprise_name")
     private String enterpriseName;
     
-    @ApiModelProperty(value = "企业代码", example = "ENT001")
+    @ApiModelProperty(value = "企业代码（系统内部唯一标识，必填）", required = true, example = "ENT001")
     @TableField("enterprise_code")
     private String enterpriseCode;
     

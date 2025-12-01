@@ -80,22 +80,6 @@
       <el-table-column prop="legalPerson" label="法人代表" min-width="120" />
       <el-table-column prop="industry" label="所属行业" min-width="120" />
       <el-table-column prop="contactPhone" label="联系电话" min-width="120" />
-      <el-table-column label="意向合作院校审核状态" min-width="300">
-        <template #default="{ row }">
-          <div v-if="row.registerSchools && row.registerSchools.length > 0" class="school-audit-status">
-            <el-tag
-              v-for="school in row.registerSchools"
-              :key="school.id"
-              :type="school.auditStatus === 1 ? 'success' : school.auditStatus === 2 ? 'danger' : 'warning'"
-              size="small"
-              style="margin-right: 8px; margin-bottom: 4px;"
-            >
-              {{ school.schoolName }}: {{ school.auditStatus === 0 ? '待审核' : school.auditStatus === 1 ? '已通过' : '已拒绝' }}
-            </el-tag>
-          </div>
-          <span v-else style="color: #909399">暂无</span>
-        </template>
-      </el-table-column>
       <el-table-column prop="auditStatus" label="审核状态" width="100" align="center">
         <template #default="{ row }">
           <el-tag v-if="row.auditStatus === 0" type="warning" size="small">待审核</el-tag>
@@ -146,37 +130,19 @@
             管理合作关系
           </el-button>
           <el-button
-            v-if="hasRole('ROLE_SYSTEM_ADMIN')"
-            link
-            type="primary"
-            size="small"
-            @click="handleAuditBySchool(row)"
-          >
-            按院校审核
-          </el-button>
-          <el-button
-            v-if="hasRole('ROLE_SCHOOL_ADMIN')"
-            link
-            type="primary"
-            size="small"
-            @click="handleAuditBySchool(row)"
-          >
-            审核
-          </el-button>
-          <el-button 
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) && row.status === 1" 
-            link 
+            link
             type="danger" 
-            size="small" 
+            size="small"
             @click="handleDelete(row)"
           >
             停用
           </el-button>
-          <el-button 
+          <el-button
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']) && row.status === 0" 
-            link 
+            link
             type="success" 
-            size="small" 
+            size="small"
             @click="handleEnable(row)"
           >
             启用
@@ -334,136 +300,6 @@
       </template>
     </el-dialog>
 
-    <!-- 按院校审核对话框 -->
-    <el-dialog
-      v-model="auditDialogVisible"
-      :title="hasRole('ROLE_SYSTEM_ADMIN') ? '按院校审核企业注册申请' : '审核企业注册申请'"
-      width="700px"
-      :close-on-click-modal="false"
-    >
-      <div v-if="currentEnterprise" class="enterprise-info">
-        <h4>企业信息</h4>
-        <p>企业名称：{{ currentEnterprise.enterpriseName }}</p>
-        <p>企业代码：{{ currentEnterprise.enterpriseCode }}</p>
-      </div>
-      <el-divider />
-      <div class="school-audit-list">
-        <h4>意向合作院校审核</h4>
-        <el-table
-          :data="currentRegisterSchools"
-          border
-          style="width: 100%"
-        >
-          <el-table-column prop="schoolName" label="院校名称" width="200" />
-          <el-table-column label="审核状态" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag v-if="row.auditStatus === 0" type="warning" size="small">待审核</el-tag>
-              <el-tag v-else-if="row.auditStatus === 1" type="success" size="small">已通过</el-tag>
-              <el-tag v-else-if="row.auditStatus === 2" type="danger" size="small">已拒绝</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="auditOpinion" label="审核意见" min-width="150" show-overflow-tooltip />
-          <el-table-column label="操作" width="200" align="center">
-            <template #default="{ row }">
-              <el-button
-                v-if="row.auditStatus === 0"
-                link
-                type="success"
-                size="small"
-                @click="handleAuditSchool(row, 1)"
-              >
-                通过
-              </el-button>
-              <el-button
-                v-if="row.auditStatus === 0"
-                link
-                type="danger"
-                size="small"
-                @click="handleAuditSchool(row, 2)"
-              >
-                拒绝
-              </el-button>
-              <span v-else style="color: #909399">已审核</span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-      
-      <!-- 审核意见输入对话框 -->
-      <el-dialog
-        v-model="auditOpinionDialogVisible"
-        :title="auditForm.auditStatus === 1 ? '建立合作关系' : '审核拒绝'"
-        width="600px"
-        append-to-body
-      >
-        <el-form
-          ref="auditFormRef"
-          :model="auditForm"
-          :rules="auditFormRules"
-          label-width="120px"
-        >
-          <el-form-item label="院校名称">
-            <span>{{ currentAuditSchool && currentAuditSchool.schoolName }}</span>
-          </el-form-item>
-          <template v-if="auditForm.auditStatus === 1">
-            <el-form-item label="合作开始时间" prop="startTime">
-              <el-date-picker
-                v-model="auditForm.startTime"
-                type="datetime"
-                placeholder="选择合作开始时间"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 100%;"
-              />
-            </el-form-item>
-            <el-form-item label="合作结束时间" prop="endTime">
-              <el-date-picker
-                v-model="auditForm.endTime"
-                type="datetime"
-                placeholder="选择合作结束时间"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 100%;"
-              />
-            </el-form-item>
-            <el-form-item label="合作描述" prop="cooperationDesc">
-              <el-input
-                v-model="auditForm.cooperationDesc"
-                type="textarea"
-                :rows="4"
-                placeholder="请输入合作描述"
-              />
-            </el-form-item>
-          </template>
-          <el-form-item
-            v-else
-            label="审核意见"
-            prop="auditOpinion"
-          >
-            <el-input
-              v-model="auditForm.auditOpinion"
-              type="textarea"
-              :rows="4"
-              placeholder="请输入拒绝原因"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="auditOpinionDialogVisible = false">取消</el-button>
-          <el-button
-            type="primary"
-            :loading="auditing"
-            @click="handleConfirmSchoolAudit"
-          >
-            确认
-          </el-button>
-        </template>
-      </el-dialog>
-      
-      <template #footer>
-        <el-button @click="auditDialogVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
 
     <!-- 详情对话框 -->
     <el-dialog
@@ -647,7 +483,6 @@ import { Search, Refresh, Plus, Download } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, hasRole } from '@/utils/permission'
 import { enterpriseApi } from '@/api/user/enterprise'
-import { enterpriseRegisterSchoolApi } from '@/api/user/enterpriseRegisterSchool'
 import { cooperationApi } from '@/api/cooperation'
 import { schoolApi } from '@/api/system/school'
 import { reportApi } from '@/api/report'
@@ -684,7 +519,6 @@ const auditDialogVisible = ref(false)
 const dialogTitle = ref('添加企业')
 const isEdit = ref(false)
 const formRef = ref(null)
-const auditFormRef = ref(null)
 const currentEnterprise = ref(null)
 
 // 表单数据
@@ -711,28 +545,6 @@ const formData = reactive({
 })
 
 // 审核表单
-const auditForm = reactive({
-  auditStatus: 1,
-  auditOpinion: '',
-  startTime: null,
-  endTime: null,
-  cooperationDesc: ''
-})
-
-const auditFormRules = {
-  startTime: [
-    { required: true, message: '请选择合作开始时间', trigger: 'change' }
-  ],
-  endTime: [
-    { required: true, message: '请选择合作结束时间', trigger: 'change' }
-  ],
-  cooperationDesc: [
-    { required: true, message: '请输入合作描述', trigger: 'blur' }
-  ],
-  auditOpinion: [
-    { required: true, message: '请输入拒绝原因', trigger: 'blur' }
-  ]
-}
 
 // 表单验证规则（动态规则，根据isEdit判断）
 const getFormRules = () => {
@@ -797,25 +609,6 @@ const loadData = async () => {
       // 为每个企业加载注册申请的院校列表
       for (const enterprise of tableData.value) {
         try {
-          // 加载注册申请的院校列表
-          const registerRes = await enterpriseRegisterSchoolApi.getByEnterpriseId(enterprise.enterpriseId)
-          if (registerRes.code === 200) {
-            const registerSchools = registerRes.data || []
-            // 获取学校名称
-            for (const school of registerSchools) {
-              try {
-                const schoolRes = await schoolApi.getSchoolById(school.schoolId)
-                if (schoolRes.code === 200) {
-                  school.schoolName = schoolRes.data.schoolName
-                }
-              } catch (error) {
-                console.error(`加载学校 ${school.schoolId} 信息失败:`, error)
-                school.schoolName = `学校ID: ${school.schoolId}`
-              }
-            }
-            enterprise.registerSchools = registerSchools
-          }
-          
           // 加载合作院校信息
           const schoolRes = await enterpriseApi.getCooperationSchoolsByEnterpriseId(enterprise.enterpriseId)
           if (schoolRes.code === 200) {
@@ -823,7 +616,6 @@ const loadData = async () => {
           }
         } catch (error) {
           console.error(`加载企业 ${enterprise.enterpriseId} 的信息失败:`, error)
-          enterprise.registerSchools = []
           enterprise.cooperationSchools = []
         }
       }
@@ -1008,97 +800,6 @@ const handleSubmit = async () => {
   })
 }
 
-// 按院校审核
-const currentRegisterSchools = ref([])
-const auditOpinionDialogVisible = ref(false)
-const currentAuditSchool = ref(null)
-
-const handleAuditBySchool = async (row) => {
-  currentEnterprise.value = row
-  auditDialogVisible.value = true
-  
-  // 加载该企业的注册申请院校列表
-  try {
-    const res = await enterpriseRegisterSchoolApi.getByEnterpriseId(row.enterpriseId)
-    if (res.code === 200) {
-      // 获取学校名称
-      const schools = res.data || []
-      for (const school of schools) {
-        try {
-          const schoolRes = await schoolApi.getSchoolById(school.schoolId)
-          if (schoolRes.code === 200) {
-            school.schoolName = schoolRes.data.schoolName
-          }
-        } catch (error) {
-          console.error(`加载学校 ${school.schoolId} 信息失败:`, error)
-          school.schoolName = `学校ID: ${school.schoolId}`
-        }
-      }
-      currentRegisterSchools.value = schools
-    }
-  } catch (error) {
-    console.error('加载注册申请院校列表失败:', error)
-    ElMessage.error('加载注册申请院校列表失败')
-    currentRegisterSchools.value = []
-  }
-}
-
-// 审核单个院校
-const handleAuditSchool = (school, auditStatus) => {
-  currentAuditSchool.value = school
-  auditForm.auditStatus = auditStatus
-  auditForm.auditOpinion = ''
-  auditForm.startTime = null
-  auditForm.endTime = null
-  auditForm.cooperationDesc = ''
-  auditOpinionDialogVisible.value = true
-}
-
-// 确认院校审核
-const handleConfirmSchoolAudit = async () => {
-  // 验证表单
-  if (!auditFormRef.value) return
-  
-  try {
-    await auditFormRef.value.validate()
-  } catch (error) {
-    return
-  }
-
-  auditing.value = true
-  try {
-    const params = {
-      auditStatus: auditForm.auditStatus,
-      auditOpinion: auditForm.auditOpinion
-    }
-    
-    // 如果审核通过，添加合作关系参数
-    if (auditForm.auditStatus === 1) {
-      params.startTime = auditForm.startTime
-      params.endTime = auditForm.endTime
-      params.cooperationDesc = auditForm.cooperationDesc
-    }
-    
-    const res = await enterpriseRegisterSchoolApi.auditEnterpriseRegister(
-      currentAuditSchool.value.id,
-      params
-    )
-    if (res.code === 200) {
-      ElMessage.success('审核成功')
-      auditOpinionDialogVisible.value = false
-      // 刷新院校列表
-      await handleAuditBySchool(currentEnterprise.value)
-      // 刷新主列表
-      loadData()
-    } else {
-      ElMessage.error(res.message || '审核失败')
-    }
-  } catch (error) {
-    ElMessage.error('审核失败：' + (error.message || '未知错误'))
-  } finally {
-    auditing.value = false
-  }
-}
 
 // 删除
 const handleDelete = async (row) => {

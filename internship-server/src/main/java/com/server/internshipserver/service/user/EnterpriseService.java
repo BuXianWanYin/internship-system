@@ -29,10 +29,11 @@ public interface EnterpriseService extends IService<Enterprise> {
     /**
      * 企业注册
      * @param enterprise 企业信息
-     * @param schoolIds 意向合作院校ID列表
+     * @param username 管理员用户名
+     * @param password 管理员密码
      * @return 注册的企业信息
      */
-    Enterprise registerEnterprise(Enterprise enterprise, List<Long> schoolIds);
+    Enterprise registerEnterprise(Enterprise enterprise, String username, String password);
     
     /**
      * 添加企业

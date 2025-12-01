@@ -12,11 +12,9 @@ import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMentorMapper;
 import com.server.internshipserver.mapper.cooperation.EnterpriseSchoolCooperationMapper;
-import com.server.internshipserver.mapper.user.EnterpriseRegisterSchoolMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.mapper.internship.InternshipApplyMapper;
 import com.server.internshipserver.domain.user.EnterpriseMentor;
-import com.server.internshipserver.domain.user.EnterpriseRegisterSchool;
 import com.server.internshipserver.domain.cooperation.EnterpriseSchoolCooperation;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.system.Class;
@@ -86,11 +84,6 @@ public class DataPermissionUtil {
     @Autowired
     private EnterpriseSchoolCooperationMapper cooperationMapper;
     
-    /**
-     * 企业注册申请院校关联Mapper
-     */
-    @Autowired
-    private EnterpriseRegisterSchoolMapper enterpriseRegisterSchoolMapper;
     
     /**
      * 班级Mapper
@@ -612,19 +605,6 @@ public class DataPermissionUtil {
             if (cooperations != null && !cooperations.isEmpty()) {
                 enterpriseIds.addAll(cooperations.stream()
                         .map(EnterpriseSchoolCooperation::getEnterpriseId)
-                        .collect(Collectors.toList()));
-            }
-            
-            // 2. 查询待审核的企业注册申请
-            LambdaQueryWrapper<EnterpriseRegisterSchool> registerWrapper = new LambdaQueryWrapper<>();
-            registerWrapper.eq(EnterpriseRegisterSchool::getSchoolId, currentUserSchoolId)
-                   .eq(EnterpriseRegisterSchool::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-            // 包括所有状态的注册申请（待审核、已通过、已拒绝），因为学校管理员需要看到所有申请
-            List<EnterpriseRegisterSchool> registerSchools = enterpriseRegisterSchoolMapper.selectList(registerWrapper);
-            if (registerSchools != null && !registerSchools.isEmpty()) {
-                enterpriseIds.addAll(registerSchools.stream()
-                        .map(EnterpriseRegisterSchool::getEnterpriseId)
-                        .distinct()
                         .collect(Collectors.toList()));
             }
             

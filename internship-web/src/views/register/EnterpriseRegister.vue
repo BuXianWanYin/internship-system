@@ -10,7 +10,7 @@
             </el-link>
           </div>
           <h2>企业注册</h2>
-          <p>请填写企业信息完成注册，注册后需要等待学校管理员审核</p>
+          <p>请填写企业信息和管理员账号信息完成注册</p>
         </div>
       </template>
 
@@ -48,9 +48,11 @@
         <el-form-item label="企业代码" prop="enterpriseCode">
           <el-input
             v-model="registerForm.enterpriseCode"
-            placeholder="请输入企业代码（可选）"
+            placeholder="请输入企业代码"
             clearable
+            maxlength="50"
           />
+          <div class="form-tip">企业唯一标识码，用于系统内部识别，如：ENT001、COMPANY001</div>
         </el-form-item>
 
         <el-form-item label="企业规模" prop="enterpriseScale">
@@ -131,23 +133,37 @@
           />
         </el-form-item>
 
-        <el-form-item label="意向合作院校" prop="schoolIds">
-          <el-select
-            v-model="registerForm.schoolIds"
-            placeholder="请选择意向合作院校（可多选）"
-            multiple
-            filterable
+        <el-divider>
+          <span style="color: #909399; font-size: 14px;">管理员账号信息</span>
+        </el-divider>
+
+        <el-form-item label="用户名" prop="username">
+          <el-input
+            v-model="registerForm.username"
+            placeholder="请输入登录用户名"
             clearable
-            style="width: 100%;"
-          >
-            <el-option
-              v-for="school in schoolList"
-              :key="school.schoolId"
-              :label="school.schoolName"
-              :value="school.schoolId"
-            />
-          </el-select>
-          <div class="form-tip">至少选择一个意向合作院校，注册后由对应院校管理员审核</div>
+          />
+          <div class="form-tip">用于登录系统，建议使用手机号或邮箱</div>
+        </el-form-item>
+
+        <el-form-item label="密码" prop="password">
+          <el-input
+            v-model="registerForm.password"
+            type="password"
+            placeholder="请输入密码"
+            show-password
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="registerForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入密码"
+            show-password
+            clearable
+          />
         </el-form-item>
 
         <el-form-item>
@@ -166,12 +182,11 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { enterpriseApi } from '@/api/user/enterprise'
-import { schoolApi } from '@/api/system/school'
 
 export default {
   name: 'EnterpriseRegister',
@@ -182,7 +197,6 @@ export default {
     const router = useRouter()
     const registerFormRef = ref(null)
     const registering = ref(false)
-    const schoolList = ref([])
 
     // 行业类别列表
     const industryCategories = [
@@ -231,7 +245,9 @@ export default {
       contactPhone: '',
       email: '',
       description: '',
-      schoolIds: []
+      username: '',
+      password: '',
+      confirmPassword: ''
     })
 
     // 验证规则
@@ -246,6 +262,11 @@ export default {
       legalPerson: [
         { required: true, message: '请输入法人代表', trigger: 'blur' }
       ],
+      enterpriseCode: [
+        { required: true, message: '请输入企业代码', trigger: 'blur' },
+        { min: 2, max: 50, message: '企业代码长度在 2 到 50 个字符', trigger: 'blur' },
+        { pattern: /^[a-zA-Z0-9_-]+$/, message: '企业代码只能包含字母、数字、下划线和横线', trigger: 'blur' }
+      ],
       contactPerson: [
         { required: true, message: '请输入联系人', trigger: 'blur' }
       ],
@@ -257,9 +278,27 @@ export default {
         { required: true, message: '请输入邮箱', trigger: 'blur' },
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
       ],
-      schoolIds: [
-        { required: true, message: '至少选择一个意向合作院校', trigger: 'change' },
-        { type: 'array', min: 1, message: '至少选择一个意向合作院校', trigger: 'change' }
+      username: [
+        { required: true, message: '请输入用户名', trigger: 'blur' },
+        { min: 3, max: 50, message: '用户名长度在 3 到 50 个字符', trigger: 'blur' },
+        { pattern: /^[a-zA-Z0-9_@.-]+$/, message: '用户名只能包含字母、数字、下划线、@、点、横线', trigger: 'blur' }
+      ],
+      password: [
+        { required: true, message: '请输入密码', trigger: 'blur' },
+        { min: 6, max: 20, message: '密码长度在 6 到 20 个字符', trigger: 'blur' }
+      ],
+      confirmPassword: [
+        { required: true, message: '请再次输入密码', trigger: 'blur' },
+        {
+          validator: (rule, value, callback) => {
+            if (value !== registerForm.password) {
+              callback(new Error('两次输入密码不一致'))
+            } else {
+              callback()
+            }
+          },
+          trigger: 'blur'
+        }
       ]
     }
 
@@ -278,15 +317,9 @@ export default {
           return
         }
 
-        // 检查是否选择了意向合作院校
-        if (!registerForm.schoolIds || registerForm.schoolIds.length === 0) {
-          ElMessage.warning('请至少选择一个意向合作院校')
-          return
-        }
-
         registering.value = true
         try {
-          // 准备提交数据，按照新的DTO格式
+          // 准备提交数据
           const submitData = {
             enterprise: {
               enterpriseName: registerForm.enterpriseName,
@@ -301,7 +334,8 @@ export default {
               contactEmail: registerForm.email,
               businessScope: registerForm.description
             },
-            schoolIds: registerForm.schoolIds
+            username: registerForm.username,
+            password: registerForm.password
           }
           
           console.log('准备提交企业注册数据:', submitData)
@@ -309,7 +343,7 @@ export default {
           const res = await enterpriseApi.registerEnterprise(submitData)
           console.log('企业注册API响应:', res)
           if (res.code === 200) {
-            ElMessage.success('注册成功，请等待院校管理员审核')
+            ElMessage.success('注册成功，请登录')
             setTimeout(() => {
               router.push('/login')
             }, 2000)
@@ -333,47 +367,12 @@ export default {
       router.push('/register')
     }
 
-    // 加载学校列表
-    const loadSchoolList = async () => {
-      try {
-        const res = await schoolApi.getPublicSchoolList()
-        console.log('学校列表API响应:', res)
-        if (res.code === 200) {
-          // 处理可能的数组或分页格式
-          let schools = res.data
-          if (Array.isArray(schools)) {
-            schoolList.value = schools
-          } else if (schools && Array.isArray(schools.records)) {
-            // 如果是分页格式
-            schoolList.value = schools.records
-          } else {
-            schoolList.value = []
-          }
-          console.log('加载到的学校列表:', schoolList.value)
-          if (schoolList.value.length === 0) {
-            console.warn('学校列表为空，可能是数据库中没有启用的学校')
-          }
-        } else {
-          console.error('加载学校列表失败，响应码:', res.code, '消息:', res.message)
-          ElMessage.error(res.message || '加载学校列表失败')
-        }
-      } catch (error) {
-        console.error('加载学校列表失败:', error)
-        ElMessage.error('加载学校列表失败：' + (error.message || '未知错误'))
-      }
-    }
-
-    onMounted(() => {
-      loadSchoolList()
-    })
-
     return {
       registerFormRef,
       registerForm,
       registerRules,
       registering,
       industryCategories,
-      schoolList,
       handleRegister,
       goBack
     }

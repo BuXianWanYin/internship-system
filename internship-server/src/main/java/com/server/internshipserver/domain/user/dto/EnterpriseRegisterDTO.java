@@ -5,8 +5,6 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
-import java.util.List;
-
 /**
  * 企业注册DTO
  */
@@ -17,7 +15,10 @@ public class EnterpriseRegisterDTO {
     @ApiModelProperty(value = "企业信息", required = true)
     private Enterprise enterprise;
     
-    @ApiModelProperty(value = "意向合作院校ID列表", required = true)
-    private List<Long> schoolIds;
+    @ApiModelProperty(value = "管理员用户名（用于登录）", required = true)
+    private String username;
+    
+    @ApiModelProperty(value = "管理员密码（用于登录）", required = true)
+    private String password;
 }
 

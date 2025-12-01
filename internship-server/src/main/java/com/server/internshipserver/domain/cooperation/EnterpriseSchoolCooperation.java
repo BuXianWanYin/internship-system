@@ -70,5 +70,9 @@ public class EnterpriseSchoolCooperation implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    @ApiModelProperty(value = "学校名称（非数据库字段，用于前端显示）")
+    @TableField(exist = false)
+    private String schoolName;
 }
 

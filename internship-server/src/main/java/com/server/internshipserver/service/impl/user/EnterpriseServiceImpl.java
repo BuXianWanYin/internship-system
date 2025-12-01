@@ -24,7 +24,6 @@ import com.server.internshipserver.mapper.user.EnterpriseMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.user.EnterpriseService;
 import com.server.internshipserver.service.user.UserService;
-import com.server.internshipserver.service.user.EnterpriseRegisterSchoolService;
 import com.server.internshipserver.service.cooperation.EnterpriseSchoolCooperationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,8 +50,6 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     @Autowired
     private EnterpriseSchoolCooperationService cooperationService;
     
-    @Autowired
-    private EnterpriseRegisterSchoolService enterpriseRegisterSchoolService;
     
     @Override
     public Enterprise getEnterpriseByUserId(Long userId) {
@@ -79,12 +76,17 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Enterprise registerEnterprise(Enterprise enterprise, List<Long> schoolIds) {
+    public Enterprise registerEnterprise(Enterprise enterprise, String username, String password) {
         // 参数校验
         EntityValidationUtil.validateStringNotBlank(enterprise.getEnterpriseName(), "企业名称");
+        EntityValidationUtil.validateStringNotBlank(enterprise.getEnterpriseCode(), "企业代码");
+        EntityValidationUtil.validateStringNotBlank(username, "用户名");
+        EntityValidationUtil.validateStringNotBlank(password, "密码");
         
-        if (EntityValidationUtil.isEmpty(schoolIds)) {
-            throw new BusinessException("至少选择一个意向合作院校");
+        // 检查企业代码是否已存在
+        Enterprise existEnterprise = getEnterpriseByEnterpriseCode(enterprise.getEnterpriseCode());
+        if (existEnterprise != null) {
+            throw new BusinessException("企业代码已存在，请使用其他企业代码");
         }
         
         // 检查统一社会信用代码是否已存在
@@ -93,15 +95,35 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
                     enterprise.getUnifiedSocialCreditCode(), Enterprise::getDeleteFlag, "统一社会信用代码");
         }
         
-        // 设置默认值
-        enterprise.setAuditStatus(AuditStatus.PENDING.getCode()); // 待审核
-        EntityDefaultValueUtil.setDefaultValues(enterprise, UserStatus.DISABLED.getCode());
+        // 检查用户名是否已存在
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            throw new BusinessException("用户名已存在，请使用其他用户名");
+        }
         
-        // 保存企业信息
+        // 先保存企业信息（获取enterpriseId）
+        // 设置默认值：注册后直接通过，账号立即可用
+        enterprise.setAuditStatus(AuditStatus.APPROVED.getCode()); // 已通过
+        EntityDefaultValueUtil.setDefaultValues(enterprise, UserStatus.ENABLED.getCode()); // 启用状态
         this.save(enterprise);
         
-        // 保存企业与院校的关联关系
-        enterpriseRegisterSchoolService.saveEnterpriseRegisterSchools(enterprise.getEnterpriseId(), schoolIds);
+        // 创建企业管理员用户
+        UserInfo adminUser = new UserInfo();
+        adminUser.setUsername(username);
+        adminUser.setPassword(password); // UserService会自动加密
+        adminUser.setRealName(enterprise.getContactPerson() != null ? enterprise.getContactPerson() : "企业管理员");
+        adminUser.setPhone(enterprise.getContactPhone());
+        adminUser.setEmail(enterprise.getContactEmail());
+        adminUser.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
+        // 注意：不设置roles，因为addUser会检查权限，企业注册时没有权限分配角色
+        adminUser = userService.addUser(adminUser);
+        
+        // 分配企业管理员角色（不检查权限，因为这是注册流程）
+        userService.assignRoleToUser(adminUser.getUserId(), Constants.ROLE_ENTERPRISE_ADMIN);
+        
+        // 更新企业信息，关联用户ID（这就是创建企业管理员实体的逻辑）
+        enterprise.setUserId(adminUser.getUserId());
+        this.updateById(enterprise);
         
         return enterprise;
     }

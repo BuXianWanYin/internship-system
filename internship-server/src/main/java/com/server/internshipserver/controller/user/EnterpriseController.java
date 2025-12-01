@@ -39,8 +39,12 @@ public class EnterpriseController {
     @ApiOperation("企业注册")
     @PostMapping("/register")
     public Result<Enterprise> registerEnterprise(@RequestBody EnterpriseRegisterDTO registerDTO) {
-        Enterprise result = enterpriseService.registerEnterprise(registerDTO.getEnterprise(), registerDTO.getSchoolIds());
-        return Result.success("注册成功，等待院校审核", result);
+        Enterprise result = enterpriseService.registerEnterprise(
+            registerDTO.getEnterprise(), 
+            registerDTO.getUsername(), 
+            registerDTO.getPassword()
+        );
+        return Result.success("注册成功，请登录", result);
     }
     
     @ApiOperation("分页查询企业列表")

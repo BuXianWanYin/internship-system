@@ -69,6 +69,26 @@ export default [
       requiresAuth: true,
       roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN']
     }
+  },
+  {
+    path: '/enterprise/cooperation',
+    name: 'CooperationManagement',
+    component: () => import('@/views/enterprise/CooperationManagement.vue'),
+    meta: {
+      title: '合作管理',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_ADMIN']
+    }
+  },
+  {
+    path: '/admin/cooperation/audit',
+    name: 'CooperationAudit',
+    component: () => import('@/views/admin/CooperationAudit.vue'),
+    meta: {
+      title: '合作申请审核',
+      requiresAuth: true,
+      roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN']
+    }
   }
 ]
 

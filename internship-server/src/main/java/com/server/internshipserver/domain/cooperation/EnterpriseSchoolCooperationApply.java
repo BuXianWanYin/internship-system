@@ -1,4 +1,4 @@
-package com.server.internshipserver.domain.user;
+package com.server.internshipserver.domain.cooperation;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -14,12 +14,12 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 企业注册申请院校关联实体类
+ * 企业学校合作申请实体类
  */
-@ApiModel(description = "企业注册申请院校关联")
+@ApiModel(description = "企业学校合作申请")
 @Data
-@TableName("enterprise_register_school")
-public class EnterpriseRegisterSchool implements Serializable {
+@TableName("enterprise_school_cooperation_apply")
+public class EnterpriseSchoolCooperationApply implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
@@ -35,13 +35,27 @@ public class EnterpriseRegisterSchool implements Serializable {
     @TableField("school_id")
     private Long schoolId;
     
-    @ApiModelProperty(value = "审核状态：0-待审核，1-已通过，2-已拒绝", example = "0")
-    @TableField("audit_status")
-    private Integer auditStatus;
+    @ApiModelProperty(value = "合作类型（如：实习基地、校企合作、人才培养等）", example = "实习基地")
+    @TableField("cooperation_type")
+    private String cooperationType;
     
-    @ApiModelProperty(value = "审核意见")
-    @TableField("audit_opinion")
-    private String auditOpinion;
+    @ApiModelProperty(value = "合作开始时间")
+    @TableField("start_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startTime;
+    
+    @ApiModelProperty(value = "合作结束时间")
+    @TableField("end_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime endTime;
+    
+    @ApiModelProperty(value = "合作描述")
+    @TableField("cooperation_desc")
+    private String cooperationDesc;
+    
+    @ApiModelProperty(value = "申请状态：0-待审核，1-已通过，2-已拒绝", example = "0")
+    @TableField("apply_status")
+    private Integer applyStatus;
     
     @ApiModelProperty(value = "审核人ID", example = "1")
     @TableField("auditor_id")
@@ -51,6 +65,10 @@ public class EnterpriseRegisterSchool implements Serializable {
     @TableField("audit_time")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime auditTime;
+    
+    @ApiModelProperty(value = "审核意见")
+    @TableField("audit_opinion")
+    private String auditOpinion;
     
     @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
     @TableField("delete_flag")
@@ -65,5 +83,13 @@ public class EnterpriseRegisterSchool implements Serializable {
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
+    
+    @ApiModelProperty(value = "学校名称（非数据库字段，用于前端显示）")
+    @TableField(exist = false)
+    private String schoolName;
+    
+    @ApiModelProperty(value = "企业名称（非数据库字段，用于前端显示）")
+    @TableField(exist = false)
+    private String enterpriseName;
 }
 

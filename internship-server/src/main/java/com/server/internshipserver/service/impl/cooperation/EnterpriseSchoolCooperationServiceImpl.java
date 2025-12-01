@@ -254,7 +254,19 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         }
         
         wrapper.orderByDesc(EnterpriseSchoolCooperation::getCreateTime);
-        return this.list(wrapper);
+        List<EnterpriseSchoolCooperation> cooperations = this.list(wrapper);
+        
+        // 填充学校名称
+        for (EnterpriseSchoolCooperation cooperation : cooperations) {
+            if (cooperation.getSchoolId() != null) {
+                School school = schoolMapper.selectById(cooperation.getSchoolId());
+                if (school != null) {
+                    cooperation.setSchoolName(school.getSchoolName());
+                }
+            }
+        }
+        
+        return cooperations;
     }
 }
 
