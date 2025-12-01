@@ -56,7 +56,7 @@ public class StatisticsController {
     }
     
     @ApiOperation("获取评价分数统计")
-    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/evaluation-score")
     public Result<EvaluationScoreStatisticsDTO> getEvaluationScoreStatistics(
             @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
@@ -171,13 +171,31 @@ public class StatisticsController {
         return Result.success(statistics);
     }
     
-    @ApiOperation("获取学生评价分数排行（班主任使用）")
-    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER')")
+    @ApiOperation("获取学院维度统计")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
+    @GetMapping("/college")
+    public Result<CollegeStatisticsDTO> getCollegeStatistics(
+            @ApiParam(value = "开始日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @ApiParam(value = "结束日期", required = false) @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            @ApiParam(value = "学校ID", required = false) @RequestParam(required = false) Long schoolId) {
+        StatisticsQueryDTO queryDTO = new StatisticsQueryDTO();
+        queryDTO.setStartDate(startDate);
+        queryDTO.setEndDate(endDate);
+        queryDTO.setSchoolId(schoolId);
+        
+        CollegeStatisticsDTO statistics = statisticsService.getCollegeStatistics(queryDTO);
+        return Result.success(statistics);
+    }
+    
+    @ApiOperation("获取学生评价分数排行（班主任、企业管理员、企业导师使用）")
+    @PreAuthorize("hasAnyRole('ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR')")
     @GetMapping("/student-score-ranking")
     public Result<StudentScoreRankingDTO> getStudentScoreRanking(
-            @ApiParam(value = "班级ID", required = false) @RequestParam(required = false) Long classId) {
+            @ApiParam(value = "班级ID", required = false) @RequestParam(required = false) Long classId,
+            @ApiParam(value = "企业ID", required = false) @RequestParam(required = false) Long enterpriseId) {
         StatisticsQueryDTO queryDTO = new StatisticsQueryDTO();
         queryDTO.setClassId(classId);
+        queryDTO.setEnterpriseId(enterpriseId);
         
         StudentScoreRankingDTO statistics = statisticsService.getStudentScoreRanking(queryDTO);
         return Result.success(statistics);

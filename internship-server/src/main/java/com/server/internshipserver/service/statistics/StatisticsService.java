@@ -1,6 +1,7 @@
 package com.server.internshipserver.service.statistics;
 
 import com.server.internshipserver.domain.statistics.dto.ClassStatisticsDTO;
+import com.server.internshipserver.domain.statistics.dto.CollegeStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.EvaluationScoreStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.EnterpriseStatisticsDTO;
 import com.server.internshipserver.domain.statistics.dto.InternshipDurationStatisticsDTO;
@@ -68,6 +69,13 @@ public interface StatisticsService {
      * @return 企业维度统计数据
      */
     EnterpriseStatisticsDTO getEnterpriseStatistics(StatisticsQueryDTO queryDTO);
+    
+    /**
+     * 获取学院维度统计
+     * @param queryDTO 查询条件
+     * @return 学院维度统计数据
+     */
+    CollegeStatisticsDTO getCollegeStatistics(StatisticsQueryDTO queryDTO);
     
     /**
      * 获取学生评价分数排行（班主任使用）

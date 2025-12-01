@@ -33,6 +33,10 @@ export const statisticsApi = {
   getEnterpriseStatistics(params) {
     return request.get('/statistics/enterprise', { params })
   },
+  // 获取学院维度统计
+  getCollegeStatistics(params) {
+    return request.get('/statistics/college', { params })
+  },
   // 获取学生评价分数排行（班主任使用）
   getStudentScoreRanking(params) {
     return request.get('/statistics/student-score-ranking', { params })

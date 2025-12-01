@@ -28,6 +28,9 @@ public class SystemAdminDashboardDTO implements Serializable {
     @ApiModelProperty(value = "实习学生总数", example = "500")
     private Long internshipStudentCount;
     
+    @ApiModelProperty(value = "合作企业总数", example = "50")
+    private Long enterpriseCount;
+    
     @ApiModelProperty(value = "用户角色分布（饼图数据）")
     private List<PieItem> userRoleDistribution;
     

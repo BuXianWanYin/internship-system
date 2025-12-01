@@ -340,62 +340,115 @@ public class StatisticsServiceImpl implements StatisticsService {
     
     @Override
     public PostTypeDistributionStatisticsDTO getPostTypeDistributionStatistics(StatisticsQueryDTO queryDTO) {
-        // 构建查询条件（不限制postId，包含自主实习申请）
-        LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
-        
-        List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
-        
         PostTypeDistributionStatisticsDTO statistics = new PostTypeDistributionStatisticsDTO();
         List<PostTypeDistributionStatisticsDTO.PieChartItem> pieChartData = new ArrayList<>();
+        
+        // 判断是否是企业管理员查看自己的数据
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        boolean isEnterpriseAdmin = false;
+        Long currentEnterpriseId = null;
+        
+        if (user != null) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+            if (roleCodes != null && roleCodes.contains("ROLE_ENTERPRISE_ADMIN")) {
+                Long userEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
+                if (userEnterpriseId != null) {
+                    // 如果queryDTO中有enterpriseId，检查是否匹配
+                    if (queryDTO != null && queryDTO.getEnterpriseId() != null) {
+                        if (userEnterpriseId.equals(queryDTO.getEnterpriseId())) {
+                            isEnterpriseAdmin = true;
+                            currentEnterpriseId = userEnterpriseId;
+                        }
+                    } else {
+                        // 如果没有指定enterpriseId，通过权限过滤判断
+                        // 检查applyDataPermissionFilter是否会过滤到当前企业
+                        // 如果是企业管理员且没有指定enterpriseId，默认查看自己的企业数据
+                        isEnterpriseAdmin = true;
+                        currentEnterpriseId = userEnterpriseId;
+                    }
+                }
+            }
+        }
+        
+        // 如果是企业管理员查看自己的数据，统计所有发布的岗位
+        if (isEnterpriseAdmin && currentEnterpriseId != null) {
+            LambdaQueryWrapper<InternshipPost> postWrapper = QueryWrapperUtil.buildNotDeletedWrapper(InternshipPost::getDeleteFlag);
+            postWrapper.eq(InternshipPost::getEnterpriseId, currentEnterpriseId);
+            List<InternshipPost> posts = internshipPostMapper.selectList(postWrapper);
+            
+            // 按岗位名称分组统计
+            Map<String, Long> postNameCount = new HashMap<>();
+            for (InternshipPost post : posts) {
+                String postName = post.getPostName();
+                if (postName != null && !postName.trim().isEmpty()) {
+                    postNameCount.put(postName, postNameCount.getOrDefault(postName, 0L) + 1);
+                }
+            }
+            
+            // 构建饼图数据
+            String[] colors = {COLOR_PRIMARY, "#79BBFF", "#A0CFFF", COLOR_SUCCESS, COLOR_WARNING};
+            int colorIndex = 0;
+            for (Map.Entry<String, Long> entry : postNameCount.entrySet()) {
+                pieChartData.add(new PostTypeDistributionStatisticsDTO.PieChartItem(
+                        entry.getKey(),
+                        entry.getValue(),
+                        colors[colorIndex % colors.length]
+                ));
+                colorIndex++;
+            }
+        } else {
+            // 其他情况：基于实习申请统计（包含自主实习）
+            LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
+            List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
         
         if (applies.isEmpty()) {
             statistics.setPieChartData(pieChartData);
             return statistics;
         }
         
-        // 按岗位名称分组统计（包含合作企业和自主实习）
-        Map<String, Long> postNameCount = new HashMap<>();
-        
-        for (InternshipApply apply : applies) {
-            String postName = null;
+            // 按岗位名称分组统计（包含合作企业和自主实习）
+            Map<String, Long> postNameCount = new HashMap<>();
             
-            // 判断是合作企业还是自主实习
-            if (apply.getApplyType() != null && apply.getApplyType() == 2) {
-                // 自主实习：使用selfPostName
-                postName = apply.getSelfPostName();
-                if (postName == null || postName.trim().isEmpty()) {
-                    postName = "自主实习-未知岗位";
+            for (InternshipApply apply : applies) {
+                String postName = null;
+        
+                // 判断是合作企业还是自主实习
+                if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习：使用selfPostName
+                    postName = apply.getSelfPostName();
+                    if (postName == null || postName.trim().isEmpty()) {
+                        postName = "自主实习-未知岗位";
+                    } else {
+                        postName = "自主实习-" + postName;
+                    }
                 } else {
-                    postName = "自主实习-" + postName;
-                }
-            } else {
-                // 合作企业：通过postId查询岗位名称
-                if (apply.getPostId() != null) {
-                    InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
-                    if (post != null && post.getDeleteFlag() != null && post.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
-                        postName = post.getPostName() != null ? post.getPostName() : "未知岗位";
+                    // 合作企业：通过postId查询岗位名称
+                    if (apply.getPostId() != null) {
+                        InternshipPost post = internshipPostMapper.selectById(apply.getPostId());
+            if (post != null && post.getDeleteFlag() != null && post.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
+                            postName = post.getPostName() != null ? post.getPostName() : "未知岗位";
+                        } else {
+                            postName = "未知岗位";
+                        }
                     } else {
                         postName = "未知岗位";
                     }
-                } else {
-                    postName = "未知岗位";
                 }
+                
+                postNameCount.put(postName, postNameCount.getOrDefault(postName, 0L) + 1);
             }
             
-            postNameCount.put(postName, postNameCount.getOrDefault(postName, 0L) + 1);
-        }
-        
-        // 构建饼图数据
-        String[] colors = {COLOR_PRIMARY, "#79BBFF", "#A0CFFF", COLOR_SUCCESS, COLOR_WARNING};
-        int colorIndex = 0;
-        
-        for (Map.Entry<String, Long> entry : postNameCount.entrySet()) {
-            pieChartData.add(new PostTypeDistributionStatisticsDTO.PieChartItem(
-                    entry.getKey(),
-                    entry.getValue(),
-                    colors[colorIndex % colors.length]
-            ));
-            colorIndex++;
+            // 构建饼图数据
+            String[] colors = {COLOR_PRIMARY, "#79BBFF", "#A0CFFF", COLOR_SUCCESS, COLOR_WARNING};
+            int colorIndex = 0;
+            for (Map.Entry<String, Long> entry : postNameCount.entrySet()) {
+                pieChartData.add(new PostTypeDistributionStatisticsDTO.PieChartItem(
+                        entry.getKey(),
+                        entry.getValue(),
+                        colors[colorIndex % colors.length]
+                ));
+                colorIndex++;
+            }
         }
         
         statistics.setPieChartData(pieChartData);
@@ -559,6 +612,66 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         EnterpriseStatisticsDTO statistics = new EnterpriseStatisticsDTO();
+        statistics.setBarChartData(barChartData);
+        return statistics;
+    }
+    
+    @Override
+    public CollegeStatisticsDTO getCollegeStatistics(StatisticsQueryDTO queryDTO) {
+        // 构建查询条件
+        LambdaQueryWrapper<InternshipApply> wrapper = buildApplyQueryWrapper(queryDTO);
+        List<InternshipApply> applies = internshipApplyMapper.selectList(wrapper);
+        
+        if (applies.isEmpty()) {
+            CollegeStatisticsDTO statistics = new CollegeStatisticsDTO();
+            statistics.setBarChartData(new ArrayList<>());
+            return statistics;
+        }
+        
+        // 获取所有学生ID
+        List<Long> studentIds = applies.stream()
+                .map(InternshipApply::getStudentId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        if (studentIds.isEmpty()) {
+            CollegeStatisticsDTO statistics = new CollegeStatisticsDTO();
+            statistics.setBarChartData(new ArrayList<>());
+            return statistics;
+        }
+        
+        // 查询学生信息，按学院ID分组统计
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.in(Student::getStudentId, studentIds)
+                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                     .isNotNull(Student::getCollegeId);
+        
+        List<Student> students = studentMapper.selectList(studentWrapper);
+        
+        // 按学院ID分组统计人数
+        Map<Long, Long> collegeCountMap = students.stream()
+                .collect(Collectors.groupingBy(Student::getCollegeId, Collectors.counting()));
+        
+        // 构建柱状图数据
+        List<CollegeStatisticsDTO.BarChartItem> barChartData = new ArrayList<>();
+        String[] colors = {COLOR_PRIMARY, "#79BBFF", "#A0CFFF", COLOR_SUCCESS, COLOR_WARNING, "#FF7875"};
+        int colorIndex = 0;
+        
+        for (Map.Entry<Long, Long> entry : collegeCountMap.entrySet()) {
+            College college = collegeMapper.selectById(entry.getKey());
+            if (college != null && college.getDeleteFlag() != null && college.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
+                String collegeName = college.getCollegeName() != null ? college.getCollegeName() : "未知学院";
+                barChartData.add(new CollegeStatisticsDTO.BarChartItem(
+                        collegeName,
+                        entry.getValue(),
+                        colors[colorIndex % colors.length]
+                ));
+                colorIndex++;
+            }
+        }
+        
+        CollegeStatisticsDTO statistics = new CollegeStatisticsDTO();
         statistics.setBarChartData(barChartData);
         return statistics;
     }
@@ -950,7 +1063,12 @@ public class StatisticsServiceImpl implements StatisticsService {
         long internshipStudentCount = internshipApplyMapper.selectCount(applyWrapper);
         dto.setInternshipStudentCount(internshipStudentCount);
         
-        // 5. 用户角色分布统计
+        // 5. 统计合作企业总数
+        LambdaQueryWrapper<Enterprise> enterpriseWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Enterprise::getDeleteFlag);
+        long enterpriseCount = enterpriseMapper.selectCount(enterpriseWrapper);
+        dto.setEnterpriseCount(enterpriseCount);
+        
+        // 6. 用户角色分布统计
         List<UserInfo> allUsers = userMapper.selectList(userWrapper);
         Map<String, Long> roleCountMap = new java.util.HashMap<>();
         
@@ -990,7 +1108,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         dto.setUserRoleDistribution(roleDistribution);
         
-        // 6. 各学校实习人数对比
+        // 7. 各学校实习人数对比
         List<School> schools = schoolMapper.selectList(schoolWrapper);
         List<SystemAdminDashboardDTO.BarChartItem> schoolComparison = new ArrayList<>();
         for (School school : schools) {
@@ -1011,7 +1129,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         dto.setSchoolInternshipComparison(schoolComparison);
         
-        // 7. 实习岗位类型分布（按岗位名称分组，显示前10个最常见的岗位，包含自主实习）
+        // 8. 实习岗位类型分布（按岗位名称分组，显示前10个最常见的岗位，包含自主实习）
         // 统计合作企业的岗位
         List<InternshipPost> posts = internshipPostMapper.selectList(postWrapper);
         Map<String, Long> postTypeCountMap = new java.util.HashMap<>();
@@ -1059,114 +1177,114 @@ public class StatisticsServiceImpl implements StatisticsService {
         SchoolAdminDashboardDTO dto = new SchoolAdminDashboardDTO();
         
         try {
-            Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
-            if (schoolId == null) {
-                // 如果没有学校ID，返回空数据
-                dto.setCollegeCount(0L);
-                dto.setMajorCount(0L);
-                dto.setStudentCount(0L);
-                dto.setMaleCount(0L);
-                dto.setFemaleCount(0L);
-                dto.setTeacherCount(0L);
-                dto.setMajorInternshipComparison(new ArrayList<>());
-                dto.setGenderDistribution(new ArrayList<>());
-                return dto;
-            }
-            
-            // 1. 统计学院总数
-            LambdaQueryWrapper<College> collegeWrapper = QueryWrapperUtil.buildNotDeletedWrapper(College::getDeleteFlag);
-            collegeWrapper.eq(College::getSchoolId, schoolId);
-            long collegeCount = collegeMapper.selectCount(collegeWrapper);
-            dto.setCollegeCount(collegeCount);
-            
-            // 2. 统计专业总数
-            LambdaQueryWrapper<Major> majorWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Major::getDeleteFlag);
-            // 通过学院关联查询专业
-            List<College> colleges = collegeMapper.selectList(collegeWrapper);
-            if (!colleges.isEmpty()) {
-                List<Long> collegeIds = colleges.stream().map(College::getCollegeId).collect(Collectors.toList());
-                majorWrapper.in(Major::getCollegeId, collegeIds);
-                long majorCount = majorMapper.selectCount(majorWrapper);
-                dto.setMajorCount(majorCount);
-                
-                // 3. 不同专业实习人数对比
-                List<Major> majors = majorMapper.selectList(majorWrapper);
-                List<SchoolAdminDashboardDTO.BarChartItem> majorComparison = new ArrayList<>();
-                for (Major major : majors) {
-                    LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
-                    studentWrapper.eq(Student::getMajorId, major.getMajorId())
-                                 .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                 .eq(Student::getInternshipStatus, 1); // 实习中
-                    long count = studentMapper.selectCount(studentWrapper);
-                    
-                    if (count > 0) {
-                        majorComparison.add(new SchoolAdminDashboardDTO.BarChartItem(
-                            major.getMajorName(),
-                            count,
-                            COLOR_PRIMARY
-                        ));
-                    }
-                }
-                dto.setMajorInternshipComparison(majorComparison);
-            } else {
-                dto.setMajorCount(0L);
-                dto.setMajorInternshipComparison(new ArrayList<>());
-            }
-            
-            // 4. 统计学生总数和性别分布
-            LambdaQueryWrapper<Student> studentWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Student::getDeleteFlag);
-            studentWrapper.eq(Student::getSchoolId, schoolId);
-            List<Student> students = studentMapper.selectList(studentWrapper);
-            long studentCount = students.size();
-            dto.setStudentCount(studentCount);
-            
-            // 统计性别分布（需要通过userId关联UserInfo查询性别）
-            long maleCount = 0;
-            long femaleCount = 0;
-            List<Long> userIds = students.stream().map(Student::getUserId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
-            if (!userIds.isEmpty()) {
-                LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<>();
-                userWrapper.in(UserInfo::getUserId, userIds)
-                          .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                          .select(UserInfo::getUserId, UserInfo::getGender);
-                List<UserInfo> users = userMapper.selectList(userWrapper);
-                
-                Map<Long, String> userIdToGenderMap = users.stream()
-                    .filter(user -> user.getGender() != null)
-                    .collect(Collectors.toMap(UserInfo::getUserId, UserInfo::getGender, (v1, v2) -> v1));
-                
-                for (Student student : students) {
-                    if (student.getUserId() != null) {
-                        String gender = userIdToGenderMap.get(student.getUserId());
-                        if ("男".equals(gender)) {
-                            maleCount++;
-                        } else if ("女".equals(gender)) {
-                            femaleCount++;
-                        }
-                    }
-                }
-            }
-            
-            dto.setMaleCount(maleCount);
-            dto.setFemaleCount(femaleCount);
-            
-            // 性别分布饼图
-            List<SchoolAdminDashboardDTO.PieItem> genderDistribution = new ArrayList<>();
-            if (maleCount > 0) {
-                genderDistribution.add(new SchoolAdminDashboardDTO.PieItem("男生", maleCount, COLOR_PRIMARY));
-            }
-            if (femaleCount > 0) {
-                genderDistribution.add(new SchoolAdminDashboardDTO.PieItem("女生", femaleCount, "#F56C6C"));
-            }
-            dto.setGenderDistribution(genderDistribution);
-            
-            // 5. 统计教师总数
-            LambdaQueryWrapper<Teacher> teacherWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Teacher::getDeleteFlag);
-            teacherWrapper.eq(Teacher::getSchoolId, schoolId);
-            long teacherCount = teacherMapper.selectCount(teacherWrapper);
-            dto.setTeacherCount(teacherCount);
-            
+        Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        if (schoolId == null) {
+            // 如果没有学校ID，返回空数据
+            dto.setCollegeCount(0L);
+            dto.setMajorCount(0L);
+            dto.setStudentCount(0L);
+            dto.setMaleCount(0L);
+            dto.setFemaleCount(0L);
+            dto.setTeacherCount(0L);
+            dto.setMajorInternshipComparison(new ArrayList<>());
+            dto.setGenderDistribution(new ArrayList<>());
             return dto;
+        }
+        
+        // 1. 统计学院总数
+        LambdaQueryWrapper<College> collegeWrapper = QueryWrapperUtil.buildNotDeletedWrapper(College::getDeleteFlag);
+        collegeWrapper.eq(College::getSchoolId, schoolId);
+        long collegeCount = collegeMapper.selectCount(collegeWrapper);
+        dto.setCollegeCount(collegeCount);
+        
+        // 2. 统计专业总数
+        LambdaQueryWrapper<Major> majorWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Major::getDeleteFlag);
+        // 通过学院关联查询专业
+        List<College> colleges = collegeMapper.selectList(collegeWrapper);
+        if (!colleges.isEmpty()) {
+            List<Long> collegeIds = colleges.stream().map(College::getCollegeId).collect(Collectors.toList());
+            majorWrapper.in(Major::getCollegeId, collegeIds);
+            long majorCount = majorMapper.selectCount(majorWrapper);
+            dto.setMajorCount(majorCount);
+            
+            // 3. 不同专业实习人数对比
+            List<Major> majors = majorMapper.selectList(majorWrapper);
+            List<SchoolAdminDashboardDTO.BarChartItem> majorComparison = new ArrayList<>();
+            for (Major major : majors) {
+                LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+                studentWrapper.eq(Student::getMajorId, major.getMajorId())
+                             .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                             .eq(Student::getInternshipStatus, 1); // 实习中
+                long count = studentMapper.selectCount(studentWrapper);
+                
+                if (count > 0) {
+                    majorComparison.add(new SchoolAdminDashboardDTO.BarChartItem(
+                        major.getMajorName(),
+                        count,
+                        COLOR_PRIMARY
+                    ));
+                }
+            }
+            dto.setMajorInternshipComparison(majorComparison);
+        } else {
+            dto.setMajorCount(0L);
+            dto.setMajorInternshipComparison(new ArrayList<>());
+        }
+        
+        // 4. 统计学生总数和性别分布
+        LambdaQueryWrapper<Student> studentWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Student::getDeleteFlag);
+        studentWrapper.eq(Student::getSchoolId, schoolId);
+        List<Student> students = studentMapper.selectList(studentWrapper);
+        long studentCount = students.size();
+        dto.setStudentCount(studentCount);
+        
+        // 统计性别分布（需要通过userId关联UserInfo查询性别）
+        long maleCount = 0;
+        long femaleCount = 0;
+        List<Long> userIds = students.stream().map(Student::getUserId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        if (!userIds.isEmpty()) {
+            LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.in(UserInfo::getUserId, userIds)
+                      .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                      .select(UserInfo::getUserId, UserInfo::getGender);
+            List<UserInfo> users = userMapper.selectList(userWrapper);
+            
+            Map<Long, String> userIdToGenderMap = users.stream()
+                    .filter(user -> user.getGender() != null)
+                .collect(Collectors.toMap(UserInfo::getUserId, UserInfo::getGender, (v1, v2) -> v1));
+            
+            for (Student student : students) {
+                    if (student.getUserId() != null) {
+                String gender = userIdToGenderMap.get(student.getUserId());
+                if ("男".equals(gender)) {
+                    maleCount++;
+                } else if ("女".equals(gender)) {
+                    femaleCount++;
+                        }
+                }
+            }
+        }
+        
+        dto.setMaleCount(maleCount);
+        dto.setFemaleCount(femaleCount);
+        
+        // 性别分布饼图
+        List<SchoolAdminDashboardDTO.PieItem> genderDistribution = new ArrayList<>();
+        if (maleCount > 0) {
+            genderDistribution.add(new SchoolAdminDashboardDTO.PieItem("男生", maleCount, COLOR_PRIMARY));
+        }
+        if (femaleCount > 0) {
+            genderDistribution.add(new SchoolAdminDashboardDTO.PieItem("女生", femaleCount, "#F56C6C"));
+        }
+        dto.setGenderDistribution(genderDistribution);
+        
+        // 5. 统计教师总数
+        LambdaQueryWrapper<Teacher> teacherWrapper = QueryWrapperUtil.buildNotDeletedWrapper(Teacher::getDeleteFlag);
+        teacherWrapper.eq(Teacher::getSchoolId, schoolId);
+        long teacherCount = teacherMapper.selectCount(teacherWrapper);
+        dto.setTeacherCount(teacherCount);
+        
+        return dto;
         } catch (Exception e) {
             // 记录异常日志
             System.err.println("获取学校管理员仪表盘数据失败: " + e.getMessage());
@@ -1236,6 +1354,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     public ClassTeacherDashboardDTO getClassTeacherDashboard() {
         ClassTeacherDashboardDTO dashboard = new ClassTeacherDashboardDTO();
         
+        try {
         // 获取当前班主任管理的班级ID列表
         List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
         
@@ -1272,30 +1391,30 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .map(Student::getStudentId)
                 .collect(Collectors.toList());
         
-        // 3. 查询这些学生的实习申请，统计岗位数（去重，包含自主实习）
+            // 3. 查询这些学生的实习申请，统计岗位数（去重，包含自主实习）
         LambdaQueryWrapper<InternshipApply> applyWrapper = new LambdaQueryWrapper<>();
         applyWrapper.in(InternshipApply::getStudentId, studentIds)
                    .eq(InternshipApply::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                   .select(InternshipApply::getPostId, InternshipApply::getApplyType, InternshipApply::getSelfPostName);
+                       .select(InternshipApply::getPostId, InternshipApply::getApplyType, InternshipApply::getSelfPostName);
         List<InternshipApply> applies = internshipApplyMapper.selectList(applyWrapper);
         
-        // 统计不重复的岗位数（包括合作企业的postId和自主实习的selfPostName）
-        Set<String> uniquePosts = new HashSet<>();
-        for (InternshipApply apply : applies) {
-            if (apply.getApplyType() != null && apply.getApplyType() == 2) {
-                // 自主实习：使用selfPostName作为唯一标识
-                String selfPostName = apply.getSelfPostName();
-                if (selfPostName != null && !selfPostName.trim().isEmpty()) {
-                    uniquePosts.add("SELF_" + selfPostName);
-                }
-            } else {
-                // 合作企业：使用postId作为唯一标识
-                if (apply.getPostId() != null) {
-                    uniquePosts.add("POST_" + apply.getPostId());
+            // 统计不重复的岗位数（包括合作企业的postId和自主实习的selfPostName）
+            Set<String> uniquePosts = new HashSet<>();
+            for (InternshipApply apply : applies) {
+                if (apply.getApplyType() != null && apply.getApplyType() == 2) {
+                    // 自主实习：使用selfPostName作为唯一标识
+                    String selfPostName = apply.getSelfPostName();
+                    if (selfPostName != null && !selfPostName.trim().isEmpty()) {
+                        uniquePosts.add("SELF_" + selfPostName);
+                    }
+                } else {
+                    // 合作企业：使用postId作为唯一标识
+                    if (apply.getPostId() != null) {
+                        uniquePosts.add("POST_" + apply.getPostId());
+                    }
                 }
             }
-        }
-        dashboard.setPostCount((long) uniquePosts.size());
+            dashboard.setPostCount((long) uniquePosts.size());
         
         // 4. 查询这些学生的综合成绩，计算平均分
         LambdaQueryWrapper<ComprehensiveScore> scoreWrapper = new LambdaQueryWrapper<>();
@@ -1316,7 +1435,9 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 5. 查询实习岗位列表（前10个，按申请人数排序）
+            // 只统计合作企业的岗位（postId不为null），过滤掉自主实习（postId为null）
         Map<Long, Long> postApplyCountMap = applies.stream()
+                    .filter(apply -> apply.getPostId() != null) // 过滤掉postId为null的记录（自主实习）
                 .collect(Collectors.groupingBy(InternshipApply::getPostId, Collectors.counting()));
         
         List<ClassTeacherDashboardDTO.PostInfo> posts = new ArrayList<>();
@@ -1324,7 +1445,11 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue())) // 按申请人数降序
                 .limit(10) // 只取前10个
                 .forEach(entry -> {
-                    InternshipPost post = internshipPostMapper.selectById(entry.getKey());
+                        Long postId = entry.getKey();
+                        if (postId == null) {
+                            return; // 跳过null值
+                        }
+                        InternshipPost post = internshipPostMapper.selectById(postId);
                     if (post != null && post.getDeleteFlag() != null && 
                         post.getDeleteFlag().equals(DeleteFlag.NORMAL.getCode())) {
                         ClassTeacherDashboardDTO.PostInfo postInfo = new ClassTeacherDashboardDTO.PostInfo();
@@ -1390,6 +1515,19 @@ public class StatisticsServiceImpl implements StatisticsService {
             scoreDistribution.add(new ClassTeacherDashboardDTO.PieItem("不及格(<60)", failCount, "#FF7875"));
         }
         dashboard.setScoreDistribution(scoreDistribution);
+        
+        } catch (Exception e) {
+            // 捕获所有异常，记录日志并返回空数据，避免500错误
+            System.err.println("获取班主任仪表盘数据失败: " + e.getMessage());
+            e.printStackTrace();
+            // 返回空数据而不是抛出异常
+            dashboard.setClassCount(0L);
+            dashboard.setStudentCount(0L);
+            dashboard.setPostCount(0L);
+            dashboard.setAverageScore(0.0);
+            dashboard.setPosts(new ArrayList<>());
+            dashboard.setScoreDistribution(new ArrayList<>());
+        }
         
         return dashboard;
     }

@@ -39,9 +39,8 @@ export const studentApi = {
   importStudents(file, classId) {
     const formData = new FormData()
     formData.append('file', file)
-    if (classId) {
-      formData.append('classId', classId)
-    }
+    // classId现在是必填的
+    formData.append('classId', classId)
     return request.post('/user/student/import', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'

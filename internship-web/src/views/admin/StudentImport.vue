@@ -40,19 +40,20 @@
         </el-upload>
 
         <div class="class-select" v-if="showClassSelect">
-          <el-select
-            v-model="selectedClassId"
-            placeholder="请选择班级（如果Excel中未指定班级ID）"
-            clearable
-            style="width: 100%; margin-top: 20px;"
-          >
-            <el-option
-              v-for="classItem in classList"
-              :key="classItem.classId"
-              :label="classItem.className"
-              :value="classItem.classId"
-            />
-          </el-select>
+          <el-form-item label="学生班级*" required style="margin-top: 20px;">
+            <el-select
+              v-model="selectedClassId"
+              placeholder="请选择学生班级"
+              style="width: 100%;"
+            >
+              <el-option
+                v-for="classItem in classList"
+                :key="classItem.classId"
+                :label="classItem.className"
+                :value="classItem.classId"
+              />
+            </el-select>
+          </el-form-item>
         </div>
 
         <div class="upload-actions" v-if="fileList.length > 0">
@@ -149,6 +150,11 @@ export default {
     const handleUpload = async () => {
       if (fileList.value.length === 0) {
         ElMessage.warning('请先选择要上传的文件')
+        return
+      }
+
+      if (!selectedClassId.value) {
+        ElMessage.warning('请选择学生班级')
         return
       }
 

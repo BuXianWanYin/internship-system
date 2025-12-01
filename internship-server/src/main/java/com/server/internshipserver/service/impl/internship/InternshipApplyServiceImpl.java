@@ -289,7 +289,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             apply.setStatus(SelfInternshipApplyStatus.PENDING.getCode());
         } else {
             // 合作企业使用旧状态码(0)
-            apply.setStatus(InternshipApplyStatus.PENDING.getCode());
+        apply.setStatus(InternshipApplyStatus.PENDING.getCode());
         }
         EntityDefaultValueUtil.setDefaultValues(apply);
         this.save(apply);

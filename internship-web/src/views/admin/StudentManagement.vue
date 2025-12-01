@@ -4,7 +4,7 @@
       <el-button type="primary" :icon="Plus" @click="handleAdd">添加学生</el-button>
       <el-button 
         v-if="hasAnyRole(['ROLE_CLASS_TEACHER'])" 
-        type="info" 
+        type="primary" 
         :icon="Download" 
         @click="handleDownloadTemplate"
       >
@@ -460,7 +460,7 @@
       :close-on-click-modal="false"
       @close="handleImportDialogClose"
     >
-      <div v-if="!importResult">
+      <div v-if="!importResult && importStatus !== 'uploading'">
         <el-alert
           type="info"
           :closable="false"
@@ -470,7 +470,7 @@
             <div>
               <div>请先下载模板，按照模板格式填写学生信息后上传。</div>
               <div style="margin-top: 8px; font-size: 12px; color: #909399;">
-                模板列说明：学号*、姓名*、身份证号、手机号、邮箱、入学年份*、班级ID*、初始密码（可选，不填则自动生成8位随机数字）
+                模板列说明：学号*、姓名*、身份证号、手机号、邮箱、入学年份*、初始密码*
               </div>
             </div>
           </template>
@@ -497,11 +497,10 @@
         </el-upload>
 
         <div class="class-select" style="margin-top: 20px;">
-          <el-form-item label="默认班级（可选）">
+          <el-form-item label="学生班级*" required>
             <el-select
               v-model="selectedClassId"
-              placeholder="如果Excel中未指定班级ID，将使用此默认班级"
-              clearable
+              placeholder="请选择学生班级"
               style="width: 100%;"
             >
               <el-option
@@ -515,7 +514,26 @@
         </div>
       </div>
 
-      <div v-else>
+      <!-- 导入进度 -->
+      <div v-if="importStatus === 'uploading'">
+        <el-alert
+          type="info"
+          :closable="false"
+          style="margin-bottom: 20px"
+        >
+          <template #title>
+            <div>正在导入学生数据，请稍候...</div>
+          </template>
+        </el-alert>
+        <el-progress
+          :percentage="importProgress"
+          :status="importProgress === 100 ? 'success' : undefined"
+          style="margin-bottom: 20px"
+        />
+      </div>
+
+      <!-- 导入结果 -->
+      <div v-if="importResult">
         <el-alert
           :title="`导入完成：成功 ${importResult.successCount} 条，失败 ${importResult.failCount} 条`"
           :type="importResult.failCount === 0 ? 'success' : 'warning'"
@@ -524,13 +542,40 @@
           style="margin-bottom: 20px"
         />
 
+        <!-- 成功列表 -->
+        <div v-if="importResult.successList && importResult.successList.length > 0" style="margin-bottom: 20px;">
+          <h4 style="margin-bottom: 10px; color: #67c23a;">
+            <el-icon><CircleCheck /></el-icon>
+            成功导入（{{ importResult.successList.length }} 条）：
+          </h4>
+          <el-table :data="importResult.successList" border max-height="200" style="margin-bottom: 20px;">
+            <el-table-column prop="rowNum" label="行号" width="80" align="center" />
+            <el-table-column prop="studentNo" label="学号" width="120" />
+            <el-table-column prop="realName" label="姓名" width="100" />
+            <el-table-column label="状态" width="80" align="center">
+              <template #default>
+                <el-tag type="success" size="small">成功</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <!-- 失败列表 -->
         <div v-if="importResult.failList && importResult.failList.length > 0">
-          <h4 style="margin-bottom: 10px;">失败详情：</h4>
+          <h4 style="margin-bottom: 10px; color: #f56c6c;">
+            <el-icon><CircleClose /></el-icon>
+            导入失败（{{ importResult.failList.length }} 条）：
+          </h4>
           <el-table :data="importResult.failList" border max-height="300">
             <el-table-column prop="rowNum" label="行号" width="80" align="center" />
             <el-table-column prop="studentNo" label="学号" width="120" />
             <el-table-column prop="realName" label="姓名" width="100" />
-            <el-table-column prop="errorMessage" label="错误信息" min-width="200" />
+            <el-table-column prop="errorMessage" label="失败原因" min-width="200" />
+            <el-table-column label="状态" width="80" align="center">
+              <template #default>
+                <el-tag type="danger" size="small">失败</el-tag>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
       </div>
@@ -539,7 +584,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <el-button
             v-if="!importResult"
-            type="info"
+            type="primary"
             :icon="Download"
             @click="handleDownloadTemplate"
           >
@@ -564,7 +609,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Upload, Download, UploadFilled, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
@@ -651,6 +696,8 @@ const fileList = ref([])
 const selectedClassId = ref(null)
 const uploading = ref(false)
 const importResult = ref(null)
+const importProgress = ref(0)
+const importStatus = ref(null) // 'uploading' | 'success' | 'error'
 
 // ========== 添加/编辑相关 ==========
 const dialogVisible = ref(false)
@@ -1165,6 +1212,11 @@ const handleUpload = async () => {
     return
   }
 
+  if (!selectedClassId.value) {
+    ElMessage.warning('请选择学生班级')
+    return
+  }
+
   const file = fileList.value[0].raw
   if (!file) {
     ElMessage.warning('文件无效')
@@ -1178,10 +1230,25 @@ const handleUpload = async () => {
   }
 
   uploading.value = true
+  importStatus.value = 'uploading'
+  importProgress.value = 0
+  importResult.value = null
+
+  // 模拟进度更新
+  const progressInterval = setInterval(() => {
+    if (importProgress.value < 90) {
+      importProgress.value += 10
+    }
+  }, 200)
+
   try {
     const res = await studentApi.importStudents(file, selectedClassId.value)
+    clearInterval(progressInterval)
+    importProgress.value = 100
+    
     if (res.code === 200) {
       importResult.value = res.data
+      importStatus.value = 'success'
       ElMessage.success(res.message || '导入完成')
       // 导入成功后刷新学生列表和待审核列表
       if (activeTab.value === 'list') {
@@ -1190,12 +1257,21 @@ const handleUpload = async () => {
         loadApprovalList()
       }
     } else {
+      importStatus.value = 'error'
       ElMessage.error(res.message || '导入失败')
     }
   } catch (error) {
+    clearInterval(progressInterval)
+    importProgress.value = 0
+    importStatus.value = 'error'
     ElMessage.error('导入失败：' + (error.message || '未知错误'))
   } finally {
     uploading.value = false
+    setTimeout(() => {
+      if (importStatus.value === 'uploading') {
+        importStatus.value = null
+      }
+    }, 500)
   }
 }
 
@@ -1204,9 +1280,13 @@ const handleImportDialogClose = () => {
   fileList.value = []
   selectedClassId.value = null
   importResult.value = null
+  importProgress.value = 0
+  importStatus.value = null
   if (uploadRef.value) {
     uploadRef.value.clearFiles()
   }
+  // 关闭对话框
+  importDialogVisible.value = false
 }
 
 // ========== 公共功能 ==========

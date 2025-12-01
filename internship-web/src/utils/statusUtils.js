@@ -10,11 +10,11 @@
  */
 export function isInternshipCompleted(row) {
   if (!row) return false
-  // 合作企业：status=7
+  // 合作企业：status=7（实习结束）或 status=8（已评价，也视为实习结束）
   if (row.applyType === 1) {
-    return row.status === 7
+    return row.status === 7 || row.status === 8
   }
-  // 自主实习：status=13
+  // 自主实习：status=13（实习结束）
   if (row.applyType === 2) {
     return row.status === 13
   }
@@ -58,12 +58,14 @@ export function isAccepted(row) {
 export function getUnbindStatusText(row) {
   if (!row) return '-'
   
-  // 优先判断实习结束（合作企业status=7，自主实习status=13）
+  // 优先判断实习结束（合作企业status=7或8，自主实习status=13）
+  // 实习结束后，无论unbindStatus是什么，都应该显示"实习结束"
   if (isInternshipCompleted(row)) {
     return '实习结束'
   }
   
   // 其次判断提前离职（已解绑）
+  // 提前离职：status=3（已录用）且 unbindStatus=2（已解绑）
   if (isUnbound(row)) {
     return '已离职'
   }
@@ -72,7 +74,8 @@ export function getUnbindStatusText(row) {
   // 1-申请解绑 -> 申请离职中
   // 2-已解绑 -> 已离职（但这种情况应该被isUnbound处理，这里作为兜底）
   // 3-解绑被拒绝 -> 离职申请被拒绝
-  if (row.unbindStatus === 2) {
+  // 注意：如果status=3（已录用）且unbindStatus=2（已解绑），说明是提前离职
+  if (row.status === 3 && row.unbindStatus === 2) {
     return '已离职'
   }
   if (row.unbindStatus === 1) {
@@ -103,18 +106,21 @@ export function getUnbindStatusType(row) {
   if (!row) return 'info'
   
   // 实习结束：使用 info 类型（蓝色）
+  // 实习结束后，无论unbindStatus是什么，都应该显示为info类型
   if (isInternshipCompleted(row)) {
     return 'info'
   }
   
   // 提前离职：使用 danger 类型（红色）
+  // 提前离职：status=3（已录用）且 unbindStatus=2（已解绑）
   if (isUnbound(row)) {
     return 'danger'
   }
   
   // 其他解绑状态
-  if (row.unbindStatus === 2) {
-    return 'warning'
+  // 注意：如果status=3（已录用）且unbindStatus=2（已解绑），说明是提前离职
+  if (row.status === 3 && row.unbindStatus === 2) {
+    return 'danger'
   }
   if (row.unbindStatus === 1 || row.unbindStatus === 4) {
     return 'warning'

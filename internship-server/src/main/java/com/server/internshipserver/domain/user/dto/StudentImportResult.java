@@ -22,6 +22,9 @@ public class StudentImportResult {
     @ApiModelProperty(value = "失败详情列表")
     private List<StudentImportDTO> failList;
     
+    @ApiModelProperty(value = "成功详情列表")
+    private List<StudentImportDTO> successList;
+    
     @ApiModelProperty(value = "总数量")
     private Integer totalCount;
 }

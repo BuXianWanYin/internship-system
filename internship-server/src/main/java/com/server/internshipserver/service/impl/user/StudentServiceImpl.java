@@ -340,6 +340,11 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("文件格式错误，请上传Excel文件（.xlsx或.xls）");
         }
         
+        // 验证班级ID必须提供
+        if (classId == null) {
+            throw new BusinessException("请选择学生班级");
+        }
+        
         // 解析Excel
         List<StudentImportDTO> importList;
         try {
@@ -364,6 +369,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         result.setSuccessCount(0);
         result.setFailCount(0);
         List<StudentImportDTO> failList = new ArrayList<>();
+        List<StudentImportDTO> successList = new ArrayList<>();
         
         for (StudentImportDTO dto : importList) {
             try {
@@ -387,6 +393,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 // 创建用户和学生记录
                 createStudentFromDto(dto, finalClassId, classInfo);
                 
+                // 添加到成功列表
+                StudentImportDTO successDto = new StudentImportDTO();
+                successDto.setRowNum(dto.getRowNum());
+                successDto.setStudentNo(dto.getStudentNo());
+                successDto.setRealName(dto.getRealName());
+                successList.add(successDto);
+                
                 result.setSuccessCount(result.getSuccessCount() + 1);
             } catch (Exception e) {
                 dto.setErrorMessage(e.getMessage());
@@ -396,6 +409,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         result.setFailCount(failList.size());
         result.setFailList(failList);
+        result.setSuccessList(successList);
         return result;
     }
     
@@ -418,14 +432,20 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             failList.add(dto);
             return false;
         }
+        if (!StringUtils.hasText(dto.getPassword())) {
+            dto.setErrorMessage("初始密码不能为空");
+            failList.add(dto);
+            return false;
+        }
         return true;
     }
     
     /**
-     * 获取最终的班级ID
+     * 获取最终的班级ID（导入时强制使用传入的classId，不再从Excel读取）
      */
     private Long getFinalClassId(StudentImportDTO dto, Long classId) {
-        return (dto.getClassId() != null) ? dto.getClassId() : classId;
+        // 导入时强制使用传入的classId，不再从Excel读取班级ID
+        return classId;
     }
     
     /**
@@ -505,7 +525,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         student.setMajorId(classInfo.getMajorId());
         student.setCollegeId(collegeId);
         student.setSchoolId(schoolId);
-        student.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
+        student.setStatus(UserStatus.ENABLED.getCode()); // 导入的学生不需要审核，直接启用
         this.addStudent(student);
     }
     
@@ -514,9 +534,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
      */
     private UserInfo createUserFromDto(StudentImportDTO dto) {
         String username = dto.getStudentNo();
-        String password = StringUtils.hasText(dto.getPassword()) 
-                ? dto.getPassword() 
-                : Constants.DEFAULT_PASSWORD;
+        // 密码必须填写，已在validateImportDto中验证
+        String password = dto.getPassword();
         
         UserInfo user = new UserInfo();
         user.setUsername(username);
@@ -525,7 +544,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setIdCard(dto.getIdCard());
         user.setPhone(dto.getPhone());
         user.setEmail(dto.getEmail());
-        user.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
+        user.setStatus(UserStatus.ENABLED.getCode()); // 导入的学生不需要审核，直接启用
         return user;
     }
     

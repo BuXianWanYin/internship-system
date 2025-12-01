@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <!-- 统计卡片区域 -->
-    <div class="statistics-cards">
+    <div v-if="statisticsCards.length > 0" class="statistics-cards">
       <div class="cards-grid">
         <StatisticsCard
           v-for="card in statisticsCards"
@@ -262,6 +262,8 @@ import BarChart from '@/components/charts/BarChart.vue'
 import LineChart from '@/components/charts/LineChart.vue'
 import RadarChart from '@/components/charts/RadarChart.vue'
 import { statisticsApi } from '@/api/statistics'
+import { enterpriseApi } from '@/api/user/enterprise'
+import { userApi } from '@/api/user/user'
 import { useRouter } from 'vue-router'
 import {
   User,
@@ -413,34 +415,65 @@ const hasChart = (key) => {
     if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
       return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
     } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
-      return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
+      // 学校管理员：即使数据为空也显示图表（显示"暂无数据"）
+      return chartData.progress !== undefined
     } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
       return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
+    } else if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+      return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
     }
-    return hasRole(['ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
+    return hasRole(['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
   }
   if (key === 'postType') {
     if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
       return chartData.postType && chartData.postType.data && chartData.postType.data.length > 0
+    } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+      return chartData.postType && chartData.postType.data && chartData.postType.data.length > 0
+    } else if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+      return chartData.postType && chartData.postType.data && chartData.postType.data.length > 0
+    } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
+      return chartData.postType && chartData.postType.data && chartData.postType.data.length > 0
     }
-    return hasRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
+    return hasRole(['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
   }
   if (key === 'scoreDistribution') {
-    return hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+    if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+      return chartData.scoreDistribution && chartData.scoreDistribution.data && chartData.scoreDistribution.data.length > 0
+    } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+      return chartData.scoreDistribution && chartData.scoreDistribution.data && chartData.scoreDistribution.data.length > 0
+    } else if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+      return chartData.scoreDistribution && chartData.scoreDistribution.data && chartData.scoreDistribution.data.length > 0
+    } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
+      return chartData.scoreDistribution && chartData.scoreDistribution.data && chartData.scoreDistribution.data.length > 0
+    } else if (hasRole(['ROLE_ENTERPRISE_ADMIN'])) {
+      return chartData.scoreDistribution && chartData.scoreDistribution.data && chartData.scoreDistribution.data.length > 0
+    } else if (hasRole(['ROLE_ENTERPRISE_MENTOR'])) {
+      // 企业导师：即使数据为空也显示图表（显示"暂无数据"）
+      return true
+    }
+    return false
   }
   if (key === 'studentRanking') {
-    return hasRole(['ROLE_CLASS_TEACHER'])
+    // 企业导师和企业管理员：即使数据为空也显示图表（显示"暂无数据"）
+    if (hasRole(['ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])) {
+      return true
+    }
+    // 班主任：需要数据存在才显示
+    return hasRole(['ROLE_CLASS_TEACHER']) && chartData.studentRanking && chartData.studentRanking.data && chartData.studentRanking.data.length > 0
   }
   if (key === 'comparison') {
     if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
       return chartData.comparison && chartData.comparison.data && chartData.comparison.data.length > 0
     } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
       return chartData.comparison && chartData.comparison.data && chartData.comparison.data.length > 0
+    } else if (hasRole(['ROLE_COLLEGE_LEADER'])) {
+      return chartData.comparison && chartData.comparison.data && chartData.comparison.data.length > 0
     }
-    return hasRole(['ROLE_COLLEGE_LEADER'])
+    return false
   }
   if (key === 'duration') {
-    return hasRole(['ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
+    // 学校管理员不再显示实习时长分布，改为显示学院维度统计
+    return false
   }
   if (key === 'personalScore') {
     return hasRole(['ROLE_STUDENT'])
@@ -476,8 +509,25 @@ const loadStatistics = async () => {
 }
 
 // 构建查询参数
-const buildQueryParams = () => {
-  return {}
+const buildQueryParams = async () => {
+  const params = {}
+  
+  // 如果是企业管理员，获取企业ID并添加到参数中
+  if (hasRole(['ROLE_ENTERPRISE_ADMIN'])) {
+    try {
+      const userRes = await userApi.getCurrentUser()
+      if (userRes.code === 200 && userRes.data && userRes.data.userId) {
+        const enterpriseRes = await enterpriseApi.getEnterpriseByUserId(userRes.data.userId)
+        if (enterpriseRes.code === 200 && enterpriseRes.data && enterpriseRes.data.enterpriseId) {
+          params.enterpriseId = enterpriseRes.data.enterpriseId
+        }
+      }
+    } catch (error) {
+      console.error('获取企业ID失败:', error)
+    }
+  }
+  
+  return params
 }
 
 // 系统管理员统计数据
@@ -546,6 +596,19 @@ const loadSystemAdminStatistics = async () => {
         }
       }
     }
+    
+    // 加载评价分数分布统计
+    const params = buildQueryParams()
+    try {
+      const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
+        chartData.scoreDistribution = {
+          data: scoreRes.data.barChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
+    }
   } catch (error) {
     console.error('加载系统管理员统计数据失败:', error)
     ElMessage.error('加载仪表盘数据失败')
@@ -596,24 +659,21 @@ const loadSchoolAdminStatistics = async () => {
         }
       ]
       
-      // 设置不同专业实习人数对比柱状图
-      if (dashboard.majorInternshipComparison && dashboard.majorInternshipComparison.length > 0) {
-        chartData.comparison = {
-          title: '不同专业实习人数对比',
-          data: dashboard.majorInternshipComparison
-        }
-      }
-      
-      // 设置学生性别分布饼图
+      // 设置学生性别分布饼图（即使数据为空也设置，确保图表显示）
       if (dashboard.genderDistribution && dashboard.genderDistribution.length > 0) {
         chartData.progress = {
           data: dashboard.genderDistribution
+        }
+      } else {
+        // 如果没有性别分布数据，设置为空数组，让图表显示"暂无数据"
+        chartData.progress = {
+          data: []
         }
       }
     }
     
     // 加载岗位类型分布统计
-    const params = buildQueryParams()
+    const params = await buildQueryParams()
     try {
       const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
       if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
@@ -628,13 +688,41 @@ const loadSchoolAdminStatistics = async () => {
     // 加载评价分数分布统计
     try {
       const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData) {
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
         chartData.scoreDistribution = {
           data: scoreRes.data.barChartData
         }
       }
     } catch (error) {
       console.error('加载评价分数分布统计失败:', error)
+    }
+    
+    // 加载学院维度统计（替换实习时长分布，显示不同学院实习人数对比）
+    try {
+      const collegeRes = await statisticsApi.getCollegeStatistics(params)
+      if (collegeRes.code === 200 && collegeRes.data && collegeRes.data.barChartData && collegeRes.data.barChartData.length > 0) {
+        chartData.comparison = {
+          title: '不同学院实习人数对比',
+          data: collegeRes.data.barChartData
+        }
+      } else {
+        // 如果学院维度统计没有数据，则显示专业对比
+      if (dashboard.majorInternshipComparison && dashboard.majorInternshipComparison.length > 0) {
+        chartData.comparison = {
+          title: '不同专业实习人数对比',
+          data: dashboard.majorInternshipComparison
+        }
+      }
+      }
+    } catch (error) {
+      console.error('加载学院维度统计失败:', error)
+      // 如果加载失败，则显示专业对比
+      if (dashboard.majorInternshipComparison && dashboard.majorInternshipComparison.length > 0) {
+        chartData.comparison = {
+          title: '不同专业实习人数对比',
+          data: dashboard.majorInternshipComparison
+        }
+      }
     }
   } catch (error) {
     console.error('加载学校管理员统计数据失败:', error)
@@ -692,11 +780,43 @@ const loadCollegeLeaderStatistics = async () => {
       ]
     }
     
-    // 加载岗位类型分布统计
+    // 加载实习进度统计
     const params = buildQueryParams()
     try {
+      const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
+      if (progressRes.code === 200 && progressRes.data) {
+        const progressData = progressRes.data
+        if (progressData.pieChartData) {
+          chartData.progress = {
+            data: [
+              progressData.pieChartData.pending,
+              progressData.pieChartData.inProgress,
+              progressData.pieChartData.completed
+            ].filter(item => item && item.value > 0)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('加载实习进度统计失败:', error)
+    }
+    
+    // 加载专业维度统计（用于人数对比）
+    try {
+      const majorRes = await statisticsApi.getMajorStatistics(params)
+      if (majorRes.code === 200 && majorRes.data && majorRes.data.barChartData && majorRes.data.barChartData.length > 0) {
+        chartData.comparison = {
+          title: '不同专业实习人数对比',
+          data: majorRes.data.barChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载专业维度统计失败:', error)
+    }
+    
+    // 加载岗位类型分布统计
+    try {
       const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData && postRes.data.pieChartData.length > 0) {
         chartData.postType = {
           data: postRes.data.pieChartData
         }
@@ -742,6 +862,8 @@ const loadClassTeacherStatistics = async () => {
   try {
     // 加载班主任仪表盘数据
     const dashboardRes = await statisticsApi.getClassTeacherDashboard()
+    
+    // 设置统计卡片（即使API失败也显示默认值，确保用户能看到统计卡片）
     if (dashboardRes.code === 200 && dashboardRes.data) {
       const dashboard = dashboardRes.data
       
@@ -787,10 +909,47 @@ const loadClassTeacherStatistics = async () => {
           data: dashboard.scoreDistribution
         }
       }
+    } else {
+      // API调用失败或返回数据为空，设置默认统计卡片
+      console.warn('班主任仪表盘API返回异常，使用默认值:', dashboardRes)
+      statisticsCards.value = [
+        {
+          key: 'classCount',
+          title: '管理班级数',
+          value: 0,
+          unit: '个',
+          icon: 'User',
+          color: '#409EFF'
+        },
+        {
+          key: 'studentCount',
+          title: '学生总数',
+          value: 0,
+          unit: '人',
+          icon: 'User',
+          color: '#67C23A'
+        },
+        {
+          key: 'postCount',
+          title: '实习岗位数',
+          value: 0,
+          unit: '个',
+          icon: 'Briefcase',
+          color: '#F7BA2A'
+        },
+        {
+          key: 'averageScore',
+          title: '平均评价分数',
+          value: 0,
+          unit: '分',
+          icon: 'DataAnalysis',
+          color: '#E6A23C'
+        }
+      ]
     }
     
     // 继续加载其他数据（学生分数排行、待批阅等）
-    const params = buildQueryParams()
+    const params = await buildQueryParams()
     
     // 加载学生分数排行
     const rankingRes = await statisticsApi.getStudentScoreRanking(params)
@@ -802,6 +961,30 @@ const loadClassTeacherStatistics = async () => {
           color: item.color || '#409EFF'
         }))
       }
+    }
+    
+    // 加载岗位类型分布统计
+    try {
+      const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData && postRes.data.pieChartData.length > 0) {
+        chartData.postType = {
+          data: postRes.data.pieChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载岗位类型分布统计失败:', error)
+    }
+    
+    // 加载评价分数分布统计（柱状图）
+    try {
+      const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
+        chartData.scoreDistribution = {
+          data: scoreRes.data.barChartData
+        }
+      }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
     }
     
     // 加载待批阅统计
@@ -818,7 +1001,7 @@ const loadClassTeacherStatistics = async () => {
 // 企业管理员统计数据
 const loadEnterpriseAdminStatistics = async () => {
   try {
-    const params = buildQueryParams()
+    const params = await buildQueryParams()
     
     // 加载实习进度统计
     const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
@@ -870,24 +1053,45 @@ const loadEnterpriseAdminStatistics = async () => {
       }
     }
     
-    // 加载评价分数统计
+    // 加载评价分数分布统计
+    try {
     const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-    if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData) {
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
       chartData.scoreDistribution = {
         data: scoreRes.data.barChartData
       }
+      }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
     }
     
     // 加载岗位类型分布
+    try {
     const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData && postRes.data.pieChartData.length > 0) {
       chartData.postType = {
         data: postRes.data.pieChartData
       }
     }
+    } catch (error) {
+      console.error('加载岗位类型分布统计失败:', error)
+    }
     
-    // TODO: 加载实习时长统计
-    chartData.duration = null
+    // 加载学生评价分数排行
+    try {
+      const rankingRes = await statisticsApi.getStudentScoreRanking(params)
+      if (rankingRes.code === 200 && rankingRes.data && rankingRes.data.barChartData) {
+        chartData.studentRanking = {
+          data: rankingRes.data.barChartData.map(item => ({
+            name: item.name,
+            value: parseFloat(item.value) || 0,
+            color: item.color || '#409EFF'
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('加载学生评价分数排行失败:', error)
+    }
   } catch (error) {
     console.error('加载企业管理员统计数据失败:', error)
   }
@@ -896,7 +1100,7 @@ const loadEnterpriseAdminStatistics = async () => {
 // 企业导师统计数据
 const loadEnterpriseMentorStatistics = async () => {
   try {
-    const params = buildQueryParams()
+    const params = await buildQueryParams()
     
     // 加载实习进度统计
     const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
@@ -926,6 +1130,14 @@ const loadEnterpriseMentorStatistics = async () => {
           unit: '人',
           icon: 'Document',
           color: '#67C23A'
+        },
+        {
+          key: 'pending',
+          title: '待评价',
+          value: progressData.pendingCount || 0,
+          unit: '人',
+          icon: 'Star',
+          color: '#F7BA2A'
         }
       ]
       
@@ -941,28 +1153,53 @@ const loadEnterpriseMentorStatistics = async () => {
     }
     
     // 加载岗位类型分布
+    try {
     const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
+      if (postRes.code === 200 && postRes.data && postRes.data.pieChartData && postRes.data.pieChartData.length > 0) {
       chartData.postType = {
         data: postRes.data.pieChartData
       }
     }
+    } catch (error) {
+      console.error('加载岗位类型分布统计失败:', error)
+    }
     
-    // 加载实习时长统计
-    const durationRes = await statisticsApi.getInternshipDurationStatistics(params)
-    if (durationRes.code === 200 && durationRes.data && durationRes.data.lineChartData && durationRes.data.lineChartData.length > 0) {
-      chartData.duration = {
-        data: durationRes.data.lineChartData.map(item => ({
-          name: item.month,
-          value: item.averageDays
-        }))
+    // 加载评价分数分布统计
+    try {
+      const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
+      if (scoreRes.code === 200 && scoreRes.data && scoreRes.data.barChartData && scoreRes.data.barChartData.length > 0) {
+        chartData.scoreDistribution = {
+          data: scoreRes.data.barChartData
+        }
       }
+    } catch (error) {
+      console.error('加载评价分数分布统计失败:', error)
+    }
+    
+    // 加载学生评价分数排行
+    try {
+      const rankingRes = await statisticsApi.getStudentScoreRanking(params)
+      if (rankingRes.code === 200 && rankingRes.data && rankingRes.data.barChartData) {
+        chartData.studentRanking = {
+          data: rankingRes.data.barChartData.map(item => ({
+            name: item.name,
+            value: parseFloat(item.value) || 0,
+            color: item.color || '#409EFF'
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('加载学生评价分数排行失败:', error)
     }
     
     // 加载待批阅统计
+    try {
     const pendingRes = await statisticsApi.getPendingReviewStatistics(params)
     if (pendingRes.code === 200 && pendingRes.data) {
       pendingReviewData.value = pendingRes.data
+      }
+    } catch (error) {
+      console.error('加载待批阅统计失败:', error)
     }
   } catch (error) {
     console.error('加载企业导师统计数据失败:', error)
@@ -972,7 +1209,7 @@ const loadEnterpriseMentorStatistics = async () => {
 // 学生统计数据
 const loadStudentStatistics = async () => {
   try {
-    const params = buildQueryParams()
+    const params = await buildQueryParams()
     
     // TODO: 加载学生个人数据
     statisticsCards.value = [

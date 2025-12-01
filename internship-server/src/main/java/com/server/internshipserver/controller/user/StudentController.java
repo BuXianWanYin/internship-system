@@ -120,7 +120,7 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<StudentImportResult> importStudents(
             @ApiParam(value = "Excel文件", required = true) @RequestParam("file") MultipartFile file,
-            @ApiParam(value = "班级ID（可选，如果Excel中未指定班级ID则使用此值）") @RequestParam(required = false) Long classId) {
+            @ApiParam(value = "班级ID（必填，所有导入的学生将使用此班级）") @RequestParam(required = true) Long classId) {
         StudentImportResult result = studentService.importStudentsFromFile(file, classId);
         String message = String.format("导入完成：成功 %d 条，失败 %d 条", 
                 result.getSuccessCount(), result.getFailCount());
