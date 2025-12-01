@@ -10,16 +10,69 @@
       </el-button>
     </template>
 
+    <!-- 搜索栏 -->
+    <div class="search-bar">
+      <el-form :inline="true" :model="searchForm" class="search-form">
+        <el-form-item v-if="activeTab === 'cooperation'" label="学校名称">
+          <el-input
+            v-model="searchForm.schoolName"
+            placeholder="请输入学校名称"
+            clearable
+            style="width: 200px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item v-if="activeTab === 'cooperation'" label="合作类型">
+          <el-select
+            v-model="searchForm.cooperationType"
+            placeholder="请选择合作类型"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="实习基地" value="实习基地" />
+            <el-option label="校企合作" value="校企合作" />
+            <el-option label="人才培养" value="人才培养" />
+            <el-option label="科研合作" value="科研合作" />
+            <el-option label="其他" value="其他" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="activeTab === 'apply'" label="学校名称">
+          <el-input
+            v-model="searchForm.schoolName"
+            placeholder="请输入学校名称"
+            clearable
+            style="width: 200px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item v-if="activeTab === 'apply'" label="学校代码">
+          <el-input
+            v-model="searchForm.schoolCode"
+            placeholder="请输入学校代码"
+            clearable
+            style="width: 150px"
+            @keyup.enter="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
     <!-- 标签页 -->
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="已建立合作" name="cooperation">
         <el-table
           v-loading="loading"
-          :data="cooperationList"
+          :data="filteredCooperationList"
           stripe
           style="width: 100%"
           :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+          empty-text="暂无数据"
         >
+          <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="schoolName" label="学校名称" min-width="200" />
           <el-table-column prop="cooperationType" label="合作类型" width="150" />
           <el-table-column label="合作时间" width="280">
@@ -48,35 +101,30 @@
       <el-tab-pane label="合作申请" name="apply">
         <el-table
           v-loading="loading"
-          :data="applyList"
+          :data="filteredSchoolList"
           stripe
           style="width: 100%"
           :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+          empty-text="暂无数据"
         >
+          <el-table-column type="index" label="序号" width="60" align="center" />
           <el-table-column prop="schoolName" label="学校名称" min-width="200" />
-          <el-table-column prop="cooperationType" label="合作类型" width="150" />
-          <el-table-column label="合作时间" width="280">
+          <el-table-column prop="schoolCode" label="学校代码" width="150" />
+          <el-table-column prop="address" label="地址" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="contactPerson" label="负责人" width="120">
             <template #default="{ row }">
-              <div>{{ formatDateTime(row.startTime) }} 至 {{ formatDateTime(row.endTime) }}</div>
+              {{ row.contactPerson || row.managerName || '-' }}
             </template>
           </el-table-column>
-          <el-table-column prop="applyStatus" label="申请状态" width="100" align="center">
+          <el-table-column prop="contactPhone" label="联系电话" width="150">
             <template #default="{ row }">
-              <el-tag :type="getApplyStatusType(row.applyStatus)" size="small">
-                {{ getApplyStatusText(row.applyStatus) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="auditOpinion" label="审核意见" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="createTime" label="申请时间" width="180">
-            <template #default="{ row }">
-              {{ formatDateTime(row.createTime) }}
+              {{ row.contactPhone || row.managerPhone || '-' }}
             </template>
           </el-table-column>
           <el-table-column label="操作" width="150" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="handleViewApplyDetail(row)">
-                查看详情
+              <el-button link type="primary" size="small" @click="handleApplyToSchool(row)">
+                申请合作
               </el-button>
             </template>
           </el-table-column>
@@ -162,13 +210,50 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看合作详情对话框 -->
+    <el-dialog
+      v-model="cooperationDetailDialogVisible"
+      title="合作详情"
+      width="700px"
+      append-to-body
+    >
+      <el-descriptions :column="2" border v-if="currentCooperation">
+        <el-descriptions-item label="学校名称" :span="2">
+          {{ currentCooperation.schoolName || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="合作类型">
+          {{ currentCooperation.cooperationType || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="合作状态">
+          <el-tag :type="currentCooperation.cooperationStatus === 1 ? 'success' : 'info'" size="small">
+            {{ currentCooperation.cooperationStatus === 1 ? '进行中' : '已结束' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="合作开始时间" :span="2">
+          {{ formatDateTime(currentCooperation.startTime) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="合作结束时间" :span="2">
+          {{ formatDateTime(currentCooperation.endTime) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="合作描述" :span="2">
+          {{ currentCooperation.cooperationDesc || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">
+          {{ formatDateTime(currentCooperation.createTime) }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="cooperationDetailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </PageLayout>
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { cooperationApplyApi } from '@/api/cooperationApply'
 import { formatDateTime } from '@/utils/dateUtils'
 
@@ -185,6 +270,14 @@ export default {
     const cooperationList = ref([])
     const applyList = ref([])
     const schoolList = ref([])
+    const cooperationDetailDialogVisible = ref(false)
+    const currentCooperation = ref(null)
+
+    const searchForm = reactive({
+      schoolName: '',
+      schoolCode: '',
+      cooperationType: ''
+    })
 
     const applyForm = reactive({
       schoolId: null,
@@ -219,7 +312,7 @@ export default {
         if (activeTab.value === 'cooperation') {
           await loadCooperationList()
         } else {
-          await loadApplyList()
+          await loadSchoolList()
         }
       } catch (error) {
         ElMessage.error('加载数据失败：' + (error.message || '未知错误'))
@@ -274,10 +367,55 @@ export default {
 
     // 标签页切换
     const handleTabChange = () => {
+      // 重置搜索表单
+      searchForm.schoolName = ''
+      searchForm.schoolCode = ''
+      searchForm.cooperationType = ''
       loadData()
     }
 
-    // 申请合作
+    // 搜索
+    const handleSearch = () => {
+      // 前端过滤，无需重新加载数据
+    }
+
+    // 重置
+    const handleReset = () => {
+      searchForm.schoolName = ''
+      searchForm.schoolCode = ''
+      searchForm.cooperationType = ''
+    }
+
+    // 过滤数据
+    const filteredCooperationList = computed(() => {
+      let data = cooperationList.value
+      if (searchForm.schoolName) {
+        data = data.filter(item => 
+          item.schoolName && item.schoolName.includes(searchForm.schoolName)
+        )
+      }
+      if (searchForm.cooperationType) {
+        data = data.filter(item => item.cooperationType === searchForm.cooperationType)
+      }
+      return data
+    })
+
+    const filteredSchoolList = computed(() => {
+      let data = schoolList.value
+      if (searchForm.schoolName) {
+        data = data.filter(item => 
+          item.schoolName && item.schoolName.includes(searchForm.schoolName)
+        )
+      }
+      if (searchForm.schoolCode) {
+        data = data.filter(item => 
+          item.schoolCode && item.schoolCode.includes(searchForm.schoolCode)
+        )
+      }
+      return data
+    })
+
+    // 申请合作（从顶部按钮点击）
     const handleApply = () => {
       applyForm.schoolId = null
       applyForm.cooperationType = ''
@@ -285,6 +423,16 @@ export default {
       applyForm.endTime = null
       applyForm.cooperationDesc = ''
       loadSchoolList()
+      applyDialogVisible.value = true
+    }
+    
+    // 申请合作（从表格行点击，已预选学校）
+    const handleApplyToSchool = (school) => {
+      applyForm.schoolId = school.schoolId
+      applyForm.cooperationType = ''
+      applyForm.startTime = null
+      applyForm.endTime = null
+      applyForm.cooperationDesc = ''
       applyDialogVisible.value = true
     }
 
@@ -317,7 +465,8 @@ export default {
 
     // 查看详情
     const handleViewDetail = (row) => {
-      ElMessage.info('查看详情功能待开发')
+      currentCooperation.value = row
+      cooperationDetailDialogVisible.value = true
     }
 
     // 查看申请详情
@@ -363,18 +512,34 @@ export default {
       applyFormRules,
       handleTabChange,
       handleApply,
+      handleApplyToSchool,
       handleSubmitApply,
       handleViewDetail,
-      handleViewApplyDetail,
-      getApplyStatusType,
-      getApplyStatusText,
+      cooperationDetailDialogVisible,
+      currentCooperation,
+      searchForm,
+      handleSearch,
+      handleReset,
+      filteredCooperationList,
+      filteredSchoolList,
       formatDateTime,
-      Plus
+      Plus,
+      Search,
+      Refresh
     }
   }
 }
 </script>
 
 <style scoped>
+.search-bar {
+  margin-bottom: 20px;
+}
+
+.search-form {
+  background: #f5f7fa;
+  padding: 20px;
+  border-radius: 8px;
+}
 </style>
 

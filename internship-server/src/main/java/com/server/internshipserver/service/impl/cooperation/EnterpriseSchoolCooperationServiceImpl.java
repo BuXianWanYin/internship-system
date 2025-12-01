@@ -242,15 +242,18 @@ public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<Enterpri
         wrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, enterpriseId)
                .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
         
-        // 数据权限过滤：学校管理员只能看到自己学校的合作关系
+        // 数据权限过滤：
+        // 1. 系统管理员：不需要过滤
+        // 2. 企业管理员：查询自己企业的合作关系，不需要按学校过滤
+        // 3. 学校管理员：只能看到自己学校的合作关系
         if (!dataPermissionUtil.isSystemAdmin()) {
+            // 检查是否为学校管理员（企业管理员不需要学校过滤）
             Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (currentUserSchoolId != null) {
+                // 是学校管理员，按学校过滤
                 wrapper.eq(EnterpriseSchoolCooperation::getSchoolId, currentUserSchoolId);
-            } else {
-                // 如果没有学校ID，返回空列表
-                return Collections.emptyList();
             }
+            // 如果是企业管理员（没有学校ID），不需要过滤，可以查看自己企业的所有合作关系
         }
         
         wrapper.orderByDesc(EnterpriseSchoolCooperation::getCreateTime);

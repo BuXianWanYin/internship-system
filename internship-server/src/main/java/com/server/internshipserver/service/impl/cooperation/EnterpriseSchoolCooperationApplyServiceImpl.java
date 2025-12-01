@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.CooperationStatus;
+import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
@@ -62,14 +63,26 @@ public class EnterpriseSchoolCooperationApplyServiceImpl extends ServiceImpl<Ent
             throw new BusinessException("合作描述不能为空");
         }
         
-        // 检查是否已存在合作关系
-        if (cooperationService.hasCooperation(apply.getEnterpriseId(), apply.getSchoolId())) {
-            throw new BusinessException("该企业已与该学校建立合作关系");
+        // 检查是否已有相同合作类型的待审核或已通过的申请
+        LambdaQueryWrapper<EnterpriseSchoolCooperationApply> checkWrapper = QueryWrapperUtil.buildNotDeletedWrapper(EnterpriseSchoolCooperationApply::getDeleteFlag);
+        checkWrapper.eq(EnterpriseSchoolCooperationApply::getEnterpriseId, apply.getEnterpriseId())
+                   .eq(EnterpriseSchoolCooperationApply::getSchoolId, apply.getSchoolId())
+                   .eq(EnterpriseSchoolCooperationApply::getCooperationType, apply.getCooperationType())
+                   .in(EnterpriseSchoolCooperationApply::getApplyStatus, 
+                       AuditStatus.PENDING.getCode(), AuditStatus.APPROVED.getCode());
+        if (this.count(checkWrapper) > 0) {
+            throw new BusinessException("该企业已向该学校提交过相同类型的合作申请，请勿重复申请");
         }
         
-        // 检查是否已有待审核或已通过的申请
-        if (hasApplied(apply.getEnterpriseId(), apply.getSchoolId())) {
-            throw new BusinessException("该企业已向该学校提交过合作申请，请勿重复申请");
+        // 检查是否已有相同合作类型的合作关系
+        LambdaQueryWrapper<EnterpriseSchoolCooperation> cooperationWrapper = new LambdaQueryWrapper<>();
+        cooperationWrapper.eq(EnterpriseSchoolCooperation::getEnterpriseId, apply.getEnterpriseId())
+                         .eq(EnterpriseSchoolCooperation::getSchoolId, apply.getSchoolId())
+                         .eq(EnterpriseSchoolCooperation::getCooperationType, apply.getCooperationType())
+                         .eq(EnterpriseSchoolCooperation::getCooperationStatus, CooperationStatus.IN_PROGRESS.getCode())
+                         .eq(EnterpriseSchoolCooperation::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        if (cooperationService.count(cooperationWrapper) > 0) {
+            throw new BusinessException("该企业已与该学校建立相同类型的合作关系");
         }
         
         // 设置申请状态为待审核

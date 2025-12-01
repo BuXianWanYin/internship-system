@@ -370,7 +370,15 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
         wrapper.eq(School::getStatus, UserStatus.ENABLED.getCode()); // 只返回启用的学校
         wrapper.orderByAsc(School::getSchoolName); // 按学校名称排序
         
-        return this.list(wrapper);
+        List<School> schools = this.list(wrapper);
+        
+        // 填充 managerName 和 managerPhone（从 contactPerson 和 contactPhone 映射）
+        for (School school : schools) {
+            school.setManagerName(school.getContactPerson());
+            school.setManagerPhone(school.getContactPhone());
+        }
+        
+        return schools;
     }
 }
 

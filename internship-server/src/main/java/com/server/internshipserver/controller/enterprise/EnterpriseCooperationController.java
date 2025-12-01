@@ -68,35 +68,13 @@ public class EnterpriseCooperationController {
         return Result.success("查询成功", cooperationService.getCooperationListByEnterpriseId(currentEnterpriseId));
     }
     
-    @ApiOperation("获取可申请合作的学校列表（排除已合作和已申请的学校）")
+    @ApiOperation("获取所有学校列表（用于合作申请）")
     @GetMapping("/school/list")
     public Result<List<School>> getAvailableSchoolList() {
-        // 获取当前登录企业的ID
-        Long currentEnterpriseId = enterpriseService.getEnterpriseByUserId(userService.getCurrentUser().getUserId()).getEnterpriseId();
-        
-        // 获取已合作的学校ID列表
-        List<Long> cooperationSchoolIds = cooperationService.getCooperationSchoolIdsByEnterpriseId(currentEnterpriseId);
-        
-        // 获取已申请的学校ID列表（待审核或已通过）
-        List<EnterpriseSchoolCooperationApply> applies = applyService.getApplyListByEnterpriseId(currentEnterpriseId);
-        List<Long> appliedSchoolIds = applies.stream()
-            .filter(a -> a.getApplyStatus() == 0 || a.getApplyStatus() == 1) // 待审核或已通过
-            .map(EnterpriseSchoolCooperationApply::getSchoolId)
-            .distinct()
-            .collect(java.util.stream.Collectors.toList());
-        
-        // 合并已合作和已申请的学校ID
-        cooperationSchoolIds.addAll(appliedSchoolIds);
-        
         // 查询所有学校（公开列表，不进行权限过滤）
         List<School> allSchools = schoolService.getPublicSchoolList();
         
-        // 排除已合作和已申请的学校
-        List<School> availableSchools = allSchools.stream()
-            .filter(school -> !cooperationSchoolIds.contains(school.getSchoolId()))
-            .collect(java.util.stream.Collectors.toList());
-        
-        return Result.success("查询成功", availableSchools);
+        return Result.success("查询成功", allSchools);
     }
 }
 
