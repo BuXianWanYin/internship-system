@@ -10,6 +10,10 @@ import com.server.internshipserver.domain.statistics.dto.PostTypeDistributionSta
 import com.server.internshipserver.domain.statistics.dto.StatisticsQueryDTO;
 import com.server.internshipserver.domain.statistics.dto.StudentScoreRankingDTO;
 import com.server.internshipserver.domain.statistics.dto.PendingReviewStatisticsDTO;
+import com.server.internshipserver.domain.statistics.dto.SystemAdminDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.SchoolAdminDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.CollegeLeaderDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.ClassTeacherDashboardDTO;
 
 /**
  * 数据统计Service接口
@@ -78,5 +82,29 @@ public interface StatisticsService {
      * @return 待批阅统计数据
      */
     PendingReviewStatisticsDTO getPendingReviewStatistics(StatisticsQueryDTO queryDTO);
+    
+    /**
+     * 获取系统管理员仪表盘统计数据
+     * @return 系统管理员仪表盘统计数据
+     */
+    SystemAdminDashboardDTO getSystemAdminDashboard();
+    
+    /**
+     * 获取学校管理员仪表盘统计数据
+     * @return 学校管理员仪表盘统计数据
+     */
+    SchoolAdminDashboardDTO getSchoolAdminDashboard();
+    
+    /**
+     * 获取学院负责人仪表盘统计数据
+     * @return 学院负责人仪表盘统计数据
+     */
+    CollegeLeaderDashboardDTO getCollegeLeaderDashboard();
+    
+    /**
+     * 获取班主任仪表盘统计数据
+     * @return 班主任仪表盘统计数据
+     */
+    ClassTeacherDashboardDTO getClassTeacherDashboard();
 }
 

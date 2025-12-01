@@ -30,7 +30,7 @@
       <!-- 右侧：图表区域 -->
       <div class="main-right">
         <div class="charts-grid">
-        <!-- 饼图：实习进度统计 -->
+        <!-- 饼图：实习进度统计/用户角色分布/性别分布等 -->
         <el-card
           v-if="hasChart('progress')"
           class="chart-card"
@@ -38,7 +38,7 @@
         >
           <template #header>
             <div class="chart-header">
-              <span class="chart-title">实习进度统计</span>
+              <span class="chart-title">{{ getProgressChartTitle }}</span>
               <el-icon class="chart-icon" :size="16">
                 <PieChartIcon />
               </el-icon>
@@ -399,13 +399,35 @@ const chartData = reactive({
 // 待批阅数据
 const pendingReviewData = ref(null)
 
+// 获取进度图表的标题
+const getProgressChartTitle = computed(() => {
+  if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+    return '用户角色分布'
+  } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+    return '学生性别分布'
+  } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
+    return '评价分数分布'
+  }
+  return '实习进度统计'
+})
+
 // 判断是否有某个图表
 const hasChart = (key) => {
   if (key === 'progress') {
-    return hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
+    if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+      return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
+    } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+      return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
+    } else if (hasRole(['ROLE_CLASS_TEACHER'])) {
+      return chartData.progress && chartData.progress.data && chartData.progress.data.length > 0
+    }
+    return hasRole(['ROLE_COLLEGE_LEADER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
   }
   if (key === 'postType') {
-    return hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
+    if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+      return chartData.postType && chartData.postType.data && chartData.postType.data.length > 0
+    }
+    return hasRole(['ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
   }
   if (key === 'scoreDistribution') {
     return hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
@@ -414,7 +436,12 @@ const hasChart = (key) => {
     return hasRole(['ROLE_CLASS_TEACHER'])
   }
   if (key === 'comparison') {
-    return hasRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+    if (hasRole(['ROLE_SYSTEM_ADMIN'])) {
+      return chartData.comparison && chartData.comparison.data && chartData.comparison.data.length > 0
+    } else if (hasRole(['ROLE_SCHOOL_ADMIN'])) {
+      return chartData.comparison && chartData.comparison.data && chartData.comparison.data.length > 0
+    }
+    return hasRole(['ROLE_COLLEGE_LEADER'])
   }
   if (key === 'duration') {
     return hasRole(['ROLE_SCHOOL_ADMIN', 'ROLE_ENTERPRISE_ADMIN', 'ROLE_ENTERPRISE_MENTOR'])
@@ -460,330 +487,260 @@ const buildQueryParams = () => {
 // 系统管理员统计数据
 const loadSystemAdminStatistics = async () => {
   try {
-    const params = buildQueryParams()
-    
-    // 加载实习进度统计
-    const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
-    if (progressRes.code === 200 && progressRes.data) {
-      const progressData = progressRes.data
+    // 加载系统管理员仪表盘数据
+    const dashboardRes = await statisticsApi.getSystemAdminDashboard()
+    if (dashboardRes.code === 200 && dashboardRes.data) {
+      const dashboard = dashboardRes.data
+      
+      // 设置统计卡片
       statisticsCards.value = [
         {
-          key: 'totalStudents',
-          title: '总学生数',
-          value: progressData.totalCount || 0,
+          key: 'schoolCount',
+          title: '学校总数',
+          value: dashboard.schoolCount || 0,
+          unit: '所',
+          icon: 'School',
+          color: '#409EFF'
+        },
+        {
+          key: 'userCount',
+          title: '用户总数',
+          value: dashboard.userCount || 0,
           unit: '人',
           icon: 'User',
-          color: '#409EFF'
-        },
-        {
-          key: 'inProgress',
-          title: '进行中',
-          value: progressData.inProgressCount || 0,
-          unit: '人',
-          icon: 'Clock',
-          color: '#409EFF'
-        },
-        {
-          key: 'completed',
-          title: '已完成',
-          value: progressData.completedCount || 0,
-          unit: '人',
-          icon: 'Document',
           color: '#67C23A'
         },
         {
-          key: 'pending',
-          title: '待开始',
-          value: progressData.pendingCount || 0,
+          key: 'postCount',
+          title: '实习岗位数',
+          value: dashboard.postCount || 0,
+          unit: '个',
+          icon: 'Briefcase',
+          color: '#F7BA2A'
+        },
+        {
+          key: 'internshipStudentCount',
+          title: '实习学生数',
+          value: dashboard.internshipStudentCount || 0,
           unit: '人',
-          icon: 'Clock',
-          color: '#C0C4CC'
+          icon: 'User',
+          color: '#E6A23C'
         }
       ]
       
-      // 设置饼图数据
-      if (progressData.pieChartData) {
+      // 设置用户角色分布饼图
+      if (dashboard.userRoleDistribution && dashboard.userRoleDistribution.length > 0) {
         chartData.progress = {
-          data: [
-            progressData.pieChartData.pending,
-            progressData.pieChartData.inProgress,
-            progressData.pieChartData.completed
-          ].filter(item => item && item.value > 0)
+          data: dashboard.userRoleDistribution
+        }
+      }
+      
+      // 设置各学校实习人数对比柱状图
+      if (dashboard.schoolInternshipComparison && dashboard.schoolInternshipComparison.length > 0) {
+        chartData.comparison = {
+          title: '各学校实习人数对比',
+          data: dashboard.schoolInternshipComparison
+        }
+      }
+      
+      // 设置实习岗位类型分布饼图
+      if (dashboard.postTypeDistribution && dashboard.postTypeDistribution.length > 0) {
+        chartData.postType = {
+          data: dashboard.postTypeDistribution
         }
       }
     }
-    
-    // 加载评价分数统计
-    const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-    if (scoreRes.code === 200 && scoreRes.data) {
-      const scoreData = scoreRes.data
-      if (scoreData.barChartData) {
-        chartData.scoreDistribution = {
-          data: scoreData.barChartData
-        }
-      }
-    }
-    
-    // 加载岗位类型分布统计
-    const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
-      chartData.postType = {
-        data: postRes.data.pieChartData
-      }
-    }
-    
-    // TODO: 加载各学校实习人数对比（需要后端实现）
-    chartData.comparison = null
   } catch (error) {
     console.error('加载系统管理员统计数据失败:', error)
+    ElMessage.error('加载仪表盘数据失败')
   }
 }
 
 // 学校管理员统计数据
 const loadSchoolAdminStatistics = async () => {
   try {
-    const params = buildQueryParams()
-    
-    // 加载实习进度统计
-    const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
-    if (progressRes.code === 200 && progressRes.data) {
-      const progressData = progressRes.data
+    // 加载学校管理员仪表盘数据
+    const dashboardRes = await statisticsApi.getSchoolAdminDashboard()
+    if (dashboardRes.code === 200 && dashboardRes.data) {
+      const dashboard = dashboardRes.data
+      
+      // 设置统计卡片
       statisticsCards.value = [
         {
-          key: 'totalStudents',
-          title: '本学校实习学生数',
-          value: progressData.totalCount || 0,
+          key: 'collegeCount',
+          title: '学院总数',
+          value: dashboard.collegeCount || 0,
+          unit: '个',
+          icon: 'OfficeBuilding',
+          color: '#409EFF'
+        },
+        {
+          key: 'majorCount',
+          title: '专业总数',
+          value: dashboard.majorCount || 0,
+          unit: '个',
+          icon: 'Reading',
+          color: '#67C23A'
+        },
+        {
+          key: 'studentCount',
+          title: '学生总数',
+          value: dashboard.studentCount || 0,
+          unit: '人',
+          icon: 'User',
+          color: '#F7BA2A'
+        },
+        {
+          key: 'teacherCount',
+          title: '教师总数',
+          value: dashboard.teacherCount || 0,
+          unit: '人',
+          icon: 'UserFilled',
+          color: '#E6A23C'
+        },
+        {
+          key: 'maleCount',
+          title: '男生人数',
+          value: dashboard.maleCount || 0,
           unit: '人',
           icon: 'User',
           color: '#409EFF'
         },
         {
-          key: 'inProgress',
-          title: '进行中',
-          value: progressData.inProgressCount || 0,
+          key: 'femaleCount',
+          title: '女生人数',
+          value: dashboard.femaleCount || 0,
           unit: '人',
-          icon: 'Clock',
-          color: '#409EFF'
-        },
-        {
-          key: 'completed',
-          title: '已完成',
-          value: progressData.completedCount || 0,
-          unit: '人',
-          icon: 'Document',
-          color: '#67C23A'
+          icon: 'User',
+          color: '#F56C6C'
         }
       ]
       
-      if (progressData.pieChartData) {
-        chartData.progress = {
-          data: [
-            progressData.pieChartData.pending,
-            progressData.pieChartData.inProgress,
-            progressData.pieChartData.completed
-          ].filter(item => item && item.value > 0)
+      // 设置不同专业实习人数对比柱状图
+      if (dashboard.majorInternshipComparison && dashboard.majorInternshipComparison.length > 0) {
+        chartData.comparison = {
+          title: '不同专业实习人数对比',
+          data: dashboard.majorInternshipComparison
         }
       }
-    }
-    
-    // 加载评价分数统计
-    const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-    if (scoreRes.code === 200 && scoreRes.data) {
-      const scoreData = scoreRes.data
-      statisticsCards.value.push({
-        key: 'averageScore',
-        title: '平均评价分数',
-        value: scoreData.averageScore || 0,
-        unit: '分',
-        icon: 'DataAnalysis',
-        color: '#409EFF'
-      })
       
-      if (scoreData.barChartData) {
-        chartData.scoreDistribution = {
-          data: scoreData.barChartData
+      // 设置学生性别分布饼图
+      if (dashboard.genderDistribution && dashboard.genderDistribution.length > 0) {
+        chartData.progress = {
+          data: dashboard.genderDistribution
         }
       }
     }
-    
-    // 加载专业维度统计（各学院实习人数对比）
-    const majorRes = await statisticsApi.getMajorStatistics(params)
-    if (majorRes.code === 200 && majorRes.data && majorRes.data.barChartData) {
-      chartData.comparison = {
-        title: '各专业实习人数对比',
-        data: majorRes.data.barChartData
-      }
-    }
-    
-    // 加载岗位类型分布
-    const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
-      chartData.postType = {
-        data: postRes.data.pieChartData
-      }
-    }
-    
-    // TODO: 加载实习时长分布（按月份）
-    chartData.duration = null
   } catch (error) {
     console.error('加载学校管理员统计数据失败:', error)
+    ElMessage.error('加载仪表盘数据失败')
   }
 }
 
 // 学院负责人统计数据
 const loadCollegeLeaderStatistics = async () => {
   try {
-    const params = buildQueryParams()
-    
-    // 加载实习进度统计
-    const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
-    if (progressRes.code === 200 && progressRes.data) {
-      const progressData = progressRes.data
+    // 加载学院负责人仪表盘数据
+    const dashboardRes = await statisticsApi.getCollegeLeaderDashboard()
+    if (dashboardRes.code === 200 && dashboardRes.data) {
+      const dashboard = dashboardRes.data
+      
+      // 设置统计卡片
       statisticsCards.value = [
         {
-          key: 'totalStudents',
-          title: '本院实习学生数',
-          value: progressData.totalCount || 0,
+          key: 'majorCount',
+          title: '专业总数',
+          value: dashboard.majorCount || 0,
+          unit: '个',
+          icon: 'Reading',
+          color: '#409EFF'
+        },
+        {
+          key: 'studentCount',
+          title: '学生总数',
+          value: dashboard.studentCount || 0,
           unit: '人',
           icon: 'User',
-          color: '#409EFF'
-        },
-        {
-          key: 'inProgress',
-          title: '进行中',
-          value: progressData.inProgressCount || 0,
-          unit: '人',
-          icon: 'Clock',
-          color: '#409EFF'
-        },
-        {
-          key: 'completed',
-          title: '已完成',
-          value: progressData.completedCount || 0,
-          unit: '人',
-          icon: 'Document',
           color: '#67C23A'
+        },
+        {
+          key: 'teacherCount',
+          title: '教师总数',
+          value: dashboard.teacherCount || 0,
+          unit: '人',
+          icon: 'UserFilled',
+          color: '#F7BA2A'
+        },
+        {
+          key: 'classCount',
+          title: '班级总数',
+          value: dashboard.classCount || 0,
+          unit: '个',
+          icon: 'User',
+          color: '#E6A23C'
         }
       ]
-      
-      if (progressData.pieChartData) {
-        chartData.progress = {
-          data: [
-            progressData.pieChartData.pending,
-            progressData.pieChartData.inProgress,
-            progressData.pieChartData.completed
-          ].filter(item => item && item.value > 0)
-        }
-      }
-    }
-    
-    // 加载评价分数统计
-    const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-    if (scoreRes.code === 200 && scoreRes.data) {
-      const scoreData = scoreRes.data
-      statisticsCards.value.push({
-        key: 'averageScore',
-        title: '平均评价分数',
-        value: scoreData.averageScore || 0,
-        unit: '分',
-        icon: 'DataAnalysis',
-        color: '#409EFF'
-      })
-      
-      if (scoreData.barChartData) {
-        chartData.scoreDistribution = {
-          data: scoreData.barChartData
-        }
-      }
-    }
-    
-    // 加载专业维度统计
-    const majorRes = await statisticsApi.getMajorStatistics(params)
-    if (majorRes.code === 200 && majorRes.data && majorRes.data.barChartData) {
-      chartData.comparison = {
-        title: '各专业实习人数对比',
-        data: majorRes.data.barChartData
-      }
-    }
-    
-    // 加载岗位类型分布
-    const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
-      chartData.postType = {
-        data: postRes.data.pieChartData
-      }
     }
   } catch (error) {
     console.error('加载学院负责人统计数据失败:', error)
+    ElMessage.error('加载仪表盘数据失败')
   }
 }
 
 // 班主任统计数据
 const loadClassTeacherStatistics = async () => {
   try {
-    const params = buildQueryParams()
-    
-    // 加载实习进度统计
-    const progressRes = await statisticsApi.getInternshipProgressStatistics(params)
-    if (progressRes.code === 200 && progressRes.data) {
-      const progressData = progressRes.data
+    // 加载班主任仪表盘数据
+    const dashboardRes = await statisticsApi.getClassTeacherDashboard()
+    if (dashboardRes.code === 200 && dashboardRes.data) {
+      const dashboard = dashboardRes.data
+      
+      // 设置统计卡片
       statisticsCards.value = [
         {
-          key: 'totalStudents',
-          title: '本班级实习学生数',
-          value: progressData.totalCount || 0,
-          unit: '人',
+          key: 'classCount',
+          title: '管理班级数',
+          value: dashboard.classCount || 0,
+          unit: '个',
           icon: 'User',
           color: '#409EFF'
         },
         {
-          key: 'inProgress',
-          title: '进行中',
-          value: progressData.inProgressCount || 0,
+          key: 'studentCount',
+          title: '学生总数',
+          value: dashboard.studentCount || 0,
           unit: '人',
-          icon: 'Clock',
-          color: '#409EFF'
+          icon: 'User',
+          color: '#67C23A'
         },
         {
-          key: 'completed',
-          title: '已完成',
-          value: progressData.completedCount || 0,
-          unit: '人',
-          icon: 'Document',
-          color: '#67C23A'
+          key: 'postCount',
+          title: '实习岗位数',
+          value: dashboard.postCount || 0,
+          unit: '个',
+          icon: 'Briefcase',
+          color: '#F7BA2A'
+        },
+        {
+          key: 'averageScore',
+          title: '平均评价分数',
+          value: dashboard.averageScore || 0,
+          unit: '分',
+          icon: 'DataAnalysis',
+          color: '#E6A23C'
         }
       ]
       
-      if (progressData.pieChartData) {
+      // 设置评价分数分布饼图
+      if (dashboard.scoreDistribution && dashboard.scoreDistribution.length > 0) {
         chartData.progress = {
-          data: [
-            progressData.pieChartData.pending,
-            progressData.pieChartData.inProgress,
-            progressData.pieChartData.completed
-          ].filter(item => item && item.value > 0)
+          data: dashboard.scoreDistribution
         }
       }
     }
     
-    // 加载评价分数统计
-    const scoreRes = await statisticsApi.getEvaluationScoreStatistics(params)
-    if (scoreRes.code === 200 && scoreRes.data) {
-      const scoreData = scoreRes.data
-      statisticsCards.value.push({
-        key: 'averageScore',
-        title: '平均评价分数',
-        value: scoreData.averageScore || 0,
-        unit: '分',
-        icon: 'DataAnalysis',
-        color: '#409EFF'
-      })
-      
-      if (scoreData.barChartData) {
-        chartData.scoreDistribution = {
-          data: scoreData.barChartData
-        }
-      }
-    }
+    // 继续加载其他数据（学生分数排行、待批阅等）
+    const params = buildQueryParams()
     
     // 加载学生分数排行
     const rankingRes = await statisticsApi.getStudentScoreRanking(params)
@@ -797,14 +754,6 @@ const loadClassTeacherStatistics = async () => {
       }
     }
     
-    // 加载岗位类型分布
-    const postRes = await statisticsApi.getPostTypeDistributionStatistics(params)
-    if (postRes.code === 200 && postRes.data && postRes.data.pieChartData) {
-      chartData.postType = {
-        data: postRes.data.pieChartData
-      }
-    }
-    
     // 加载待批阅统计
     const pendingRes = await statisticsApi.getPendingReviewStatistics(params)
     if (pendingRes.code === 200 && pendingRes.data) {
@@ -812,6 +761,7 @@ const loadClassTeacherStatistics = async () => {
     }
   } catch (error) {
     console.error('加载班主任统计数据失败:', error)
+    ElMessage.error('加载仪表盘数据失败')
   }
 }
 

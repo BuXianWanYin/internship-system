@@ -687,6 +687,131 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     }
     
     @Override
+    public List<Student> getAllStudents(StudentQueryDTO queryDTO) {
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
+        
+        // 条件查询
+        if (queryDTO != null) {
+            if (StringUtils.hasText(queryDTO.getStudentNo())) {
+                wrapper.like(Student::getStudentNo, queryDTO.getStudentNo());
+            }
+            if (queryDTO.getClassId() != null) {
+                wrapper.eq(Student::getClassId, queryDTO.getClassId());
+            }
+            if (queryDTO.getMajorId() != null) {
+                wrapper.eq(Student::getMajorId, queryDTO.getMajorId());
+            }
+            if (queryDTO.getCollegeId() != null) {
+                wrapper.eq(Student::getCollegeId, queryDTO.getCollegeId());
+            }
+            if (queryDTO.getSchoolId() != null) {
+                wrapper.eq(Student::getSchoolId, queryDTO.getSchoolId());
+            }
+            if (queryDTO.getStatus() != null) {
+                wrapper.eq(Student::getStatus, queryDTO.getStatus());
+            }
+            if (queryDTO.getEnrollmentYear() != null) {
+                wrapper.eq(Student::getEnrollmentYear, queryDTO.getEnrollmentYear());
+            }
+        }
+        
+        // 数据权限过滤：根据用户角色自动添加查询条件
+        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        Long currentUserId = dataPermissionUtil.getCurrentUserId();
+        
+        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 班主任：只能查看管理的班级的学生（支持多班级）
+            wrapper.in(Student::getClassId, currentUserClassIds);
+        } else if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院的学生
+            wrapper.eq(Student::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的学生
+            wrapper.eq(Student::getSchoolId, currentUserSchoolId);
+        } else if (currentUserId != null && !dataPermissionUtil.isSystemAdmin()) {
+            // 学生：只能查看自己的信息
+            if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
+                wrapper.eq(Student::getUserId, currentUserId);
+            }
+        }
+        // 系统管理员不添加限制
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Student::getCreateTime);
+        
+        List<Student> students = this.list(wrapper);
+        
+        // 填充关联信息
+        if (students != null && !students.isEmpty()) {
+            for (Student student : students) {
+                // 填充用户信息
+                if (student.getUserId() != null) {
+                    UserInfo user = userService.getById(student.getUserId());
+                    if (user != null) {
+                        student.setRealName(user.getRealName());
+                        student.setPhone(user.getPhone());
+                        student.setEmail(user.getEmail());
+                    }
+                }
+                
+                // 填充班级信息
+                if (student.getClassId() != null) {
+                    Class classInfo = classService.getById(student.getClassId());
+                    if (classInfo != null) {
+                        student.setClassName(classInfo.getClassName());
+                    }
+                }
+                
+                // 填充专业信息
+                if (student.getMajorId() != null) {
+                    Major major = majorService.getById(student.getMajorId());
+                    if (major != null) {
+                        student.setMajorName(major.getMajorName());
+                    }
+                }
+                
+                // 填充学院信息
+                if (student.getCollegeId() != null) {
+                    College college = collegeService.getById(student.getCollegeId());
+                    if (college != null) {
+                        student.setCollegeName(college.getCollegeName());
+                    }
+                }
+                
+                // 填充企业信息
+                if (student.getCurrentEnterpriseId() != null) {
+                    Enterprise enterprise = enterpriseMapper.selectById(student.getCurrentEnterpriseId());
+                    if (enterprise != null) {
+                        student.setCurrentEnterpriseName(enterprise.getEnterpriseName());
+                    }
+                }
+                
+                // 转换状态文字
+                if (student.getStatus() != null) {
+                    student.setStatusText(student.getStatus() == 1 ? "已审核" : "待审核");
+                } else {
+                    student.setStatusText("");
+                }
+                
+                // 转换创建时间
+                if (student.getCreateTime() != null) {
+                    student.setCreateTimeText(student.getCreateTime().format(
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                } else {
+                    student.setCreateTimeText("");
+                }
+            }
+        }
+        
+        return students;
+    }
+    
+    @Override
     public List<Integer> getDistinctEnrollmentYears() {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(Student::getEnrollmentYear)

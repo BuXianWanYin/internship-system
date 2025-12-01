@@ -70,6 +70,12 @@
     >
       <el-table-column prop="enterpriseName" label="企业名称" min-width="200" />
       <el-table-column prop="enterpriseCode" label="企业代码" min-width="120" />
+      <el-table-column label="企业类型" width="120" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="isSelfEnterprise(row)" type="warning" size="small">自主实习</el-tag>
+          <el-tag v-else type="success" size="small">合作企业</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="unifiedSocialCreditCode" label="统一社会信用代码" min-width="180" show-overflow-tooltip />
       <el-table-column prop="legalPerson" label="法人代表" min-width="120" />
       <el-table-column prop="industry" label="所属行业" min-width="120" />
@@ -708,6 +714,11 @@ const getFormRules = () => {
 }
 
 const formRules = computed(() => getFormRules())
+
+// 判断是否为自主实习企业（通过企业代码判断）
+const isSelfEnterprise = (row) => {
+  return row.enterpriseCode && row.enterpriseCode.startsWith('SELF_')
+}
 
 // 加载数据
 const loadData = async () => {

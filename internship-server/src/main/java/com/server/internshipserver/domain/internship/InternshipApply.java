@@ -60,6 +60,18 @@ public class InternshipApply implements Serializable {
     @TableField("self_enterprise_address")
     private String selfEnterpriseAddress;
     
+    @ApiModelProperty(value = "自主实习统一社会信用代码", example = "91110000123456789X")
+    @TableField("self_unified_social_credit_code")
+    private String selfUnifiedSocialCreditCode;
+    
+    @ApiModelProperty(value = "自主实习所属行业", example = "信息技术")
+    @TableField("self_industry")
+    private String selfIndustry;
+    
+    @ApiModelProperty(value = "自主实习法人代表", example = "张总")
+    @TableField("self_legal_person")
+    private String selfLegalPerson;
+    
     @ApiModelProperty(value = "自主实习联系人", example = "李经理")
     @TableField("self_contact_person")
     private String selfContactPerson;
@@ -273,6 +285,14 @@ public class InternshipApply implements Serializable {
     @ApiModelProperty(value = "最新面试记录")
     @TableField(exist = false)
     private Interview latestInterview;
+    
+    @ApiModelProperty(value = "申请类型文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String applyTypeText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
     
     /**
      * 状态流转历史项

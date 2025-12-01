@@ -17,26 +17,32 @@
           <div class="card-header">
             <span class="card-title">当前实习信息</span>
             <div style="display: flex; align-items: center; gap: 10px">
-              <el-tag :type="getInternshipStatusType(currentInternship.studentInternshipStatus)" size="large">
-                {{ getInternshipStatusText(currentInternship.studentInternshipStatus) }}
-              </el-tag>
-              <!-- 如果实习已结束，显示结束日期 -->
+              <!-- 如果实习已结束，优先显示实习已结束状态 -->
               <el-tag
                 v-if="isInternshipCompleted(currentInternship)"
                 type="info"
-                size="small"
+                size="large"
               >
                 实习已结束（{{ formatDate(currentInternship.internshipEndDate) }}）
               </el-tag>
+              <!-- 如果实习未结束，显示学生实习状态 -->
               <el-tag 
-                v-else-if="currentInternship.studentConfirmStatus === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)" 
+                v-else
+                :type="getInternshipStatusType(currentInternship.studentInternshipStatus)" 
+                size="large"
+              >
+                {{ getInternshipStatusText(currentInternship.studentInternshipStatus) }}
+              </el-tag>
+              <!-- 实习未结束时，显示确认上岗状态 -->
+              <el-tag 
+                v-if="!isInternshipCompleted(currentInternship) && currentInternship.studentConfirmStatus === 1 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0 || currentInternship.unbindStatus === 3)" 
                 type="success" 
                 size="small"
               >
                 已确认上岗
               </el-tag>
               <el-tag 
-                v-else-if="currentInternship.studentConfirmStatus === 0 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0)" 
+                v-if="!isInternshipCompleted(currentInternship) && currentInternship.studentConfirmStatus === 0 && (currentInternship.unbindStatus === null || currentInternship.unbindStatus === 0)" 
                 type="warning" 
                 size="small"
               >
@@ -223,6 +229,10 @@ const loadCurrentInternship = async () => {
         })
         
         if (completedApply) {
+          // 确保已结束的实习的学生实习状态被正确设置
+          if (!completedApply.studentInternshipStatus || completedApply.studentInternshipStatus === 1) {
+            completedApply.studentInternshipStatus = 3 // 已结束
+          }
           currentInternship.value = completedApply
         } else {
           currentInternship.value = null

@@ -1454,10 +1454,8 @@ const handleExportStudentList = async () => {
       enrollmentYear: searchForm.enrollmentYear || undefined
     }
     
-    // 注意：这里需要后端提供学生列表导出接口
-    // 暂时使用实习情况汇总表接口，或者需要创建新的学生列表导出接口
     await exportExcel(
-      reportApi.exportInternshipSummaryReport, // 或者 studentApi.exportStudentList
+      (params) => request.get('/user/student/export', { params, responseType: 'blob' }),
       params,
       '学生列表'
     )

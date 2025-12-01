@@ -53,8 +53,10 @@
             clearable
             style="width: 150px"
           >
-            <el-option label="未解绑" :value="0" />
-            <el-option label="已解绑" :value="2" />
+            <el-option label="在职" :value="0" />
+            <el-option label="申请离职中" :value="1" />
+            <el-option label="已离职" :value="2" />
+            <el-option label="离职申请被拒绝" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -115,7 +117,7 @@
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleView(row)">查看详情</el-button>
           <el-button
-            v-if="row.status === 0"
+            v-if="canAudit(row)"
             link
             type="success"
             size="small"
@@ -124,7 +126,7 @@
             通过
           </el-button>
           <el-button
-            v-if="row.status === 0"
+            v-if="canAudit(row)"
             link
             type="danger"
             size="small"
@@ -320,14 +322,14 @@
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
         <el-button
-          v-if="detailData.status === 0"
+          v-if="canAudit(detailData)"
           type="success"
           @click="handleAuditFromDetail(1)"
         >
           通过
         </el-button>
         <el-button
-          v-if="detailData.status === 0"
+          v-if="canAudit(detailData)"
           type="danger"
           @click="handleAuditFromDetail(2)"
         >
@@ -829,6 +831,20 @@ const getStatusType = (status, statusText) => {
     }
     return typeMap[status] || 'info'
   }
+}
+
+// 判断是否可以审核
+const canAudit = (row) => {
+  if (!row) return false
+  // 合作企业：status=0（待审核）
+  if (row.applyType === 1) {
+    return row.status === 0
+  }
+  // 自主实习：status=10（待审核）
+  if (row.applyType === 2) {
+    return row.status === 10
+  }
+  return false
 }
 
 // 判断是否可以标记为结束

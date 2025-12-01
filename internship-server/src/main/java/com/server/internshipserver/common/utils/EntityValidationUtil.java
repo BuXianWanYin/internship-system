@@ -76,15 +76,51 @@ public class EntityValidationUtil {
             throw new BusinessException(entityName + "不存在");
         }
         
+        Integer status = null;
         try {
+            // 首先尝试通过 getStatus() 方法获取状态
             Method getStatusMethod = entity.getClass().getMethod("getStatus");
-            Integer status = (Integer) getStatusMethod.invoke(entity);
-            if (status == null || !status.equals(expectedStatus)) {
-                throw new BusinessException(errorMessage);
+            Object statusObj = getStatusMethod.invoke(entity);
+            if (statusObj != null) {
+                if (statusObj instanceof Integer) {
+                    status = (Integer) statusObj;
+                } else if (statusObj instanceof Number) {
+                    status = ((Number) statusObj).intValue();
+                } else {
+                    throw new BusinessException("实体类型不支持状态检查: " + entity.getClass().getName() + " 的 status 字段类型不正确，期望 Integer，实际 " + statusObj.getClass().getName());
+                }
             }
+        } catch (NoSuchMethodException e) {
+            // 如果没有 getStatus() 方法，尝试直接访问 status 字段
+            try {
+                java.lang.reflect.Field statusField = entity.getClass().getDeclaredField("status");
+                statusField.setAccessible(true);
+                Object statusObj = statusField.get(entity);
+                if (statusObj != null) {
+                    if (statusObj instanceof Integer) {
+                        status = (Integer) statusObj;
+                    } else if (statusObj instanceof Number) {
+                        status = ((Number) statusObj).intValue();
+                    }
+                }
+            } catch (NoSuchFieldException | IllegalAccessException fieldEx) {
+                throw new BusinessException("实体类型不支持状态检查: " + entity.getClass().getName() + " 没有 status 字段或 getStatus() 方法");
+            }
+        } catch (IllegalAccessException e) {
+            throw new BusinessException("实体类型不支持状态检查: " + entity.getClass().getName() + " 的 getStatus() 方法无法访问: " + e.getMessage());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof BusinessException) {
+                throw (BusinessException) cause;
+            }
+            throw new BusinessException("实体类型不支持状态检查: 调用 getStatus() 方法时发生异常: " + (cause != null ? cause.getMessage() : e.getMessage()));
         } catch (Exception e) {
-            // 如果实体没有status字段，抛出异常
-            throw new BusinessException("实体类型不支持状态检查");
+            throw new BusinessException("实体类型不支持状态检查: " + entity.getClass().getName() + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+        
+        // 检查状态是否匹配
+        if (status == null || !status.equals(expectedStatus)) {
+            throw new BusinessException(errorMessage);
         }
     }
     

@@ -209,16 +209,40 @@ public class ExcelUtil {
         exampleRow.createCell(7).setCellValue("123456"); // 示例密码，可选
         
         // 设置响应头
-        String fileName = URLEncoder.encode("学生导入模板.xlsx", StandardCharsets.UTF_8.toString());
+        String safeFileName = "学生导入模板";
+        String encodedFileName = URLEncoder.encode(safeFileName + ".xlsx", StandardCharsets.UTF_8.toString());
+        
+        // 设置响应内容类型（注意：不要设置字符编码，因为Excel是二进制文件）
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + fileName);
+        
+        // 设置响应头，同时提供filename和filename*以兼容不同浏览器
+        String contentDisposition = String.format("attachment; filename=\"%s\"; filename*=UTF-8''%s", 
+            safeFileName + ".xlsx", encodedFileName);
+        response.setHeader("Content-Disposition", contentDisposition);
+        
+        // 禁用缓存
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
         
         // 写入响应流
-        try (OutputStream outputStream = response.getOutputStream()) {
+        OutputStream outputStream = null;
+        try {
+            outputStream = response.getOutputStream();
             workbook.write(outputStream);
             outputStream.flush();
         } finally {
-            workbook.close();
+            // 确保资源正确关闭
+            if (workbook != null) {
+                workbook.close();
+            }
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    // 忽略关闭异常
+                }
+            }
         }
     }
     
@@ -277,16 +301,42 @@ public class ExcelUtil {
         }
         
         // 设置响应头
-        String encodedFileName = URLEncoder.encode(fileName + ".xlsx", StandardCharsets.UTF_8.toString());
+        // 清理文件名中的特殊字符，保留中文字符、字母、数字、连字符和下划线
+        // 只替换可能导致问题的字符（如路径分隔符、引号等）
+        String safeFileName = fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        String encodedFileName = URLEncoder.encode(safeFileName + ".xlsx", StandardCharsets.UTF_8.toString());
+        
+        // 设置响应内容类型（注意：不要设置字符编码，因为Excel是二进制文件）
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+        
+        // 设置响应头，同时提供filename和filename*以兼容不同浏览器
+        String contentDisposition = String.format("attachment; filename=\"%s\"; filename*=UTF-8''%s", 
+            safeFileName + ".xlsx", encodedFileName);
+        response.setHeader("Content-Disposition", contentDisposition);
+        
+        // 禁用缓存
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
         
         // 写入响应流
-        try (OutputStream outputStream = response.getOutputStream()) {
+        OutputStream outputStream = null;
+        try {
+            outputStream = response.getOutputStream();
             workbook.write(outputStream);
             outputStream.flush();
         } finally {
-            workbook.close();
+            // 确保资源正确关闭
+            if (workbook != null) {
+                workbook.close();
+            }
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    // 忽略关闭异常
+                }
+            }
         }
     }
     

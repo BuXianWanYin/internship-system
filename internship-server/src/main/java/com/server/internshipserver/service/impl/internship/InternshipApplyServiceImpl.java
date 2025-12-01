@@ -283,7 +283,14 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setStudentId(student.getStudentId());
         apply.setUserId(user.getUserId());
         apply.setApplyType(applyType);
-        apply.setStatus(InternshipApplyStatus.PENDING.getCode());
+        // 根据申请类型设置正确的待审核状态
+        if (applyType != null && applyType.equals(ApplyType.SELF.getCode())) {
+            // 自主实习使用新状态码(10)
+            apply.setStatus(SelfInternshipApplyStatus.PENDING.getCode());
+        } else {
+            // 合作企业使用旧状态码(0)
+            apply.setStatus(InternshipApplyStatus.PENDING.getCode());
+        }
         EntityDefaultValueUtil.setDefaultValues(apply);
         this.save(apply);
     }
@@ -345,7 +352,10 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
      */
     private void validateSelfApplyParams(InternshipApply apply) {
         EntityValidationUtil.validateStringNotBlank(apply.getSelfEnterpriseName(), "企业名称");
+        EntityValidationUtil.validateStringNotBlank(apply.getSelfUnifiedSocialCreditCode(), "统一社会信用代码");
         EntityValidationUtil.validateStringNotBlank(apply.getSelfEnterpriseAddress(), "企业地址");
+        EntityValidationUtil.validateStringNotBlank(apply.getSelfIndustry(), "所属行业");
+        EntityValidationUtil.validateStringNotBlank(apply.getSelfLegalPerson(), "法人代表");
         EntityValidationUtil.validateStringNotBlank(apply.getSelfContactPerson(), "联系人");
         EntityValidationUtil.validateStringNotBlank(apply.getSelfContactPhone(), "联系电话");
         EntityValidationUtil.validateStringNotBlank(apply.getSelfPostName(), "岗位名称");
@@ -1509,6 +1519,16 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         Enterprise newEnterprise = new Enterprise();
         newEnterprise.setEnterpriseName(apply.getSelfEnterpriseName());
         
+        // 必填字段
+        if (StringUtils.hasText(apply.getSelfUnifiedSocialCreditCode())) {
+            newEnterprise.setUnifiedSocialCreditCode(apply.getSelfUnifiedSocialCreditCode());
+        }
+        if (StringUtils.hasText(apply.getSelfIndustry())) {
+            newEnterprise.setIndustry(apply.getSelfIndustry());
+        }
+        if (StringUtils.hasText(apply.getSelfLegalPerson())) {
+            newEnterprise.setLegalPerson(apply.getSelfLegalPerson());
+        }
         if (StringUtils.hasText(apply.getSelfEnterpriseAddress())) {
             newEnterprise.setAddress(apply.getSelfEnterpriseAddress());
         }

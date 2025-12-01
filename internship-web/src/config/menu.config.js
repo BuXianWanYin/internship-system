@@ -120,22 +120,6 @@ export const menuItems = [
     roles: ['ROLE_CLASS_TEACHER']
   },
   
-  // ========== 系统管理（系统配置） ==========
-  {
-    index: 'system',
-    title: '系统管理',
-    icon: Setting,
-    roles: ['ROLE_SYSTEM_ADMIN'],
-    children: [
-      {
-        index: '/admin/system/config',
-        title: '系统配置',
-        icon: Tools,
-        roles: ['ROLE_SYSTEM_ADMIN']
-      }
-    ]
-  },
-  
   // ========== 用户管理 ==========
   {
     index: 'user',
@@ -564,6 +548,14 @@ export const menuItems = [
         roles: ['ROLE_SYSTEM_ADMIN', 'ROLE_CLASS_TEACHER', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER']
       }
     ]
+  },
+  
+  // ========== 系统配置（系统管理员） ==========
+  {
+    index: '/admin/system/config',
+    title: '系统配置',
+    icon: Tools,
+    roles: ['ROLE_SYSTEM_ADMIN']
   }
 ]
 

@@ -1779,9 +1779,8 @@ const handleExport = async () => {
       classId: searchForm.classId || undefined
     }
     
-    // 注意：需要后端提供 /user/user/export 接口
     await exportExcel(
-      (params) => request.get('/user/user/export', { params, responseType: 'blob' }),
+      (params) => request.get('/user/export', { params, responseType: 'blob' }),
       params,
       '用户列表'
     )

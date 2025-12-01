@@ -93,5 +93,37 @@ public class Student implements Serializable {
     @ApiModelProperty(value = "当前实习企业名称（用于前端显示）")
     @TableField(exist = false)
     private String currentEnterpriseName;
+    
+    @ApiModelProperty(value = "真实姓名（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String realName;
+    
+    @ApiModelProperty(value = "手机号（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String phone;
+    
+    @ApiModelProperty(value = "邮箱（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String email;
+    
+    @ApiModelProperty(value = "班级名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String className;
+    
+    @ApiModelProperty(value = "专业名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String majorName;
+    
+    @ApiModelProperty(value = "学院名称（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String collegeName;
+    
+    @ApiModelProperty(value = "状态文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String statusText;
+    
+    @ApiModelProperty(value = "创建时间文字（非数据库字段，用于导出）")
+    @TableField(exist = false)
+    private String createTimeText;
 }
 

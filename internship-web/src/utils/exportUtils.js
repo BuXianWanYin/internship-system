@@ -13,12 +13,14 @@ import { formatDate } from './dateUtils'
  */
 export async function exportExcel(apiFunction, params, filename) {
   try {
-    const response = await apiFunction(params)
+    const blob = await apiFunction(params)
     
-    // 创建Blob对象
-    const blob = new Blob([response.data], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
+    // 确保blob是Blob对象
+    if (!(blob instanceof Blob)) {
+      console.error('导出失败: 响应不是Blob对象', blob)
+      ElMessage.error('导出失败：响应格式错误')
+      throw new Error('响应格式错误')
+    }
     
     // 创建下载链接
     const url = window.URL.createObjectURL(blob)
@@ -37,7 +39,7 @@ export async function exportExcel(apiFunction, params, filename) {
     return true
   } catch (error) {
     console.error('导出失败:', error)
-    ElMessage.error(error.response?.data?.message || '导出失败，请稍后重试')
+    ElMessage.error(error.message || '导出失败，请稍后重试')
     throw error
   }
 }

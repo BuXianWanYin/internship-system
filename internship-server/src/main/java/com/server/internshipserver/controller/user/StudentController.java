@@ -168,5 +168,35 @@ public class StudentController {
         List<Integer> years = studentService.getDistinctEnrollmentYears();
         return Result.success(years);
     }
+    
+    @ApiOperation("导出学生列表")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
+    @GetMapping("/export")
+    public void exportStudents(
+            @ApiParam(value = "学号（可选）") @RequestParam(required = false) String studentNo,
+            @ApiParam(value = "学校ID（可选）") @RequestParam(required = false) Long schoolId,
+            @ApiParam(value = "学院ID（可选）") @RequestParam(required = false) Long collegeId,
+            @ApiParam(value = "专业ID（可选）") @RequestParam(required = false) Long majorId,
+            @ApiParam(value = "班级ID（可选）") @RequestParam(required = false) Long classId,
+            @ApiParam(value = "状态：1-已审核，0-待审核（可选）") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "入学年份（可选）") @RequestParam(required = false) Integer enrollmentYear,
+            HttpServletResponse response) throws IOException {
+        StudentQueryDTO queryDTO = new StudentQueryDTO();
+        queryDTO.setStudentNo(studentNo);
+        queryDTO.setSchoolId(schoolId);
+        queryDTO.setCollegeId(collegeId);
+        queryDTO.setMajorId(majorId);
+        queryDTO.setClassId(classId);
+        queryDTO.setStatus(status);
+        queryDTO.setEnrollmentYear(enrollmentYear);
+        
+        List<Student> students = studentService.getAllStudents(queryDTO);
+        
+        // 定义表头和字段名
+        String[] headers = {"学号", "真实姓名", "手机号", "邮箱", "班级", "专业", "学院", "入学年份", "状态", "创建时间"};
+        String[] fieldNames = {"studentNo", "realName", "phone", "email", "className", "majorName", "collegeName", "enrollmentYear", "statusText", "createTimeText"};
+        
+        ExcelUtil.exportToExcel(response, students, headers, fieldNames, "学生列表");
+    }
 }
 

@@ -117,5 +117,12 @@ public interface StudentService extends IService<Student> {
      * @return 入学年份列表
      */
     List<Integer> getDistinctEnrollmentYears();
+    
+    /**
+     * 查询所有学生列表（用于导出）
+     * @param queryDTO 查询条件
+     * @return 学生列表
+     */
+    List<Student> getAllStudents(StudentQueryDTO queryDTO);
 }
 

@@ -2,6 +2,10 @@ package com.server.internshipserver.controller.statistics;
 
 import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.statistics.dto.*;
+import com.server.internshipserver.domain.statistics.dto.SystemAdminDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.SchoolAdminDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.CollegeLeaderDashboardDTO;
+import com.server.internshipserver.domain.statistics.dto.ClassTeacherDashboardDTO;
 import com.server.internshipserver.service.statistics.StatisticsService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -189,6 +193,38 @@ public class StatisticsController {
         
         PendingReviewStatisticsDTO statistics = statisticsService.getPendingReviewStatistics(queryDTO);
         return Result.success(statistics);
+    }
+    
+    @ApiOperation("获取系统管理员仪表盘统计数据")
+    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @GetMapping("/system-admin-dashboard")
+    public Result<SystemAdminDashboardDTO> getSystemAdminDashboard() {
+        SystemAdminDashboardDTO dashboard = statisticsService.getSystemAdminDashboard();
+        return Result.success(dashboard);
+    }
+    
+    @ApiOperation("获取学校管理员仪表盘统计数据")
+    @PreAuthorize("hasRole('ROLE_SCHOOL_ADMIN')")
+    @GetMapping("/school-admin-dashboard")
+    public Result<SchoolAdminDashboardDTO> getSchoolAdminDashboard() {
+        SchoolAdminDashboardDTO dashboard = statisticsService.getSchoolAdminDashboard();
+        return Result.success(dashboard);
+    }
+    
+    @ApiOperation("获取学院负责人仪表盘统计数据")
+    @PreAuthorize("hasRole('ROLE_COLLEGE_LEADER')")
+    @GetMapping("/college-leader-dashboard")
+    public Result<CollegeLeaderDashboardDTO> getCollegeLeaderDashboard() {
+        CollegeLeaderDashboardDTO dashboard = statisticsService.getCollegeLeaderDashboard();
+        return Result.success(dashboard);
+    }
+    
+    @ApiOperation("获取班主任仪表盘统计数据")
+    @PreAuthorize("hasRole('ROLE_CLASS_TEACHER')")
+    @GetMapping("/class-teacher-dashboard")
+    public Result<ClassTeacherDashboardDTO> getClassTeacherDashboard() {
+        ClassTeacherDashboardDTO dashboard = statisticsService.getClassTeacherDashboard();
+        return Result.success(dashboard);
     }
 }
 

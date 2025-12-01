@@ -33,38 +33,65 @@ export function isUnbound(row) {
 }
 
 /**
+ * 判断是否已录用（开始实习）
+ * @param {Object} row - 申请记录对象
+ * @returns {Boolean}
+ */
+export function isAccepted(row) {
+  if (!row) return false
+  // 合作企业：status=3（已录用）
+  if (row.applyType === 1) {
+    return row.status === 3
+  }
+  // 自主实习：status=11（实习中）
+  if (row.applyType === 2) {
+    return row.status === 11
+  }
+  return false
+}
+
+/**
  * 获取在职状态显示文本（区分提前离职和实习结束）
  * @param {Object} row - 申请记录对象
  * @returns {String} 状态文本
  */
 export function getUnbindStatusText(row) {
-  if (!row) return '在职'
+  if (!row) return '-'
   
-  // 优先判断实习结束
+  // 优先判断实习结束（合作企业status=7，自主实习status=13）
   if (isInternshipCompleted(row)) {
     return '实习结束'
   }
   
-  // 其次判断提前离职
+  // 其次判断提前离职（已解绑）
   if (isUnbound(row)) {
     return '已离职'
   }
   
-  // 其他解绑状态
+  // 解绑状态映射（只有在已录用的状态下才显示解绑相关状态）：
+  // 1-申请解绑 -> 申请离职中
+  // 2-已解绑 -> 已离职（但这种情况应该被isUnbound处理，这里作为兜底）
+  // 3-解绑被拒绝 -> 离职申请被拒绝
   if (row.unbindStatus === 2) {
-    return '已解绑'
+    return '已离职'
   }
   if (row.unbindStatus === 1) {
-    return '已申请解绑'
+    return '申请离职中'
+  }
+  if (row.unbindStatus === 3) {
+    return '离职申请被拒绝'
   }
   if (row.unbindStatus === 4) {
     return '企业已审批'
   }
-  if (row.unbindStatus === 3) {
-    return '解绑已拒绝'
+  
+  // 只有在已录用（开始实习）的情况下，unbindStatus=0或null才显示"在职"
+  if (isAccepted(row)) {
+    return '在职'
   }
   
-  return '在职'
+  // 未录用状态（待审核、已拒绝等），不显示在职状态
+  return '-'
 }
 
 /**
@@ -73,7 +100,7 @@ export function getUnbindStatusText(row) {
  * @returns {String} 标签类型（success/info/warning/danger）
  */
 export function getUnbindStatusType(row) {
-  if (!row) return 'success'
+  if (!row) return 'info'
   
   // 实习结束：使用 info 类型（蓝色）
   if (isInternshipCompleted(row)) {
@@ -92,8 +119,17 @@ export function getUnbindStatusType(row) {
   if (row.unbindStatus === 1 || row.unbindStatus === 4) {
     return 'warning'
   }
+  if (row.unbindStatus === 3) {
+    return 'danger'
+  }
   
-  return 'success'
+  // 已录用且未申请解绑：在职
+  if (isAccepted(row)) {
+    return 'success'
+  }
+  
+  // 未录用状态，返回 info（灰色）
+  return 'info'
 }
 
 /**

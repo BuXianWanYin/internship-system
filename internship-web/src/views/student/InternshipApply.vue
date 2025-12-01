@@ -444,6 +444,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="法人代表" prop="legalPerson">
+              <el-input v-model="selfApplyForm.legalPerson" placeholder="请输入法人代表" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="企业规模" prop="enterpriseScale">
               <el-select v-model="selfApplyForm.enterpriseScale" placeholder="请选择企业规模" style="width: 100%">
                 <el-option label="大型企业（500人以上）" value="大型企业" />
@@ -453,13 +460,13 @@
               </el-select>
             </el-form-item>
           </el-col>
-        </el-row>
-        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="联系人" prop="contactPerson">
               <el-input v-model="selfApplyForm.contactPerson" placeholder="请输入联系人" />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="联系电话" prop="contactPhone">
               <el-input v-model="selfApplyForm.contactPhone" placeholder="请输入联系电话" />
@@ -570,7 +577,7 @@
     >
       <el-descriptions :column="2" border>
         <el-descriptions-item label="企业名称">{{ applyDetailData.enterpriseName }}</el-descriptions-item>
-        <el-descriptions-item label="统一社会信用代码">{{ applyDetailData.unifiedSocialCreditCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="统一社会信用代码">{{ applyDetailData.unifiedSocialCreditCode || applyDetailData.selfUnifiedSocialCreditCode || '-' }}</el-descriptions-item>
         <el-descriptions-item label="实习计划" :span="2">
           <div v-if="applyDetailData.planName">
             <div>{{ applyDetailData.planName }}</div>
@@ -579,9 +586,10 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="企业地址" :span="2">{{ applyDetailData.enterpriseAddress || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="所属行业">{{ applyDetailData.industry || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="所属行业">{{ applyDetailData.industry || applyDetailData.selfIndustry || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="法人代表">{{ applyDetailData.legalPerson || applyDetailData.selfLegalPerson || '-' }}</el-descriptions-item>
         <el-descriptions-item label="企业规模">{{ applyDetailData.enterpriseScale || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="联系人">{{ applyDetailData.contactPerson || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="联系人">{{ applyDetailData.contactPerson || applyDetailData.selfContactPerson || '-' }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ applyDetailData.contactPhone || '-' }}</el-descriptions-item>
         <el-descriptions-item label="联系邮箱">{{ applyDetailData.contactEmail || '-' }}</el-descriptions-item>
         <el-descriptions-item label="实习岗位">{{ applyDetailData.internshipPosition || '-' }}</el-descriptions-item>
@@ -812,6 +820,7 @@ const selfApplyForm = reactive({
   unifiedSocialCreditCode: '',
   enterpriseAddress: '',
   industry: '',
+  legalPerson: '',
   enterpriseScale: '',
   contactPerson: '',
   contactPhone: '',
@@ -855,7 +864,13 @@ const selfApplyFormRules = {
     { required: true, message: '请选择实习计划', trigger: 'change' }
   ],
   enterpriseName: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
+  unifiedSocialCreditCode: [
+    { required: true, message: '请输入统一社会信用代码', trigger: 'blur' },
+    { pattern: /^[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}$/, message: '请输入正确的统一社会信用代码（18位）', trigger: 'blur' }
+  ],
   enterpriseAddress: [{ required: true, message: '请输入企业地址', trigger: 'blur' }],
+  industry: [{ required: true, message: '请输入所属行业', trigger: 'blur' }],
+  legalPerson: [{ required: true, message: '请输入法人代表', trigger: 'blur' }],
   contactPerson: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
   contactPhone: [{ required: true, message: '请输入联系电话', trigger: 'blur' }],
   internshipPosition: [{ required: true, message: '请输入实习岗位', trigger: 'blur' }],
@@ -1368,10 +1383,13 @@ const handleSubmitSelfApply = async () => {
         const submitData = {
           planId: selfApplyForm.planId,
           selfEnterpriseName: selfApplyForm.enterpriseName,
+          selfUnifiedSocialCreditCode: selfApplyForm.unifiedSocialCreditCode,
           selfEnterpriseAddress: selfApplyForm.enterpriseAddress,
+          selfIndustry: selfApplyForm.industry,
+          selfLegalPerson: selfApplyForm.legalPerson,
           selfContactPerson: selfApplyForm.contactPerson,
           selfContactPhone: selfApplyForm.contactPhone,
-          selfEnterpriseNature: selfApplyForm.industry, // 行业对应企业性质
+          selfEnterpriseNature: selfApplyForm.industry, // 行业对应企业性质（保留兼容）
           selfPostName: selfApplyForm.internshipPosition,
           selfStartDate: selfApplyForm.internshipStartDate,
           selfEndDate: selfApplyForm.internshipEndDate,
@@ -1403,6 +1421,7 @@ const resetSelfApplyForm = () => {
     unifiedSocialCreditCode: '',
     enterpriseAddress: '',
     industry: '',
+    legalPerson: '',
     enterpriseScale: '',
     contactPerson: '',
     contactPhone: '',

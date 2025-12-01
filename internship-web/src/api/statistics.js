@@ -40,6 +40,22 @@ export const statisticsApi = {
   // 获取待批阅统计（班主任使用）
   getPendingReviewStatistics(params) {
     return request.get('/statistics/pending-review', { params })
+  },
+  // 获取系统管理员仪表盘统计数据
+  getSystemAdminDashboard() {
+    return request.get('/statistics/system-admin-dashboard')
+  },
+  // 获取学校管理员仪表盘统计数据
+  getSchoolAdminDashboard() {
+    return request.get('/statistics/school-admin-dashboard')
+  },
+  // 获取学院负责人仪表盘统计数据
+  getCollegeLeaderDashboard() {
+    return request.get('/statistics/college-leader-dashboard')
+  },
+  // 获取班主任仪表盘统计数据
+  getClassTeacherDashboard() {
+    return request.get('/statistics/class-teacher-dashboard')
   }
 }
 
