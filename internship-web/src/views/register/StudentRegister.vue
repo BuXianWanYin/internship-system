@@ -126,15 +126,18 @@
         </el-form-item>
 
         <el-form-item label="入学年份" prop="enrollmentYear">
-          <el-date-picker
-            v-model="enrollmentYearDate"
-            type="year"
-            placeholder="选择入学年份"
-            format="YYYY"
-            value-format="YYYY"
-            @change="handleEnrollmentYearChange"
+          <el-input
+            v-model="registerForm.enrollmentYear"
+            placeholder="请先验证班级分享码"
+            :disabled="!shareCodeInfo"
+            readonly
             style="width: 100%;"
-          />
+          >
+            <template #prefix>
+              <el-icon><Calendar /></el-icon>
+            </template>
+          </el-input>
+          <div v-if="!shareCodeInfo" class="form-tip">入学年份将根据班级分享码自动获取</div>
         </el-form-item>
 
         <el-form-item>
@@ -156,14 +159,15 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Key, ArrowLeft } from '@element-plus/icons-vue'
+import { Key, ArrowLeft, Calendar } from '@element-plus/icons-vue'
 import { studentApi } from '@/api/user/student'
 import { classApi } from '@/api/system'
 
 export default {
   name: 'StudentRegister',
   components: {
-    Key
+    Key,
+    Calendar
   },
   setup() {
     const router = useRouter()
@@ -171,7 +175,6 @@ export default {
     const registering = ref(false)
     const shareCodeInfo = ref(null)
     const shareCodeError = ref('')
-    const enrollmentYearDate = ref(null)
 
     const registerForm = reactive({
       shareCode: '',
@@ -225,7 +228,7 @@ export default {
         }
       ],
       enrollmentYear: [
-        { required: true, message: '请选择入学年份', trigger: 'change' }
+        { required: true, message: '请先验证班级分享码以获取入学年份', trigger: 'blur' }
       ]
     }
 
@@ -234,6 +237,8 @@ export default {
       if (!registerForm.shareCode) {
         shareCodeInfo.value = null
         shareCodeError.value = ''
+        registerForm.enrollmentYear = null
+        enrollmentYearDate.value = null
         return
       }
 
@@ -242,23 +247,23 @@ export default {
         if (res.code === 200 && res.data) {
           shareCodeInfo.value = res.data
           registerForm.classId = res.data.classId
+          // 自动设置入学年份（从班级信息中获取）
+          if (res.data.enrollmentYear) {
+            registerForm.enrollmentYear = res.data.enrollmentYear
+            enrollmentYearDate.value = String(res.data.enrollmentYear)
+          }
           shareCodeError.value = ''
         } else {
           shareCodeError.value = res.message || '分享码无效或已过期'
           shareCodeInfo.value = null
+          registerForm.enrollmentYear = null
+          enrollmentYearDate.value = null
         }
       } catch (error) {
         shareCodeError.value = '分享码验证失败：' + (error.message || '未知错误')
         shareCodeInfo.value = null
-      }
-    }
-
-    // 处理入学年份变化
-    const handleEnrollmentYearChange = (value) => {
-      if (value) {
-        registerForm.enrollmentYear = parseInt(value)
-      } else {
         registerForm.enrollmentYear = null
+        enrollmentYearDate.value = null
       }
     }
 
