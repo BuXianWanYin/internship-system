@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 用户角色关联实体类
+ * 用于存储用户与角色的关联关系，实现用户与角色的多对多关系
+ * 一个用户可以有多个角色，一个角色可以分配给多个用户
  */
 @ApiModel(description = "用户角色关联")
 @Data

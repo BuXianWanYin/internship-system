@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 企业评价实体类
+ * 用于存储企业对学生的实习评价，包括工作态度、专业知识应用、专业技能等6项指标评分
+ * 企业管理员或企业导师可以对学生的实习表现进行综合评价
  */
 @ApiModel(description = "企业评价信息")
 @Data

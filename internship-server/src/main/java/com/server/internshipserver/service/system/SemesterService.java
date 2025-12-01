@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 学期管理Service接口
+ * 提供学期信息的增删改查等业务功能
  */
 public interface SemesterService extends IService<Semester> {
     

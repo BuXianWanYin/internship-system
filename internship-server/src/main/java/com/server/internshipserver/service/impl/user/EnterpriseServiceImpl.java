@@ -34,6 +34,7 @@ import java.util.List;
 
 /**
  * 企业管理Service实现类
+ * 实现企业信息的增删改查、审核、注册等业务功能
  */
 @Service
 public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterprise> implements EnterpriseService {

@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 /**
  * 角色管理Service实现类
+ * 实现角色信息的增删改查等业务功能
  */
 @Service
 public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements RoleService {

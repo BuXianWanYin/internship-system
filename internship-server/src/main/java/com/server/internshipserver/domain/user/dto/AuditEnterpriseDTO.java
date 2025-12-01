@@ -7,6 +7,8 @@ import lombok.Data;
 
 /**
  * 审核企业DTO
+ * 用于封装企业审核操作的参数，包括审核状态和审核意见
+ * 审核状态使用AuditStatus枚举，支持通过、拒绝等操作
  */
 @Data
 @ApiModel("审核企业DTO")

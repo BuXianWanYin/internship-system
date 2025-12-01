@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 权限管理Service接口
+ * 提供权限信息的增删改查等业务功能
  */
 public interface PermissionService extends IService<Permission> {
     

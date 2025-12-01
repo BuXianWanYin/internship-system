@@ -5,7 +5,9 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 /**
- * 教师添加DTO（包含用户信息）
+ * 教师添加DTO
+ * 用于封装添加教师时的所有信息，包括教师基本信息、用户信息和角色信息
+ * 系统会自动创建对应的用户账号并分配角色
  */
 @ApiModel(description = "教师添加信息")
 @Data

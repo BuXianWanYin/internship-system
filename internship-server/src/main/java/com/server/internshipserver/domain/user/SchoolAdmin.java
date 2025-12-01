@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学校管理员信息实体类
+ * 用于存储学校管理员的基本信息，包括所属学校、用户信息等
+ * 与学校用户信息通过userId关联，负责管理学校相关的业务
  */
 @ApiModel(description = "学校管理员信息")
 @Data

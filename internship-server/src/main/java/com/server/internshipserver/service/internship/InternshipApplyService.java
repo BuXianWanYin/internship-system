@@ -9,6 +9,7 @@ import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO
 
 /**
  * 实习申请管理Service接口
+ * 提供实习申请的提交、审核、筛选等业务功能
  */
 public interface InternshipApplyService extends IService<InternshipApply> {
     

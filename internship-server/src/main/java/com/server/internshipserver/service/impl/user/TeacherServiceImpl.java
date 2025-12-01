@@ -33,6 +33,7 @@ import java.util.List;
 
 /**
  * 教师管理Service实现类
+ * 实现教师信息的增删改查、用户关联等业务功能
  */
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {

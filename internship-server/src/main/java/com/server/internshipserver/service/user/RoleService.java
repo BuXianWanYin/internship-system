@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 角色管理Service接口
+ * 提供角色信息的增删改查等业务功能
  */
 public interface RoleService extends IService<Role> {
     

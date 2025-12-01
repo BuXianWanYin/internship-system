@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 考勤组学生关联实体类
+ * 用于存储学生与考勤组的关联关系，包括生效时间范围、状态等
+ * 一个学生可以关联一个考勤组，考勤组用于计算学生的考勤记录
  */
 @ApiModel(description = "考勤组学生关联信息")
 @Data

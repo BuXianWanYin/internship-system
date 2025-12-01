@@ -28,6 +28,7 @@ import java.io.IOException;
 
 /**
  * JWT认证过滤器
+ * 用于拦截HTTP请求，验证JWT Token并设置Spring Security认证信息
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -45,12 +46,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final ObjectMapper objectMapper;
     
+    /**
+     * 构造函数
+     * 初始化ObjectMapper并注册JavaTimeModule以支持LocalDateTime序列化
+     */
     public JwtAuthenticationFilter() {
         this.objectMapper = new ObjectMapper();
-        // 注册JavaTimeModule以支持LocalDateTime序列化
         this.objectMapper.registerModule(new JavaTimeModule());
     }
 
+    /**
+     * 执行JWT认证过滤
+     * 从请求头中提取Token，验证Token有效性，并将用户信息设置到SecurityContext中
+     * 
+     * @param request HTTP请求
+     * @param response HTTP响应
+     * @param filterChain 过滤器链
+     * @throws ServletException Servlet异常
+     * @throws IOException IO异常
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
@@ -78,6 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
                 
+                // 加载用户详情并设置认证信息
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UsernamePasswordAuthenticationToken authentication = 
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
@@ -93,9 +108,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-
     /**
      * 发送错误响应
+     * 将错误信息以JSON格式写入HTTP响应
+     * 
+     * @param response HTTP响应
+     * @param resultCode 结果码
+     * @throws IOException IO异常
      */
     private void sendErrorResponse(HttpServletResponse response, ResultCode resultCode) throws IOException {
         response.setContentType("application/json;charset=UTF-8");

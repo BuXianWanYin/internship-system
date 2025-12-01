@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学校评价实体类
+ * 用于存储学校教师对学生的实习评价，包括日志周报质量、过程表现、成果展示等4项指标评分
+ * 教师可以对学生的实习过程进行综合评价
  */
 @ApiModel(description = "学校评价信息")
 @Data

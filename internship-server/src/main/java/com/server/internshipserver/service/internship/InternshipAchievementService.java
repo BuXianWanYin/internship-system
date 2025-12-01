@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.internship.InternshipAchievement;
 
 /**
  * 阶段性成果管理Service接口
+ * 提供实习阶段性成果的提交、审核、查询等业务功能
  */
 public interface InternshipAchievementService extends IService<InternshipAchievement> {
     

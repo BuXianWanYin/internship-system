@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 /**
  * 班级管理Service实现类
+ * 实现班级信息的增删改查、分享码管理、班主任任命等业务功能
  */
 @Service
 public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements ClassService {

@@ -7,6 +7,8 @@ import lombok.Data;
 
 /**
  * 审核解绑DTO
+ * 用于封装实习申请解绑审核操作的参数，包括审核状态和审核意见
+ * 审核状态使用AuditStatus枚举，支持已解绑、解绑被拒绝等操作
  */
 @Data
 @ApiModel("审核解绑DTO")

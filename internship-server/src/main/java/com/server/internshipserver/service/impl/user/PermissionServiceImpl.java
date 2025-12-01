@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * 权限管理Service实现类
+ * 实现权限信息的增删改查、权限缓存等业务功能
  */
 @Service
 public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permission> implements PermissionService {

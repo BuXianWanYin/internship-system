@@ -12,6 +12,7 @@ import java.util.List;
 
 /**
  * 考勤组管理Service接口
+ * 提供考勤组的创建、配置、学生管理等业务功能
  */
 public interface AttendanceGroupService extends IService<AttendanceGroup> {
     

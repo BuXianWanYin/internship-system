@@ -6,6 +6,7 @@ import lombok.Data;
 
 /**
  * 用户查询DTO
+ * 用于封装用户分页查询的查询条件，包括用户名、真实姓名、手机号、状态、角色等
  */
 @Data
 @ApiModel("用户查询DTO")

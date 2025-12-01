@@ -6,6 +6,8 @@ import lombok.Data;
 
 /**
  * 学生Excel导入DTO
+ * 用于封装从Excel文件导入的学生数据，包括学号、姓名、联系方式、班级等信息
+ * 支持批量导入学生信息，系统会自动创建用户账号并分配ROLE_STUDENT角色
  */
 @ApiModel(description = "学生Excel导入数据")
 @Data

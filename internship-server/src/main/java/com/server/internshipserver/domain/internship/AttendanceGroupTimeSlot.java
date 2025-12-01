@@ -24,6 +24,8 @@ import java.time.format.DateTimeParseException;
 
 /**
  * 考勤组时间段实体类
+ * 用于存储考勤组的工作时间段配置，包括时间段名称、上班时间、下班时间、工作时长等
+ * 一个考勤组可以有多个时间段，支持早班、晚班、标准班等多种时间段配置
  */
 @ApiModel(description = "考勤组时间段信息")
 @Data

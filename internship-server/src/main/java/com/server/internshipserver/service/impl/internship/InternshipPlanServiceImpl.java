@@ -43,6 +43,7 @@ import java.util.List;
 
 /**
  * 实习计划管理Service实现类
+ * 实现实习计划的创建、审核、发布等业务功能
  */
 @Service
 public class InternshipPlanServiceImpl extends ServiceImpl<InternshipPlanMapper, InternshipPlan> implements InternshipPlanService {

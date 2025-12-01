@@ -43,6 +43,7 @@ import java.util.List;
 
 /**
  * 学生管理Service实现类
+ * 实现学生信息的增删改查、批量导入、注册审核等业务功能
  */
 @Service
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {

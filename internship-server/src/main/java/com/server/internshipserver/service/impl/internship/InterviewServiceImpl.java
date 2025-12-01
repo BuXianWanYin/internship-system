@@ -41,6 +41,7 @@ import java.time.LocalDateTime;
 
 /**
  * 面试管理Service实现类
+ * 实现面试安排、确认、结果提交等业务功能
  */
 @Service
 public class InterviewServiceImpl extends ServiceImpl<InterviewMapper, Interview> implements InterviewService {

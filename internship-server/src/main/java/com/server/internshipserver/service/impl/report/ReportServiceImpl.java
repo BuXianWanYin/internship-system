@@ -25,6 +25,7 @@ import java.util.List;
 
 /**
  * 报表管理Service实现类
+ * 实现各类报表的导出功能
  */
 @Service
 public class ReportServiceImpl implements ReportService {

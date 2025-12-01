@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 
 /**
  * 用户管理Service实现类
+ * 实现用户基础信息管理、角色分配、权限控制、组织信息查询等业务功能
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implements UserService {

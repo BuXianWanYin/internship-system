@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 企业导师信息实体类
+ * 用于存储企业导师的基本信息，包括导师姓名、职位、部门、联系方式等
+ * 与企业用户信息通过userId关联，负责指导和管理实习学生
  */
 @ApiModel(description = "企业导师信息")
 @Data

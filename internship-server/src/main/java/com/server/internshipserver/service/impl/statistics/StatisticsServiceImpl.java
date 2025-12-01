@@ -29,11 +29,9 @@ import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.system.MajorMapper;
 import com.server.internshipserver.mapper.system.SchoolMapper;
 import com.server.internshipserver.mapper.user.EnterpriseMapper;
-import com.server.internshipserver.mapper.user.RoleMapper;
 import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
-import com.server.internshipserver.mapper.user.UserRoleMapper;
 import com.server.internshipserver.service.statistics.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,6 +49,7 @@ import java.util.stream.Collectors;
 
 /**
  * 数据统计Service实现类
+ * 实现各类数据统计、报表生成等业务功能
  */
 @Service
 public class StatisticsServiceImpl implements StatisticsService {
@@ -96,12 +95,6 @@ public class StatisticsServiceImpl implements StatisticsService {
     
     @Autowired
     private TeacherMapper teacherMapper;
-    
-    @Autowired
-    private RoleMapper roleMapper;
-    
-    @Autowired
-    private UserRoleMapper userRoleMapper;
     
     // 配色方案
     private static final String COLOR_PRIMARY = "#409EFF";

@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 问题反馈实体类
+ * 用于存储学生在实习过程中提交的问题反馈，包括反馈类型、标题、内容等
+ * 支持问题反馈、建议反馈、求助反馈三种类型，教师或企业导师可以回复反馈
  */
 @ApiModel(description = "问题反馈信息")
 @Data

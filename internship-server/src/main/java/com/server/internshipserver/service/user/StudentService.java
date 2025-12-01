@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 学生管理Service接口
+ * 提供学生信息的增删改查、批量导入等业务功能
  */
 public interface StudentService extends IService<Student> {
     

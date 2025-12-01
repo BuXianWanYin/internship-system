@@ -29,6 +29,7 @@ import java.util.List;
 
 /**
  * 企业学校合作申请Service实现类
+ * 实现企业学校合作申请的提交、审核等业务功能
  */
 @Service
 public class EnterpriseSchoolCooperationApplyServiceImpl extends ServiceImpl<EnterpriseSchoolCooperationApplyMapper, EnterpriseSchoolCooperationApply> implements EnterpriseSchoolCooperationApplyService {

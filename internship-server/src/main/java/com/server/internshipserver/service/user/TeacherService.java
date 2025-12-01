@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 教师管理Service接口
+ * 提供教师信息的增删改查、用户关联等业务功能
  */
 public interface TeacherService extends IService<Teacher> {
     

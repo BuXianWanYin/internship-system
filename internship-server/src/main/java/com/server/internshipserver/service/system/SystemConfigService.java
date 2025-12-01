@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.system.SystemConfig;
 
 /**
  * 系统配置管理Service接口
+ * 提供系统配置信息的增删改查等业务功能
  */
 public interface SystemConfigService extends IService<SystemConfig> {
     

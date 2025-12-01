@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 企业学校合作关系Service接口
+ * 提供企业学校合作关系的创建、查询、验证等业务功能
  */
 public interface EnterpriseSchoolCooperationService extends IService<EnterpriseSchoolCooperation> {
     

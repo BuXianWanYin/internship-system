@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 权限信息实体类
+ * 用于存储系统中的权限信息，包括权限代码、权限名称、权限类型等
+ * 支持菜单、按钮、接口三种权限类型，通过角色权限关联表实现权限分配
  */
 @ApiModel(description = "权限信息")
 @Data

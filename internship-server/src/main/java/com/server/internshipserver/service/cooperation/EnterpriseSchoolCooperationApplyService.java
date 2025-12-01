@@ -7,6 +7,7 @@ import java.util.List;
 
 /**
  * 企业学校合作申请Service接口
+ * 提供企业学校合作申请的提交、审核等业务功能
  */
 public interface EnterpriseSchoolCooperationApplyService extends IService<EnterpriseSchoolCooperationApply> {
     

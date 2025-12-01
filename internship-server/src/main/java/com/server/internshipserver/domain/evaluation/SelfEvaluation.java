@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学生自评实体类
+ * 用于存储学生对自己实习过程的自评信息，包括自评分数、自我反思和总结等
+ * 学生可以在实习结束后提交自评，作为综合成绩计算的组成部分
  */
 @ApiModel(description = "学生自评信息")
 @Data

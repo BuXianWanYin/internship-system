@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 企业管理Service接口
+ * 提供企业信息的增删改查、审核、注册等业务功能
  */
 public interface EnterpriseService extends IService<Enterprise> {
     

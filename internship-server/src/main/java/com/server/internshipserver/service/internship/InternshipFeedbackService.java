@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.internship.InternshipFeedback;
 
 /**
  * 问题反馈管理Service接口
+ * 提供实习问题反馈的提交、处理、查询等业务功能
  */
 public interface InternshipFeedbackService extends IService<InternshipFeedback> {
     

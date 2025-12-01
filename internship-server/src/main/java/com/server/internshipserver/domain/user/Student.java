@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学生信息实体类
+ * 用于存储学生的详细信息，包括学号、所属班级、入学年份、实习状态等
+ * 与学生用户信息通过userId关联，支持学生实习申请和实习过程管理
  */
 @ApiModel(description = "学生信息")
 @Data

@@ -63,6 +63,7 @@ import java.util.ArrayList;
 
 /**
  * 实习申请管理Service实现类
+ * 实现实习申请的提交、审核、筛选、解绑等业务功能
  */
 @Service
 public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMapper, InternshipApply> implements InternshipApplyService {

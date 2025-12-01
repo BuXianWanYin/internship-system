@@ -6,6 +6,7 @@ import lombok.Data;
 
 /**
  * 学期查询DTO
+ * 用于封装学期分页查询的查询条件，包括学期名称、年份、是否当前学期、日期范围、学校ID等
  */
 @Data
 @ApiModel("学期查询DTO")

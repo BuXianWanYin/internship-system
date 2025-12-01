@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 企业导师管理Service接口
+ * 提供企业导师信息的增删改查等业务功能
  */
 public interface EnterpriseMentorService extends IService<EnterpriseMentor> {
     

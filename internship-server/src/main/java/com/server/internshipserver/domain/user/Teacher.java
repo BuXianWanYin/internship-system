@@ -16,6 +16,8 @@ import java.util.List;
 
 /**
  * 教师信息实体类
+ * 用于存储教师的基本信息，包括工号、所属学院、职称、部门等
+ * 与教师用户信息通过userId关联，支持教师管理学生实习过程
  */
 @ApiModel(description = "教师信息")
 @Data

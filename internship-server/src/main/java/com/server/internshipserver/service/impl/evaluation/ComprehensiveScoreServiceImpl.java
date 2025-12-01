@@ -41,6 +41,7 @@ import java.time.LocalDateTime;
 
 /**
  * 综合成绩管理Service实现类
+ * 实现综合成绩的计算、查询等业务功能
  */
 @Service
 public class ComprehensiveScoreServiceImpl extends ServiceImpl<ComprehensiveScoreMapper, ComprehensiveScore> implements ComprehensiveScoreService {

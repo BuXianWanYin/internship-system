@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 
 /**
  * 考勤实体类
+ * 用于存储学生实习期间的考勤记录，包括考勤日期、类型、签到签退时间等
+ * 支持出勤、迟到、早退、请假、缺勤、休息等多种考勤类型，企业导师可以确认考勤
  */
 @ApiModel(description = "考勤信息")
 @Data

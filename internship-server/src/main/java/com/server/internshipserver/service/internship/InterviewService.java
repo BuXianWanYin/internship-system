@@ -9,6 +9,7 @@ import com.server.internshipserver.domain.internship.dto.SubmitInterviewResultDT
 
 /**
  * 面试管理Service接口
+ * 提供面试安排、确认、结果提交等业务功能
  */
 public interface InterviewService extends IService<Interview> {
     

@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 
 /**
  * 学校评价管理Service实现类
+ * 实现学校评价的创建、提交、查询等业务功能
  */
 @Service
 public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMapper, SchoolEvaluation> implements SchoolEvaluationService {

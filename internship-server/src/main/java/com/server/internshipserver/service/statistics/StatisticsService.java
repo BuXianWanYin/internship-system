@@ -18,6 +18,7 @@ import com.server.internshipserver.domain.statistics.dto.ClassTeacherDashboardDT
 
 /**
  * 数据统计Service接口
+ * 提供各类数据统计、报表生成等业务功能
  */
 public interface StatisticsService {
     

@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 综合成绩实体类
+ * 用于存储学生的实习综合成绩，综合企业评价、学校评价和学生自评计算得出
+ * 综合成绩计算公式：企业评价40% + 学校评价40% + 学生自评20%
  */
 @ApiModel(description = "综合成绩信息")
 @Data

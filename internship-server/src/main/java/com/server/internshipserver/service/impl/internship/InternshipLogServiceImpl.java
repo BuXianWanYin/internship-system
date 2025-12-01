@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 /**
  * 实习日志管理Service实现类
+ * 实现实习日志的提交、批阅、查询等业务功能
  */
 @Service
 public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, InternshipLog> implements InternshipLogService {

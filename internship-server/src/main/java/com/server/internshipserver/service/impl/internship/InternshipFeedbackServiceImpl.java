@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 /**
  * 问题反馈管理Service实现类
+ * 实现实习问题反馈的提交、处理、查询等业务功能
  */
 @Service
 public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbackMapper, InternshipFeedback> implements InternshipFeedbackService {

@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.evaluation.SchoolEvaluation;
 
 /**
  * 学校评价管理Service接口
+ * 提供学校评价的创建、提交、查询等业务功能
  */
 public interface SchoolEvaluationService extends IService<SchoolEvaluation> {
     

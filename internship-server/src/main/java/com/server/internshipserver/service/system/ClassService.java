@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 班级管理Service接口
+ * 提供班级信息的增删改查、分享码管理、班主任任命等业务功能
  */
 public interface ClassService extends IService<Class> {
     

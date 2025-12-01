@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 角色信息实体类
+ * 用于存储系统中的角色信息，包括角色代码、角色名称、角色描述等
+ * 系统支持多种角色，通过角色权限关联表实现权限管理
  */
 @ApiModel(description = "角色信息")
 @Data

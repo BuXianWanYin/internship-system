@@ -6,6 +6,7 @@ import lombok.Data;
 
 /**
  * 学生查询DTO
+ * 用于封装学生分页查询的查询条件，包括学号、班级、专业、学院、学校、状态、入学年份等
  */
 @Data
 @ApiModel("学生查询DTO")

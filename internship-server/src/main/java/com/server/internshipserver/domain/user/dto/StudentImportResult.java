@@ -7,7 +7,9 @@ import lombok.Data;
 import java.util.List;
 
 /**
- * 学生批量导入结果
+ * 学生批量导入结果DTO
+ * 用于封装学生批量导入操作的结果，包括成功数量、失败数量、失败详情列表等
+ * 提供详细的导入结果信息，便于用户查看导入成功和失败的情况
  */
 @ApiModel(description = "学生批量导入结果")
 @Data

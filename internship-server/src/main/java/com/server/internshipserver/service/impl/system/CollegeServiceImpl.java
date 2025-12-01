@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 /**
  * 学院管理Service实现类
+ * 实现学院信息的增删改查等业务功能
  */
 @Service
 public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> implements CollegeService {

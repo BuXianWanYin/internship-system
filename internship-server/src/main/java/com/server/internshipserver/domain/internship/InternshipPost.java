@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 
 /**
  * 实习岗位实体类
+ * 用于存储企业发布的实习岗位信息，包括岗位名称、岗位描述、技能要求、薪资范围等
+ * 支持岗位审核和发布流程，学生可以申请岗位并参加面试
  */
 @ApiModel(description = "实习岗位信息")
 @Data

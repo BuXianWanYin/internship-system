@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 /**
  * 企业学校合作关系Service实现类
+ * 实现企业学校合作关系的创建、查询、验证等业务功能
  */
 @Service
 public class EnterpriseSchoolCooperationServiceImpl extends ServiceImpl<EnterpriseSchoolCooperationMapper, EnterpriseSchoolCooperation> implements EnterpriseSchoolCooperationService {

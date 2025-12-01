@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 
 /**
  * 考勤组管理Service实现类
+ * 实现考勤组的创建、配置、学生管理等业务功能
  */
 @Service
 public class AttendanceGroupServiceImpl extends ServiceImpl<AttendanceGroupMapper, AttendanceGroup> implements AttendanceGroupService {

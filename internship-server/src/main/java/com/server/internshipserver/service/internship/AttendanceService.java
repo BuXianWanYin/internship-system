@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 考勤管理Service接口
+ * 提供考勤记录的确认、查询、统计等业务功能
  */
 public interface AttendanceService extends IService<Attendance> {
     

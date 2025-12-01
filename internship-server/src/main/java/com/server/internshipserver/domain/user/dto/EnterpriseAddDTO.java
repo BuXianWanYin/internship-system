@@ -6,7 +6,9 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 /**
- * 企业添加DTO（系统管理员添加企业时使用）
+ * 企业添加DTO
+ * 用于封装添加企业时的所有信息，包括企业基本信息和企业管理员账号信息
+ * 系统会自动创建企业管理员用户账号并分配ROLE_ENTERPRISE_ADMIN角色
  */
 @ApiModel(description = "企业添加信息（包含企业管理员信息）")
 @Data

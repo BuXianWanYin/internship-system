@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 
 /**
  * 企业评价管理Service实现类
+ * 实现企业评价的创建、提交、查询等业务功能
  */
 @Service
 public class EnterpriseEvaluationServiceImpl extends ServiceImpl<EnterpriseEvaluationMapper, EnterpriseEvaluation> implements EnterpriseEvaluationService {

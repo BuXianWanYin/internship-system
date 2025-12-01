@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 专业管理Service接口
+ * 提供专业信息的增删改查等业务功能
  */
 public interface MajorService extends IService<Major> {
     

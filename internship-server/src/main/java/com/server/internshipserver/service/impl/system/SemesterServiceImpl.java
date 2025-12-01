@@ -26,6 +26,7 @@ import java.util.List;
 
 /**
  * 学期管理Service实现类
+ * 实现学期信息的增删改查等业务功能
  */
 @Service
 public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> implements SemesterService {

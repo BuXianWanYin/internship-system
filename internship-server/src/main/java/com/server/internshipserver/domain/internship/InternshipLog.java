@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 
 /**
  * 实习日志实体类
+ * 用于存储学生实习过程中的日志记录，包括日志日期、标题、内容、工作时长等
+ * 支持附件上传和教师批阅功能，教师可以对日志进行评分和评价
  */
 @ApiModel(description = "实习日志信息")
 @Data

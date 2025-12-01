@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 阶段性成果实体类
+ * 用于存储学生在实习过程中提交的阶段性成果，包括成果名称、类型、描述、文件等
+ * 支持多种成果类型，教师可以对成果进行审核和评价
  */
 @ApiModel(description = "阶段性成果信息")
 @Data

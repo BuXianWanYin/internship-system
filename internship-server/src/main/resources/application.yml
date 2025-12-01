@@ -55,10 +55,10 @@ springfox:
   documentation:
     swagger-ui:
       enabled: true
-      path: /swagger-ui.html
+      path: /swagger-ui/index.html  # Swagger UI访问地址
     api-docs:
       enabled: true
-      path: /v3/api-docs
+      path: /v3/api-docs  # API文档JSON地址
 
 # 文件上传配置
 file:
@@ -76,6 +76,8 @@ logging:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
   file:
     name: logs/internship-server.log
-    max-size: 10MB
-    max-history: 30
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
 

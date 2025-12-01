@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 考勤组规则实体类
+ * 用于存储考勤组的特殊规则，包括工作日、节假日、特殊日期等规则配置
+ * 支持单个日期和日期范围两种规则类型，用于灵活配置考勤规则
  */
 @ApiModel(description = "考勤组规则信息")
 @Data

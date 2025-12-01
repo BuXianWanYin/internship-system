@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学期信息实体类
+ * 用于存储学期的基本信息，包括学期名称、开始日期、结束日期等
+ * 支持设置当前学期，用于实习计划的时间范围管理
  */
 @ApiModel(description = "学期信息")
 @Data

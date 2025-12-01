@@ -32,6 +32,7 @@ import java.util.List;
 
 /**
  * 实习岗位管理Service实现类
+ * 实现实习岗位的发布、审核、查询等业务功能
  */
 @Service
 public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper, InternshipPost> implements InternshipPostService {

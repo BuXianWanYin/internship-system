@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 学校管理员管理Service实现类
+ * 实现学校管理员信息的增删改查等业务功能
  */
 @Service
 public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, SchoolAdmin> implements SchoolAdminService {

@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 学院管理Service接口
+ * 提供学院信息的增删改查等业务功能
  */
 public interface CollegeService extends IService<College> {
     

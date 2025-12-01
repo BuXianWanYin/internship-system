@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 实习计划管理Service接口
+ * 提供实习计划的创建、审核、发布等业务功能
  */
 public interface InternshipPlanService extends IService<InternshipPlan> {
     

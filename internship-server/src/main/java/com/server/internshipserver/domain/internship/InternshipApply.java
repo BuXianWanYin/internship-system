@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 实习申请实体类
+ * 用于存储学生实习申请的基本信息，包括申请类型、企业信息、申请状态等
+ * 支持合作企业申请和自主实习申请两种类型，需要经过审核流程
  */
 @ApiModel(description = "实习申请信息")
 @Data

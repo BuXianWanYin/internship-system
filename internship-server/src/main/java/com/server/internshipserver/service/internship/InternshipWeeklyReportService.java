@@ -7,6 +7,7 @@ import com.server.internshipserver.domain.internship.dto.InternshipWeeklyReportQ
 
 /**
  * 周报管理Service接口
+ * 提供实习周报的提交、批阅、查询等业务功能
  */
 public interface InternshipWeeklyReportService extends IService<InternshipWeeklyReport> {
     

@@ -6,6 +6,7 @@ import java.util.Map;
 
 /**
  * 认证授权Service接口
+ * 提供用户登录、登出、Token刷新等认证授权功能
  */
 public interface AuthService {
     

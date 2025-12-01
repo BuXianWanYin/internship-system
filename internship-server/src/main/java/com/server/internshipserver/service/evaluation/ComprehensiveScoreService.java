@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.evaluation.ComprehensiveScore;
 
 /**
  * 综合成绩管理Service接口
+ * 提供综合成绩的计算、查询等业务功能
  */
 public interface ComprehensiveScoreService extends IService<ComprehensiveScore> {
     

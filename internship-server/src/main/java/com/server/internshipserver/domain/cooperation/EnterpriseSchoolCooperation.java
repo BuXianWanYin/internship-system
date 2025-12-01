@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 企业学校合作关系实体类
+ * 用于存储企业与学校之间的合作关系信息，包括合作类型、合作状态、合作时间等
+ * 支持多种合作类型，如实习基地、校企合作、人才培养等
  */
 @ApiModel(description = "企业学校合作关系")
 @Data

@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 实习计划实体类
+ * 用于存储实习计划的基本信息，包括计划名称、计划编号、实习类型、时间范围等
+ * 支持全校、全院、专业三种范围的计划，需要审核后才能发布
  */
 @ApiModel(description = "实习计划信息")
 @Data

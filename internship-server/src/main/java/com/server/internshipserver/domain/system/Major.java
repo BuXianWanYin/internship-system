@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 专业信息实体类
+ * 用于存储专业的基本信息，包括专业名称、专业代码、所属学院、学制年限等
+ * 是学院与班级之间的中间层级，下辖多个班级
  */
 @ApiModel(description = "专业信息")
 @Data

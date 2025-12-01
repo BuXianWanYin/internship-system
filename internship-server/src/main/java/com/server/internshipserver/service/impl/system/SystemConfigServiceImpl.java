@@ -19,6 +19,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * 系统配置管理Service实现类
+ * 实现系统配置信息的增删改查等业务功能
  */
 @Service
 public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, SystemConfig> implements SystemConfigService {

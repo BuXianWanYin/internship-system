@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 班级信息实体类
+ * 用于存储班级的基本信息，包括班级名称、班级代码、所属专业、入学年份等
+ * 支持班级分享码功能，用于学生自主加入班级
  */
 @ApiModel(description = "班级信息")
 @Data

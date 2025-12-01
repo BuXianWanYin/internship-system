@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 /**
  * 周报管理Service实现类
+ * 实现实习周报的提交、批阅、查询等业务功能
  */
 @Service
 public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWeeklyReportMapper, InternshipWeeklyReport> implements InternshipWeeklyReportService {

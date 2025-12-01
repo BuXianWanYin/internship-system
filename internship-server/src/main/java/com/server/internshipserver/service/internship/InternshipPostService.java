@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 实习岗位管理Service接口
+ * 提供实习岗位的发布、审核、查询等业务功能
  */
 public interface InternshipPostService extends IService<InternshipPost> {
     

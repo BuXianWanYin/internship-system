@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 学校管理Service接口
+ * 提供学校信息的增删改查等业务功能
  */
 public interface SchoolService extends IService<School> {
     

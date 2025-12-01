@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 学校信息实体类
+ * 用于存储学校的基本信息，包括学校名称、学校代码、地址、联系方式等
+ * 是系统组织架构的顶层单位，下辖学院、专业、班级等
  */
 @ApiModel(description = "学校信息")
 @Data

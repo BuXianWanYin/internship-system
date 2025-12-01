@@ -24,6 +24,7 @@ import java.util.List;
 
 /**
  * 企业导师管理Service实现类
+ * 实现企业导师信息的增删改查等业务功能
  */
 @Service
 public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMapper, EnterpriseMentor> implements EnterpriseMentorService {

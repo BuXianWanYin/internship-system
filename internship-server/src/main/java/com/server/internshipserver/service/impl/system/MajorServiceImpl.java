@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 
 /**
  * 专业管理Service实现类
+ * 实现专业信息的增删改查等业务功能
  */
 @Service
 public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements MajorService {

@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * 认证授权Service实现类
+ * 实现用户登录、登出、Token刷新等认证授权功能
  */
 @Service
 public class AuthServiceImpl implements AuthService {

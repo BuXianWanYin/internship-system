@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 
 /**
  * 学生自评管理Service实现类
+ * 实现学生自评的创建、提交、查询等业务功能
  */
 @Service
 public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper, SelfEvaluation> implements SelfEvaluationService {

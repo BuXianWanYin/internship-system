@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 /**
  * 用户详情服务实现
+ * 实现Spring Security的UserDetailsService接口，用于加载用户信息和权限
  */
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -28,13 +29,21 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Autowired
     private UserMapper userMapper;
 
+    /**
+     * 根据用户名加载用户详情
+     * 包括用户基本信息、角色和权限信息
+     * 
+     * @param username 用户名
+     * @return UserDetails对象
+     * @throws UsernameNotFoundException 用户不存在或已被禁用时抛出
+     */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         if (username == null || username.isEmpty()) {
             throw new UsernameNotFoundException("用户名不能为空");
         }
         
-        // 1. 从数据库查询用户信息
+        // 从数据库查询用户信息
         UserInfo user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserInfo>()
                         .eq(UserInfo::getUsername, username)
@@ -45,18 +54,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("用户不存在：" + username);
         }
         
-        // 2. 检查用户状态
+        // 检查用户状态
         if (user.getStatus() == null || user.getStatus().equals(UserStatus.DISABLED.getCode())) {
             throw new UsernameNotFoundException("用户已被禁用：" + username);
         }
         
-        // 3. 查询用户角色
+        // 查询用户角色
         List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
         
-        // 4. 查询用户权限
+        // 查询用户权限
         List<String> permissionCodes = userMapper.selectPermissionCodesByUserId(user.getUserId());
         
-        // 5. 构建权限集合
+        // 构建权限集合
         Collection<GrantedAuthority> authorities = new ArrayList<>();
         
         // 添加角色权限（以ROLE_开头）
@@ -73,12 +82,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                     .collect(Collectors.toList()));
         }
         
-        // 6. 构建UserDetails对象
+        // 构建UserDetails对象
         return buildUserDetails(user, authorities);
     }
     
     /**
      * 构建UserDetails对象
+     * 将用户实体和权限集合转换为Spring Security的UserDetails对象
+     * 
      * @param user 用户实体
      * @param authorities 权限集合
      * @return UserDetails对象

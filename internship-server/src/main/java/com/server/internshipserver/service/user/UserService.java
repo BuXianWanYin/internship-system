@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * 用户管理Service接口
+ * 提供用户基础信息管理、角色分配、权限控制等业务功能
  */
 public interface UserService extends IService<UserInfo> {
     

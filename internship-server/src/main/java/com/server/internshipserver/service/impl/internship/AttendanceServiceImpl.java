@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 
 /**
  * 考勤管理Service实现类
+ * 实现考勤记录的确认、查询、统计等业务功能
  */
 @Service
 public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attendance> implements AttendanceService {

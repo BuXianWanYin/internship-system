@@ -1,14 +1,13 @@
 package com.server.internshipserver.service.report;
 
-import com.server.internshipserver.domain.internship.InternshipApply;
 import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * 报表管理Service接口
+ * 提供各类报表的导出功能
  */
 public interface ReportService {
     

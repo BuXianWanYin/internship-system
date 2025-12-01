@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.evaluation.SelfEvaluation;
 
 /**
  * 学生自评管理Service接口
+ * 提供学生自评的创建、提交、查询等业务功能
  */
 public interface SelfEvaluationService extends IService<SelfEvaluation> {
     

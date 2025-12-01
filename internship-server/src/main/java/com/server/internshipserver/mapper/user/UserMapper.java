@@ -10,12 +10,14 @@ import java.util.List;
 
 /**
  * 用户基础信息Mapper接口
+ * 提供用户基础信息的数据库操作方法，包括用户角色和权限的查询
  */
 @Mapper
 public interface UserMapper extends BaseMapper<UserInfo> {
     
     /**
-     * 查询用户角色代码列表
+     * 根据用户ID查询用户角色代码列表
+     * 
      * @param userId 用户ID
      * @return 角色代码列表
      */
@@ -25,7 +27,9 @@ public interface UserMapper extends BaseMapper<UserInfo> {
     List<String> selectRoleCodesByUserId(@Param("userId") Long userId);
     
     /**
-     * 查询用户权限代码列表
+     * 根据用户ID查询用户权限代码列表
+     * 通过用户角色关联表和角色权限关联表查询用户的所有权限
+     * 
      * @param userId 用户ID
      * @return 权限代码列表
      */

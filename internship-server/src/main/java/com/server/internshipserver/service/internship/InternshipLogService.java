@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.internship.InternshipLog;
 
 /**
  * 实习日志管理Service接口
+ * 提供实习日志的提交、批阅、查询等业务功能
  */
 public interface InternshipLogService extends IService<InternshipLog> {
     

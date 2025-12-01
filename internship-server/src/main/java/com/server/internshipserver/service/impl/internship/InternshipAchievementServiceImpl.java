@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 /**
  * 阶段性成果管理Service实现类
+ * 实现实习阶段性成果的提交、审核、查询等业务功能
  */
 @Service
 public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchievementMapper, InternshipAchievement> implements InternshipAchievementService {

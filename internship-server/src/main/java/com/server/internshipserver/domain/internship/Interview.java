@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 面试实体类
+ * 用于存储学生申请实习岗位后的面试信息，包括面试类型、时间、地点、结果等
+ * 支持现场面试、视频面试、电话面试三种类型，学生需要确认面试安排
  */
 @ApiModel(description = "面试信息")
 @Data

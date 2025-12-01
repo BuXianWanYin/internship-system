@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 
 /**
  * 周报实体类
+ * 用于存储学生实习过程中的周报记录，包括周次、工作内容、附件等
+ * 支持教师批阅功能，教师可以对周报进行评分和评价
  */
 @ApiModel(description = "周报信息")
 @Data

@@ -14,12 +14,23 @@ import java.io.IOException;
 
 /**
  * 认证失败处理器
+ * 当用户登录失败时，返回错误信息响应
  */
 @Component
 public class CustomAuthenticationFailureHandler implements AuthenticationFailureHandler {
     
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 处理认证失败
+     * 返回200状态码和错误信息（前端统一处理错误码）
+     * 
+     * @param request HTTP请求
+     * @param response HTTP响应
+     * @param exception 认证异常
+     * @throws IOException IO异常
+     * @throws ServletException Servlet异常
+     */
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {

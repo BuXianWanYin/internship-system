@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 
 /**
  * 企业信息实体类
+ * 用于存储企业的详细信息，包括企业名称、统一社会信用代码、法人代表、联系方式等
+ * 与企业管理员用户信息通过userId关联，支持企业审核和实习岗位管理
  */
 @ApiModel(description = "企业信息")
 @Data

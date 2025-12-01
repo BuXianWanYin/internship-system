@@ -5,6 +5,7 @@ import com.server.internshipserver.domain.user.SchoolAdmin;
 
 /**
  * 学校管理员管理Service接口
+ * 提供学校管理员信息的增删改查等业务功能
  */
 public interface SchoolAdminService extends IService<SchoolAdmin> {
     

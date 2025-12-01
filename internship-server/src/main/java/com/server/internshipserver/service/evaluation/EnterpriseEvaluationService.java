@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.evaluation.EnterpriseEvaluation;
 
 /**
  * 企业评价管理Service接口
+ * 提供企业评价的创建、提交、查询等业务功能
  */
 public interface EnterpriseEvaluationService extends IService<EnterpriseEvaluation> {
     

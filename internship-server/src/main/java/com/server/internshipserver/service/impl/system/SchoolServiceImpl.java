@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * 学校管理Service实现类
+ * 实现学校信息的增删改查、学校管理员绑定等业务功能
  */
 @Service
 public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> implements SchoolService {

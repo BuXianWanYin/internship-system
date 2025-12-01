@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 
 /**
  * 系统配置实体类
+ * 用于存储系统的配置信息，包括配置键、配置值、配置类型等
+ * 支持动态配置系统参数，如实习类型、系统设置等
  */
 @ApiModel(description = "系统配置")
 @Data
