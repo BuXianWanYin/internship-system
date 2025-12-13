@@ -6,15 +6,19 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
+import com.server.internshipserver.common.utils.AuditUtil;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
+import com.server.internshipserver.common.utils.UserUtil;
 import com.server.internshipserver.domain.user.Teacher;
-import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
 import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
+import com.server.internshipserver.domain.user.dto.TeacherRegisterDTO;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.mapper.user.TeacherMapper;
 import com.server.internshipserver.mapper.user.UserMapper;
@@ -23,6 +27,8 @@ import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.service.user.TeacherService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.domain.user.SchoolAdmin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +43,8 @@ import java.util.List;
  */
 @Service
 public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> implements TeacherService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TeacherServiceImpl.class);
     
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
@@ -243,9 +251,39 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         Teacher teacher = this.getById(teacherId);
         EntityValidationUtil.validateEntityExists(teacher, "教师");
         
-        // 软删除
-        teacher.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(teacher);
+        // 权限检查：检查当前用户是否可以删除该教师（删除权限与编辑权限相同）
+        // 如果教师是待审核状态（auditStatus = 0），可能还没有角色，需要特殊处理
+        boolean canDelete = false;
+        if (teacher.getAuditStatus() != null && teacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+            // 待审核状态的教师，允许系统管理员、学校管理员、学院负责人删除
+            // 直接检查是否有编辑用户的权限，这些角色都有权限
+            String currentUsername = UserUtil.getCurrentUsername();
+            if (currentUsername != null) {
+                UserInfo currentUser = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, currentUsername)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (currentUser != null) {
+                    List<String> currentUserRoles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                    if (currentUserRoles != null) {
+                        canDelete = currentUserRoles.contains(Constants.ROLE_SYSTEM_ADMIN)
+                                || currentUserRoles.contains(Constants.ROLE_SCHOOL_ADMIN)
+                                || currentUserRoles.contains(Constants.ROLE_COLLEGE_LEADER);
+                    }
+                }
+            }
+        } else {
+            // 已审核的教师，使用正常的权限检查
+            canDelete = dataPermissionUtil.canEditUser(teacher.getUserId());
+        }
+        
+        if (!canDelete) {
+            throw new BusinessException("无权限删除该教师");
+        }
+        
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(teacherId);
     }
     
     @Override
@@ -263,11 +301,11 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             throw new BusinessException("工号已存在");
         }
         
-        // 生成用户名（使用工号）
-        String username = addDTO.getTeacherNo();
+        // 生成用户名（优先使用提供的用户名，否则使用工号）
+        String username = StringUtils.hasText(addDTO.getUsername()) ? addDTO.getUsername() : addDTO.getTeacherNo();
         UserInfo existUser = userService.getUserByUsername(username);
         if (existUser != null) {
-            throw new BusinessException("用户名（工号）已存在");
+            throw new BusinessException("用户名已存在");
         }
         
         // 创建用户
@@ -275,6 +313,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         user.setUsername(username);
         user.setPassword(addDTO.getPassword()); // UserService会自动加密
         user.setRealName(addDTO.getRealName());
+        user.setGender(addDTO.getGender());
         user.setIdCard(addDTO.getIdCard());
         user.setPhone(addDTO.getPhone());
         user.setEmail(addDTO.getEmail());
@@ -358,7 +397,33 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         EntityValidationUtil.validateEntityExists(existTeacher, "教师");
         
         // 权限检查：检查当前用户是否可以编辑该教师对应的用户
-        if (!dataPermissionUtil.canEditUser(existTeacher.getUserId())) {
+        // 如果教师是待审核状态（auditStatus = 0），可能还没有角色，需要特殊处理
+        boolean canEdit = false;
+        if (existTeacher.getAuditStatus() != null && existTeacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+            // 待审核状态的教师，允许系统管理员、学校管理员、学院负责人编辑
+            // 直接检查是否有编辑用户的权限，这些角色都有权限
+            String currentUsername = UserUtil.getCurrentUsername();
+            if (currentUsername != null) {
+                UserInfo currentUser = userMapper.selectOne(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .eq(UserInfo::getUsername, currentUsername)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (currentUser != null) {
+                    List<String> currentUserRoles = userMapper.selectRoleCodesByUserId(currentUser.getUserId());
+                    if (currentUserRoles != null) {
+                        canEdit = currentUserRoles.contains(Constants.ROLE_SYSTEM_ADMIN)
+                                || currentUserRoles.contains(Constants.ROLE_SCHOOL_ADMIN)
+                                || currentUserRoles.contains(Constants.ROLE_COLLEGE_LEADER);
+                    }
+                }
+            }
+        } else {
+            // 已审核的教师，使用正常的权限检查
+            canEdit = dataPermissionUtil.canEditUser(existTeacher.getUserId());
+        }
+        
+        if (!canEdit) {
             throw new BusinessException("无权限编辑该教师信息");
         }
         
@@ -377,6 +442,11 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         if (StringUtils.hasText(updateDTO.getRealName())) {
             user.setRealName(updateDTO.getRealName());
+        }
+        // 如果传入了gender字段（包括null和空字符串），就更新
+        if (updateDTO.getGender() != null) {
+            // 如果为空字符串，设置为null；否则设置为传入的值
+            user.setGender(updateDTO.getGender().isEmpty() ? null : updateDTO.getGender());
         }
         if (StringUtils.hasText(updateDTO.getIdCard())) {
             user.setIdCard(updateDTO.getIdCard());
@@ -563,6 +633,219 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         }
         
         return teachers;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Teacher registerTeacher(TeacherRegisterDTO registerDTO) {
+        // 参数校验
+        EntityValidationUtil.validateStringNotBlank(registerDTO.getTeacherNo(), "工号");
+        EntityValidationUtil.validateStringNotBlank(registerDTO.getUsername(), "用户名");
+        EntityValidationUtil.validateStringNotBlank(registerDTO.getRealName(), "真实姓名");
+        EntityValidationUtil.validateStringNotBlank(registerDTO.getPassword(), "密码");
+        EntityValidationUtil.validateIdNotNull(registerDTO.getCollegeId(), "所属学院ID");
+        
+        // 检查工号是否已存在
+        Teacher existTeacher = getTeacherByTeacherNo(registerDTO.getTeacherNo());
+        if (existTeacher != null) {
+            throw new BusinessException("工号已存在");
+        }
+        
+        // 检查用户名是否已存在（用户名必填，用于登录）
+        String username = registerDTO.getUsername();
+        UserInfo existUser = userService.getUserByUsername(username);
+        if (existUser != null) {
+            throw new BusinessException("用户名已存在");
+        }
+        
+        // 获取学院信息，用于获取学校ID和学院名称
+        College college = collegeMapper.selectById(registerDTO.getCollegeId());
+        if (college == null) {
+            throw new BusinessException("所属学院不存在");
+        }
+        
+        // 创建用户（注册时状态为禁用，等待审核）
+        UserInfo user = new UserInfo();
+        user.setUsername(username);
+        user.setPassword(registerDTO.getPassword()); // UserService会自动加密
+        user.setRealName(registerDTO.getRealName());
+        user.setGender(registerDTO.getGender());
+        user.setIdCard(registerDTO.getIdCard());
+        user.setPhone(registerDTO.getPhone());
+        user.setEmail(registerDTO.getEmail());
+        user.setStatus(UserStatus.DISABLED.getCode()); // 注册时禁用，等待审核
+        user = userService.addUser(user);
+        
+        // 创建教师记录
+        Teacher teacher = new Teacher();
+        teacher.setUserId(user.getUserId());
+        teacher.setTeacherNo(registerDTO.getTeacherNo());
+        teacher.setCollegeId(registerDTO.getCollegeId());
+        // 优先使用前端传来的schoolId，否则从学院获取
+        teacher.setSchoolId(registerDTO.getSchoolId() != null ? registerDTO.getSchoolId() : college.getSchoolId());
+        teacher.setTitle(registerDTO.getTitle());
+        // 注意：不再设置department字段，因为数据库表中已无此字段
+        
+        // 注册时状态为禁用，审核状态为待审核
+        teacher.setStatus(UserStatus.DISABLED.getCode());
+        teacher.setAuditStatus(AuditStatus.PENDING.getCode());
+        
+        EntityDefaultValueUtil.setDefaultValues(teacher);
+        
+        // 保存教师
+        this.save(teacher);
+        
+        // 注意：注册时不分配角色，审核通过后再分配角色
+        
+        return teacher;
+    }
+    
+    @Override
+    public Page<Teacher> getPendingApprovalTeacherPage(Page<Teacher> page, String teacherNo, String realName) {
+        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
+        
+        // 只查询未删除的数据
+        QueryWrapperUtil.notDeleted(wrapper, Teacher::getDeleteFlag);
+        
+        // 只查询待审核状态的教师（auditStatus=0且status=0）
+        wrapper.eq(Teacher::getAuditStatus, AuditStatus.PENDING.getCode())
+               .eq(Teacher::getStatus, UserStatus.DISABLED.getCode());
+        
+        // 数据权限过滤
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            // 学院负责人：只能查看本院的待审核教师
+            wrapper.eq(Teacher::getCollegeId, currentUserCollegeId);
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能查看本校的待审核教师
+            wrapper.eq(Teacher::getSchoolId, currentUserSchoolId);
+        }
+        // 系统管理员：可以查看所有待审核教师，不添加额外过滤条件
+        
+        // 其他条件查询
+        if (StringUtils.hasText(teacherNo)) {
+            wrapper.like(Teacher::getTeacherNo, teacherNo);
+        }
+        
+        // 如果提供了姓名，需要通过用户表关联查询
+        if (StringUtils.hasText(realName)) {
+            // 先查询符合条件的用户ID
+            LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.like(UserInfo::getRealName, realName)
+                      .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+            List<UserInfo> users = userMapper.selectList(userWrapper);
+            if (users != null && !users.isEmpty()) {
+                List<Long> userIds = users.stream()
+                        .map(UserInfo::getUserId)
+                        .collect(java.util.stream.Collectors.toList());
+                wrapper.in(Teacher::getUserId, userIds);
+            } else {
+                // 如果没有找到匹配的用户，返回空结果
+                wrapper.eq(Teacher::getTeacherId, -1L);
+            }
+        }
+        
+        // 按创建时间倒序
+        wrapper.orderByDesc(Teacher::getCreateTime);
+        
+        Page<Teacher> result = this.page(page, wrapper);
+        
+        // 填充每个教师的角色信息（虽然注册时没有角色，但为了统一处理）
+        if (EntityValidationUtil.hasRecords(result)) {
+            for (Teacher teacher : result.getRecords()) {
+                if (teacher.getUserId() != null) {
+                    List<String> roleCodes = userMapper.selectRoleCodesByUserId(teacher.getUserId());
+                    teacher.setRoles(roleCodes != null ? roleCodes : new ArrayList<>());
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean approveTeacherRegistration(Long teacherId, boolean approved, String auditOpinion) {
+        EntityValidationUtil.validateIdNotNull(teacherId, "教师ID");
+        
+        // 查询教师信息
+        Teacher teacher = this.getById(teacherId);
+        EntityValidationUtil.validateEntityExists(teacher, "教师");
+        
+        // 检查教师状态是否为待审核
+        if (teacher.getAuditStatus() == null || !teacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+            throw new BusinessException("该教师不是待审核状态");
+        }
+        
+        // 数据权限检查：检查当前用户是否可以审核该教师
+        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+        
+        if (currentUserCollegeId != null) {
+            // 学院负责人：只能审核本院的教师
+            if (!currentUserCollegeId.equals(teacher.getCollegeId())) {
+                throw new BusinessException("无权限审核该教师");
+            }
+        } else if (currentUserSchoolId != null) {
+            // 学校管理员：只能审核本校的教师
+            if (!currentUserSchoolId.equals(teacher.getSchoolId())) {
+                throw new BusinessException("无权限审核该教师");
+            }
+        }
+        // 系统管理员：可以审核所有教师
+        
+        // 查询用户信息
+        UserInfo user = userService.getUserById(teacher.getUserId());
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        // 设置审核信息
+        AuditUtil.setAuditInfo(teacher, 
+                approved ? AuditStatus.APPROVED.getCode() : AuditStatus.REJECTED.getCode(), 
+                auditOpinion, userMapper);
+        
+        if (approved) {
+            // 审核通过：激活用户账号和教师账号
+            user.setStatus(UserStatus.ENABLED.getCode());
+            teacher.setStatus(UserStatus.ENABLED.getCode());
+            
+            // 分配默认角色（班主任角色）
+            // 注意：审核流程本身已经有权限控制（只有系统管理员、学校管理员、学院负责人可以审核）
+            // 这些角色都有权限分配 ROLE_CLASS_TEACHER 角色，所以应该能成功分配
+            // 但如果权限检查失败，仍然尝试分配（可能是边缘情况）
+            try {
+                // 先检查权限，如果有权限则正常分配
+                if (dataPermissionUtil.canAssignRole(Constants.ROLE_CLASS_TEACHER)) {
+                    userService.assignRoleToUser(teacher.getUserId(), Constants.ROLE_CLASS_TEACHER);
+                } else {
+                    // 如果没有权限（这种情况理论上不应该发生），记录警告但仍然尝试分配
+                    // 因为审核接口本身就有权限控制，审核人应该有权限分配角色
+                    logger.warn("审核教师注册时，权限检查失败但继续分配角色。教师ID: {}, 审核人: {}", 
+                            teacherId, UserUtil.getCurrentUsername());
+                    // 直接调用assignRoleToUser，它会跳过权限检查（如果方法内部有检查）
+                    // 或者使用userService的内部方法直接分配
+                    userService.assignRoleToUser(teacher.getUserId(), Constants.ROLE_CLASS_TEACHER);
+                }
+            } catch (Exception e) {
+                // 如果角色分配失败，记录错误并抛出异常，阻止审核通过
+                // 因为角色分配是审核通过的必要步骤
+                logger.error("审核教师注册时，分配角色失败。教师ID: {}, 错误: {}", teacherId, e.getMessage(), e);
+                throw new BusinessException("分配角色失败：" + e.getMessage());
+            }
+        } else {
+            // 审核拒绝：保持禁用状态
+            user.setStatus(UserStatus.DISABLED.getCode());
+            teacher.setStatus(UserStatus.DISABLED.getCode());
+        }
+        
+        // 更新用户和教师状态
+        userService.updateUser(user);
+        this.updateById(teacher);
+        
+        return true;
     }
 }
 

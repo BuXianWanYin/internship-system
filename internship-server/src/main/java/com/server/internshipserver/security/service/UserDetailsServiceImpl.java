@@ -3,9 +3,12 @@ package com.server.internshipserver.security.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.domain.user.UserInfo;
+import com.server.internshipserver.domain.user.Teacher;
 import org.springframework.security.core.userdetails.User;
 import com.server.internshipserver.mapper.user.UserMapper;
+import com.server.internshipserver.mapper.user.TeacherMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,6 +31,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private TeacherMapper teacherMapper;
 
     /**
      * 根据用户名加载用户详情
@@ -56,6 +62,25 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         
         // 检查用户状态
         if (user.getStatus() == null || user.getStatus().equals(UserStatus.DISABLED.getCode())) {
+            // 如果是教师，检查审核状态，给出更明确的提示
+            Teacher teacher = teacherMapper.selectOne(
+                    new LambdaQueryWrapper<Teacher>()
+                            .eq(Teacher::getUserId, user.getUserId())
+                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            );
+            
+            if (teacher != null) {
+                // 检查审核状态
+                if (teacher.getAuditStatus() != null) {
+                    if (teacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+                        throw new UsernameNotFoundException("账号未审核通过，无法登录，请等待管理员审核");
+                    } else if (teacher.getAuditStatus().equals(AuditStatus.REJECTED.getCode())) {
+                        throw new UsernameNotFoundException("账号审核未通过，无法登录");
+                    }
+                }
+            }
+            
+            // 如果不是教师或审核状态不是待审核/已拒绝，则提示用户已被禁用
             throw new UsernameNotFoundException("用户已被禁用：" + username);
         }
         

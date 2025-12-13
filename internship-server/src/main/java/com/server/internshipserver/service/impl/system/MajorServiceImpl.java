@@ -4,16 +4,23 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.common.utils.UniquenessValidationUtil;
+import com.server.internshipserver.domain.internship.InternshipPlan;
+import com.server.internshipserver.domain.system.Class;
 import com.server.internshipserver.domain.system.College;
 import com.server.internshipserver.domain.system.Major;
+import com.server.internshipserver.domain.user.Student;
+import com.server.internshipserver.mapper.internship.InternshipPlanMapper;
+import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.system.MajorMapper;
+import com.server.internshipserver.mapper.user.StudentMapper;
 import com.server.internshipserver.service.system.MajorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +45,15 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     
     @Autowired
     private com.server.internshipserver.mapper.system.SchoolMapper schoolMapper;
+    
+    @Autowired
+    private ClassMapper classMapper;
+    
+    @Autowired
+    private StudentMapper studentMapper;
+    
+    @Autowired
+    private InternshipPlanMapper internshipPlanMapper;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -172,17 +188,97 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteMajor(Long majorId) {
-        if (majorId == null) {
-            throw new BusinessException("专业ID不能为空");
-        }
+    public boolean disableMajor(Long majorId) {
+        EntityValidationUtil.validateIdNotNull(majorId, "专业ID");
         
         Major major = this.getById(majorId);
         EntityValidationUtil.validateEntityExists(major, "专业");
         
-        // 软删除
-        major.setDeleteFlag(DeleteFlag.DELETED.getCode());
+        // 检查是否有班级关联，如果有班级则不允许停用
+        LambdaQueryWrapper<Class> classWrapper = new LambdaQueryWrapper<>();
+        classWrapper.eq(Class::getMajorId, majorId)
+                   .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long classCount = classMapper.selectCount(classWrapper);
+        if (classCount > 0) {
+            throw new BusinessException("该专业下还有" + classCount + "个班级，不允许停用");
+        }
+        
+        // 检查是否有学生关联，如果有学生则不允许停用
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(Student::getMajorId, majorId)
+                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long studentCount = studentMapper.selectCount(studentWrapper);
+        if (studentCount > 0) {
+            throw new BusinessException("该专业下还有" + studentCount + "名学生，不允许停用");
+        }
+        
+        // 检查是否有实习计划关联，如果有实习计划则不允许停用
+        LambdaQueryWrapper<InternshipPlan> planWrapper = new LambdaQueryWrapper<>();
+        planWrapper.eq(InternshipPlan::getMajorId, majorId)
+                  .eq(InternshipPlan::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long planCount = internshipPlanMapper.selectCount(planWrapper);
+        if (planCount > 0) {
+            throw new BusinessException("该专业下还有" + planCount + "个实习计划，不允许停用");
+        }
+        
+        // 只设置停用状态，不删除数据
+        major.setStatus(UserStatus.DISABLED.getCode());
         return this.updateById(major);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean enableMajor(Long majorId) {
+        EntityValidationUtil.validateIdNotNull(majorId, "专业ID");
+        
+        Major major = this.getById(majorId);
+        EntityValidationUtil.validateEntityExists(major, "专业");
+        
+        // 设置启用状态
+        major.setStatus(UserStatus.ENABLED.getCode());
+        return this.updateById(major);
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteMajor(Long majorId) {
+        EntityValidationUtil.validateIdNotNull(majorId, "专业ID");
+        
+        Major major = this.getById(majorId);
+        EntityValidationUtil.validateEntityExists(major, "专业");
+        
+        // 检查是否有班级关联，如果有班级则不允许删除
+        LambdaQueryWrapper<Class> classWrapper = new LambdaQueryWrapper<>();
+        classWrapper.eq(Class::getMajorId, majorId)
+                   .eq(Class::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long classCount = classMapper.selectCount(classWrapper);
+        if (classCount > 0) {
+            throw new BusinessException("该专业下还有" + classCount + "个班级，不允许删除");
+        }
+        
+        // 检查是否有学生关联，如果有学生则不允许删除
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(Student::getMajorId, majorId)
+                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long studentCount = studentMapper.selectCount(studentWrapper);
+        if (studentCount > 0) {
+            throw new BusinessException("该专业下还有" + studentCount + "名学生，不允许删除");
+        }
+        
+        // 检查是否有实习计划关联，如果有实习计划则不允许删除
+        LambdaQueryWrapper<InternshipPlan> planWrapper = new LambdaQueryWrapper<>();
+        planWrapper.eq(InternshipPlan::getMajorId, majorId)
+                  .eq(InternshipPlan::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long planCount = internshipPlanMapper.selectCount(planWrapper);
+        if (planCount > 0) {
+            throw new BusinessException("该专业下还有" + planCount + "个实习计划，不允许删除");
+        }
+        
+        // 使用MyBatis Plus逻辑删除
+        // 先设置状态为禁用，然后逻辑删除
+        major.setStatus(UserStatus.DISABLED.getCode());
+        this.updateById(major);
+        return this.removeById(majorId);
     }
     
     @Override

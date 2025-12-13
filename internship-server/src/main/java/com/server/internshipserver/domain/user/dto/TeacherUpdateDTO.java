@@ -23,6 +23,9 @@ public class TeacherUpdateDTO {
     @ApiModelProperty(value = "真实姓名", example = "张老师")
     private String realName;
     
+    @ApiModelProperty(value = "性别", example = "男")
+    private String gender;
+    
     @ApiModelProperty(value = "身份证号", example = "110101199001011234")
     private String idCard;
     

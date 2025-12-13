@@ -178,7 +178,7 @@
     >
       <el-table-column prop="username" label="用户名" min-width="120" />
       <el-table-column prop="realName" label="真实姓名" min-width="120" />
-      <el-table-column prop="gender" label="性别" width="80" align="center">
+      <el-table-column prop="gender" label="性别" min-width="80" align="center">
         <template #default="{ row }">
           <span v-if="row.gender">{{ row.gender }}</span>
           <span v-else style="color: #909399">-</span>
@@ -186,15 +186,28 @@
       </el-table-column>
       <el-table-column prop="phone" label="手机号" min-width="120" />
       <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="80" align="center">
+      <el-table-column label="角色" min-width="150">
+        <template #default="{ row }">
+          <el-tag
+            v-for="role in (row.roles || [])"
+            :key="role"
+            size="small"
+            style="margin-right: 4px"
+          >
+            {{ getRoleName(role) }}
+          </el-tag>
+          <span v-if="!row.roles || row.roles.length === 0" style="color: #909399">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="状态" min-width="80" align="center">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
             {{ row.status === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column label="操作" width="240" fixed="right" align="center">
+      <el-table-column prop="createTime" label="创建时间" min-width="180" />
+      <el-table-column label="操作" min-width="240" fixed="right" align="center">
         <template #default="{ row }">
           <el-button 
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
@@ -216,14 +229,14 @@
             重置密码
           </el-button>
           <el-button 
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            v-if="canDeleteUserBtn" 
             link 
             type="danger" 
             size="small" 
             :disabled="!canDeleteMap[row.userId]"
             @click="handleDelete(row)"
           >
-            停用
+            删除
           </el-button>
         </template>
       </el-table-column>
@@ -588,6 +601,11 @@ import { Plus, Search, Refresh, Upload, Download } from '@element-plus/icons-vue
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, canEditUser, canAssignRole } from '@/utils/permission'
 import { useAuthStore } from '@/store/modules/auth'
+
+// 计算属性：是否可以删除用户（用于显示删除按钮）
+const canDeleteUserBtn = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
 import { userApi } from '@/api/user/user'
 import { roleApi } from '@/api/user/role'
 import { schoolApi } from '@/api/system/school'
@@ -645,7 +663,7 @@ const currentOrgInfo = ref({
 const tableData = ref([])
 const loading = ref(false)
 const exportLoading = ref(false)
-// 用户是否可以停用的映射表
+// 用户是否可以删除的映射表
 const canDeleteMap = ref({})
 // 编辑时保存的原始角色（用于显示）
 const rowRoles = ref([])
@@ -1000,7 +1018,7 @@ const loadData = async () => {
       // 为每个用户加载角色信息
       await loadUserRoles()
       
-      // 检查每个用户是否可以停用
+      // 检查每个用户是否可以删除
       await checkCanDeleteUsers()
     }
   } catch (error) {
@@ -1021,7 +1039,7 @@ const loadUserRoles = async () => {
   })
 }
 
-// 检查用户是否可以停用
+// 检查用户是否可以删除
 const checkCanDeleteUsers = async () => {
   canDeleteMap.value = {}
   // 批量检查，使用 Promise.all 并行请求
@@ -1033,7 +1051,7 @@ const checkCanDeleteUsers = async () => {
         canDelete: res.code === 200 ? res.data : false
       }
     } catch (error) {
-      console.error(`检查用户 ${user.userId} 是否可以停用失败:`, error)
+      console.error(`检查用户 ${user.userId} 是否可以删除失败:`, error)
       return {
         userId: user.userId,
         canDelete: false
@@ -1569,14 +1587,14 @@ const handleImport = () => {
 
 // 删除
 const handleDelete = (row) => {
-  // 再次检查是否可以停用（防止状态变化）
+  // 再次检查是否可以删除（防止状态变化）
   if (!canDeleteMap.value[row.userId]) {
-    ElMessage.warning('该用户不能停用，系统至少需要保留一个启用的管理员')
+    ElMessage.warning('该用户不能删除，系统至少需要保留一个启用的管理员')
     return
   }
   
   ElMessageBox.confirm(
-    `确定要停用用户 "${row.username}" 吗？`,
+    `确定要删除用户 "${row.username}" 吗？`,
     '提示',
     {
       confirmButtonText: '确定',
@@ -1587,14 +1605,14 @@ const handleDelete = (row) => {
     try {
       const res = await userApi.deleteUser(row.userId)
       if (res.code === 200) {
-        ElMessage.success('停用成功')
+        ElMessage.success('删除成功')
         loadData()
       }
     } catch (error) {
       // 显示后端返回的错误信息
-      const errorMessage = error.response?.data?.message || error.message || '停用失败'
+      const errorMessage = error.response?.data?.message || error.message || '删除失败'
       ElMessage.error(errorMessage)
-      // 重新检查是否可以停用
+      // 重新检查是否可以删除
       await checkCanDeleteUsers()
     }
   }).catch(() => {})

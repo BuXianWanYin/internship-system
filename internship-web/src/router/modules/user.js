@@ -32,6 +32,15 @@ export default [
     }
   },
   {
+    path: '/register/teacher',
+    name: 'TeacherRegister',
+    component: () => import('@/views/register/TeacherRegister.vue'),
+    meta: {
+      title: '教师注册',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/register/enterprise',
     name: 'EnterpriseRegister',
     component: () => import('@/views/register/EnterpriseRegister.vue'),

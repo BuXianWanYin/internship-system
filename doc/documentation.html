@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实习管理系统 - 系统文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #303133;
+            background: #f5f7fa;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* 侧边栏导航 */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #303133 0%, #1f1f1f 100%);
+            color: #ecf0f1;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 20px 0;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(64, 158, 255, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h1 {
+            font-size: 22px;
+            color: #409eff;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #909399;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-menu li {
+            margin: 0;
+        }
+
+        .nav-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-menu a:hover {
+            background: rgba(64, 158, 255, 0.1);
+            border-left-color: #409eff;
+            padding-left: 25px;
+            color: #409eff;
+        }
+
+        .nav-menu a.active {
+            background: rgba(64, 158, 255, 0.15);
+            border-left-color: #409eff;
+            color: #409eff;
+            font-weight: 600;
+        }
+
+        .nav-menu .sub-menu {
+            list-style: none;
+            padding-left: 20px;
+            display: none;
+        }
+
+        .nav-menu .sub-menu.show {
+            display: block;
+        }
+
+        .nav-menu .sub-menu a {
+            padding: 8px 20px;
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 40px;
+            max-width: 1200px;
+        }
+
+        .section {
+            background: white;
+            padding: 40px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        .section h2 {
+            color: #303133;
+            font-size: 28px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #409eff;
+            font-weight: 600;
+        }
+
+        .section h3 {
+            color: #606266;
+            font-size: 22px;
+            margin: 35px 0 18px;
+            font-weight: 600;
+        }
+
+        .section h4 {
+            color: #555;
+            font-size: 18px;
+            margin: 20px 0 10px;
+        }
+
+        .section p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .section ul, .section ol {
+            margin: 15px 0 15px 30px;
+        }
+
+        .section li {
+            margin-bottom: 10px;
+        }
+
+        /* 代码块样式 */
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 20px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* 信息卡片 */
+        .info-card {
+            background: #ecf5ff;
+            border-left: 4px solid #409eff;
+            padding: 18px 22px;
+            margin: 20px 0;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+        }
+
+        .info-card.warning {
+            background: #fdf6ec;
+            border-left-color: #e6a23c;
+            box-shadow: 0 2px 8px rgba(230, 162, 60, 0.1);
+        }
+
+        .info-card.success {
+            background: #f0f9ff;
+            border-left-color: #67c23a;
+            box-shadow: 0 2px 8px rgba(103, 194, 58, 0.1);
+        }
+
+        .info-card.danger {
+            background: #fef0f0;
+            border-left-color: #f56c6c;
+            box-shadow: 0 2px 8px rgba(245, 108, 108, 0.1);
+        }
+
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        table th {
+            background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        table tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        table tr:hover {
+            background: #ecf5ff;
+            transition: background 0.2s;
+        }
+
+        /* 标签样式 */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 5px;
+        }
+
+        .badge-primary {
+            background: #409eff;
+            color: white;
+        }
+
+        .badge-success {
+            background: #67c23a;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #e6a23c;
+            color: white;
+        }
+
+        .badge-danger {
+            background: #f56c6c;
+            color: white;
+        }
+
+        /* 返回顶部按钮 */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: #409eff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(64, 158, 255, 0.4);
+            transition: all 0.3s;
+        }
+
+        .back-to-top:hover {
+            background: #66b1ff;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(64, 158, 255, 0.5);
+        }
+
+        .back-to-top.show {
+            display: flex;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #409eff, #66b1ff);
+            transition: width 0.3s;
+        }
+
+        /* 代码样式 */
+        code {
+            background: #f5f7fa;
+            color: #e6a23c;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+
+        /* 链接样式 */
+        a {
+            color: #409eff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: #66b1ff;
+            text-decoration: underline;
+        }
+
+        /* 强调文本 */
+        strong {
+            color: #303133;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 侧边栏导航 -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>实习管理系统</h1>
+                <p>系统文档 v1.0</p>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#overview" class="active">项目概述</a></li>
+                <li><a href="#tech-stack">技术栈</a></li>
+                <li><a href="#quick-start">快速启动</a></li>
+                <li><a href="#architecture">系统架构</a></li>
+                <li><a href="#modules">功能模块</a></li>
+                <li><a href="#business">核心业务流程</a></li>
+                <li><a href="#defense">答辩准备</a></li>
+                <li><a href="#api-db">API & 数据库</a></li>
+                <li><a href="#thesis">论文相关</a></li>
+            </ul>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 项目概述 -->
+            <section id="overview" class="section">
+                <h2>📋 项目概述</h2>
+                <div class="info-card">
+                    <p><strong>项目名称：</strong>高校实习过程跟踪与评价管理系统</p>
+                    <p><strong>开发模式：</strong>前后端分离</p>
+                    <p><strong>维护者：</strong>邓梓伶</p>
+                    <p><strong>完成时间：</strong>2025年12月</p>
+                    <p><strong>开发进度：</strong>已完成</p>
+                </div>
+                <h3>项目简介</h3>
+                <p>高校实习过程跟踪与评价管理系统是一个面向高校、企业、学生的综合性实习管理平台。系统实现了从实习计划制定、岗位发布、申请审核、面试安排、考勤管理、日志周报、成果反馈到综合评价的完整实习管理流程。</p>
+                <p>系统采用现代化的前后端分离架构，基于Spring Boot和Vue 3技术栈开发，提供了完整的实习管理解决方案。系统支持多种实习类型（合作企业实习、自主实习），实现了多角色协同工作，为高校实习管理提供了数字化、系统化的管理工具。</p>
+                
+                <h3>项目背景</h3>
+                <p>随着高等教育的不断发展，实习已成为高校人才培养的重要环节。然而，传统的实习管理方式存在诸多问题：</p>
+                <ul>
+                    <li><strong>管理效率低下：</strong>传统的纸质文档管理方式，信息传递慢，容易丢失</li>
+                    <li><strong>信息不透明：</strong>学生、教师、企业之间信息沟通不畅，缺乏统一的信息平台</li>
+                    <li><strong>流程不规范：</strong>实习申请、审核、评价等流程缺乏标准化管理</li>
+                    <li><strong>数据分散：</strong>实习相关数据分散在各个部门，难以统一管理和分析</li>
+                    <li><strong>评价体系不完善：</strong>缺乏科学的评价标准和量化指标</li>
+                </ul>
+                <p>因此，开发一套完整的实习管理系统，实现实习管理的数字化、系统化、规范化，具有重要的现实意义。</p>
+
+                <h3>项目目标</h3>
+                <ul>
+                    <li><strong>提高管理效率：</strong>通过数字化管理，提高实习管理效率，减少人工操作</li>
+                    <li><strong>规范管理流程：</strong>建立标准化的实习管理流程，确保各个环节规范有序</li>
+                    <li><strong>促进校企合作：</strong>为校企合作提供便捷的管理平台，促进校企深度合作</li>
+                    <li><strong>完善评价体系：</strong>建立科学的评价体系，实现多维度、量化的实习评价</li>
+                    <li><strong>数据统计分析：</strong>提供丰富的数据统计和分析功能，为决策提供数据支撑</li>
+                </ul>
+
+                <h3>项目特点</h3>
+                <ul>
+                    <li><strong>多角色权限管理：</strong>支持学生、教师、企业、企业导师、学校管理员等多种角色，每个角色拥有不同的权限和功能</li>
+                    <li><strong>完整的实习流程：</strong>涵盖实习申请、面试、考勤、日志、周报、成果、评价全流程，实现实习全生命周期管理</li>
+                    <li><strong>校企协同：</strong>支持校企合作申请、审核、管理等功能，促进校企深度合作</li>
+                    <li><strong>数据可视化：</strong>提供丰富的统计图表和数据分析功能，直观展示实习数据</li>
+                    <li><strong>移动端适配：</strong>响应式设计，支持移动端访问，方便学生随时查看和操作</li>
+                    <li><strong>灵活配置：</strong>支持系统参数配置，可根据不同学校的需求进行定制</li>
+                    <li><strong>安全可靠：</strong>采用JWT认证、数据权限控制等安全机制，保证数据安全</li>
+                </ul>
+
+                <h3>适用场景</h3>
+                <ul>
+                    <li><strong>高校实习管理：</strong>适用于各类高校的实习管理工作</li>
+                    <li><strong>校企合作管理：</strong>适用于校企合作项目的管理和跟踪</li>
+                    <li><strong>学生实习跟踪：</strong>适用于学生实习过程的跟踪和评价</li>
+                    <li><strong>数据统计分析：</strong>适用于实习数据的统计分析和报表生成</li>
+                </ul>
+            </section>
+
+            <!-- 技术栈 -->
+            <section id="tech-stack" class="section">
+                <h2>🛠️ 技术栈</h2>
+                <h3>后端技术栈</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>技术</th>
+                            <th>版本</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Spring Boot</td>
+                            <td>2.7.6</td>
+                            <td>核心框架</td>
+                        </tr>
+                        <tr>
+                            <td>Java</td>
+                            <td>1.8</td>
+                            <td>开发语言</td>
+                        </tr>
+                        <tr>
+                            <td>MyBatis Plus</td>
+                            <td>3.5.3</td>
+                            <td>ORM框架</td>
+                        </tr>
+                        <tr>
+                            <td>MySQL</td>
+                            <td>8.0.33</td>
+                            <td>关系型数据库</td>
+                        </tr>
+                        <tr>
+                            <td>Redis</td>
+                            <td>-</td>
+                            <td>缓存数据库</td>
+                        </tr>
+                        <tr>
+                            <td>JWT</td>
+                            <td>0.9.1</td>
+                            <td>身份认证</td>
+                        </tr>
+                        <tr>
+                            <td>Swagger</td>
+                            <td>3.0.0</td>
+                            <td>API文档</td>
+                        </tr>
+                        <tr>
+                            <td>Apache POI</td>
+                            <td>5.2.3</td>
+                            <td>Excel处理</td>
+                        </tr>
+                        <tr>
+                            <td>Spring Security</td>
+                            <td>2.7.6</td>
+                            <td>安全框架</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>前端技术栈</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>技术</th>
+                            <th>版本</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Vue</td>
+                            <td>3.5.13</td>
+                            <td>核心框架</td>
+                        </tr>
+                        <tr>
+                            <td>Vite</td>
+                            <td>6.0.0</td>
+                            <td>构建工具</td>
+                        </tr>
+                        <tr>
+                            <td>Element Plus</td>
+                            <td>2.8.8</td>
+                            <td>UI组件库</td>
+                        </tr>
+                        <tr>
+                            <td>Pinia</td>
+                            <td>2.1.7</td>
+                            <td>状态管理</td>
+                        </tr>
+                        <tr>
+                            <td>Vue Router</td>
+                            <td>4.2.5</td>
+                            <td>路由管理</td>
+                        </tr>
+                        <tr>
+                            <td>Axios</td>
+                            <td>1.6.2</td>
+                            <td>HTTP客户端</td>
+                        </tr>
+                        <tr>
+                            <td>ECharts</td>
+                            <td>5.6.0</td>
+                            <td>数据可视化</td>
+                        </tr>
+                        <tr>
+                            <td>Quill</td>
+                            <td>1.3.7</td>
+                            <td>富文本编辑器</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 快速启动 -->
+            <section id="quick-start" class="section">
+                <h2>🚀 快速启动</h2>
+                <h3>环境要求</h3>
+                <ul>
+                    <li><strong>JDK：</strong>1.8 或以上</li>
+                    <li><strong>Maven：</strong>3.x</li>
+                    <li><strong>Node.js：</strong>16.0.0 或以上</li>
+                    <li><strong>npm：</strong>7.0.0 或以上</li>
+                    <li><strong>MySQL：</strong>8.0 或以上</li>
+                    <li><strong>Redis：</strong>3.x 或以上</li>
+                </ul>
+
+                <h3>后端启动</h3>
+                <h4>1. 数据库准备</h4>
+                <ol>
+                    <li>确保MySQL服务已启动（版本8.0或以上）</li>
+                    <li>创建数据库：
+                        <div class="code-block">
+CREATE DATABASE internship_management_db 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+                        </div>
+                    </li>
+                    <li>导入SQL文件：执行 <code>internship-server/sql/internship_management_db.sql</code> 文件
+                        <div class="info-card">
+                            <p><strong>注意：</strong>SQL文件包含完整的数据库结构和初始数据，导入前请确保数据库为空。</p>
+                        </div>
+                    </li>
+                </ol>
+
+                <h4>2. Redis准备</h4>
+                <ol>
+                    <li>确保Redis服务已启动（版本3.x或以上）</li>
+                    <li>默认配置：localhost:6379，无密码</li>
+                    <li>如需修改，请在配置文件中更新Redis连接信息</li>
+                </ol>
+
+                <h4>3. 配置文件修改</h4>
+                <p>修改 <code>internship-server/src/main/resources/application.yml</code> 文件：</p>
+                <ul>
+                    <li><strong>数据库配置：</strong>修改数据库连接地址、用户名、密码</li>
+                    <li><strong>Redis配置：</strong>修改Redis连接地址、端口、密码（如有）</li>
+                    <li><strong>JWT配置：</strong>可修改Token有效期（默认7天）</li>
+                    <li><strong>文件上传配置：</strong>可修改文件上传路径和最大文件大小</li>
+                </ul>
+                <div class="code-block">
+# 数据库配置示例
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/internship_management_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+
+# Redis配置示例
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    password: 
+                </div>
+
+                <h4>4. 编译和启动</h4>
+                <ol>
+                    <li>进入后端项目目录：<code>cd internship-server</code></li>
+                    <li>编译项目：<code>mvn clean install</code></li>
+                    <li>启动项目：
+                        <ul>
+                            <li>方式一：运行 <code>InternshipServerApplication</code> 主类</li>
+                            <li>方式二：使用Maven命令：<code>mvn spring-boot:run</code></li>
+                            <li>方式三：打包后运行：<code>java -jar target/internship-server-0.0.1-SNAPSHOT.jar</code></li>
+                        </ul>
+                    </li>
+                    <li>验证启动：访问 <a href="http://localhost:8081/swagger-ui/index.html" target="_blank">http://localhost:8081/swagger-ui/index.html</a>，如能正常打开API文档，说明启动成功</li>
+                </ol>
+
+                <h4>5. 常见问题</h4>
+                <div class="info-card warning">
+                    <p><strong>端口被占用：</strong>如果8081端口被占用，可在application.yml中修改server.port配置</p>
+                    <p><strong>数据库连接失败：</strong>检查数据库服务是否启动，连接信息是否正确</p>
+                    <p><strong>Redis连接失败：</strong>检查Redis服务是否启动，连接信息是否正确（Redis非必需，但建议配置）</p>
+                </div>
+
+                <h3>前端启动</h3>
+                <h4>1. 环境准备</h4>
+                <ul>
+                    <li>确保Node.js版本 >= 16.0.0</li>
+                    <li>确保npm版本 >= 7.0.0（或使用yarn）</li>
+                    <li>建议使用npm国内镜像源（如淘宝镜像）以提高下载速度</li>
+                </ul>
+
+                <h4>2. 安装依赖</h4>
+                <ol>
+                    <li>进入前端项目目录：<code>cd internship-web</code></li>
+                    <li>安装依赖：<code>npm install</code> 或 <code>yarn install</code>
+                        <div class="info-card">
+                            <p><strong>提示：</strong>如果安装速度慢，可以使用国内镜像：<code>npm install --registry=https://registry.npmmirror.com</code></p>
+                        </div>
+                    </li>
+                </ol>
+
+                <h4>3. 环境变量配置</h4>
+                <p>在 <code>internship-web</code> 目录下创建 <code>.env</code> 文件（如果不存在）：</p>
+                <div class="code-block">
+# 前端服务端口
+VITE_PORT=5173
+
+# 后端API地址
+VITE_API_BASE_URL=http://localhost:8081
+                </div>
+                <div class="info-card">
+                    <p><strong>重要：</strong>必须配置VITE_API_BASE_URL，否则前端无法连接后端API。如果后端运行在其他端口，请相应修改。</p>
+                </div>
+
+                <h4>4. 启动开发服务器</h4>
+                <ol>
+                    <li>启动开发服务器：<code>npm run dev</code> 或 <code>yarn dev</code></li>
+                    <li>等待编译完成，看到类似以下输出表示启动成功：
+                        <div class="code-block">
+  VITE v6.0.0  ready in 500 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+                        </div>
+                    </li>
+                    <li>访问前端应用：<a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                </ol>
+
+                <h4>5. 生产环境构建</h4>
+                <p>如需构建生产版本：</p>
+                <ol>
+                    <li>执行构建命令：<code>npm run build</code> 或 <code>yarn build</code></li>
+                    <li>构建产物在 <code>dist</code> 目录下</li>
+                    <li>可以使用 <code>npm run preview</code> 预览生产构建</li>
+                </ol>
+
+                <h4>6. 常见问题</h4>
+                <div class="info-card warning">
+                    <p><strong>依赖安装失败：</strong>清除缓存后重新安装：<code>npm cache clean --force && rm -rf node_modules package-lock.json && npm install</code></p>
+                    <p><strong>端口被占用：</strong>修改.env文件中的VITE_PORT配置</p>
+                    <p><strong>API请求失败：</strong>检查.env文件中的VITE_API_BASE_URL配置是否正确，确保后端服务已启动</p>
+                    <p><strong>编译错误：</strong>检查Node.js版本是否符合要求，清除node_modules后重新安装</p>
+                </div>
+
+                <h3>Docker启动（可选）</h3>
+                <div class="info-card warning">
+                    <p><strong>注意：</strong>当前项目暂未提供Docker配置，如需使用Docker部署，需要自行编写Dockerfile和docker-compose.yml文件。</p>
+                </div>
+            </section>
+
+            <!-- 系统架构 -->
+            <section id="architecture" class="section">
+                <h2>🏗️ 系统架构</h2>
+                <h3>整体架构</h3>
+                <p>系统采用前后端分离架构，前端使用Vue 3 + Vite构建，后端使用Spring Boot提供RESTful API服务。</p>
+                <div class="info-card">
+                    <p><strong>架构模式：</strong>前后端分离 + RESTful API</p>
+                    <p><strong>通信协议：</strong>HTTP/HTTPS</p>
+                    <p><strong>数据格式：</strong>JSON</p>
+                    <p><strong>认证方式：</strong>JWT Token</p>
+                </div>
+
+                <h3>请求流程</h3>
+                <p>系统采用标准的MVC架构模式，请求处理流程如下：</p>
+                <ol>
+                    <li><strong>用户请求：</strong>用户通过浏览器访问前端应用，触发操作</li>
+                    <li><strong>前端处理：</strong>前端Vue组件通过Axios发送HTTP请求到后端API</li>
+                    <li><strong>请求拦截：</strong>后端Spring Security拦截请求，验证JWT Token的有效性</li>
+                    <li><strong>权限验证：</strong>通过Token验证后，检查用户是否有权限访问该接口（@PreAuthorize）</li>
+                    <li><strong>Controller层：</strong>请求进入对应的Controller，进行参数验证和格式转换</li>
+                    <li><strong>Service层：</strong>Controller调用Service层处理业务逻辑，Service层负责事务管理</li>
+                    <li><strong>Mapper层：</strong>Service层通过MyBatis Plus的Mapper接口访问数据库</li>
+                    <li><strong>数据返回：</strong>数据库查询结果经过Service层处理后，返回给Controller</li>
+                    <li><strong>响应封装：</strong>Controller将结果封装成统一的Result格式返回前端</li>
+                    <li><strong>前端更新：</strong>前端接收数据，更新Pinia状态，触发界面重新渲染</li>
+                </ol>
+                <div class="info-card">
+                    <p><strong>关键点：</strong></p>
+                    <ul>
+                        <li>所有API请求都需要携带JWT Token（登录接口除外）</li>
+                        <li>Token过期后需要重新登录或刷新Token</li>
+                        <li>权限验证在Controller方法级别进行，确保数据安全</li>
+                        <li>所有响应都使用统一的Result格式，便于前端统一处理</li>
+                    </ul>
+                </div>
+
+                <h3>后端结构</h3>
+                <p>后端采用经典的分层架构，各层职责明确：</p>
+                <ul>
+                    <li><strong>Controller层：</strong>接收HTTP请求，进行参数验证和格式转换，调用Service层处理业务逻辑，返回统一格式的响应</li>
+                    <li><strong>Service层：</strong>核心业务逻辑处理，事务管理，数据权限控制，调用Mapper层进行数据操作</li>
+                    <li><strong>Mapper层：</strong>数据访问层，使用MyBatis Plus进行数据库操作，支持复杂查询和动态SQL</li>
+                    <li><strong>Domain层：</strong>实体类（Entity）和数据传输对象（DTO），定义数据结构和业务对象</li>
+                    <li><strong>Common层：</strong>公共组件，包括工具类、配置类、常量类、枚举类、异常处理、统一响应等</li>
+                    <li><strong>Security层：</strong>安全认证和权限控制，包括JWT过滤器、用户认证服务、权限验证等</li>
+                </ul>
+                <div class="info-card">
+                    <p><strong>设计原则：</strong></p>
+                    <ul>
+                        <li>单一职责：每层只负责自己的职责，不越界</li>
+                        <li>依赖倒置：上层依赖下层接口，不依赖具体实现</li>
+                        <li>开闭原则：对扩展开放，对修改关闭</li>
+                        <li>事务管理：在Service层进行事务管理，保证数据一致性</li>
+                    </ul>
+                </div>
+
+                <h3>前端结构</h3>
+                <p>前端采用Vue 3 + Composition API的组件化开发模式：</p>
+                <ul>
+                    <li><strong>Views：</strong>页面组件，按角色（admin、student、teacher、enterprise）和模块划分，每个页面对应一个路由</li>
+                    <li><strong>Components：</strong>可复用组件，包括业务组件（如评价表单）和通用组件（如布局、图表、统计卡片等）</li>
+                    <li><strong>Router：</strong>路由配置，按模块划分，支持路由守卫进行权限控制</li>
+                    <li><strong>Store：</strong>状态管理，使用Pinia进行全局状态管理，主要包括用户信息、权限信息等</li>
+                    <li><strong>API：</strong>接口定义，按模块划分，统一封装HTTP请求，处理错误和响应</li>
+                    <li><strong>Utils：</strong>工具函数，包括请求封装、权限验证、日期处理、数据导出、状态转换等</li>
+                    <li><strong>Config：</strong>配置文件，包括菜单配置、系统配置等</li>
+                </ul>
+                <div class="info-card">
+                    <p><strong>设计特点：</strong></p>
+                    <ul>
+                        <li>组件化开发：提高代码复用性和可维护性</li>
+                        <li>响应式设计：支持PC端和移动端自适应</li>
+                        <li>路由守卫：实现基于角色的权限控制</li>
+                        <li>统一请求封装：统一处理错误、loading、Token刷新等</li>
+                        <li>状态管理：使用Pinia进行状态管理，替代Vuex</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 功能模块 -->
+            <section id="modules" class="section">
+                <h2>📦 功能模块</h2>
+                <h3>模块概览</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>模块名称</th>
+                            <th>功能描述</th>
+                            <th>主要角色</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>用户管理</td>
+                            <td>用户注册、登录、信息管理、角色权限管理</td>
+                            <td>所有角色</td>
+                        </tr>
+                        <tr>
+                            <td>实习申请</td>
+                            <td>实习申请提交、审核、筛选、分配</td>
+                            <td>学生、教师、管理员</td>
+                        </tr>
+                        <tr>
+                            <td>实习计划</td>
+                            <td>实习计划制定、发布、管理</td>
+                            <td>管理员、教师</td>
+                        </tr>
+                        <tr>
+                            <td>实习岗位</td>
+                            <td>岗位发布、管理、申请查看</td>
+                            <td>企业、学生</td>
+                        </tr>
+                        <tr>
+                            <td>面试管理</td>
+                            <td>面试安排、结果提交、确认</td>
+                            <td>企业、学生</td>
+                        </tr>
+                        <tr>
+                            <td>考勤管理</td>
+                            <td>考勤组配置、考勤记录、统计</td>
+                            <td>企业、学生</td>
+                        </tr>
+                        <tr>
+                            <td>实习日志</td>
+                            <td>日志记录、查看、审核</td>
+                            <td>学生、教师、企业</td>
+                        </tr>
+                        <tr>
+                            <td>周报管理</td>
+                            <td>周报提交、查看、评价</td>
+                            <td>学生、教师、企业</td>
+                        </tr>
+                        <tr>
+                            <td>实习成果</td>
+                            <td>成果提交、展示、评价</td>
+                            <td>学生、教师、企业</td>
+                        </tr>
+                        <tr>
+                            <td>反馈管理</td>
+                            <td>反馈提交、查看、回复</td>
+                            <td>学生、教师、企业</td>
+                        </tr>
+                        <tr>
+                            <td>评价管理</td>
+                            <td>自我评价、企业评价、学校评价、综合评分</td>
+                            <td>学生、企业、教师</td>
+                        </tr>
+                        <tr>
+                            <td>合作管理</td>
+                            <td>校企合作申请、审核、管理</td>
+                            <td>企业、管理员</td>
+                        </tr>
+                        <tr>
+                            <td>系统管理</td>
+                            <td>学校、学院、专业、班级、学期、配置管理</td>
+                            <td>管理员</td>
+                        </tr>
+                        <tr>
+                            <td>数据统计</td>
+                            <td>各类数据统计、图表展示、报表导出</td>
+                            <td>所有角色</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>角色权限说明</h3>
+                <p>系统支持多种角色，每个角色拥有不同的权限和功能：</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>角色</th>
+                            <th>主要功能</th>
+                            <th>权限范围</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>系统管理员</td>
+                            <td>系统配置、用户管理、基础数据管理、所有模块的完全权限</td>
+                            <td>全局权限</td>
+                        </tr>
+                        <tr>
+                            <td>学校管理员</td>
+                            <td>实习申请审核、实习计划管理、用户管理、基础数据管理、合作管理、评价管理</td>
+                            <td>全校范围</td>
+                        </tr>
+                        <tr>
+                            <td>学院领导</td>
+                            <td>本学院实习申请审核、实习计划管理、学生管理、评价管理、统计查看</td>
+                            <td>本学院范围</td>
+                        </tr>
+                        <tr>
+                            <td>班主任</td>
+                            <td>本班级实习申请审核、实习计划管理、学生管理、日志/周报/成果审批、评价管理</td>
+                            <td>本班级范围</td>
+                        </tr>
+                        <tr>
+                            <td>企业管理员</td>
+                            <td>企业信息管理、岗位管理、申请筛选、面试管理、考勤管理、学生管理、评价管理</td>
+                            <td>本企业范围</td>
+                        </tr>
+                        <tr>
+                            <td>企业导师</td>
+                            <td>分配给自己的学生的考勤管理、日志/周报/成果审批、企业评价、面试结果录入</td>
+                            <td>分配的学生范围</td>
+                        </tr>
+                        <tr>
+                            <td>学生</td>
+                            <td>实习申请、面试确认、考勤打卡、日志/周报/成果提交、反馈提交、自我评价</td>
+                            <td>个人数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>移动端页面列表</h3>
+                <p>系统采用响应式设计，使用Element Plus的响应式布局，所有页面均支持移动端访问。主要页面包括：</p>
+                <div class="info-card">
+                    <p><strong>通用页面：</strong></p>
+                    <ul>
+                        <li>登录/注册页面：支持学生注册、企业注册</li>
+                        <li>仪表盘首页：显示统计数据、快捷操作、待办事项等</li>
+                        <li>个人中心：个人信息管理、密码修改、头像上传等</li>
+                    </ul>
+                    <p><strong>学生端页面：</strong></p>
+                    <ul>
+                        <li>实习申请页面：浏览岗位、提交申请、查看申请状态</li>
+                        <li>实习岗位列表：查看所有可申请的岗位</li>
+                        <li>面试列表：查看面试安排、确认面试</li>
+                        <li>我的实习：查看当前实习信息</li>
+                        <li>考勤打卡页面：签到、签退、请假申请</li>
+                        <li>日志/周报提交页面：提交实习日志和周报</li>
+                        <li>实习成果：提交和查看实习成果</li>
+                        <li>反馈管理：提交反馈、查看回复</li>
+                        <li>自我评价：提交自我评价</li>
+                        <li>综合成绩：查看综合评分和各项评价</li>
+                    </ul>
+                    <p><strong>企业端页面：</strong></p>
+                    <ul>
+                        <li>岗位管理：创建、编辑、发布岗位</li>
+                        <li>申请管理：查看申请、筛选申请、安排面试</li>
+                        <li>面试管理：安排面试、录入面试结果</li>
+                        <li>考勤管理：创建考勤组、查看考勤记录、确认考勤</li>
+                        <li>学生管理：查看学生信息、分配导师、结束实习</li>
+                        <li>学生评价：对学生进行企业评价</li>
+                    </ul>
+                    <p><strong>教师端页面：</strong></p>
+                    <ul>
+                        <li>学生管理：查看学生信息、审核申请</li>
+                        <li>日志/周报管理：查看和审批学生的日志、周报</li>
+                        <li>考勤管理：查看学生考勤情况</li>
+                        <li>学生评价：对学生进行学校评价</li>
+                        <li>学生成绩：查看学生综合成绩</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- 核心业务流程 -->
+            <section id="business" class="section">
+                <h2>🔄 核心业务流程</h2>
+                <h3>实习申请流程</h3>
+                <p>系统支持两种类型的实习申请：<strong>合作企业实习</strong>和<strong>自主实习</strong>。两种类型的流程有所不同。</p>
+                
+                <h4>合作企业实习流程</h4>
+                <ol>
+                    <li><strong>准备阶段：</strong>
+                        <ul>
+                            <li>系统管理员/学校管理员创建学校、学院、专业、班级等基础数据</li>
+                            <li>企业注册账号，提交企业信息，等待审核</li>
+                            <li>管理员审核企业注册，建立校企合作关系</li>
+                        </ul>
+                    </li>
+                    <li><strong>计划阶段：</strong>
+                        <ul>
+                            <li>管理员/教师创建实习计划（草稿状态）</li>
+                            <li>提交实习计划审核，审核通过后发布计划</li>
+                            <li>企业创建实习岗位（草稿状态）</li>
+                            <li>提交岗位审核，审核通过后发布岗位</li>
+                        </ul>
+                    </li>
+                    <li><strong>申请阶段：</strong>
+                        <ul>
+                            <li>学生浏览已发布的实习岗位</li>
+                            <li>学生选择目标岗位，填写申请信息（包括简历、申请理由等），提交申请</li>
+                            <li>申请状态：待审核（0）</li>
+                        </ul>
+                    </li>
+                    <li><strong>审核阶段：</strong>
+                        <ul>
+                            <li>学校管理员/学院领导/班主任审核学生申请</li>
+                            <li>审核通过：状态变为已通过（1），进入企业筛选环节</li>
+                            <li>审核拒绝：状态变为已拒绝（2），流程结束</li>
+                        </ul>
+                    </li>
+                    <li><strong>筛选阶段：</strong>
+                        <ul>
+                            <li>企业管理员查看申请列表，进行筛选操作</li>
+                            <li>可以标记感兴趣、安排面试、录用或拒绝</li>
+                            <li>如果安排面试，创建面试记录</li>
+                        </ul>
+                    </li>
+                    <li><strong>面试阶段（可选）：</strong>
+                        <ul>
+                            <li>企业安排面试，设置面试时间、地点、类型（线上/线下）</li>
+                            <li>学生确认面试时间</li>
+                            <li>企业完成面试后，录入面试结果（通过/未通过/待定）</li>
+                            <li>根据面试结果决定是否录用</li>
+                        </ul>
+                    </li>
+                    <li><strong>录用阶段：</strong>
+                        <ul>
+                            <li>企业管理员录用学生，状态变为已录用（3）</li>
+                            <li>学生确认上岗，开始实习</li>
+                            <li>企业管理员为学生分配企业导师</li>
+                        </ul>
+                    </li>
+                    <li><strong>实习阶段：</strong>
+                        <ul>
+                            <li>学生进行实习，提交考勤、日志、周报、成果等</li>
+                            <li>企业导师和教师进行审核和评价</li>
+                        </ul>
+                    </li>
+                    <li><strong>结束阶段：</strong>
+                        <ul>
+                            <li>实习结束，提交各类评价</li>
+                            <li>系统自动计算综合评分</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h4>自主实习流程</h4>
+                <ol>
+                    <li><strong>申请阶段：</strong>
+                        <ul>
+                            <li>学生提交自主实习申请，填写实习单位信息、实习内容等</li>
+                            <li>申请状态：待审核（0）</li>
+                        </ul>
+                    </li>
+                    <li><strong>审核阶段：</strong>
+                        <ul>
+                            <li>班主任审核学生申请</li>
+                            <li>审核通过：状态变为已通过（1），系统自动确认上岗</li>
+                            <li>审核拒绝：状态变为已拒绝（2），流程结束</li>
+                        </ul>
+                    </li>
+                    <li><strong>实习阶段：</strong>
+                        <ul>
+                            <li>学生进行实习，提交日志、周报、成果等</li>
+                            <li>班主任进行审核和评价</li>
+                        </ul>
+                    </li>
+                    <li><strong>结束阶段：</strong>
+                        <ul>
+                            <li>实习结束，提交自我评价和学校评价</li>
+                            <li>系统自动计算综合评分</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>考勤管理流程</h3>
+                <p>考勤管理是实习管理的重要环节，系统提供了完整的考勤管理功能，包括考勤组配置、考勤记录、考勤统计等。</p>
+                
+                <h4>考勤组配置流程</h4>
+                <ol>
+                    <li><strong>创建考勤组：</strong>
+                        <ul>
+                            <li>企业导师/企业管理员创建考勤组</li>
+                            <li>设置考勤组名称、描述、工作日类型（周一到周五/周一到周六/周一到周日/自定义）</li>
+                            <li>设置默认工作时长（小时）</li>
+                        </ul>
+                    </li>
+                    <li><strong>配置考勤规则：</strong>
+                        <ul>
+                            <li>为考勤组添加考勤规则</li>
+                            <li>设置规则名称、规则类型（签到时间、签退时间、工作时长等）</li>
+                            <li>设置规则条件（如：迟到时间阈值、早退时间阈值等）</li>
+                        </ul>
+                    </li>
+                    <li><strong>配置时间段：</strong>
+                        <ul>
+                            <li>为考勤组添加时间段</li>
+                            <li>设置时间段名称、开始时间、结束时间</li>
+                            <li>一个考勤组可以有多个时间段（如：上午、下午）</li>
+                        </ul>
+                    </li>
+                    <li><strong>分配学生：</strong>
+                        <ul>
+                            <li>将学生添加到考勤组</li>
+                            <li>可以选择多个学生批量添加</li>
+                            <li>学生可以属于多个考勤组</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h4>考勤记录流程</h4>
+                <ol>
+                    <li><strong>学生签到/签退：</strong>
+                        <ul>
+                            <li>学生每日进行签到和签退操作</li>
+                            <li>系统记录签到时间、签退时间</li>
+                            <li>系统自动计算工作时长</li>
+                            <li>系统根据考勤规则判断考勤类型（出勤/迟到/早退）</li>
+                        </ul>
+                    </li>
+                    <li><strong>请假申请：</strong>
+                        <ul>
+                            <li>学生可以提交请假申请</li>
+                            <li>填写请假日期、请假类型（事假/病假/调休等）、请假原因</li>
+                            <li>申请状态：待确认（0）</li>
+                        </ul>
+                    </li>
+                    <li><strong>考勤确认：</strong>
+                        <ul>
+                            <li>企业导师/企业管理员查看考勤记录</li>
+                            <li>对考勤记录进行确认（已确认/已拒绝）</li>
+                            <li>可以填写确认意见</li>
+                            <li>确认后，考勤记录状态变为已确认（1）</li>
+                        </ul>
+                    </li>
+                    <li><strong>考勤统计：</strong>
+                        <ul>
+                            <li>系统自动统计考勤数据</li>
+                            <li>提供考勤统计报表，包括出勤率、迟到次数、早退次数、请假次数等</li>
+                            <li>支持按时间段、按学生、按考勤组等维度进行统计</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h4>考勤类型说明</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>考勤类型</th>
+                            <th>代码</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>出勤</td>
+                            <td>1</td>
+                            <td>正常出勤，按时签到签退</td>
+                        </tr>
+                        <tr>
+                            <td>迟到</td>
+                            <td>2</td>
+                            <td>签到时间晚于规定时间</td>
+                        </tr>
+                        <tr>
+                            <td>早退</td>
+                            <td>3</td>
+                            <td>签退时间早于规定时间</td>
+                        </tr>
+                        <tr>
+                            <td>请假</td>
+                            <td>4</td>
+                            <td>已提交请假申请并获批</td>
+                        </tr>
+                        <tr>
+                            <td>缺勤</td>
+                            <td>5</td>
+                            <td>未签到也未请假</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>评价管理流程</h3>
+                <p>评价管理是实习管理的重要环节，系统建立了完善的评价体系，包括自我评价、企业评价、学校评价和综合评分。</p>
+                
+                <h4>评价体系说明</h4>
+                <p>系统采用多维度评价体系，从不同角度对学生的实习表现进行评价：</p>
+                <ul>
+                    <li><strong>自我评价：</strong>学生对自己实习表现的自我评价，包括工作表现、学习收获、能力提升等</li>
+                    <li><strong>企业评价：</strong>企业导师或企业管理员对学生的评价，从企业角度评价学生的实习表现</li>
+                    <li><strong>学校评价：</strong>班主任或学校管理员对学生的评价，从学校角度评价学生的实习表现</li>
+                    <li><strong>综合评分：</strong>系统根据三种评价的权重自动计算综合评分</li>
+                </ul>
+
+                <h4>评价流程</h4>
+                <ol>
+                    <li><strong>自我评价阶段：</strong>
+                        <ul>
+                            <li>实习结束或即将结束时，学生提交自我评价</li>
+                            <li>填写评价内容：实习总结、工作表现自评、学习收获、能力提升、不足之处、改进方向等</li>
+                            <li>对各项指标进行评分（如：工作态度、专业技能、团队协作、创新能力等）</li>
+                            <li>提交后，评价状态为已评价</li>
+                        </ul>
+                    </li>
+                    <li><strong>企业评价阶段：</strong>
+                        <ul>
+                            <li>企业导师或企业管理员对学生进行评价</li>
+                            <li>填写评价内容：工作表现、专业技能、团队协作、学习能力、创新能力等</li>
+                            <li>对各项指标进行评分</li>
+                            <li>可以填写评价意见和建议</li>
+                            <li>提交后，评价状态为已评价</li>
+                        </ul>
+                    </li>
+                    <li><strong>学校评价阶段：</strong>
+                        <ul>
+                            <li>班主任或学校管理员对学生进行评价</li>
+                            <li>填写评价内容：实习态度、实习效果、能力提升等</li>
+                            <li>对各项指标进行评分</li>
+                            <li>可以填写评价意见</li>
+                            <li>提交后，评价状态为已评价</li>
+                        </ul>
+                    </li>
+                    <li><strong>综合评分计算：</strong>
+                        <ul>
+                            <li>系统根据系统配置的权重自动计算综合评分</li>
+                            <li>权重配置：自我评价权重、企业评价权重、学校评价权重（权重之和为100%）</li>
+                            <li>计算公式：综合评分 = 自我评价分数 × 自我评价权重 + 企业评价分数 × 企业评价权重 + 学校评价分数 × 学校评价权重</li>
+                            <li>综合评分自动保存到综合评分表</li>
+                        </ul>
+                    </li>
+                    <li><strong>评价查看和统计：</strong>
+                        <ul>
+                            <li>学生可以查看自己的所有评价和综合评分</li>
+                            <li>教师和管理员可以查看学生的评价情况</li>
+                            <li>系统提供评价统计图表，包括评价分数分布、评价趋势等</li>
+                            <li>支持导出评价报告</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h4>评价指标说明</h4>
+                <p>系统支持多维度评价指标，主要包括：</p>
+                <ul>
+                    <li><strong>工作态度：</strong>工作积极性、责任心、主动性等</li>
+                    <li><strong>专业技能：</strong>专业知识的应用、技能掌握程度等</li>
+                    <li><strong>团队协作：</strong>与同事的协作能力、沟通能力等</li>
+                    <li><strong>学习能力：</strong>学习新知识的能力、适应能力等</li>
+                    <li><strong>创新能力：</strong>创新思维、解决问题的能力等</li>
+                    <li><strong>实习效果：</strong>实习目标的达成情况、实习成果等</li>
+                </ul>
+                <div class="info-card">
+                    <p><strong>评价权重配置：</strong>系统管理员可以在系统配置中设置评价权重，默认权重为：自我评价30%、企业评价50%、学校评价20%。权重可以根据实际需求进行调整。</p>
+                </div>
+
+                <h3>校企合作流程</h3>
+                <ol>
+                    <li>企业提交合作申请</li>
+                    <li>管理员审核合作申请</li>
+                    <li>审核通过后建立合作关系</li>
+                    <li>企业可以发布岗位、管理学生</li>
+                    <li>管理员可以查看合作统计</li>
+                </ol>
+            </section>
+
+            <!-- 答辩准备 -->
+            <section id="defense" class="section">
+                <h2>🎓 答辩准备</h2>
+                <h3>常见问题</h3>
+                <h4>1. 项目背景和意义</h4>
+                <p><strong>问题：</strong>为什么选择开发这个系统？</p>
+                <p><strong>回答要点：</strong></p>
+                <ul>
+                    <li>传统实习管理方式效率低下，信息不透明</li>
+                    <li>缺乏统一的管理平台，数据分散</li>
+                    <li>评价体系不完善，缺乏量化指标</li>
+                    <li>校企沟通不畅，协同效率低</li>
+                    <li>系统化、数字化管理是发展趋势</li>
+                </ul>
+
+                <h4>2. 技术选型原因</h4>
+                <p><strong>问题：</strong>为什么选择这些技术栈？</p>
+                <p><strong>回答要点：</strong></p>
+                <ul>
+                    <li>Spring Boot：成熟稳定，生态丰富，开发效率高</li>
+                    <li>Vue 3：渐进式框架，性能优秀，学习曲线平缓</li>
+                    <li>MyBatis Plus：简化CRUD操作，提高开发效率</li>
+                    <li>JWT：无状态认证，适合前后端分离架构</li>
+                    <li>Element Plus：组件丰富，文档完善，适合快速开发</li>
+                </ul>
+
+                <h4>3. 系统难点和解决方案</h4>
+                <p><strong>问题：</strong>开发过程中遇到的主要难点是什么？</p>
+                <p><strong>回答要点：</strong></p>
+                <ul>
+                    <li><strong>权限控制：</strong>使用Spring Security + JWT实现细粒度权限控制</li>
+                    <li><strong>数据权限：</strong>根据角色动态过滤数据，实现数据隔离</li>
+                    <li><strong>复杂查询：</strong>使用MyBatis Plus的QueryWrapper构建动态查询条件</li>
+                    <li><strong>文件上传：</strong>实现文件上传、存储、下载功能，支持多种文件类型</li>
+                    <li><strong>数据统计：</strong>使用ECharts实现数据可视化，支持多维度统计</li>
+                </ul>
+
+                <h3>技术亮点</h3>
+                <ul>
+                    <li><strong>前后端分离架构：</strong>提高开发效率，便于维护和扩展</li>
+                    <li><strong>JWT无状态认证：</strong>支持分布式部署，提高系统可扩展性</li>
+                    <li><strong>RBAC权限模型：</strong>灵活的权限控制，支持多角色多权限</li>
+                    <li><strong>数据权限控制：</strong>根据角色动态过滤数据，保证数据安全</li>
+                    <li><strong>响应式设计：</strong>支持PC端和移动端，提升用户体验</li>
+                    <li><strong>数据可视化：</strong>丰富的图表展示，直观的数据分析</li>
+                    <li><strong>Excel导入导出：</strong>支持批量数据导入导出，提高操作效率</li>
+                </ul>
+
+                <h3>难点解决</h3>
+                <h4>1. 复杂业务逻辑处理</h4>
+                <p>采用分层架构，将复杂业务逻辑拆分到Service层，使用事务管理保证数据一致性。</p>
+
+                <h4>2. 权限控制</h4>
+                <p>使用Spring Security的@PreAuthorize注解实现方法级权限控制，结合JWT Token实现无状态认证。</p>
+
+                <h4>3. 数据统计和报表</h4>
+                <p>使用MyBatis的复杂查询和聚合函数，结合ECharts实现多维度数据统计和可视化展示。</p>
+
+                <h3>答辩技巧</h3>
+                <ul>
+                    <li><strong>准备充分：</strong>熟悉项目代码和业务逻辑，准备常见问题的回答</li>
+                    <li><strong>演示流畅：</strong>提前测试系统功能，确保演示过程顺利</li>
+                    <li><strong>突出重点：</strong>重点展示核心功能和创新点</li>
+                    <li><strong>数据支撑：</strong>准备系统统计数据，展示系统实际应用效果</li>
+                    <li><strong>诚实回答：</strong>对于不清楚的问题，诚实说明，不要编造</li>
+                </ul>
+
+                <h3>演示指南</h3>
+                <h4>演示顺序建议</h4>
+                <ol>
+                    <li>系统登录和角色切换</li>
+                    <li>核心功能演示（实习申请、考勤、评价等）</li>
+                    <li>数据统计和图表展示</li>
+                    <li>权限控制演示</li>
+                    <li>移动端适配展示</li>
+                </ol>
+
+                <h4>演示注意事项</h4>
+                <ul>
+                    <li>确保网络连接稳定</li>
+                    <li>提前准备测试数据</li>
+                    <li>准备多个角色账号用于演示</li>
+                    <li>熟悉系统操作流程</li>
+                    <li>准备备用方案（如录屏视频）</li>
+                </ul>
+            </section>
+
+            <!-- API & 数据库 -->
+            <section id="api-db" class="section">
+                <h2>📡 API & 数据库</h2>
+                <h3>API接口列表</h3>
+                <p>系统提供完整的RESTful API接口，遵循RESTful设计规范，使用统一的响应格式。所有接口都需要JWT Token认证（登录接口除外）。</p>
+                
+                <h4>接口分类</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>模块</th>
+                            <th>主要接口</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>用户认证</td>
+                            <td>/api/auth/login, /api/auth/register, /api/auth/refresh</td>
+                            <td>登录、注册、Token刷新</td>
+                        </tr>
+                        <tr>
+                            <td>用户管理</td>
+                            <td>/api/user/**, /api/student/**, /api/teacher/**, /api/enterprise/**</td>
+                            <td>用户信息管理、学生管理、教师管理、企业管理</td>
+                        </tr>
+                        <tr>
+                            <td>实习计划</td>
+                            <td>/api/internship/plan/**</td>
+                            <td>实习计划的创建、审核、发布、查询</td>
+                        </tr>
+                        <tr>
+                            <td>实习岗位</td>
+                            <td>/api/internship/post/**</td>
+                            <td>岗位的创建、审核、发布、查询</td>
+                        </tr>
+                        <tr>
+                            <td>实习申请</td>
+                            <td>/api/internship/apply/**</td>
+                            <td>申请的提交、审核、筛选、确认</td>
+                        </tr>
+                        <tr>
+                            <td>面试管理</td>
+                            <td>/api/internship/interview/**</td>
+                            <td>面试的安排、确认、结果录入</td>
+                        </tr>
+                        <tr>
+                            <td>考勤管理</td>
+                            <td>/api/internship/attendance/**, /api/internship/attendance-group/**</td>
+                            <td>考勤记录、考勤组管理、考勤统计</td>
+                        </tr>
+                        <tr>
+                            <td>日志周报</td>
+                            <td>/api/internship/log/**, /api/internship/weekly-report/**</td>
+                            <td>日志和周报的提交、查看、审批</td>
+                        </tr>
+                        <tr>
+                            <td>实习成果</td>
+                            <td>/api/internship/achievement/**</td>
+                            <td>成果的提交、查看、审批</td>
+                        </tr>
+                        <tr>
+                            <td>反馈管理</td>
+                            <td>/api/internship/feedback/**</td>
+                            <td>反馈的提交、查看、回复</td>
+                        </tr>
+                        <tr>
+                            <td>评价管理</td>
+                            <td>/api/evaluation/self/**, /api/evaluation/enterprise/**, /api/evaluation/school/**</td>
+                            <td>自我评价、企业评价、学校评价、综合评分</td>
+                        </tr>
+                        <tr>
+                            <td>合作管理</td>
+                            <td>/api/cooperation/**</td>
+                            <td>合作申请的提交、审核、管理</td>
+                        </tr>
+                        <tr>
+                            <td>系统管理</td>
+                            <td>/api/system/**</td>
+                            <td>学校、学院、专业、班级、学期、配置管理</td>
+                        </tr>
+                        <tr>
+                            <td>数据统计</td>
+                            <td>/api/statistics/**</td>
+                            <td>各类统计数据查询和导出</td>
+                        </tr>
+                        <tr>
+                            <td>文件管理</td>
+                            <td>/api/common/file/**</td>
+                            <td>文件上传、下载</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>接口规范</h4>
+                <ul>
+                    <li><strong>请求方式：</strong>GET（查询）、POST（创建）、PUT（更新）、DELETE（删除）</li>
+                    <li><strong>请求头：</strong>Content-Type: application/json，Authorization: Bearer {token}</li>
+                    <li><strong>响应格式：</strong>统一的Result格式，包含code、message、data字段</li>
+                    <li><strong>状态码：</strong>200（成功）、400（参数错误）、401（未认证）、403（无权限）、500（服务器错误）</li>
+                    <li><strong>分页参数：</strong>page（页码）、size（每页数量）</li>
+                    <li><strong>排序参数：</strong>sort（排序字段）、order（排序方式：asc/desc）</li>
+                </ul>
+
+                <h4>API文档</h4>
+                <div class="info-card">
+                    <p>系统集成了Swagger 3.0，提供了完整的API文档。启动后端服务后，可以通过以下地址访问：</p>
+                    <p><strong>Swagger UI地址：</strong><a href="http://localhost:8081/swagger-ui/index.html" target="_blank">http://localhost:8081/swagger-ui/index.html</a></p>
+                    <p><strong>API JSON地址：</strong><a href="http://localhost:8081/v3/api-docs" target="_blank">http://localhost:8081/v3/api-docs</a></p>
+                    <p>在Swagger UI中可以查看所有接口的详细信息，包括请求参数、响应格式、示例等，并可以直接测试接口。</p>
+                </div>
+
+                <h3>数据库设计</h3>
+                <p>系统使用MySQL数据库，共包含<strong>35张数据表</strong>，主要表结构如下：</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>表名</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>user_info</td>
+                            <td>用户信息表</td>
+                        </tr>
+                        <tr>
+                            <td>student_info</td>
+                            <td>学生信息表</td>
+                        </tr>
+                        <tr>
+                            <td>teacher_info</td>
+                            <td>教师信息表</td>
+                        </tr>
+                        <tr>
+                            <td>enterprise_info</td>
+                            <td>企业信息表</td>
+                        </tr>
+                        <tr>
+                            <td>enterprise_mentor_info</td>
+                            <td>企业导师信息表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_plan</td>
+                            <td>实习计划表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_post</td>
+                            <td>实习岗位表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_apply</td>
+                            <td>实习申请表</td>
+                        </tr>
+                        <tr>
+                            <td>interview</td>
+                            <td>面试表</td>
+                        </tr>
+                        <tr>
+                            <td>attendance</td>
+                            <td>考勤表</td>
+                        </tr>
+                        <tr>
+                            <td>attendance_group</td>
+                            <td>考勤组表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_log</td>
+                            <td>实习日志表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_weekly_report</td>
+                            <td>实习周报表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_achievement</td>
+                            <td>实习成果表</td>
+                        </tr>
+                        <tr>
+                            <td>internship_feedback</td>
+                            <td>实习反馈表</td>
+                        </tr>
+                        <tr>
+                            <td>self_evaluation</td>
+                            <td>自我评价表</td>
+                        </tr>
+                        <tr>
+                            <td>enterprise_evaluation</td>
+                            <td>企业评价表</td>
+                        </tr>
+                        <tr>
+                            <td>school_evaluation</td>
+                            <td>学校评价表</td>
+                        </tr>
+                        <tr>
+                            <td>comprehensive_score</td>
+                            <td>综合评分表</td>
+                        </tr>
+                        <tr>
+                            <td>enterprise_school_cooperation</td>
+                            <td>校企合作表</td>
+                        </tr>
+                        <tr>
+                            <td>role_info</td>
+                            <td>角色表</td>
+                        </tr>
+                        <tr>
+                            <td>permission_info</td>
+                            <td>权限表</td>
+                        </tr>
+                        <tr>
+                            <td>school_info</td>
+                            <td>学校信息表</td>
+                        </tr>
+                        <tr>
+                            <td>college_info</td>
+                            <td>学院信息表</td>
+                        </tr>
+                        <tr>
+                            <td>major_info</td>
+                            <td>专业信息表</td>
+                        </tr>
+                        <tr>
+                            <td>class_info</td>
+                            <td>班级信息表</td>
+                        </tr>
+                        <tr>
+                            <td>semester_info</td>
+                            <td>学期信息表</td>
+                        </tr>
+                        <tr>
+                            <td>system_config</td>
+                            <td>系统配置表</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>数据字典</h3>
+                <p>系统使用枚举类定义各种状态和类型，确保数据的一致性和规范性。主要枚举包括：</p>
+                
+                <h4>用户相关枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>用户状态</td>
+                            <td>0-正常, 1-禁用, 2-锁定</td>
+                            <td>用户账号的状态</td>
+                        </tr>
+                        <tr>
+                            <td>用户角色</td>
+                            <td>STUDENT, TEACHER, ENTERPRISE, MENTOR, ADMIN等</td>
+                            <td>用户的角色类型</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>实习申请相关枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>申请类型</td>
+                            <td>1-合作企业实习, 2-自主实习</td>
+                            <td>实习申请的类型</td>
+                        </tr>
+                        <tr>
+                            <td>申请状态</td>
+                            <td>0-待审核, 1-已通过, 2-已拒绝, 3-已录用, 4-已拒绝录用, 5-已取消</td>
+                            <td>实习申请的状态</td>
+                        </tr>
+                        <tr>
+                            <td>实习状态</td>
+                            <td>1-进行中, 2-已完成, 3-已终止</td>
+                            <td>学生实习的状态</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>面试相关枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>面试状态</td>
+                            <td>0-待面试, 1-已面试, 2-已取消</td>
+                            <td>面试的状态</td>
+                        </tr>
+                        <tr>
+                            <td>面试结果</td>
+                            <td>1-通过, 2-未通过, 3-待定</td>
+                            <td>面试的结果</td>
+                        </tr>
+                        <tr>
+                            <td>面试类型</td>
+                            <td>1-线上, 2-线下</td>
+                            <td>面试的方式</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>考勤相关枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>考勤类型</td>
+                            <td>1-出勤, 2-迟到, 3-早退, 4-请假, 5-缺勤</td>
+                            <td>考勤记录的类型</td>
+                        </tr>
+                        <tr>
+                            <td>确认状态</td>
+                            <td>0-待确认, 1-已确认, 2-已拒绝</td>
+                            <td>考勤记录的确认状态</td>
+                        </tr>
+                        <tr>
+                            <td>工作日类型</td>
+                            <td>1-周一到周五, 2-周一到周六, 3-周一到周日, 4-自定义</td>
+                            <td>考勤组的工作日配置</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>评价相关枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>评价状态</td>
+                            <td>0-未评价, 1-已评价</td>
+                            <td>评价的完成状态</td>
+                        </tr>
+                        <tr>
+                            <td>评价类型</td>
+                            <td>SELF-自我评价, ENTERPRISE-企业评价, SCHOOL-学校评价</td>
+                            <td>评价的类型</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>其他枚举</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>枚举名称</th>
+                            <th>值</th>
+                            <th>说明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>合作状态</td>
+                            <td>1-进行中, 2-已结束</td>
+                            <td>校企合作的状态</td>
+                        </tr>
+                        <tr>
+                            <td>审核状态</td>
+                            <td>0-待审核, 1-已通过, 2-已拒绝</td>
+                            <td>各类审核的状态</td>
+                        </tr>
+                        <tr>
+                            <td>删除标志</td>
+                            <td>0-未删除, 1-已删除</td>
+                            <td>逻辑删除标志</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 论文相关 -->
+            <section id="thesis" class="section">
+                <h2>📝 论文相关</h2>
+                <h3>论文结构建议</h3>
+                <ol>
+                    <li><strong>绪论</strong>
+                        <ul>
+                            <li>研究背景和意义</li>
+                            <li>国内外研究现状</li>
+                            <li>研究内容和方法</li>
+                            <li>论文组织结构</li>
+                        </ul>
+                    </li>
+                    <li><strong>需求分析</strong>
+                        <ul>
+                            <li>业务需求分析</li>
+                            <li>功能需求分析</li>
+                            <li>非功能需求分析</li>
+                            <li>用例分析</li>
+                        </ul>
+                    </li>
+                    <li><strong>系统设计</strong>
+                        <ul>
+                            <li>系统架构设计</li>
+                            <li>功能模块设计</li>
+                            <li>数据库设计</li>
+                            <li>接口设计</li>
+                        </ul>
+                    </li>
+                    <li><strong>系统实现</strong>
+                        <ul>
+                            <li>开发环境搭建</li>
+                            <li>核心功能实现</li>
+                            <li>关键技术实现</li>
+                            <li>系统测试</li>
+                        </ul>
+                    </li>
+                    <li><strong>总结与展望</strong>
+                        <ul>
+                            <li>工作总结</li>
+                            <li>不足与改进</li>
+                            <li>未来展望</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>创新点</h3>
+                <ul>
+                    <li><strong>全流程管理：</strong>覆盖实习申请、面试、考勤、日志、周报、成果、评价的完整流程</li>
+                    <li><strong>多角色协同：</strong>学生、教师、企业、企业导师、管理员多角色协同工作</li>
+                    <li><strong>数据权限控制：</strong>根据角色动态过滤数据，保证数据安全和隐私</li>
+                    <li><strong>综合评价体系：</strong>自我评价、企业评价、学校评价相结合的综合评价体系</li>
+                    <li><strong>数据可视化：</strong>丰富的统计图表，直观展示实习数据</li>
+                    <li><strong>移动端适配：</strong>响应式设计，支持移动端访问，提升用户体验</li>
+                </ul>
+
+                <h3>总结与展望</h3>
+                <h4>工作总结</h4>
+                <p>本系统成功实现了高校实习过程跟踪与评价管理的完整功能，包括用户管理、实习管理、评价管理、合作管理、系统管理等核心模块。系统采用前后端分离架构，使用Spring Boot和Vue 3技术栈，实现了高效、稳定、易用的实习管理平台。</p>
+
+                <h4>不足与改进</h4>
+                <ul>
+                    <li><strong>性能优化：</strong>可以进一步优化数据库查询性能，增加缓存机制</li>
+                    <li><strong>功能扩展：</strong>可以增加消息通知、在线聊天、视频面试等功能</li>
+                    <li><strong>安全性：</strong>可以加强数据加密、防SQL注入、防XSS攻击等安全措施</li>
+                    <li><strong>用户体验：</strong>可以优化界面设计，增加操作引导，提升用户体验</li>
+                </ul>
+
+                <h4>未来展望</h4>
+                <ul>
+                    <li><strong>智能化：</strong>引入AI技术，实现智能推荐、智能匹配等功能</li>
+                    <li><strong>移动应用：</strong>开发原生移动应用，提供更好的移动端体验</li>
+                    <li><strong>大数据分析：</strong>利用大数据技术，进行深度数据分析和挖掘</li>
+                    <li><strong>云部署：</strong>支持云部署，提供SaaS服务模式</li>
+                    <li><strong>国际化：</strong>支持多语言，扩展国际化应用</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- 返回顶部按钮 -->
+    <button class="back-to-top" id="backToTop">↑</button>
+
+    <script>
+        // 导航菜单高亮
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav-menu a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+
+            // 显示/隐藏返回顶部按钮
+            const backToTop = document.getElementById('backToTop');
+            if (pageYOffset > 300) {
+                backToTop.classList.add('show');
+            } else {
+                backToTop.classList.remove('show');
+            }
+        });
+
+        // 返回顶部功能
+        document.getElementById('backToTop').addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+
+        // 平滑滚动
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                if (targetSection) {
+                    targetSection.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

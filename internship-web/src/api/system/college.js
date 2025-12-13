@@ -24,6 +24,10 @@ export const collegeApi = {
   // 停用学院
   deleteCollege(id) {
     return request.delete(`/system/college/${id}`)
+  },
+  // 公开获取学院列表（用于教师注册等公开场景）
+  getPublicCollegeList() {
+    return request.get('/system/college/public/list')
   }
 }
 

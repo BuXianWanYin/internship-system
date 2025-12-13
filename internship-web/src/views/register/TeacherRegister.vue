@@ -9,8 +9,8 @@
               返回
             </el-link>
           </div>
-          <h2>学生注册</h2>
-          <p>请填写个人信息并输入班级分享码完成注册</p>
+          <h2>教师注册</h2>
+          <p>请填写个人信息完成注册，注册后需等待管理员审核</p>
         </div>
       </template>
 
@@ -20,41 +20,10 @@
         :rules="registerRules"
         label-width="120px"
       >
-        <el-form-item label="班级分享码" prop="shareCode">
+        <el-form-item label="工号" prop="teacherNo">
           <el-input
-            v-model="registerForm.shareCode"
-            placeholder="请输入班级分享码"
-            @blur="validateShareCode"
-            clearable
-          >
-            <template #prefix>
-              <el-icon><Key /></el-icon>
-            </template>
-          </el-input>
-          <div v-if="shareCodeInfo" class="share-code-info">
-            <el-alert
-              :title="`班级：${shareCodeInfo.className}`"
-              type="success"
-              :closable="false"
-              show-icon
-            />
-          </div>
-          <div v-if="shareCodeError" class="share-code-error">
-            <el-alert
-              :title="shareCodeError"
-              type="error"
-              :closable="false"
-              show-icon
-            />
-          </div>
-        </el-form-item>
-
-        <el-divider />
-
-        <el-form-item label="学号" prop="studentNo">
-          <el-input
-            v-model="registerForm.studentNo"
-            placeholder="请输入学号"
+            v-model="registerForm.teacherNo"
+            placeholder="请输入工号"
             clearable
           />
         </el-form-item>
@@ -62,7 +31,7 @@
         <el-form-item label="用户名" prop="username">
           <el-input
             v-model="registerForm.username"
-            placeholder="请输入用户名（用于登录）"
+            placeholder="请输入用户名，用于登录"
             clearable
           />
         </el-form-item>
@@ -113,6 +82,39 @@
           />
         </el-form-item>
 
+        <el-form-item label="学校/学院" prop="cascaderValue">
+          <el-cascader
+            v-model="registerForm.cascaderValue"
+            :options="cascaderOptions"
+            :props="cascaderProps"
+            placeholder="请先选择学校，再选择学院"
+            style="width: 100%;"
+            filterable
+            @change="handleCascaderChange"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="职称" prop="title">
+          <el-select
+            v-model="registerForm.title"
+            placeholder="请选择或输入职称"
+            style="width: 100%;"
+            filterable
+            allow-create
+            default-first-option
+            clearable
+          >
+            <el-option
+              v-for="title in titleOptions"
+              :key="title"
+              :label="title"
+              :value="title"
+            />
+          </el-select>
+        </el-form-item>
+
+
         <el-form-item label="密码" prop="password">
           <el-input
             v-model="registerForm.password"
@@ -133,21 +135,6 @@
           />
         </el-form-item>
 
-        <el-form-item label="入学年份" prop="enrollmentYear">
-          <el-input
-            v-model="registerForm.enrollmentYear"
-            placeholder="请先验证班级分享码"
-            :disabled="!shareCodeInfo"
-            readonly
-            style="width: 100%;"
-          >
-            <template #prefix>
-              <el-icon><Calendar /></el-icon>
-            </template>
-          </el-input>
-          <div v-if="!shareCodeInfo" class="form-tip">入学年份将根据班级分享码自动获取</div>
-        </el-form-item>
-
         <el-form-item>
           <el-button
             type="primary"
@@ -164,53 +151,74 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Key, ArrowLeft, Calendar } from '@element-plus/icons-vue'
-import { studentApi } from '@/api/user/student'
-import { classApi } from '@/api/system'
+import { ArrowLeft } from '@element-plus/icons-vue'
+import { teacherApi } from '@/api/user/teacher'
+import { collegeApi } from '@/api/system/college'
+import { schoolApi } from '@/api/system/school'
 
 export default {
-  name: 'StudentRegister',
+  name: 'TeacherRegister',
   components: {
-    Key,
-    Calendar
+    ArrowLeft
   },
   setup() {
     const router = useRouter()
     const registerFormRef = ref(null)
     const registering = ref(false)
-    const shareCodeInfo = ref(null)
-    const shareCodeError = ref('')
+    const schoolList = ref([])
+    const collegeList = ref([])
+    const cascaderOptions = ref([])
+
+    // 职称选项
+    const titleOptions = [
+      '教授',
+      '副教授',
+      '讲师',
+      '助教',
+      '研究员',
+      '副研究员',
+      '助理研究员',
+      '高级工程师',
+      '工程师',
+      '助理工程师',
+      '其他'
+    ]
 
     const registerForm = reactive({
-      shareCode: '',
-      studentNo: '',
+      teacherNo: '',
       username: '',
       realName: '',
       gender: '',
       idCard: '',
       phone: '',
       email: '',
+      schoolId: null,
+      collegeId: null,
+      cascaderValue: [],
+      title: '',
       password: '',
-      confirmPassword: '',
-      enrollmentYear: null,
-      classId: null
+      confirmPassword: ''
     })
+
+    // 级联选择器配置
+    const cascaderProps = {
+      value: 'id',
+      label: 'name',
+      children: 'children',
+      emitPath: true
+    }
 
     // 验证规则
     const registerRules = {
-      shareCode: [
-        { required: true, message: '请输入班级分享码', trigger: 'blur' }
-      ],
-      studentNo: [
-        { required: true, message: '请输入学号', trigger: 'blur' }
+      teacherNo: [
+        { required: true, message: '请输入工号', trigger: 'blur' }
       ],
       username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' },
-        { min: 3, max: 20, message: '用户名长度为3-20个字符', trigger: 'blur' },
-        { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
+        { required: true, message: '请输入用户名，用于登录', trigger: 'blur' },
+        { min: 3, max: 50, message: '用户名长度在3到50个字符', trigger: 'blur' }
       ],
       realName: [
         { required: true, message: '请输入姓名', trigger: 'blur' }
@@ -223,6 +231,19 @@ export default {
       ],
       email: [
         { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+      ],
+      cascaderValue: [
+        { 
+          required: true, 
+          validator: (rule, value, callback) => {
+            if (!value || value.length !== 2) {
+              callback(new Error('请选择学校和学院'))
+            } else {
+              callback()
+            }
+          },
+          trigger: 'change' 
+        }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' },
@@ -240,40 +261,58 @@ export default {
           },
           trigger: 'blur'
         }
-      ],
-      enrollmentYear: [
-        { required: true, message: '请先验证班级分享码以获取入学年份', trigger: 'blur' }
       ]
     }
 
-    // 验证分享码
-    const validateShareCode = async () => {
-      if (!registerForm.shareCode) {
-        shareCodeInfo.value = null
-        shareCodeError.value = ''
-        registerForm.enrollmentYear = null
-        return
-      }
-
+    // 加载学校和学院数据，构建级联选择器选项
+    const loadCascaderData = async () => {
       try {
-        const res = await classApi.validateShareCode(registerForm.shareCode)
-        if (res.code === 200 && res.data) {
-          shareCodeInfo.value = res.data
-          registerForm.classId = res.data.classId
-          // 自动设置入学年份（从班级信息中获取）
-          if (res.data.enrollmentYear) {
-            registerForm.enrollmentYear = res.data.enrollmentYear
-          }
-          shareCodeError.value = ''
+        // 加载学校列表（使用公开接口，不需要认证）
+        const schoolRes = await schoolApi.getPublicSchoolList()
+        if (schoolRes.code === 200) {
+          schoolList.value = schoolRes.data || []
+        }
+
+        // 加载所有学院列表（使用公开接口，不需要认证）
+        const collegeRes = await collegeApi.getPublicCollegeList()
+        if (collegeRes.code === 200) {
+          collegeList.value = collegeRes.data || []
+        }
+
+        // 构建级联选择器数据结构
+        if (schoolList.value.length > 0 && collegeList.value.length > 0) {
+          cascaderOptions.value = schoolList.value.map(school => {
+            const colleges = collegeList.value
+              .filter(college => college.schoolId === school.schoolId)
+              .map(college => ({
+                id: college.collegeId,
+                name: college.collegeName
+              }))
+
+            return {
+              id: school.schoolId,
+              name: school.schoolName,
+              children: colleges.length > 0 ? colleges : undefined
+            }
+          }).filter(school => school.children && school.children.length > 0)
         } else {
-          shareCodeError.value = res.message || '分享码无效或已过期'
-          shareCodeInfo.value = null
-          registerForm.enrollmentYear = null
+          cascaderOptions.value = []
+          console.warn('学校或学院数据为空')
         }
       } catch (error) {
-        shareCodeError.value = '分享码验证失败：' + (error.message || '未知错误')
-        shareCodeInfo.value = null
-        registerForm.enrollmentYear = null
+        console.error('加载数据失败:', error)
+        ElMessage.error('加载学校和学院数据失败')
+      }
+    }
+
+    // 级联选择器变化时的处理
+    const handleCascaderChange = (value) => {
+      if (value && value.length === 2) {
+        registerForm.schoolId = value[0]
+        registerForm.collegeId = value[1]
+      } else {
+        registerForm.schoolId = null
+        registerForm.collegeId = null
       }
     }
 
@@ -292,36 +331,29 @@ export default {
           return
         }
 
-        if (!shareCodeInfo.value) {
-          ElMessage.warning('请先验证班级分享码')
-          return
-        }
-
-        // 确保入学年份已设置
-        if (!registerForm.enrollmentYear && shareCodeInfo.value?.enrollmentYear) {
-          registerForm.enrollmentYear = shareCodeInfo.value.enrollmentYear
-        }
-
-        if (!registerForm.enrollmentYear) {
-          ElMessage.warning('入学年份未设置，请先验证班级分享码')
-          return
-        }
-
         registering.value = true
         try {
-          // 准备提交数据，不包含确认密码字段
+          // 准备提交数据，不包含确认密码字段和级联选择器值
           const submitData = {
-            ...registerForm
+            teacherNo: registerForm.teacherNo,
+            username: registerForm.username,
+            realName: registerForm.realName,
+            gender: registerForm.gender || null,
+            idCard: registerForm.idCard || null,
+            phone: registerForm.phone || null,
+            email: registerForm.email || null,
+            schoolId: registerForm.schoolId,
+            collegeId: registerForm.collegeId,
+            title: registerForm.title || null,
+            password: registerForm.password
           }
-          delete submitData.confirmPassword
-          
-          console.log('准备提交注册数据:', submitData)
-          console.log('分享码:', registerForm.shareCode)
-          
-          const res = await studentApi.registerStudent(submitData, registerForm.shareCode)
-          console.log('注册API响应:', res)
+
+          console.log('准备提交教师注册数据:', submitData)
+
+          const res = await teacherApi.registerTeacher(submitData)
+          console.log('教师注册API响应:', res)
           if (res.code === 200) {
-            ElMessage.success('注册成功，请等待班主任审核')
+            ElMessage.success('注册成功，请等待管理员审核')
             setTimeout(() => {
               router.push('/login')
             }, 2000)
@@ -345,14 +377,21 @@ export default {
       router.push('/register')
     }
 
+    onMounted(() => {
+      loadCascaderData()
+    })
+
     return {
       registerFormRef,
       registerForm,
       registerRules,
       registering,
-      shareCodeInfo,
-      shareCodeError,
-      validateShareCode,
+      schoolList,
+      collegeList,
+      cascaderOptions,
+      cascaderProps,
+      titleOptions,
+      handleCascaderChange,
       handleRegister,
       goBack
     }
@@ -474,15 +513,6 @@ export default {
   min-height: 26px;
 }
 
-:deep(.el-date-editor) {
-  width: 100%;
-}
-
-:deep(.el-date-editor .el-input__wrapper) {
-  padding: 4px 12px;
-  min-height: 26px;
-}
-
 :deep(.el-button--primary) {
   background-color: #409eff;
   border-color: #409eff;
@@ -502,25 +532,11 @@ export default {
   border-color: #3a8ee6;
 }
 
-:deep(.el-divider) {
-  margin: 24px 0;
-  border-color: #e4e7ed;
-}
-
-.share-code-info,
-.share-code-error {
-  margin-top: 10px;
-}
-
 .form-tip {
   margin-top: 6px;
   font-size: 12px;
   color: #909399;
   line-height: 1.5;
-}
-
-:deep(.el-alert) {
-  border-radius: 8px;
 }
 
 @media (max-width: 768px) {
@@ -541,5 +557,4 @@ export default {
   }
 }
 </style>
-
 

@@ -56,5 +56,11 @@ public interface CollegeService extends IService<College> {
      * @return 学院列表
      */
     List<College> getAllColleges(String collegeName, Long schoolId);
+    
+    /**
+     * 公开查询所有学院列表（用于教师注册等公开场景，不进行权限过滤）
+     * @return 学院列表
+     */
+    List<College> getPublicCollegeList();
 }
 

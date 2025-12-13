@@ -308,6 +308,15 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         Class classInfo = this.getById(classId);
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
+        // 检查是否有学生关联，如果有学生则不允许停用
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(Student::getClassId, classId)
+                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long studentCount = studentMapper.selectCount(studentWrapper);
+        if (studentCount > 0) {
+            throw new BusinessException("该班级下还有" + studentCount + "名学生，不允许停用");
+        }
+        
         // 只设置停用状态，不删除数据
         classInfo.setStatus(UserStatus.DISABLED.getCode());
         return this.updateById(classInfo);
@@ -334,10 +343,20 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         Class classInfo = this.getById(classId);
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
-        // 软删除：同时设置删除标志和停用状态
-        classInfo.setDeleteFlag(DeleteFlag.DELETED.getCode());
+        // 检查是否有学生关联，如果有学生则不允许删除
+        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
+        studentWrapper.eq(Student::getClassId, classId)
+                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+        long studentCount = studentMapper.selectCount(studentWrapper);
+        if (studentCount > 0) {
+            throw new BusinessException("该班级下还有" + studentCount + "名学生，不允许删除");
+        }
+        
+        // 使用MyBatis Plus逻辑删除
+        // 先设置状态为禁用，然后逻辑删除
         classInfo.setStatus(UserStatus.DISABLED.getCode());
-        return this.updateById(classInfo);
+        this.updateById(classInfo);
+        return this.removeById(classId);
     }
     
     @Override

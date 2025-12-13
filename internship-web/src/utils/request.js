@@ -36,9 +36,11 @@ service.interceptors.request.use(
     const isPublicRequest = config.url && (
       config.url.includes('/public/') ||
       config.url.includes('/system/school/public/') ||
+      config.url.includes('/system/college/public/') ||
       config.url.includes('/system/class/share-code/') ||
       config.url.includes('/user/student/register') ||
-      config.url.includes('/user/enterprise/register')
+      config.url.includes('/user/enterprise/register') ||
+      config.url.includes('/user/teacher/register')
     )
     
     // 如果正在处理401错误，取消所有后续请求（除了认证相关请求和公开接口）

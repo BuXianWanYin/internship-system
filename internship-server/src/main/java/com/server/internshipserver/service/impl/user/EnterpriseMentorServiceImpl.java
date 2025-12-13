@@ -286,11 +286,8 @@ public class EnterpriseMentorServiceImpl extends ServiceImpl<EnterpriseMentorMap
             }
         }
         
-        // 软删除
-        mentor.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        this.updateById(mentor);
-        
-        return true;
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(mentorId);
     }
     
     @Override

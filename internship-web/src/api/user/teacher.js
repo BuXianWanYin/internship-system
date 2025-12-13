@@ -32,6 +32,23 @@ export const teacherApi = {
   // 根据学校ID查询教师列表（用于下拉选择）
   getTeacherList(params) {
     return request.get('/user/teacher/list', { params })
+  },
+  // 教师自主注册
+  registerTeacher(data) {
+    return request.post('/user/teacher/register', data)
+  },
+  // 分页查询待审核教师列表
+  getPendingApprovalTeacherPage(params) {
+    return request.get('/user/teacher/pending-approval/page', { params })
+  },
+  // 审核教师注册申请
+  approveTeacherRegistration(teacherId, approved, auditOpinion) {
+    return request.post(`/user/teacher/${teacherId}/approve`, null, {
+      params: {
+        approved,
+        auditOpinion
+      }
+    })
   }
 }
 

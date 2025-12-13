@@ -1,7 +1,6 @@
 package com.server.internshipserver.service.impl.system;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
@@ -123,19 +122,12 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     public boolean deleteConfig(Long configId) {
         EntityValidationUtil.validateIdNotNull(configId, "配置ID");
         
-        // 检查配置是否存在（只查询未删除的）
-        LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SystemConfig::getConfigId, configId)
-               .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        SystemConfig config = this.getOne(wrapper);
+        // 检查配置是否存在（MyBatis Plus会自动过滤已删除的记录）
+        SystemConfig config = this.getById(configId);
         EntityValidationUtil.validateEntityExists(config, "配置");
         
-        // 软删除：使用 LambdaUpdateWrapper 确保 delete_flag 字段被正确更新
-        LambdaUpdateWrapper<SystemConfig> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(SystemConfig::getConfigId, configId)
-                     .eq(SystemConfig::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                     .set(SystemConfig::getDeleteFlag, DeleteFlag.DELETED.getCode());
-        return this.update(updateWrapper);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(configId);
     }
 }
 

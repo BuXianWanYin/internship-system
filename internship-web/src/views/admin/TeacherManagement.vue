@@ -11,8 +11,11 @@
       </el-button>
     </template>
 
-    <!-- 搜索栏 -->
-    <div class="search-bar">
+    <!-- 标签页 -->
+    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+      <el-tab-pane label="教师列表" name="list">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="工号">
           <el-input
@@ -95,18 +98,37 @@
         <template #default="{ row }">
           <div v-if="userInfoMap[row.userId]">
             <div>{{ userInfoMap[row.userId].realName }}</div>
-            <div style="font-size: 12px; color: #909399;">
-              {{ userInfoMap[row.userId].phone || '未填写' }}
-            </div>
           </div>
           <span v-else>加载中...</span>
         </template>
       </el-table-column>
-      <el-table-column label="性别" width="80" align="center">
+      <el-table-column label="性别" min-width="80" align="center">
         <template #default="{ row }">
           <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].gender">
             {{ userInfoMap[row.userId].gender }}
           </span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="手机号" min-width="120">
+        <template #default="{ row }">
+          <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].phone">
+            {{ userInfoMap[row.userId].phone }}
+          </span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="邮箱" min-width="180" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].email">
+            {{ userInfoMap[row.userId].email }}
+          </span>
+          <span v-else style="color: #909399">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="title" label="职称" min-width="100">
+        <template #default="{ row }">
+          <span v-if="row.title">{{ row.title }}</span>
           <span v-else style="color: #909399">-</span>
         </template>
       </el-table-column>
@@ -122,15 +144,25 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" width="80" align="center">
+      <el-table-column label="审核状态" min-width="100" align="center">
+        <template #default="{ row }">
+          <el-tag 
+            :type="getAuditStatusType(row.auditStatus)" 
+            size="small"
+          >
+            {{ getAuditStatusText(row.auditStatus) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="状态" min-width="80" align="center">
         <template #default="{ row }">
           <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
             {{ row.status === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column label="操作" width="200" fixed="right" align="center">
+      <el-table-column prop="createTime" label="创建时间" min-width="180" />
+      <el-table-column label="操作" min-width="200" fixed="right" align="center">
         <template #default="{ row }">
           <el-button 
             v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
@@ -143,30 +175,249 @@
             编辑
           </el-button>
           <el-button 
-            v-if="hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])" 
+            v-if="canDeleteTeacherBtn" 
             link 
             type="danger" 
             size="small" 
+            :disabled="!canDeleteTeacher(row)"
             @click="handleDelete(row)"
           >
-            停用
+            删除
           </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <!-- 分页 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model:current-page="pagination.current"
-        v-model:page-size="pagination.size"
-        :total="pagination.total"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
-    </div>
+        <!-- 分页 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.current"
+            v-model:page-size="pagination.size"
+            :total="pagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="待审核" name="approval">
+        <!-- 待审核搜索栏 -->
+        <div class="search-bar">
+          <el-form :inline="true" :model="approvalSearchForm" class="search-form">
+            <el-form-item label="工号">
+              <el-input
+                v-model="approvalSearchForm.teacherNo"
+                placeholder="请输入工号"
+                clearable
+                style="width: 200px"
+                @keyup.enter="handleApprovalSearch"
+              />
+            </el-form-item>
+            <el-form-item label="姓名">
+              <el-input
+                v-model="approvalSearchForm.realName"
+                placeholder="请输入姓名"
+                clearable
+                style="width: 200px"
+                @keyup.enter="handleApprovalSearch"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :icon="Search" @click="handleApprovalSearch">查询</el-button>
+              <el-button :icon="Refresh" @click="handleApprovalReset">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+
+        <!-- 待审核表格 -->
+        <el-table
+          v-loading="approvalLoading"
+          :data="approvalTableData"
+          stripe
+          style="width: 100%"
+          :header-cell-style="{ background: '#f5f7fa', color: '#606266' }"
+        >
+          <el-table-column prop="teacherNo" label="工号" min-width="120" />
+          <el-table-column label="教师信息" min-width="150">
+            <template #default="{ row }">
+              <div v-if="userInfoMap[row.userId]">
+                <div>{{ userInfoMap[row.userId].realName }}</div>
+              </div>
+              <span v-else>加载中...</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="性别" min-width="80" align="center">
+            <template #default="{ row }">
+              <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].gender">
+                {{ userInfoMap[row.userId].gender }}
+              </span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="手机号" min-width="120">
+            <template #default="{ row }">
+              <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].phone">
+                {{ userInfoMap[row.userId].phone }}
+              </span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="邮箱" min-width="180" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].email">
+                {{ userInfoMap[row.userId].email }}
+              </span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="职称" min-width="100">
+            <template #default="{ row }">
+              <span v-if="row.title">{{ row.title }}</span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属学院" min-width="150">
+            <template #default="{ row }">
+              <span v-if="collegeMap[row.collegeId]">{{ collegeMap[row.collegeId].collegeName }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属学校" min-width="150">
+            <template #default="{ row }">
+              <span v-if="schoolMap[row.schoolId]">{{ schoolMap[row.schoolId].schoolName }}</span>
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="注册时间" min-width="180" />
+          <el-table-column label="操作" min-width="200" fixed="right" align="center">
+            <template #default="{ row }">
+              <el-button 
+                link 
+                type="primary" 
+                size="small" 
+                @click="handleApprovalView(row)"
+              >
+                查看详情
+              </el-button>
+              <el-button 
+                link 
+                type="success" 
+                size="small" 
+                @click="handleApprove(row, true)"
+              >
+                通过
+              </el-button>
+              <el-button 
+                link 
+                type="danger" 
+                size="small" 
+                @click="handleApprove(row, false)"
+              >
+                拒绝
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 待审核分页 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="approvalPagination.current"
+            v-model:page-size="approvalPagination.size"
+            :total="approvalPagination.total"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleApprovalSizeChange"
+            @current-change="handleApprovalPageChange"
+          />
+        </div>
+      </el-tab-pane>
+    </el-tabs>
+
+    <!-- 审核对话框 -->
+    <el-dialog
+      v-model="approveDialogVisible"
+      :title="approveForm.approved ? '审核通过' : '审核拒绝'"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="approveFormRef"
+        :model="approveForm"
+        label-width="100px"
+      >
+        <el-form-item label="工号">
+          <span>{{ currentTeacher?.teacherNo || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="姓名">
+          <span v-if="currentTeacher && userInfoMap[currentTeacher.userId]">
+            {{ userInfoMap[currentTeacher.userId].realName }}
+          </span>
+          <span v-else>-</span>
+        </el-form-item>
+        <el-form-item 
+          label="审核意见" 
+          :prop="approveForm.approved ? '' : 'auditOpinion'"
+          :rules="approveForm.approved ? [] : [{ required: true, message: '请输入拒绝原因', trigger: 'blur' }]"
+        >
+          <el-input
+            v-model="approveForm.auditOpinion"
+            type="textarea"
+            :rows="4"
+            :placeholder="approveForm.approved ? '请输入审核意见（可选）' : '请输入拒绝原因（必填）'"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="approveDialogVisible = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          :loading="approving" 
+          @click="handleConfirmApprove"
+        >
+          确定
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="教师详情"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <el-descriptions :column="2" border v-if="currentTeacher && userInfoMap[currentTeacher.userId]">
+        <el-descriptions-item label="工号">{{ currentTeacher.teacherNo }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ userInfoMap[currentTeacher.userId].realName }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ userInfoMap[currentTeacher.userId].gender || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ userInfoMap[currentTeacher.userId].phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ userInfoMap[currentTeacher.userId].email || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="身份证号">{{ userInfoMap[currentTeacher.userId].idCard || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="职称">{{ currentTeacher.title || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="所属学院">
+          <span v-if="collegeMap[currentTeacher.collegeId]">
+            {{ collegeMap[currentTeacher.collegeId].collegeName }}
+          </span>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="所属学校">
+          <span v-if="schoolMap[currentTeacher.schoolId]">
+            {{ schoolMap[currentTeacher.schoolId].schoolName }}
+          </span>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="注册时间">{{ currentTeacher.createTime }}</el-descriptions-item>
+      </el-descriptions>
+      <div v-else style="padding: 20px; text-align: center; color: #909399;">
+        加载中...
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
@@ -187,6 +438,20 @@
               <el-input v-model="formData.teacherNo" placeholder="请输入工号" :disabled="isEdit" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="用户名" prop="username">
+              <el-input 
+                v-model="formData.username" 
+                placeholder="请输入用户名（不填写则使用工号）" 
+                :disabled="isEdit"
+              />
+              <div v-if="!isEdit" style="font-size: 12px; color: #909399; margin-top: 4px;">
+                不填写则默认使用工号作为用户名
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="真实姓名" prop="realName">
               <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
@@ -304,6 +569,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Refresh, Plus, Download } from '@element-plus/icons-vue'
 import PageLayout from '@/components/common/PageLayout.vue'
 import { hasAnyRole, canEditUser } from '@/utils/permission'
+import { useAuthStore } from '@/store/modules/auth'
 import { teacherApi } from '@/api/user/teacher'
 import { userApi } from '@/api/user/user'
 import { collegeApi } from '@/api/system/college'
@@ -315,6 +581,11 @@ import request from '@/utils/request'
 const loading = ref(false)
 const submitting = ref(false)
 const exportLoading = ref(false)
+const approvalLoading = ref(false)
+const approving = ref(false)
+
+// 标签页
+const activeTab = ref('list')
 
 // 搜索表单
 const searchForm = reactive({
@@ -336,6 +607,26 @@ const tableData = ref([])
 const userInfoMap = ref({})
 const collegeMap = ref({})
 const schoolMap = ref({})
+
+// 待审核相关
+const approvalTableData = ref([])
+const approvalSearchForm = reactive({
+  teacherNo: '',
+  realName: ''
+})
+const approvalPagination = reactive({
+  current: 1,
+  size: 10,
+  total: 0
+})
+const approveDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const currentTeacher = ref(null)
+const approveFormRef = ref(null)
+const approveForm = reactive({
+  approved: true,
+  auditOpinion: ''
+})
 
 // 学院列表和学校列表（用于下拉选择）
 const collegeList = ref([])
@@ -374,6 +665,39 @@ const isCollegeDisabled = computed(() => {
   return hasAnyRole(['ROLE_COLLEGE_LEADER'])
 })
 
+// 计算属性：是否可以删除教师（用于显示删除按钮）
+const canDeleteTeacherBtn = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 获取审核状态文本
+const getAuditStatusText = (auditStatus) => {
+  if (auditStatus === null || auditStatus === undefined) {
+    return '-'
+  }
+  // 审核状态：0-待审核，1-已通过，2-已拒绝
+  const statusMap = {
+    0: '待审核',
+    1: '已通过',
+    2: '已拒绝'
+  }
+  return statusMap[auditStatus] || '-'
+}
+
+// 获取审核状态标签类型
+const getAuditStatusType = (auditStatus) => {
+  if (auditStatus === null || auditStatus === undefined) {
+    return 'info'
+  }
+  // 审核状态：0-待审核（warning），1-已通过（success），2-已拒绝（danger）
+  const typeMap = {
+    0: 'warning', // 待审核 - 黄色
+    1: 'success', // 已通过 - 绿色
+    2: 'danger'   // 已拒绝 - 红色
+  }
+  return typeMap[auditStatus] || 'info'
+}
+
 // 对话框
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加教师')
@@ -384,6 +708,7 @@ const formRef = ref(null)
 const formData = reactive({
   teacherId: null,
   teacherNo: '',
+  username: '',
   userId: null,
   realName: '',
   gender: '',
@@ -466,6 +791,15 @@ const canEditTeacher = (row) => {
   if (!row || !row.userId) {
     return false
   }
+  // 待审核状态的教师（auditStatus = 0）可能还没有角色，但仍然应该允许编辑
+  // 审核状态：0-待审核，1-已通过，2-已拒绝
+  const isPendingAudit = row.auditStatus !== null && row.auditStatus === 0
+  if (isPendingAudit) {
+    // 待审核的教师允许编辑（有权限的用户都可以编辑）
+    return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+  }
+  
+  // 已审核通过的教师，使用原来的权限检查逻辑
   // 优先使用教师数据中的角色信息，如果没有则从用户信息中获取
   let roles = row.roles
   if (!roles || roles.length === 0) {
@@ -477,6 +811,11 @@ const canEditTeacher = (row) => {
     }
   }
   return canEditUser(roles)
+}
+
+// 检查是否可以删除该教师（删除权限与编辑权限相同）
+const canDeleteTeacher = (row) => {
+  return canEditTeacher(row)
 }
 
 // 加载数据
@@ -587,19 +926,33 @@ const handleEdit = async (row) => {
   try {
     const res = await teacherApi.getTeacherById(row.teacherId)
     if (res.code === 200) {
+      const teacher = res.data
+      // 确保加载用户信息（如果userInfoMap中没有）
+      if (teacher.userId && !userInfoMap.value[teacher.userId]) {
+        try {
+          const userRes = await userApi.getUserById(teacher.userId)
+          if (userRes.code === 200 && userRes.data) {
+            userInfoMap.value[teacher.userId] = userRes.data
+          }
+        } catch (error) {
+          console.error('加载用户信息失败:', error)
+        }
+      }
+      const userInfo = userInfoMap.value[teacher.userId] || {}
       Object.assign(formData, {
-        teacherId: res.data.teacherId,
-        teacherNo: res.data.teacherNo,
-        userId: res.data.userId,
-        realName: userInfoMap.value[res.data.userId]?.realName || '',
-        gender: userInfoMap.value[res.data.userId]?.gender || '',
-        idCard: userInfoMap.value[res.data.userId]?.idCard || '',
-        phone: userInfoMap.value[res.data.userId]?.phone || '',
-        email: userInfoMap.value[res.data.userId]?.email || '',
-        collegeId: res.data.collegeId,
-        schoolId: res.data.schoolId,
-        title: res.data.title || '',
-        status: res.data.status,
+        teacherId: teacher.teacherId,
+        teacherNo: teacher.teacherNo,
+        username: userInfo.username || '',
+        userId: teacher.userId,
+        realName: userInfo.realName || '',
+        gender: userInfo.gender || '',
+        idCard: userInfo.idCard || '',
+        phone: userInfo.phone || '',
+        email: userInfo.email || '',
+        collegeId: teacher.collegeId,
+        schoolId: teacher.schoolId,
+        title: teacher.title || '',
+        status: teacher.status,
         password: ''
       })
       dialogVisible.value = true
@@ -615,6 +968,7 @@ const resetFormData = () => {
   Object.assign(formData, {
     teacherId: null,
     teacherNo: '',
+    username: '',
     userId: null,
     realName: '',
     gender: '',
@@ -678,6 +1032,7 @@ const handleSubmit = async () => {
     try {
       const submitData = {
         teacherNo: formData.teacherNo,
+        username: formData.username || undefined,
         realName: formData.realName,
         gender: formData.gender || null,
         idCard: formData.idCard,
@@ -719,18 +1074,18 @@ const handleSubmit = async () => {
 // 删除
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要停用该教师吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除该教师吗？', '提示', {
       type: 'warning'
     })
     const res = await teacherApi.deleteTeacher(row.teacherId)
     if (res.code === 200) {
-      ElMessage.success('停用成功')
+          ElMessage.success('删除成功')
       loadData()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('停用失败:', error)
-      ElMessage.error('停用失败')
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
     }
   }
 }
@@ -790,6 +1145,149 @@ const handleExport = async () => {
   } finally {
     exportLoading.value = false
   }
+}
+
+// 标签页切换
+const handleTabChange = (tabName) => {
+  if (tabName === 'approval') {
+    loadApprovalList()
+  } else {
+    loadData()
+  }
+}
+
+// 加载待审核列表
+const loadApprovalList = async () => {
+  approvalLoading.value = true
+  try {
+    const params = {
+      current: approvalPagination.current,
+      size: approvalPagination.size,
+      teacherNo: approvalSearchForm.teacherNo || undefined,
+      realName: approvalSearchForm.realName || undefined
+    }
+    const res = await teacherApi.getPendingApprovalTeacherPage(params)
+    if (res.code === 200) {
+      approvalTableData.value = res.data.records || []
+      approvalPagination.total = res.data.total || 0
+      
+      // 加载用户信息
+      const userIds = approvalTableData.value.map(item => item.userId).filter(Boolean)
+      if (userIds.length > 0) {
+        await loadUserInfos(userIds)
+      }
+    }
+  } catch (error) {
+    console.error('加载待审核列表失败:', error)
+    ElMessage.error('加载待审核列表失败')
+  } finally {
+    approvalLoading.value = false
+  }
+}
+
+// 待审核搜索
+const handleApprovalSearch = () => {
+  approvalPagination.current = 1
+  loadApprovalList()
+}
+
+// 待审核重置
+const handleApprovalReset = () => {
+  approvalSearchForm.teacherNo = ''
+  approvalSearchForm.realName = ''
+  approvalPagination.current = 1
+  loadApprovalList()
+}
+
+// 待审核分页变化
+const handleApprovalSizeChange = (size) => {
+  approvalPagination.size = size
+  approvalPagination.current = 1
+  loadApprovalList()
+}
+
+const handleApprovalPageChange = (page) => {
+  approvalPagination.current = page
+  loadApprovalList()
+}
+
+// 查看详情
+const handleApprovalView = async (row) => {
+  currentTeacher.value = row
+  
+  // 确保加载用户信息（如果userInfoMap中没有）
+  if (row.userId && !userInfoMap.value[row.userId]) {
+    try {
+      const userRes = await userApi.getUserById(row.userId)
+      if (userRes.code === 200 && userRes.data) {
+        userInfoMap.value[row.userId] = userRes.data
+      }
+    } catch (error) {
+      console.error('加载用户信息失败:', error)
+    }
+  }
+  
+  detailDialogVisible.value = true
+}
+
+// 审核
+const handleApprove = async (row, approved) => {
+  currentTeacher.value = row
+  approveForm.approved = approved
+  approveForm.auditOpinion = ''
+  
+  // 确保加载用户信息（如果userInfoMap中没有）
+  if (row.userId && !userInfoMap.value[row.userId]) {
+    try {
+      const userRes = await userApi.getUserById(row.userId)
+      if (userRes.code === 200 && userRes.data) {
+        userInfoMap.value[row.userId] = userRes.data
+      }
+    } catch (error) {
+      console.error('加载用户信息失败:', error)
+    }
+  }
+  
+  approveDialogVisible.value = true
+}
+
+// 确认审核
+const handleConfirmApprove = async () => {
+  if (!approveFormRef.value) return
+  
+  await approveFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    if (!approveForm.approved && !approveForm.auditOpinion) {
+      ElMessage.warning('请输入拒绝原因')
+      return
+    }
+    
+    approving.value = true
+    try {
+      const res = await teacherApi.approveTeacherRegistration(
+        currentTeacher.value.teacherId,
+        approveForm.approved,
+        approveForm.auditOpinion
+      )
+      if (res.code === 200) {
+        ElMessage.success(res.message || '审核成功')
+        approveDialogVisible.value = false
+        loadApprovalList()
+        // 如果审核通过，刷新教师列表
+        if (approveForm.approved && activeTab.value === 'list') {
+          loadData()
+        }
+      } else {
+        ElMessage.error(res.message || '审核失败')
+      }
+    } catch (error) {
+      console.error('审核失败:', error)
+      ElMessage.error('审核失败：' + (error.response?.data?.message || error.message || '未知错误'))
+    } finally {
+      approving.value = false
+    }
+  })
 }
 
 // 初始化

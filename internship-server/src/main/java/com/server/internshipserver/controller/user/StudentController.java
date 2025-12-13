@@ -99,13 +99,13 @@ public class StudentController {
         return Result.success("更新成功", result);
     }
     
-    @ApiOperation("停用学生（软删除）")
+    @ApiOperation("删除学生（逻辑删除）")
     @DeleteMapping("/{studentId}")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER')")
     public Result<?> deleteStudent(
             @ApiParam(value = "学生ID", required = true) @PathVariable Long studentId) {
         boolean success = studentService.deleteStudent(studentId);
-        return success ? Result.success("停用成功") : Result.error("停用失败");
+        return success ? Result.success("删除成功") : Result.error("删除失败");
     }
     
     @ApiOperation("下载学生导入Excel模板")

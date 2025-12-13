@@ -44,7 +44,21 @@ public interface MajorService extends IService<Major> {
     Page<Major> getMajorPage(Page<Major> page, String majorName, Long collegeId, Long schoolId);
     
     /**
-     * 停用专业（软删除）
+     * 停用专业（不删除数据）
+     * @param majorId 专业ID
+     * @return 是否成功
+     */
+    boolean disableMajor(Long majorId);
+    
+    /**
+     * 启用专业
+     * @param majorId 专业ID
+     * @return 是否成功
+     */
+    boolean enableMajor(Long majorId);
+    
+    /**
+     * 删除专业（软删除）
      * @param majorId 专业ID
      * @return 是否成功
      */

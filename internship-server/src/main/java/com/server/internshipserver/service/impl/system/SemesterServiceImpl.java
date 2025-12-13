@@ -252,9 +252,8 @@ public class SemesterServiceImpl extends ServiceImpl<SemesterMapper, Semester> i
             throw new BusinessException("不能删除当前学期，请先设置其他学期为当前学期");
         }
         
-        // 软删除
-        semester.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(semester);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(semesterId);
     }
     
     @Override

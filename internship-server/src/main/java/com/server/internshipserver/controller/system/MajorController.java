@@ -92,11 +92,29 @@ public class MajorController {
     
     @ApiOperation("停用专业")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PutMapping("/{id}/disable")
+    public Result<?> disableMajor(
+            @ApiParam(value = "专业ID", required = true) @PathVariable Long id) {
+        majorService.disableMajor(id);
+        return Result.success("停用专业成功");
+    }
+    
+    @ApiOperation("启用专业")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    @PutMapping("/{id}/enable")
+    public Result<?> enableMajor(
+            @ApiParam(value = "专业ID", required = true) @PathVariable Long id) {
+        majorService.enableMajor(id);
+        return Result.success("启用专业成功");
+    }
+    
+    @ApiOperation("删除专业")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN')")
     @DeleteMapping("/{id}")
     public Result<?> deleteMajor(
             @ApiParam(value = "专业ID", required = true) @PathVariable Long id) {
         majorService.deleteMajor(id);
-        return Result.success("停用专业成功");
+        return Result.success("删除专业成功");
     }
     
     @ApiOperation("导出专业列表")

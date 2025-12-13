@@ -138,14 +138,14 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column label="操作" width="280" fixed="right" align="center">
+      <el-table-column label="操作" width="350" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
           <el-button link type="primary" size="small" @click="handleShareCode(row)">分享码</el-button>
           <el-button
             v-if="row.status === 1"
             link
-            type="danger"
+            type="warning"
             size="small"
             @click="handleDisable(row)"
           >
@@ -159,6 +159,15 @@
             @click="handleEnable(row)"
           >
             启用
+          </el-button>
+          <el-button
+            v-if="canDeleteClass"
+            link
+            type="danger"
+            size="small"
+            @click="handleDelete(row)"
+          >
+            删除
           </el-button>
         </template>
       </el-table-column>
@@ -368,6 +377,11 @@ const pageTitle = computed(() => {
 // 是否可以添加班级（只有系统管理员、学校管理员、学院负责人可以添加）
 const canAddClass = computed(() => {
   return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER'])
+})
+
+// 是否可以删除班级（只有系统管理员、学校管理员可以删除）
+const canDeleteClass = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])
 })
 
 // 计算属性：添加表单中学校下拉框是否禁用
@@ -753,6 +767,26 @@ const handleEnable = async (row) => {
   } catch (error) {
     if (error !== 'cancel') {
       const errorMessage = error.response?.data?.message || error.message || '启用失败'
+      ElMessage.error(errorMessage)
+    }
+  }
+}
+
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除班级 "${row.className}" 吗？删除后将无法恢复！`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    const res = await classApi.deleteClass(row.classId)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      loadData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      const errorMessage = error.response?.data?.message || error.message || '删除失败'
       ElMessage.error(errorMessage)
     }
   }

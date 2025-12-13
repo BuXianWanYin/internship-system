@@ -5,18 +5,17 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 /**
- * 教师添加DTO
- * 用于封装添加教师时的所有信息，包括教师基本信息、用户信息和角色信息
- * 系统会自动创建对应的用户账号并分配角色
+ * 教师注册DTO
+ * 用于封装教师自主注册时的信息
  */
-@ApiModel(description = "教师添加信息")
+@ApiModel(description = "教师注册信息")
 @Data
-public class TeacherAddDTO {
+public class TeacherRegisterDTO {
     
     @ApiModelProperty(value = "工号", required = true, example = "T2021001")
     private String teacherNo;
     
-    @ApiModelProperty(value = "用户名（可选，如不提供则使用工号作为用户名）", example = "teacher001")
+    @ApiModelProperty(value = "用户名（必填，用于登录）", required = true, example = "teacher001")
     private String username;
     
     @ApiModelProperty(value = "真实姓名", required = true, example = "张老师")
@@ -34,25 +33,16 @@ public class TeacherAddDTO {
     @ApiModelProperty(value = "邮箱", example = "teacher@example.com")
     private String email;
     
+    @ApiModelProperty(value = "所属学校ID", example = "1")
+    private Long schoolId;
+    
     @ApiModelProperty(value = "所属学院ID", required = true, example = "1")
     private Long collegeId;
-    
-    @ApiModelProperty(value = "所属学校ID（冗余字段）", example = "1")
-    private Long schoolId;
     
     @ApiModelProperty(value = "职称", example = "教授")
     private String title;
     
-    @ApiModelProperty(value = "所属学院", example = "计算机学院")
-    private String department;
-    
-    @ApiModelProperty(value = "角色代码（可选，如不指定则默认分配ROLE_CLASS_TEACHER。注意：角色分配建议在用户管理中统一处理）", example = "ROLE_CLASS_TEACHER")
-    private String roleCode;
-    
-    @ApiModelProperty(value = "初始密码", required = true, example = "123456")
+    @ApiModelProperty(value = "密码", required = true, example = "123456")
     private String password;
-    
-    @ApiModelProperty(value = "状态：1-启用，0-禁用", example = "1")
-    private Integer status;
 }
 

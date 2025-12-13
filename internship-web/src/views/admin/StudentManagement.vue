@@ -153,14 +153,27 @@
             <template #default="{ row }">
               <div v-if="userInfoMap[row.userId]">
                 <div>{{ userInfoMap[row.userId].realName }}</div>
-                <div style="font-size: 12px; color: #909399;">
-                  {{ userInfoMap[row.userId].phone || '未填写' }}
-                </div>
               </div>
               <span v-else>加载中...</span>
             </template>
           </el-table-column>
-          <el-table-column prop="enrollmentYear" label="入学年份" width="100" align="center" />
+          <el-table-column label="性别" min-width="80" align="center">
+            <template #default="{ row }">
+              <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].gender">
+                {{ userInfoMap[row.userId].gender }}
+              </span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="手机号" min-width="120">
+            <template #default="{ row }">
+              <span v-if="userInfoMap[row.userId] && userInfoMap[row.userId].phone">
+                {{ userInfoMap[row.userId].phone }}
+              </span>
+              <span v-else style="color: #909399">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="enrollmentYear" label="入学年份" min-width="100" align="center" />
           <el-table-column label="所属班级" min-width="150">
             <template #default="{ row }">
               <span v-if="classMap[row.classId]">{{ classMap[row.classId].className }}</span>
@@ -197,19 +210,27 @@
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" width="80" align="center">
+          <el-table-column prop="status" label="状态" min-width="80" align="center">
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
                 {{ row.status === 1 ? '已审核' : '待审核' }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column label="操作" width="280" fixed="right" align="center">
+          <el-table-column prop="createTime" label="创建时间" min-width="180" />
+          <el-table-column label="操作" min-width="280" fixed="right" align="center">
             <template #default="{ row }">
               <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
               <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+              <el-button 
+                v-if="canDeleteStudentBtn" 
+                link 
+                type="danger" 
+                size="small" 
+                @click="handleDelete(row)"
+              >
+                删除
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -327,6 +348,12 @@
         <el-form-item label="学号" prop="studentNo">
           <el-input v-model="formData.studentNo" placeholder="请输入学号" :disabled="isEdit" />
         </el-form-item>
+        <el-form-item v-if="!isEdit" label="用户名" prop="username">
+          <el-input 
+            v-model="formData.username" 
+            placeholder="请输入用户名（用于登录）" 
+          />
+        </el-form-item>
         <el-form-item label="真实姓名" prop="realName">
           <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
         </el-form-item>
@@ -363,12 +390,6 @@
             placeholder="请输入入学年份"
             style="width: 100%"
           />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="formData.status">
-            <el-radio :label="1">已审核</el-radio>
-            <el-radio :label="0">待审核</el-radio>
-          </el-radio-group>
         </el-form-item>
         <el-form-item v-if="!isEdit" label="初始密码" prop="password">
           <el-input
@@ -622,6 +643,11 @@ import { Plus, Search, Refresh, Upload, Download, UploadFilled, CircleCheck, Cir
 import PageLayout from '@/components/common/PageLayout.vue'
 import { useAuthStore } from '@/store/modules/auth'
 import { hasAnyRole } from '@/utils/permission'
+
+// 计算属性：是否可以删除学生（用于显示删除按钮）
+const canDeleteStudentBtn = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER', 'ROLE_CLASS_TEACHER'])
+})
 import { studentApi } from '@/api/user/student'
 import { classApi } from '@/api/system/class'
 import { schoolApi } from '@/api/system/school'
@@ -717,6 +743,7 @@ const formRef = ref(null)
 const formData = reactive({
   studentId: null,
   studentNo: '',
+  username: '',
   userId: null,
   realName: '',
   gender: '',
@@ -730,6 +757,11 @@ const formData = reactive({
 })
 const formRules = {
   studentNo: [{ required: true, message: '请输入学号', trigger: 'blur' }],
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, max: 20, message: '用户名长度为3-20个字符', trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线', trigger: 'blur' }
+  ],
   realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }],
   classId: [{ required: true, message: '请选择班级', trigger: 'change' }],
   enrollmentYear: [{ required: true, message: '请输入入学年份', trigger: 'blur' }],
@@ -912,6 +944,7 @@ const handleEdit = async (row) => {
           Object.assign(formData, {
             studentId: student.studentId,
             studentNo: student.studentNo,
+            username: userRes.data.username || '',
             userId: student.userId,
             realName: userRes.data.realName,
             gender: userRes.data.gender || '',
@@ -920,8 +953,8 @@ const handleEdit = async (row) => {
             email: userRes.data.email || '',
             classId: student.classId,
             enrollmentYear: student.enrollmentYear,
-            status: student.status,
             password: ''
+            // 编辑时不显示和修改status
           })
         }
       }
@@ -936,6 +969,7 @@ const resetFormData = () => {
   Object.assign(formData, {
     studentId: null,
     studentNo: '',
+    username: '',
     userId: null,
     realName: '',
     gender: '',
@@ -968,8 +1002,8 @@ const handleSubmit = async () => {
             gender: formData.gender || null,
             idCard: formData.idCard,
             phone: formData.phone,
-            email: formData.email,
-            status: formData.status
+            email: formData.email
+            // 编辑时不更新status，保持原有状态
           }
           await userApi.updateUser(userUpdateData)
         }
@@ -979,8 +1013,8 @@ const handleSubmit = async () => {
           studentId: formData.studentId,
           studentNo: formData.studentNo,
           classId: formData.classId,
-          enrollmentYear: formData.enrollmentYear,
-          status: formData.status
+          enrollmentYear: formData.enrollmentYear
+          // 编辑时不更新status，保持原有状态
         }
         const res = await studentApi.updateStudent(studentUpdateData)
         if (res.code === 200) {
@@ -1007,7 +1041,7 @@ const handleSubmit = async () => {
 
         // 创建用户
         const userData = {
-          username: formData.studentNo,
+          username: formData.username || formData.studentNo,
           password: formData.password,
           realName: formData.realName,
           gender: formData.gender || null,
@@ -1066,7 +1100,7 @@ const handleSubmit = async () => {
 
 const handleDelete = (row) => {
   ElMessageBox.confirm(
-    `确定要停用学生 "${row.studentNo}" 吗？`,
+    `确定要删除学生 "${row.studentNo}" 吗？`,
     '提示',
     {
       confirmButtonText: '确定',
@@ -1077,11 +1111,12 @@ const handleDelete = (row) => {
     try {
       const res = await studentApi.deleteStudent(row.studentId)
       if (res.code === 200) {
-        ElMessage.success('停用成功')
+        ElMessage.success('删除成功')
         loadStudentList()
       }
     } catch (error) {
-      ElMessage.error('停用失败')
+      const errorMessage = error.response?.data?.message || error.message || '删除失败'
+      ElMessage.error(errorMessage)
     }
   }).catch(() => {})
 }

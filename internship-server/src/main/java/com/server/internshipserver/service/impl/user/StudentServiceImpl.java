@@ -323,9 +323,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             }
         }
         
-        // 软删除
-        student.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(student);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(studentId);
     }
     
     @Override
@@ -595,11 +594,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("学号已存在");
         }
         
-        // 生成用户名（使用学号）
-        String username = studentImportDTO.getStudentNo();
+        // 生成用户名（必须提供用户名）
+        if (!StringUtils.hasText(studentImportDTO.getUsername())) {
+            throw new BusinessException("用户名不能为空");
+        }
+        String username = studentImportDTO.getUsername();
         UserInfo existUser = userService.getUserByUsername(username);
         if (existUser != null) {
-            throw new BusinessException("用户名（学号）已存在");
+            throw new BusinessException("用户名已存在");
         }
         
         // 生成初始密码（如果用户提供了密码则使用，否则使用默认密码）
@@ -612,6 +614,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setUsername(username);
         user.setPassword(password); // UserService会自动加密
         user.setRealName(studentImportDTO.getRealName());
+        user.setGender(studentImportDTO.getGender()); // 保存性别字段
         user.setIdCard(studentImportDTO.getIdCard());
         user.setPhone(studentImportDTO.getPhone());
         user.setEmail(studentImportDTO.getEmail());

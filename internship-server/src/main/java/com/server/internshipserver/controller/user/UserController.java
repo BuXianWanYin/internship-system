@@ -91,13 +91,13 @@ public class UserController {
         return Result.success("更新成功", result);
     }
     
-    @ApiOperation("停用用户（软删除）")
+    @ApiOperation("删除用户（逻辑删除）")
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> deleteUser(
             @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         boolean success = userService.deleteUser(userId);
-        return success ? Result.success("停用成功") : Result.error("停用失败");
+        return success ? Result.success("删除成功") : Result.error("删除失败");
     }
     
     @ApiOperation("重置用户密码")

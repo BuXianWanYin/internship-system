@@ -24,6 +24,20 @@
         <el-card 
           class="register-card" 
           shadow="hover"
+          @click="goToTeacherRegister"
+        >
+          <div class="card-content">
+            <el-icon class="card-icon" :size="48" color="#E6A23C">
+              <UserFilled />
+            </el-icon>
+            <h3>教师注册</h3>
+            <p>填写个人信息完成注册</p>
+          </div>
+        </el-card>
+        
+        <el-card 
+          class="register-card" 
+          shadow="hover"
           @click="goToEnterpriseRegister"
         >
           <div class="card-content">
@@ -48,14 +62,24 @@
 
 <script>
 import { useRouter } from 'vue-router'
+import { User, UserFilled, OfficeBuilding } from '@element-plus/icons-vue'
 
 export default {
   name: 'Register',
+  components: {
+    User,
+    UserFilled,
+    OfficeBuilding
+  },
   setup() {
     const router = useRouter()
     
     const goToStudentRegister = () => {
       router.push('/register/student')
+    }
+    
+    const goToTeacherRegister = () => {
+      router.push('/register/teacher')
     }
     
     const goToEnterpriseRegister = () => {
@@ -68,6 +92,7 @@ export default {
     
     return {
       goToStudentRegister,
+      goToTeacherRegister,
       goToEnterpriseRegister,
       goToLogin
     }
@@ -85,7 +110,8 @@ export default {
 }
 
 .register-box {
-  width: 600px;
+  width: 100%;
+  max-width: 900px;
   padding: 48px;
   background: #ffffff;
   border-radius: 8px;
@@ -112,9 +138,10 @@ export default {
 
 .register-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   margin-bottom: 32px;
+  min-width: 800px;
 }
 
 .register-card {
@@ -143,12 +170,14 @@ export default {
   color: #303133;
   font-size: 18px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .card-content p {
   margin: 0;
   color: #909399;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .back-login {

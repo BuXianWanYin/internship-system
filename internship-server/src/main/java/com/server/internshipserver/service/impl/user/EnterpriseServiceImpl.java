@@ -427,9 +427,8 @@ public class EnterpriseServiceImpl extends ServiceImpl<EnterpriseMapper, Enterpr
         Enterprise enterprise = this.getById(enterpriseId);
         EntityValidationUtil.validateEntityExists(enterprise, "企业");
         
-        // 软删除
-        enterprise.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(enterprise);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(enterpriseId);
     }
     
     @Override

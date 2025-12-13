@@ -364,6 +364,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
             user.setPassword(null);
         }
         
+        // 处理gender字段：如果传入了gender字段（包括null和空字符串），就更新
+        // 注意：MyBatis Plus的updateById默认会忽略null字段，但会更新空字符串
+        // 为了统一处理，如果gender是空字符串，设置为null
+        if (user.getGender() != null && user.getGender().isEmpty()) {
+            user.setGender(null);
+        }
+        
         // 更新
         this.updateById(user);
         
@@ -504,9 +511,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
             }
         }
         
-        // 软删除
-        user.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(user);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(userId);
     }
     
     /**

@@ -5,6 +5,7 @@ import com.server.internshipserver.common.result.Result;
 import com.server.internshipserver.domain.user.Teacher;
 import com.server.internshipserver.domain.user.dto.TeacherAddDTO;
 import com.server.internshipserver.domain.user.dto.TeacherUpdateDTO;
+import com.server.internshipserver.domain.user.dto.TeacherRegisterDTO;
 import com.server.internshipserver.service.user.TeacherService;
 
 import java.util.List;
@@ -103,13 +104,13 @@ public class TeacherController {
         return Result.success("更新成功", result);
     }
     
-    @ApiOperation("停用教师（软删除）")
+    @ApiOperation("删除教师（逻辑删除）")
     @DeleteMapping("/{teacherId}")
     @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
     public Result<?> deleteTeacher(
             @ApiParam(value = "教师ID", required = true) @PathVariable Long teacherId) {
         boolean success = teacherService.deleteTeacher(teacherId);
-        return success ? Result.success("停用成功") : Result.error("停用失败");
+        return success ? Result.success("删除成功") : Result.error("删除失败");
     }
     
     @ApiOperation("根据学校ID查询教师列表（用于下拉选择）")
@@ -233,6 +234,39 @@ public class TeacherController {
         String[] fieldNames = {"teacherId", "teacherNo", "teacherName", "collegeName", "schoolName", "title", "department", "phone", "email", "statusText", "createTimeText"};
         
         ExcelUtil.exportToExcel(response, teachers, headers, fieldNames, "教师列表");
+    }
+    
+    @ApiOperation("教师自主注册")
+    @PostMapping("/register")
+    public Result<Teacher> registerTeacher(
+            @ApiParam(value = "教师注册信息", required = true) @RequestBody TeacherRegisterDTO registerDTO) {
+        Teacher teacher = teacherService.registerTeacher(registerDTO);
+        return Result.success("注册成功，请等待管理员审核", teacher);
+    }
+    
+    @ApiOperation("分页查询待审核教师列表")
+    @GetMapping("/pending-approval/page")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    public Result<Page<Teacher>> getPendingApprovalTeacherPage(
+            @ApiParam(value = "页码", example = "1") @RequestParam(defaultValue = "1") Long current,
+            @ApiParam(value = "每页数量", example = "10") @RequestParam(defaultValue = "10") Long size,
+            @ApiParam(value = "工号") @RequestParam(required = false) String teacherNo,
+            @ApiParam(value = "姓名") @RequestParam(required = false) String realName) {
+        Page<Teacher> page = new Page<>(current, size);
+        Page<Teacher> result = teacherService.getPendingApprovalTeacherPage(page, teacherNo, realName);
+        return Result.success("查询成功", result);
+    }
+    
+    @ApiOperation("审核教师注册申请")
+    @PostMapping("/{teacherId}/approve")
+    @PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN', 'ROLE_COLLEGE_LEADER')")
+    public Result<?> approveTeacherRegistration(
+            @ApiParam(value = "教师ID", required = true) @PathVariable Long teacherId,
+            @ApiParam(value = "是否通过：true-通过，false-拒绝", required = true) @RequestParam Boolean approved,
+            @ApiParam(value = "审核意见") @RequestParam(required = false) String auditOpinion) {
+        boolean success = teacherService.approveTeacherRegistration(teacherId, approved, auditOpinion);
+        String message = approved ? "审核通过，教师账号已激活" : "审核已拒绝";
+        return success ? Result.success(message) : Result.error("审核失败");
     }
 }
 

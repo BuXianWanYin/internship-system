@@ -81,7 +81,9 @@ public class SecurityConfig {
                     "/auth/register", 
                     "/user/enterprise/register",  // 企业注册
                     "/user/student/register",     // 学生注册
-                    "/system/school/public/list", // 公开获取学校列表（用于企业注册）
+                    "/user/teacher/register",     // 教师注册
+                    "/system/school/public/list", // 公开获取学校列表（用于注册）
+                    "/system/college/public/list", // 公开获取学院列表（用于教师注册）
                     "/system/class/share-code/validate", // 验证分享码（用于学生注册）
                     "/swagger-ui/**", 
                     "/swagger-ui.html",

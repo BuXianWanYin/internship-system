@@ -117,5 +117,12 @@ public class CollegeController {
         
         ExcelUtil.exportToExcel(response, colleges, headers, fieldNames, "学院列表");
     }
+    
+    @ApiOperation("公开获取学院列表（用于教师注册等公开场景）")
+    @GetMapping("/public/list")
+    public Result<List<College>> getPublicCollegeList() {
+        List<College> colleges = collegeService.getPublicCollegeList();
+        return Result.success(colleges);
+    }
 }
 

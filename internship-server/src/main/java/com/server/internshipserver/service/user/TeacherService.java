@@ -98,5 +98,30 @@ public interface TeacherService extends IService<Teacher> {
      * @return 教师列表
      */
     List<Teacher> getAllTeachers(String teacherNo, Long collegeId, Long schoolId, Integer status);
+    
+    /**
+     * 教师自主注册
+     * @param registerDTO 教师注册信息
+     * @return 注册的教师信息
+     */
+    Teacher registerTeacher(com.server.internshipserver.domain.user.dto.TeacherRegisterDTO registerDTO);
+    
+    /**
+     * 分页查询待审核教师列表
+     * @param page 分页参数
+     * @param teacherNo 工号
+     * @param realName 姓名
+     * @return 待审核教师列表
+     */
+    Page<Teacher> getPendingApprovalTeacherPage(Page<Teacher> page, String teacherNo, String realName);
+    
+    /**
+     * 审核教师注册申请
+     * @param teacherId 教师ID
+     * @param approved 是否通过：true-通过，false-拒绝
+     * @param auditOpinion 审核意见
+     * @return 是否成功
+     */
+    boolean approveTeacherRegistration(Long teacherId, boolean approved, String auditOpinion);
 }
 

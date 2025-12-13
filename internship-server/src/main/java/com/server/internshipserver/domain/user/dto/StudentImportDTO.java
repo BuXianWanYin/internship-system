@@ -16,6 +16,9 @@ public class StudentImportDTO {
     @ApiModelProperty(value = "学号", required = true)
     private String studentNo;
     
+    @ApiModelProperty(value = "用户名（必填，用于登录）", required = true, example = "student001")
+    private String username;
+    
     @ApiModelProperty(value = "真实姓名", required = true)
     private String realName;
     

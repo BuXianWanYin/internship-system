@@ -3,6 +3,7 @@ package com.server.internshipserver.domain.user;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -43,6 +44,7 @@ public class SchoolAdmin implements Serializable {
     
     @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
     @TableField("delete_flag")
+    @TableLogic(value = "0", delval = "1")
     private Integer deleteFlag;
     
     @ApiModelProperty(value = "创建时间")

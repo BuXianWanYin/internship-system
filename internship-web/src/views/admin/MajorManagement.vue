@@ -98,10 +98,36 @@
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="180" />
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="280" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" size="small" @click="handleDelete(row)">停用</el-button>
+          <el-button
+            v-if="row.status === 1"
+            link
+            type="warning"
+            size="small"
+            @click="handleDisable(row)"
+          >
+            停用
+          </el-button>
+          <el-button
+            v-if="row.status === 0"
+            link
+            type="success"
+            size="small"
+            @click="handleEnable(row)"
+          >
+            启用
+          </el-button>
+          <el-button
+            v-if="canDeleteMajor"
+            link
+            type="danger"
+            size="small"
+            @click="handleDelete(row)"
+          >
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -246,6 +272,11 @@ const isSchoolDisabledForAdd = computed(() => {
 // 计算属性：添加表单中学院下拉框是否禁用
 const isCollegeDisabledForAdd = computed(() => {
   return hasAnyRole(['ROLE_COLLEGE_LEADER'])
+})
+
+// 是否可以删除专业（只有系统管理员、学校管理员可以删除）
+const canDeleteMajor = computed(() => {
+  return hasAnyRole(['ROLE_SYSTEM_ADMIN', 'ROLE_SCHOOL_ADMIN'])
 })
 
 const searchForm = reactive({
@@ -474,19 +505,62 @@ const handleEdit = async (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = async (row) => {
+const handleDisable = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要停用该专业吗？', '提示', {
-      type: 'warning'
+    await ElMessageBox.confirm(`确定要停用专业 "${row.majorName}" 吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
     })
-    const res = await majorApi.deleteMajor(row.majorId)
+    const res = await majorApi.disableMajor(row.majorId)
     if (res.code === 200) {
       ElMessage.success('停用成功')
       loadData()
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('停用失败:', error)
+      const errorMessage = error.response?.data?.message || error.message || '停用失败'
+      ElMessage.error(errorMessage)
+    }
+  }
+}
+
+const handleEnable = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要启用专业 "${row.majorName}" 吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    const res = await majorApi.enableMajor(row.majorId)
+    if (res.code === 200) {
+      ElMessage.success('启用成功')
+      loadData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      const errorMessage = error.response?.data?.message || error.message || '启用失败'
+      ElMessage.error(errorMessage)
+    }
+  }
+}
+
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除专业 "${row.majorName}" 吗？删除后将无法恢复！`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    const res = await majorApi.deleteMajor(row.majorId)
+    if (res.code === 200) {
+      ElMessage.success('删除成功')
+      loadData()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      const errorMessage = error.response?.data?.message || error.message || '删除失败'
+      ElMessage.error(errorMessage)
     }
   }
 }

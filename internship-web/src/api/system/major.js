@@ -22,6 +22,14 @@ export const majorApi = {
     return request.get('/system/major/page', { params })
   },
   // 停用专业
+  disableMajor(id) {
+    return request.put(`/system/major/${id}/disable`)
+  },
+  // 启用专业
+  enableMajor(id) {
+    return request.put(`/system/major/${id}/enable`)
+  },
+  // 删除专业
   deleteMajor(id) {
     return request.delete(`/system/major/${id}`)
   }

@@ -3,6 +3,7 @@ package com.server.internshipserver.domain.user;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -58,8 +59,26 @@ public class Teacher implements Serializable {
     @TableField("status")
     private Integer status;
     
+    @ApiModelProperty(value = "审核状态：0-待审核，1-已通过，2-已拒绝", example = "1")
+    @TableField("audit_status")
+    private Integer auditStatus;
+    
+    @ApiModelProperty(value = "审核意见")
+    @TableField("audit_opinion")
+    private String auditOpinion;
+    
+    @ApiModelProperty(value = "审核时间")
+    @TableField("audit_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime auditTime;
+    
+    @ApiModelProperty(value = "审核人ID", example = "1")
+    @TableField("auditor_id")
+    private Long auditorId;
+    
     @ApiModelProperty(value = "删除标志：0-未删除，1-已删除", example = "0")
     @TableField("delete_flag")
+    @TableLogic(value = "0", delval = "1")
     private Integer deleteFlag;
     
     @ApiModelProperty(value = "创建时间")

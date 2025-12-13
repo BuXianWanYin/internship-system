@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.enums.DeleteFlag;
+import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -244,9 +245,8 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         College college = this.getById(collegeId);
         EntityValidationUtil.validateEntityExists(college, "学院");
         
-        // 软删除
-        college.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(college);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(collegeId);
     }
     
     @Override
@@ -315,6 +315,44 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         
         // 按创建时间倒序
         wrapper.orderByDesc(College::getCreateTime);
+        
+        List<College> colleges = this.list(wrapper);
+        
+        // 填充学校名称
+        if (colleges != null && !colleges.isEmpty()) {
+            List<Long> schoolIds = colleges.stream()
+                    .map(College::getSchoolId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!schoolIds.isEmpty() && schoolMapper != null) {
+                List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
+                if (schools != null && !schools.isEmpty()) {
+                    java.util.Map<Long, String> schoolNameMap = schools.stream()
+                            .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
+                            .collect(Collectors.toMap(
+                                    com.server.internshipserver.domain.system.School::getSchoolId,
+                                    com.server.internshipserver.domain.system.School::getSchoolName,
+                                    (v1, v2) -> v1
+                            ));
+                    for (College college : colleges) {
+                        if (college.getSchoolId() != null) {
+                            college.setSchoolName(schoolNameMap.get(college.getSchoolId()));
+                        }
+                    }
+                }
+            }
+        }
+        
+        return colleges;
+    }
+    
+    @Override
+    public List<College> getPublicCollegeList() {
+        // 公开接口，不进行权限过滤，只返回所有未删除且启用的学院
+        LambdaQueryWrapper<College> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(College::getDeleteFlag);
+        wrapper.eq(College::getStatus, UserStatus.ENABLED.getCode()); // 只返回启用的学院
+        wrapper.orderByAsc(College::getCollegeName); // 按学院名称排序
         
         List<College> colleges = this.list(wrapper);
         

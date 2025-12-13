@@ -2,7 +2,6 @@ package com.server.internshipserver.service.impl.user;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
@@ -90,9 +89,8 @@ public class SchoolAdminServiceImpl extends ServiceImpl<SchoolAdminMapper, Schoo
         SchoolAdmin schoolAdmin = this.getById(adminId);
         EntityValidationUtil.validateEntityExists(schoolAdmin, "学校管理员");
         
-        // 软删除
-        schoolAdmin.setDeleteFlag(DeleteFlag.DELETED.getCode());
-        return this.updateById(schoolAdmin);
+        // 使用MyBatis Plus逻辑删除
+        return this.removeById(adminId);
     }
 }
 
