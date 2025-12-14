@@ -194,8 +194,8 @@
         <!-- 分页 -->
         <div class="pagination-container">
           <el-pagination
-            v-model:current-page="pagination.current"
-            v-model:page-size="pagination.size"
+            :current-page="pagination.current"
+            :page-size="pagination.size"
             :total="pagination.total"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next, jumper"
@@ -327,8 +327,8 @@
         <!-- 待审核分页 -->
         <div class="pagination-container">
           <el-pagination
-            v-model:current-page="approvalPagination.current"
-            v-model:page-size="approvalPagination.size"
+            :current-page="approvalPagination.current"
+            :page-size="approvalPagination.size"
             :total="approvalPagination.total"
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next, jumper"

@@ -356,6 +356,7 @@
                 <li><a href="#business">核心业务流程</a></li>
                 <li><a href="#defense">答辩准备</a></li>
                 <li><a href="#api-db">API & 数据库</a></li>
+                <li><a href="#testing">测试与维护</a></li>
                 <li><a href="#thesis">论文相关</a></li>
             </ul>
         </nav>
@@ -426,6 +427,7 @@
                             <th>技术</th>
                             <th>版本</th>
                             <th>说明</th>
+                            <th>主要用途</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -433,49 +435,84 @@
                             <td>Spring Boot</td>
                             <td>2.7.6</td>
                             <td>核心框架</td>
+                            <td>提供自动配置、依赖注入、AOP等核心功能，简化企业级应用开发</td>
                         </tr>
                         <tr>
                             <td>Java</td>
                             <td>1.8</td>
                             <td>开发语言</td>
+                            <td>面向对象编程语言，提供跨平台支持，生态丰富</td>
                         </tr>
                         <tr>
                             <td>MyBatis Plus</td>
                             <td>3.5.3</td>
                             <td>ORM框架</td>
+                            <td>简化CRUD操作，提供代码生成器，支持复杂查询和动态SQL</td>
                         </tr>
                         <tr>
                             <td>MySQL</td>
                             <td>8.0.33</td>
                             <td>关系型数据库</td>
+                            <td>存储业务数据，支持事务、索引、外键等特性</td>
                         </tr>
                         <tr>
                             <td>Redis</td>
-                            <td>-</td>
+                            <td>6.x</td>
                             <td>缓存数据库</td>
+                            <td>缓存热点数据，提高查询性能，支持分布式锁</td>
                         </tr>
                         <tr>
                             <td>JWT</td>
                             <td>0.9.1</td>
                             <td>身份认证</td>
+                            <td>无状态Token认证，支持分布式部署，提高系统可扩展性</td>
                         </tr>
                         <tr>
                             <td>Swagger</td>
                             <td>3.0.0</td>
                             <td>API文档</td>
+                            <td>自动生成API文档，支持在线测试，提高开发效率</td>
                         </tr>
                         <tr>
                             <td>Apache POI</td>
                             <td>5.2.3</td>
                             <td>Excel处理</td>
+                            <td>Excel文件导入导出，支持批量数据处理</td>
                         </tr>
                         <tr>
                             <td>Spring Security</td>
                             <td>2.7.6</td>
                             <td>安全框架</td>
+                            <td>提供认证和授权功能，支持方法级权限控制</td>
+                        </tr>
+                        <tr>
+                            <td>Lombok</td>
+                            <td>1.18.x</td>
+                            <td>代码生成</td>
+                            <td>通过注解简化Java代码，减少样板代码</td>
+                        </tr>
+                        <tr>
+                            <td>Hutool</td>
+                            <td>5.x</td>
+                            <td>工具类库</td>
+                            <td>提供丰富的工具类，简化常用操作</td>
+                        </tr>
+                        <tr>
+                            <td>Logback</td>
+                            <td>1.2.x</td>
+                            <td>日志框架</td>
+                            <td>日志记录和管理，支持日志级别、滚动策略等</td>
                         </tr>
                     </tbody>
                 </table>
+
+                <h4>技术选型说明</h4>
+                <div class="info-card">
+                    <p><strong>Spring Boot 2.7.6：</strong>选择此版本是因为它稳定成熟，生态丰富，社区支持好。提供了自动配置、内嵌服务器、生产就绪特性等，大大简化了开发流程。</p>
+                    <p><strong>MyBatis Plus：</strong>相比MyBatis，提供了更多便捷功能，如自动填充、逻辑删除、分页插件等，减少了大量重复代码。</p>
+                    <p><strong>MySQL 8.0：</strong>选择8.0版本是因为它性能更好，支持JSON类型、窗口函数等新特性，适合现代应用开发。</p>
+                    <p><strong>JWT认证：</strong>采用JWT而非Session，因为JWT无状态，适合前后端分离架构，支持分布式部署，扩展性好。</p>
+                </div>
 
                 <h3>前端技术栈</h3>
                 <table>
@@ -484,6 +521,7 @@
                             <th>技术</th>
                             <th>版本</th>
                             <th>说明</th>
+                            <th>主要用途</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -491,41 +529,117 @@
                             <td>Vue</td>
                             <td>3.5.13</td>
                             <td>核心框架</td>
+                            <td>渐进式JavaScript框架，提供响应式数据绑定、组件化开发</td>
                         </tr>
                         <tr>
                             <td>Vite</td>
                             <td>6.0.0</td>
                             <td>构建工具</td>
+                            <td>快速的前端构建工具，提供极速的热更新和构建速度</td>
                         </tr>
                         <tr>
                             <td>Element Plus</td>
                             <td>2.8.8</td>
                             <td>UI组件库</td>
+                            <td>基于Vue 3的组件库，提供丰富的UI组件，支持主题定制</td>
                         </tr>
                         <tr>
                             <td>Pinia</td>
                             <td>2.1.7</td>
                             <td>状态管理</td>
+                            <td>Vue 3官方推荐的状态管理库，替代Vuex，API更简洁</td>
                         </tr>
                         <tr>
                             <td>Vue Router</td>
                             <td>4.2.5</td>
                             <td>路由管理</td>
+                            <td>Vue官方路由管理器，支持路由守卫、懒加载等功能</td>
                         </tr>
                         <tr>
                             <td>Axios</td>
                             <td>1.6.2</td>
                             <td>HTTP客户端</td>
+                            <td>基于Promise的HTTP库，支持请求拦截、响应拦截、错误处理</td>
                         </tr>
                         <tr>
                             <td>ECharts</td>
                             <td>5.6.0</td>
                             <td>数据可视化</td>
+                            <td>强大的数据可视化库，支持多种图表类型，交互丰富</td>
                         </tr>
                         <tr>
                             <td>Quill</td>
                             <td>1.3.7</td>
                             <td>富文本编辑器</td>
+                            <td>现代化的富文本编辑器，支持自定义工具栏和扩展</td>
+                        </tr>
+                        <tr>
+                            <td>Day.js</td>
+                            <td>1.x</td>
+                            <td>日期处理</td>
+                            <td>轻量级日期处理库，API简洁，体积小</td>
+                        </tr>
+                        <tr>
+                            <td>VueUse</td>
+                            <td>10.x</td>
+                            <td>组合式函数库</td>
+                            <td>提供大量Vue 3 Composition API工具函数</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>前端技术选型说明</h4>
+                <div class="info-card">
+                    <p><strong>Vue 3：</strong>选择Vue 3是因为它性能更好（使用Proxy实现响应式），Composition API更灵活，TypeScript支持更好，生态活跃。</p>
+                    <p><strong>Vite：</strong>相比Webpack，Vite启动速度更快，热更新更迅速，开发体验更好，构建速度也更快。</p>
+                    <p><strong>Element Plus：</strong>选择Element Plus是因为它组件丰富、文档完善、设计美观，适合快速开发企业级应用。</p>
+                    <p><strong>Pinia：</strong>相比Vuex，Pinia API更简洁，TypeScript支持更好，没有mutations，使用更直观。</p>
+                </div>
+
+                <h3>开发工具</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>工具</th>
+                            <th>说明</th>
+                            <th>用途</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>IntelliJ IDEA</td>
+                            <td>Java IDE</td>
+                            <td>后端开发IDE，提供代码提示、调试、重构等功能</td>
+                        </tr>
+                        <tr>
+                            <td>VS Code</td>
+                            <td>代码编辑器</td>
+                            <td>前端开发编辑器，插件丰富，轻量高效</td>
+                        </tr>
+                        <tr>
+                            <td>Maven</td>
+                            <td>构建工具</td>
+                            <td>Java项目构建和依赖管理</td>
+                        </tr>
+                        <tr>
+                            <td>npm/yarn</td>
+                            <td>包管理器</td>
+                            <td>前端依赖管理和脚本执行</td>
+                        </tr>
+                        <tr>
+                            <td>Git</td>
+                            <td>版本控制</td>
+                            <td>代码版本管理和团队协作</td>
+                        </tr>
+                        <tr>
+                            <td>Postman</td>
+                            <td>API测试</td>
+                            <td>API接口测试和调试</td>
+                        </tr>
+                        <tr>
+                            <td>Navicat/DBeaver</td>
+                            <td>数据库工具</td>
+                            <td>数据库可视化管理工具</td>
                         </tr>
                     </tbody>
                 </table>
@@ -571,26 +685,138 @@ COLLATE utf8mb4_unicode_ci;
 
                 <h4>3. 配置文件修改</h4>
                 <p>修改 <code>internship-server/src/main/resources/application.yml</code> 文件：</p>
-                <ul>
-                    <li><strong>数据库配置：</strong>修改数据库连接地址、用户名、密码</li>
-                    <li><strong>Redis配置：</strong>修改Redis连接地址、端口、密码（如有）</li>
-                    <li><strong>JWT配置：</strong>可修改Token有效期（默认7天）</li>
-                    <li><strong>文件上传配置：</strong>可修改文件上传路径和最大文件大小</li>
-                </ul>
+                
+                <h5>完整配置文件说明</h5>
                 <div class="code-block">
-# 数据库配置示例
+# 服务器配置
+server:
+  port: 8081  # 服务端口，可根据需要修改
+
+# Spring配置
+spring:
+  application:
+    name: internship-server  # 应用名称
+  
+  # MVC配置 - 解决Swagger兼容性问题
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/internship_management_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root  # 数据库用户名
+    password: 123456  # 数据库密码
+  
+  # Redis配置（可选，但建议配置）
+  redis:
+    host: localhost  # Redis服务器地址
+    port: 6379  # Redis端口
+    password:  # Redis密码，如果没有密码则留空
+    database: 0  # 使用的数据库编号
+    timeout: 3000ms  # 连接超时时间
+    lettuce:
+      pool:
+        max-active: 8  # 最大连接数
+        max-idle: 8  # 最大空闲连接数
+        min-idle: 0  # 最小空闲连接数
+        max-wait: -1ms  # 最大等待时间
+
+# MyBatis Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true  # 开启驼峰命名转换
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # SQL日志输出
+  global-config:
+    db-config:
+      id-type: auto  # 主键生成策略：自动增长
+      logic-delete-field: deleteFlag  # 逻辑删除字段名
+      logic-delete-value: 1  # 逻辑删除值
+      logic-not-delete-value: 0  # 逻辑未删除值
+  mapper-locations: classpath*:/mapper/**/*.xml  # Mapper XML文件位置
+
+# JWT配置
+jwt:
+  secret: internship-system-secret-key-2024-please-change-in-production  # JWT密钥，生产环境必须修改
+  expiration: 604800000  # Token有效期：7天（单位：毫秒）
+  refresh-expiration: 604800000  # 刷新Token有效期：7天
+
+# Swagger配置
+springfox:
+  documentation:
+    swagger-ui:
+      enabled: true  # 是否启用Swagger UI
+      path: /swagger-ui/index.html  # Swagger UI访问路径
+    api-docs:
+      enabled: true  # 是否启用API文档
+      path: /v3/api-docs  # API文档JSON路径
+
+# 文件上传配置
+file:
+  upload:
+    path: uploads  # 文件上传路径（相对于项目根目录）
+    max-size: 10485760  # 最大文件大小：10MB（单位：字节）
+
+# 日志配置
+logging:
+  level:
+    root: INFO  # 根日志级别
+    com.server.internshipserver: DEBUG  # 项目包日志级别
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/internship-server.log  # 日志文件路径
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB  # 单个日志文件最大大小
+      max-history: 30  # 保留的日志文件数量
+                </div>
+
+                <div class="info-card warning">
+                    <p><strong>重要配置说明：</strong></p>
+                    <ul>
+                        <li><strong>数据库配置：</strong>必须修改为实际的数据库连接信息，包括URL、用户名、密码</li>
+                        <li><strong>JWT密钥：</strong>生产环境必须修改secret，使用强随机字符串，建议至少32位</li>
+                        <li><strong>Redis配置：</strong>如果未安装Redis，可以暂时不配置，但某些功能可能受影响</li>
+                        <li><strong>文件上传路径：</strong>确保uploads目录存在且有写权限</li>
+                        <li><strong>日志配置：</strong>生产环境建议将日志级别调整为INFO或WARN</li>
+                    </ul>
+                </div>
+
+                <h5>生产环境配置建议</h5>
+                <div class="code-block">
+# 生产环境配置示例（application-prod.yml）
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/internship_management_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: 123456
-
-# Redis配置示例
-spring:
+    # 使用连接池配置
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
   redis:
-    host: localhost
+    # 生产环境Redis配置
+    host: redis.production.com
     port: 6379
-    password: 
+    password: ${REDIS_PASSWORD}  # 从环境变量读取密码
+    timeout: 5000ms
+
+# JWT配置 - 生产环境必须修改
+jwt:
+  secret: ${JWT_SECRET}  # 从环境变量读取，确保安全
+  expiration: 3600000  # 1小时，生产环境建议缩短有效期
+
+# 日志配置 - 生产环境
+logging:
+  level:
+    root: WARN
+    com.server.internshipserver: INFO
+  file:
+    name: /var/log/internship-server/application.log
                 </div>
 
                 <h4>4. 编译和启动</h4>
@@ -609,9 +835,28 @@ spring:
 
                 <h4>5. 常见问题</h4>
                 <div class="info-card warning">
-                    <p><strong>端口被占用：</strong>如果8081端口被占用，可在application.yml中修改server.port配置</p>
-                    <p><strong>数据库连接失败：</strong>检查数据库服务是否启动，连接信息是否正确</p>
-                    <p><strong>Redis连接失败：</strong>检查Redis服务是否启动，连接信息是否正确（Redis非必需，但建议配置）</p>
+                    <p><strong>端口被占用：</strong>如果8081端口被占用，可在application.yml中修改server.port配置，或使用<code>netstat -ano | findstr :8081</code>（Windows）或<code>lsof -i :8081</code>（Linux/Mac）查找占用进程</p>
+                    <p><strong>数据库连接失败：</strong>检查数据库服务是否启动，连接信息是否正确，MySQL用户是否有足够权限，防火墙是否开放3306端口</p>
+                    <p><strong>Redis连接失败：</strong>检查Redis服务是否启动，连接信息是否正确（Redis非必需，但建议配置），防火墙是否开放6379端口</p>
+                    <p><strong>编译错误：</strong>检查JDK版本是否为1.8，Maven版本是否为3.x，清理Maven缓存：<code>mvn clean</code></p>
+                    <p><strong>启动失败：</strong>查看日志文件logs/internship-server.log，检查错误信息，常见原因包括：数据库连接失败、端口被占用、配置文件错误</p>
+                    <p><strong>Swagger无法访问：</strong>检查Swagger配置是否正确，确保spring.mvc.pathmatch.matching-strategy设置为ant_path_matcher</p>
+                </div>
+
+                <h4>6. 日志查看</h4>
+                <p>系统日志文件位置：<code>internship-server/logs/internship-server.log</code></p>
+                <div class="code-block">
+# 实时查看日志（Linux/Mac）
+tail -f logs/internship-server.log
+
+# 查看最近100行日志
+tail -n 100 logs/internship-server.log
+
+# 搜索错误日志
+grep ERROR logs/internship-server.log
+
+# Windows查看日志
+type logs\internship-server.log | findstr ERROR
                 </div>
 
                 <h3>前端启动</h3>
@@ -670,15 +915,196 @@ VITE_API_BASE_URL=http://localhost:8081
                 <h4>6. 常见问题</h4>
                 <div class="info-card warning">
                     <p><strong>依赖安装失败：</strong>清除缓存后重新安装：<code>npm cache clean --force && rm -rf node_modules package-lock.json && npm install</code></p>
-                    <p><strong>端口被占用：</strong>修改.env文件中的VITE_PORT配置</p>
-                    <p><strong>API请求失败：</strong>检查.env文件中的VITE_API_BASE_URL配置是否正确，确保后端服务已启动</p>
-                    <p><strong>编译错误：</strong>检查Node.js版本是否符合要求，清除node_modules后重新安装</p>
+                    <p><strong>端口被占用：</strong>修改.env文件中的VITE_PORT配置，或使用<code>npm run dev -- --port 3000</code>指定端口</p>
+                    <p><strong>API请求失败：</strong>检查.env文件中的VITE_API_BASE_URL配置是否正确，确保后端服务已启动，检查CORS配置</p>
+                    <p><strong>编译错误：</strong>检查Node.js版本是否符合要求（>=16.0.0），清除node_modules后重新安装，检查ESLint配置</p>
+                    <p><strong>路由404：</strong>确保使用Vue Router的history模式时，服务器配置了正确的fallback规则</p>
+                    <p><strong>Element Plus样式丢失：</strong>确保在main.js中正确导入了Element Plus的样式文件</p>
+                </div>
+
+                <h3>开发环境配置</h3>
+                <h4>IDE推荐配置</h4>
+                <ul>
+                    <li><strong>后端开发：</strong>IntelliJ IDEA（推荐）或Eclipse，安装Lombok插件</li>
+                    <li><strong>前端开发：</strong>VS Code（推荐）或WebStorm，安装Vue 3、ESLint、Prettier插件</li>
+                    <li><strong>数据库管理：</strong>Navicat、DBeaver或MySQL Workbench</li>
+                    <li><strong>API测试：</strong>Postman、Apifox或Swagger UI</li>
+                </ul>
+
+                <h4>代码规范</h4>
+                <div class="info-card">
+                    <p><strong>后端代码规范：</strong></p>
+                    <ul>
+                        <li>遵循阿里巴巴Java开发手册规范</li>
+                        <li>使用Lombok简化代码</li>
+                        <li>所有Controller方法必须添加@ApiOperation注解</li>
+                        <li>所有Service方法必须添加事务注解@Transactional</li>
+                        <li>使用统一的异常处理机制</li>
+                    </ul>
+                    <p><strong>前端代码规范：</strong></p>
+                    <ul>
+                        <li>遵循Vue 3官方风格指南</li>
+                        <li>使用Composition API编写组件</li>
+                        <li>使用ESLint和Prettier进行代码检查和格式化</li>
+                        <li>组件命名使用PascalCase，文件命名使用kebab-case</li>
+                        <li>API调用统一使用封装的request工具</li>
+                    </ul>
+                </div>
+
+                <h3>生产环境部署</h3>
+                <h4>后端部署</h4>
+                <ol>
+                    <li><strong>打包应用：</strong>
+                        <div class="code-block">
+# 进入后端项目目录
+cd internship-server
+
+# 使用Maven打包（跳过测试）
+mvn clean package -DskipTests
+
+# 打包后的jar文件在target目录下
+# 文件名：internship-server-0.0.1-SNAPSHOT.jar
+                        </div>
+                    </li>
+                    <li><strong>运行应用：</strong>
+                        <div class="code-block">
+# 方式一：直接运行
+java -jar target/internship-server-0.0.1-SNAPSHOT.jar
+
+# 方式二：后台运行（Linux）
+nohup java -jar target/internship-server-0.0.1-SNAPSHOT.jar > logs/app.log 2>&1 &
+
+# 方式三：使用systemd服务（推荐）
+# 创建服务文件 /etc/systemd/system/internship-server.service
+[Unit]
+Description=Internship Management System Server
+After=network.target
+
+[Service]
+Type=simple
+User=internship
+WorkingDirectory=/opt/internship-server
+ExecStart=/usr/bin/java -jar /opt/internship-server/internship-server-0.0.1-SNAPSHOT.jar
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+# 启动服务
+sudo systemctl start internship-server
+sudo systemctl enable internship-server
+                        </div>
+                    </li>
+                    <li><strong>JVM参数优化：</strong>
+                        <div class="code-block">
+# 生产环境JVM参数建议
+java -Xms512m -Xmx2048m \
+     -XX:+UseG1GC \
+     -XX:MaxGCPauseMillis=200 \
+     -XX:+HeapDumpOnOutOfMemoryError \
+     -XX:HeapDumpPath=/var/log/internship-server/heapdump.hprof \
+     -jar internship-server-0.0.1-SNAPSHOT.jar
+                        </div>
+                    </li>
+                </ol>
+
+                <h4>前端部署</h4>
+                <ol>
+                    <li><strong>构建生产版本：</strong>
+                        <div class="code-block">
+# 进入前端项目目录
+cd internship-web
+
+# 安装依赖（如果还没有）
+npm install
+
+# 构建生产版本
+npm run build
+
+# 构建产物在dist目录下
+                        </div>
+                    </li>
+                    <li><strong>部署到Nginx：</strong>
+                        <div class="code-block">
+# Nginx配置示例
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    # 前端静态文件
+    root /var/www/internship-web/dist;
+    index index.html;
+    
+    # 前端路由支持
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # API代理
+    location /api {
+        proxy_pass http://localhost:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+                        </div>
+                    </li>
+                </ol>
+
+                <h4>环境变量配置</h4>
+                <p>生产环境建议使用环境变量管理敏感配置：</p>
+                <div class="code-block">
+# 后端环境变量
+export SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/internship_management_db
+export SPRING_DATASOURCE_USERNAME=root
+export SPRING_DATASOURCE_PASSWORD=your_password
+export JWT_SECRET=your_jwt_secret_key
+export REDIS_HOST=localhost
+export REDIS_PORT=6379
+export REDIS_PASSWORD=your_redis_password
+
+# 前端环境变量（.env.production）
+VITE_API_BASE_URL=https://api.your-domain.com
                 </div>
 
                 <h3>Docker启动（可选）</h3>
                 <div class="info-card warning">
                     <p><strong>注意：</strong>当前项目暂未提供Docker配置，如需使用Docker部署，需要自行编写Dockerfile和docker-compose.yml文件。</p>
+                    <p><strong>建议：</strong>可以参考以下结构创建Docker配置：</p>
+                    <ul>
+                        <li>后端Dockerfile：基于OpenJDK 8镜像，复制jar文件并运行</li>
+                        <li>前端Dockerfile：基于Nginx镜像，复制dist目录内容</li>
+                        <li>docker-compose.yml：包含MySQL、Redis、后端服务、前端服务</li>
+                    </ul>
                 </div>
+
+                <h3>性能优化建议</h3>
+                <h4>后端优化</h4>
+                <ul>
+                    <li><strong>数据库优化：</strong>添加适当的索引，优化慢查询，使用连接池</li>
+                    <li><strong>缓存策略：</strong>使用Redis缓存热点数据，减少数据库压力</li>
+                    <li><strong>JVM调优：</strong>根据服务器配置调整堆内存大小，选择合适的GC算法</li>
+                    <li><strong>异步处理：</strong>对于耗时操作，使用异步处理提高响应速度</li>
+                    <li><strong>分页查询：</strong>所有列表查询都使用分页，避免一次性加载大量数据</li>
+                </ul>
+
+                <h4>前端优化</h4>
+                <ul>
+                    <li><strong>代码分割：</strong>使用路由懒加载，按需加载组件</li>
+                    <li><strong>资源压缩：</strong>启用Gzip压缩，减少传输大小</li>
+                    <li><strong>CDN加速：</strong>静态资源使用CDN加速</li>
+                    <li><strong>缓存策略：</strong>合理设置HTTP缓存头</li>
+                    <li><strong>图片优化：</strong>使用WebP格式，压缩图片大小</li>
+                </ul>
             </section>
 
             <!-- 系统架构 -->
@@ -727,6 +1153,96 @@ VITE_API_BASE_URL=http://localhost:8081
                     <li><strong>Common层：</strong>公共组件，包括工具类、配置类、常量类、枚举类、异常处理、统一响应等</li>
                     <li><strong>Security层：</strong>安全认证和权限控制，包括JWT过滤器、用户认证服务、权限验证等</li>
                 </ul>
+
+                <h4>后端项目详细结构</h4>
+                <div class="code-block">
+internship-server/
+├── src/main/java/com/server/internshipserver/
+│   ├── InternshipServerApplication.java    # Spring Boot启动类
+│   ├── common/                             # 公共模块
+│   │   ├── config/                        # 配置类
+│   │   │   ├── CorsConfig.java            # 跨域配置
+│   │   │   ├── MybatisPlusConfig.java     # MyBatis Plus配置
+│   │   │   ├── RedisConfig.java          # Redis配置
+│   │   │   ├── SecurityConfig.java        # Spring Security配置
+│   │   │   ├── SwaggerConfig.java         # Swagger配置
+│   │   │   └── WebMvcConfig.java          # Web MVC配置
+│   │   ├── constant/                      # 常量类
+│   │   ├── enums/                         # 枚举类（30+个枚举）
+│   │   ├── exception/                     # 异常处理
+│   │   ├── result/                        # 统一响应结果
+│   │   └── utils/                         # 工具类（15+个工具类）
+│   ├── controller/                        # 控制器层（30+个Controller）
+│   │   ├── admin/                         # 管理员控制器
+│   │   ├── common/                        # 通用控制器
+│   │   ├── cooperation/                   # 合作管理控制器
+│   │   ├── enterprise/                    # 企业控制器
+│   │   ├── evaluation/                    # 评价控制器
+│   │   ├── internship/                    # 实习控制器
+│   │   ├── report/                        # 报告控制器
+│   │   ├── statistics/                    # 统计控制器
+│   │   ├── system/                        # 系统管理控制器
+│   │   └── user/                          # 用户管理控制器
+│   ├── domain/                            # 实体类（70+个实体和DTO）
+│   │   ├── cooperation/                   # 合作相关实体
+│   │   ├── evaluation/                    # 评价相关实体
+│   │   ├── internship/                    # 实习相关实体
+│   │   ├── statistics/                    # 统计相关实体
+│   │   ├── system/                        # 系统管理实体
+│   │   └── user/                          # 用户相关实体
+│   ├── mapper/                            # 数据访问层（35+个Mapper）
+│   ├── service/                           # 服务层（30+个Service）
+│   │   └── impl/                          # 服务实现类
+│   └── security/                          # 安全模块
+│       ├── filter/                        # 过滤器
+│       └── service/                        # 安全服务
+└── src/main/resources/
+    ├── application.yml                    # 应用配置文件
+    └── mapper/                            # MyBatis XML映射文件
+                </div>
+
+                <h4>后端核心模块说明</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>模块</th>
+                            <th>说明</th>
+                            <th>主要类</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>用户管理</td>
+                            <td>用户、学生、教师、企业、企业导师管理</td>
+                            <td>UserController, StudentController, TeacherController, EnterpriseController</td>
+                        </tr>
+                        <tr>
+                            <td>实习管理</td>
+                            <td>实习计划、岗位、申请、面试、考勤、日志、周报、成果、反馈</td>
+                            <td>InternshipPlanController, InternshipPostController, InternshipApplyController等</td>
+                        </tr>
+                        <tr>
+                            <td>评价管理</td>
+                            <td>自我评价、企业评价、学校评价、综合评分</td>
+                            <td>SelfEvaluationController, EnterpriseEvaluationController, SchoolEvaluationController</td>
+                        </tr>
+                        <tr>
+                            <td>系统管理</td>
+                            <td>学校、学院、专业、班级、学期、配置管理</td>
+                            <td>SchoolController, CollegeController, MajorController, ClassController等</td>
+                        </tr>
+                        <tr>
+                            <td>合作管理</td>
+                            <td>校企合作申请、审核、管理</td>
+                            <td>EnterpriseSchoolCooperationController, CooperationAuditController</td>
+                        </tr>
+                        <tr>
+                            <td>数据统计</td>
+                            <td>各类统计数据查询和导出</td>
+                            <td>StatisticsController, ReportController</td>
+                        </tr>
+                    </tbody>
+                </table>
                 <div class="info-card">
                     <p><strong>设计原则：</strong></p>
                     <ul>
@@ -748,6 +1264,78 @@ VITE_API_BASE_URL=http://localhost:8081
                     <li><strong>Utils：</strong>工具函数，包括请求封装、权限验证、日期处理、数据导出、状态转换等</li>
                     <li><strong>Config：</strong>配置文件，包括菜单配置、系统配置等</li>
                 </ul>
+
+                <h4>前端项目详细结构</h4>
+                <div class="code-block">
+internship-web/
+├── src/
+│   ├── api/                               # API接口定义（20+个文件）
+│   │   ├── common/                        # 通用API
+│   │   ├── evaluation/                   # 评价API
+│   │   ├── internship/                    # 实习API
+│   │   ├── system/                        # 系统管理API
+│   │   └── user/                          # 用户管理API
+│   ├── components/                        # 组件（10+个组件）
+│   │   ├── business/                      # 业务组件
+│   │   ├── charts/                        # 图表组件
+│   │   └── common/                        # 通用组件
+│   ├── config/                            # 配置文件
+│   │   └── menu.config.js                # 菜单配置
+│   ├── router/                            # 路由配置
+│   │   ├── index.js                       # 路由入口
+│   │   └── modules/                       # 路由模块
+│   ├── store/                             # 状态管理
+│   │   ├── index.js                       # Store入口
+│   │   └── modules/                       # 状态模块
+│   ├── utils/                             # 工具函数（8+个工具文件）
+│   │   ├── auth.js                        # 认证工具
+│   │   ├── request.js                     # 请求封装
+│   │   ├── permission.js                  # 权限工具
+│   │   └── ...
+│   └── views/                             # 页面组件（30+个页面）
+│       ├── admin/                         # 管理员页面
+│       ├── enterprise/                    # 企业端页面
+│       ├── student/                       # 学生端页面
+│       ├── teacher/                       # 教师端页面
+│       └── ...
+├── public/                                # 静态资源
+├── index.html                             # HTML入口
+├── vite.config.js                         # Vite配置
+└── package.json                           # 依赖配置
+                </div>
+
+                <h4>前端核心功能模块</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>模块</th>
+                            <th>页面数量</th>
+                            <th>主要功能</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>管理员端</td>
+                            <td>15+</td>
+                            <td>用户管理、系统管理、合作审核、数据统计等</td>
+                        </tr>
+                        <tr>
+                            <td>学生端</td>
+                            <td>11+</td>
+                            <td>实习申请、考勤打卡、日志周报、自我评价等</td>
+                        </tr>
+                        <tr>
+                            <td>教师端</td>
+                            <td>7+</td>
+                            <td>学生管理、申请审核、日志审批、学校评价等</td>
+                        </tr>
+                        <tr>
+                            <td>企业端</td>
+                            <td>10+</td>
+                            <td>岗位管理、申请筛选、面试管理、考勤管理、企业评价等</td>
+                        </tr>
+                    </tbody>
+                </table>
                 <div class="info-card">
                     <p><strong>设计特点：</strong></p>
                     <ul>
@@ -1333,78 +1921,93 @@ VITE_API_BASE_URL=http://localhost:8081
                     <tbody>
                         <tr>
                             <td>用户认证</td>
-                            <td>/api/auth/login, /api/auth/register, /api/auth/refresh</td>
-                            <td>登录、注册、Token刷新</td>
+                            <td>/auth/login, /auth/logout, /auth/refresh</td>
+                            <td>用户登录、登出、Token刷新</td>
                         </tr>
                         <tr>
                             <td>用户管理</td>
-                            <td>/api/user/**, /api/student/**, /api/teacher/**, /api/enterprise/**</td>
-                            <td>用户信息管理、学生管理、教师管理、企业管理</td>
+                            <td>/user/**, /student/**, /teacher/**, /enterprise/**, /enterprise-mentor/**</td>
+                            <td>用户信息管理、学生管理、教师管理、企业管理、企业导师管理</td>
+                        </tr>
+                        <tr>
+                            <td>角色权限</td>
+                            <td>/role/**</td>
+                            <td>角色管理、权限管理、角色权限关联</td>
                         </tr>
                         <tr>
                             <td>实习计划</td>
-                            <td>/api/internship/plan/**</td>
+                            <td>/internship/plan/**</td>
                             <td>实习计划的创建、审核、发布、查询</td>
                         </tr>
                         <tr>
                             <td>实习岗位</td>
-                            <td>/api/internship/post/**</td>
+                            <td>/internship/post/**</td>
                             <td>岗位的创建、审核、发布、查询</td>
                         </tr>
                         <tr>
                             <td>实习申请</td>
-                            <td>/api/internship/apply/**</td>
+                            <td>/internship/apply/**</td>
                             <td>申请的提交、审核、筛选、确认</td>
                         </tr>
                         <tr>
                             <td>面试管理</td>
-                            <td>/api/internship/interview/**</td>
+                            <td>/internship/interview/**</td>
                             <td>面试的安排、确认、结果录入</td>
                         </tr>
                         <tr>
                             <td>考勤管理</td>
-                            <td>/api/internship/attendance/**, /api/internship/attendance-group/**</td>
+                            <td>/internship/attendance/**, /internship/attendance-group/**</td>
                             <td>考勤记录、考勤组管理、考勤统计</td>
                         </tr>
                         <tr>
                             <td>日志周报</td>
-                            <td>/api/internship/log/**, /api/internship/weekly-report/**</td>
+                            <td>/internship/log/**, /internship/weekly-report/**</td>
                             <td>日志和周报的提交、查看、审批</td>
                         </tr>
                         <tr>
                             <td>实习成果</td>
-                            <td>/api/internship/achievement/**</td>
+                            <td>/internship/achievement/**</td>
                             <td>成果的提交、查看、审批</td>
                         </tr>
                         <tr>
                             <td>反馈管理</td>
-                            <td>/api/internship/feedback/**</td>
+                            <td>/internship/feedback/**</td>
                             <td>反馈的提交、查看、回复</td>
                         </tr>
                         <tr>
                             <td>评价管理</td>
-                            <td>/api/evaluation/self/**, /api/evaluation/enterprise/**, /api/evaluation/school/**</td>
+                            <td>/evaluation/self/**, /evaluation/enterprise/**, /evaluation/school/**, /evaluation/comprehensive-score/**</td>
                             <td>自我评价、企业评价、学校评价、综合评分</td>
                         </tr>
                         <tr>
                             <td>合作管理</td>
-                            <td>/api/cooperation/**</td>
+                            <td>/cooperation/**, /enterprise/cooperation/**</td>
                             <td>合作申请的提交、审核、管理</td>
                         </tr>
                         <tr>
                             <td>系统管理</td>
-                            <td>/api/system/**</td>
+                            <td>/system/school/**, /system/college/**, /system/major/**, /system/class/**, /system/semester/**, /system/config/**</td>
                             <td>学校、学院、专业、班级、学期、配置管理</td>
                         </tr>
                         <tr>
                             <td>数据统计</td>
-                            <td>/api/statistics/**</td>
+                            <td>/statistics/**</td>
                             <td>各类统计数据查询和导出</td>
                         </tr>
                         <tr>
+                            <td>报告管理</td>
+                            <td>/report/**</td>
+                            <td>各类报告生成和导出</td>
+                        </tr>
+                        <tr>
                             <td>文件管理</td>
-                            <td>/api/common/file/**</td>
+                            <td>/common/file/**</td>
                             <td>文件上传、下载</td>
+                        </tr>
+                        <tr>
+                            <td>管理员功能</td>
+                            <td>/admin/cooperation-audit/**</td>
+                            <td>管理员审核校企合作申请</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1415,20 +2018,245 @@ VITE_API_BASE_URL=http://localhost:8081
                     <li><strong>请求头：</strong>Content-Type: application/json，Authorization: Bearer {token}</li>
                     <li><strong>响应格式：</strong>统一的Result格式，包含code、message、data字段</li>
                     <li><strong>状态码：</strong>200（成功）、400（参数错误）、401（未认证）、403（无权限）、500（服务器错误）</li>
-                    <li><strong>分页参数：</strong>page（页码）、size（每页数量）</li>
+                    <li><strong>分页参数：</strong>page（页码，从1开始）、size（每页数量，默认10）</li>
                     <li><strong>排序参数：</strong>sort（排序字段）、order（排序方式：asc/desc）</li>
                 </ul>
+
+                <h4>统一响应格式</h4>
+                <p>所有API接口都使用统一的响应格式 <code>Result&lt;T&gt;</code>：</p>
+                <div class="code-block">
+{
+  "code": 200,           // 响应码：200-成功，其他-失败
+  "message": "操作成功",  // 响应消息
+  "data": {},            // 响应数据（泛型，根据接口不同而不同）
+  "timestamp": "2024-12-01T10:30:00"  // 响应时间戳
+}
+                </div>
+
+                <h4>响应码说明</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>响应码</th>
+                            <th>说明</th>
+                            <th>示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>200</td>
+                            <td>操作成功</td>
+                            <td>查询、创建、更新、删除成功</td>
+                        </tr>
+                        <tr>
+                            <td>400</td>
+                            <td>参数错误</td>
+                            <td>请求参数格式错误、必填参数缺失</td>
+                        </tr>
+                        <tr>
+                            <td>401</td>
+                            <td>未认证</td>
+                            <td>Token无效、Token过期、未登录</td>
+                        </tr>
+                        <tr>
+                            <td>403</td>
+                            <td>无权限</td>
+                            <td>用户没有访问该资源的权限</td>
+                        </tr>
+                        <tr>
+                            <td>404</td>
+                            <td>资源不存在</td>
+                            <td>请求的资源不存在</td>
+                        </tr>
+                        <tr>
+                            <td>500</td>
+                            <td>服务器错误</td>
+                            <td>服务器内部错误、数据库异常等</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>API接口示例</h4>
+                
+                <h5>1. 用户登录接口</h5>
+                <p><strong>接口地址：</strong><code>POST /auth/login</code></p>
+                <p><strong>请求示例：</strong></p>
+                <div class="code-block">
+// 请求体
+{
+  "username": "student001",
+  "password": "123456"
+}
+
+// 成功响应
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "userInfo": {
+      "id": 1,
+      "username": "student001",
+      "realName": "张三",
+      "role": "STUDENT",
+      "avatar": "http://example.com/avatar.jpg"
+    }
+  },
+  "timestamp": "2024-12-01T10:30:00"
+}
+
+// 失败响应
+{
+  "code": 400,
+  "message": "用户名或密码错误",
+  "data": null,
+  "timestamp": "2024-12-01T10:30:00"
+}
+                </div>
+
+                <h5>2. 分页查询接口</h5>
+                <p><strong>接口地址：</strong><code>GET /internship/post/page</code></p>
+                <p><strong>请求参数：</strong></p>
+                <div class="code-block">
+// Query参数
+?page=1&size=10&sort=createTime&order=desc&postName=Java开发
+
+// 成功响应
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "records": [
+      {
+        "id": 1,
+        "postName": "Java开发实习生",
+        "enterpriseName": "XX科技有限公司",
+        "salary": "3000-5000",
+        "status": 1,
+        "createTime": "2024-11-01T10:00:00"
+      }
+    ],
+    "total": 100,        // 总记录数
+    "size": 10,          // 每页数量
+    "current": 1,         // 当前页码
+    "pages": 10          // 总页数
+  },
+  "timestamp": "2024-12-01T10:30:00"
+}
+                </div>
+
+                <h5>3. 创建资源接口</h5>
+                <p><strong>接口地址：</strong><code>POST /internship/post</code></p>
+                <p><strong>请求头：</strong></p>
+                <div class="code-block">
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: application/json
+                </div>
+                <p><strong>请求体：</strong></p>
+                <div class="code-block">
+{
+  "postName": "Java开发实习生",
+  "enterpriseId": 1,
+  "postDescription": "负责Java后端开发工作",
+  "requirements": "熟悉Java、Spring Boot框架",
+  "salary": "3000-5000",
+  "workLocation": "北京市朝阳区",
+  "recruitNumber": 5,
+  "startDate": "2024-12-01",
+  "endDate": "2025-06-30"
+}
+
+// 成功响应
+{
+  "code": 200,
+  "message": "创建成功",
+  "data": {
+    "id": 1,
+    "postName": "Java开发实习生",
+    "status": 0,
+    "createTime": "2024-12-01T10:30:00"
+  },
+  "timestamp": "2024-12-01T10:30:00"
+}
+                </div>
+
+                <h5>4. 文件上传接口</h5>
+                <p><strong>接口地址：</strong><code>POST /common/file/upload</code></p>
+                <p><strong>请求方式：</strong>multipart/form-data</p>
+                <div class="code-block">
+// 请求参数
+FormData:
+  file: [文件对象]
+  type: "resume"  // 文件类型：resume-简历，achievement-成果，other-其他
+
+// 成功响应
+{
+  "code": 200,
+  "message": "上传成功",
+  "data": {
+    "fileName": "resume_20241201_103000.pdf",
+    "filePath": "/uploads/2024/12/01/resume_20241201_103000.pdf",
+    "fileSize": 1024000,
+    "fileType": "application/pdf",
+    "url": "http://localhost:8081/api/common/file/download?path=/uploads/2024/12/01/resume_20241201_103000.pdf"
+  },
+  "timestamp": "2024-12-01T10:30:00"
+}
+                </div>
+
+                <h4>错误处理</h4>
+                <p>系统使用统一的异常处理机制，所有异常都会被全局异常处理器捕获并返回统一格式的错误响应：</p>
+                <div class="code-block">
+// 参数验证错误
+{
+  "code": 400,
+  "message": "参数验证失败",
+  "data": {
+    "field": "postName",
+    "error": "岗位名称不能为空"
+  },
+  "timestamp": "2024-12-01T10:30:00"
+}
+
+// 权限不足错误
+{
+  "code": 403,
+  "message": "权限不足，无法访问该资源",
+  "data": null,
+  "timestamp": "2024-12-01T10:30:00"
+}
+
+// 服务器错误
+{
+  "code": 500,
+  "message": "服务器内部错误，请稍后重试",
+  "data": null,
+  "timestamp": "2024-12-01T10:30:00"
+}
+                </div>
 
                 <h4>API文档</h4>
                 <div class="info-card">
                     <p>系统集成了Swagger 3.0，提供了完整的API文档。启动后端服务后，可以通过以下地址访问：</p>
                     <p><strong>Swagger UI地址：</strong><a href="http://localhost:8081/swagger-ui/index.html" target="_blank">http://localhost:8081/swagger-ui/index.html</a></p>
                     <p><strong>API JSON地址：</strong><a href="http://localhost:8081/v3/api-docs" target="_blank">http://localhost:8081/v3/api-docs</a></p>
+                    <p><strong>注意：</strong>所有API接口路径均不包含<code>/api</code>前缀，直接使用模块路径，如<code>/auth/login</code>、<code>/user/page</code>等。</p>
                     <p>在Swagger UI中可以查看所有接口的详细信息，包括请求参数、响应格式、示例等，并可以直接测试接口。</p>
                 </div>
 
                 <h3>数据库设计</h3>
-                <p>系统使用MySQL数据库，共包含<strong>35张数据表</strong>，主要表结构如下：</p>
+                <p>系统使用MySQL 8.0数据库，采用utf8mb4字符集，共包含<strong>35张数据表</strong>，主要表结构如下：</p>
+                
+                <h4>数据库设计规范</h4>
+                <div class="info-card">
+                    <p><strong>数据库版本：</strong>MySQL 8.0及以上版本</p>
+                    <p><strong>字符集：</strong>utf8mb4（支持完整的UTF-8编码，包括emoji等特殊字符）</p>
+                    <p><strong>排序规则：</strong>utf8mb4_unicode_ci</p>
+                    <p><strong>存储引擎：</strong>InnoDB（支持事务和外键约束）</p>
+                    <p><strong>时区设置：</strong>Asia/Shanghai</p>
+                    <p><strong>命名规范：</strong>表名和字段名使用小写字母和下划线，如<code>user_info</code>、<code>create_time</code></p>
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -1709,6 +2537,125 @@ VITE_API_BASE_URL=http://localhost:8081
                             <td>删除标志</td>
                             <td>0-未删除, 1-已删除</td>
                             <td>逻辑删除标志</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 测试与维护 -->
+            <section id="testing" class="section">
+                <h2>🧪 测试与维护</h2>
+                <h3>测试指南</h3>
+                <h4>单元测试</h4>
+                <p>后端使用JUnit和Spring Boot Test进行单元测试：</p>
+                <div class="code-block">
+// 示例：Service层单元测试
+@SpringBootTest
+@Transactional
+class UserServiceTest {
+    
+    @Autowired
+    private UserService userService;
+    
+    @Test
+    void testGetUserById() {
+        UserInfo user = userService.getUserById(1L);
+        assertNotNull(user);
+        assertEquals("student001", user.getUsername());
+    }
+}
+                </div>
+
+                <h4>API接口测试</h4>
+                <p>使用Swagger UI或Postman进行API接口测试：</p>
+                <ul>
+                    <li><strong>Swagger UI：</strong>访问 <code>http://localhost:8081/swagger-ui/index.html</code>，可以直接在浏览器中测试接口</li>
+                    <li><strong>Postman：</strong>导入Swagger JSON文档，创建测试集合，支持自动化测试</li>
+                    <li><strong>测试要点：</strong>正常流程测试、异常情况测试、权限验证测试、参数验证测试</li>
+                </ul>
+
+                <h4>前端测试</h4>
+                <ul>
+                    <li><strong>组件测试：</strong>使用Vue Test Utils进行组件单元测试</li>
+                    <li><strong>E2E测试：</strong>使用Cypress或Playwright进行端到端测试</li>
+                    <li><strong>浏览器兼容性：</strong>测试Chrome、Firefox、Safari、Edge等主流浏览器</li>
+                    <li><strong>响应式测试：</strong>测试不同屏幕尺寸下的显示效果</li>
+                </ul>
+
+                <h3>系统维护</h3>
+                <h4>数据备份</h4>
+                <p>定期备份数据库和上传的文件：</p>
+                <div class="code-block">
+# MySQL数据库备份
+mysqldump -u root -p internship_management_db > backup_$(date +%Y%m%d).sql
+
+# 恢复数据库
+mysql -u root -p internship_management_db < backup_20241201.sql
+
+# 文件备份（上传的文件）
+tar -czf uploads_backup_$(date +%Y%m%d).tar.gz uploads/
+                </div>
+
+                <h4>性能监控</h4>
+                <ul>
+                    <li><strong>应用监控：</strong>使用Spring Boot Actuator监控应用健康状态</li>
+                    <li><strong>数据库监控：</strong>监控慢查询、连接数、锁等待等</li>
+                    <li><strong>服务器监控：</strong>监控CPU、内存、磁盘使用率</li>
+                    <li><strong>日志分析：</strong>定期分析日志，发现潜在问题</li>
+                </ul>
+
+                <h4>安全维护</h4>
+                <ul>
+                    <li><strong>定期更新：</strong>及时更新依赖库，修复安全漏洞</li>
+                    <li><strong>密码策略：</strong>强制用户使用强密码，定期更换</li>
+                    <li><strong>访问控制：</strong>定期审查用户权限，及时回收离职人员权限</li>
+                    <li><strong>数据加密：</strong>敏感数据加密存储，传输使用HTTPS</li>
+                </ul>
+
+                <h3>故障排查</h3>
+                <h4>常见问题排查步骤</h4>
+                <ol>
+                    <li><strong>查看日志：</strong>首先查看应用日志，定位错误信息</li>
+                    <li><strong>检查配置：</strong>确认配置文件是否正确，环境变量是否设置</li>
+                    <li><strong>验证服务：</strong>检查数据库、Redis等服务是否正常运行</li>
+                    <li><strong>网络检查：</strong>检查网络连接，防火墙规则</li>
+                    <li><strong>资源检查：</strong>检查服务器资源（CPU、内存、磁盘）使用情况</li>
+                </ol>
+
+                <h4>常见错误及解决方案</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>错误现象</th>
+                            <th>可能原因</th>
+                            <th>解决方案</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>401 Unauthorized</td>
+                            <td>Token过期或无效</td>
+                            <td>重新登录获取新Token，检查JWT配置</td>
+                        </tr>
+                        <tr>
+                            <td>403 Forbidden</td>
+                            <td>权限不足</td>
+                            <td>检查用户角色和权限配置</td>
+                        </tr>
+                        <tr>
+                            <td>500 Internal Server Error</td>
+                            <td>服务器内部错误</td>
+                            <td>查看日志定位具体错误，检查数据库连接</td>
+                        </tr>
+                        <tr>
+                            <td>数据库连接超时</td>
+                            <td>数据库服务未启动或连接配置错误</td>
+                            <td>检查数据库服务状态，验证连接信息</td>
+                        </tr>
+                        <tr>
+                            <td>文件上传失败</td>
+                            <td>文件大小超限或目录权限不足</td>
+                            <td>检查文件大小限制，确认目录写权限</td>
                         </tr>
                     </tbody>
                 </table>
