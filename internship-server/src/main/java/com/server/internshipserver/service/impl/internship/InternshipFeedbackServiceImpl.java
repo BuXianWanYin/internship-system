@@ -85,8 +85,14 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getUserId, user.getUserId())
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
+        // 检查关联的user_info是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo studentUser = userMapper.selectById(student.getUserId());
+            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                student = null;
+            }
+        }
         if (student == null) {
             throw new BusinessException("学生信息不存在");
         }
@@ -388,8 +394,14 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, currentUserId)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 wrapper.eq(InternshipFeedback::getStudentId, student.getStudentId());
             }
@@ -404,12 +416,40 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
     private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Student::getStudentId)
+                            .select(Student::getStudentId, Student::getUserId)
             );
+            // 通过关联user_info表过滤已删除的学生
+            if (students != null && !students.isEmpty()) {
+                List<Long> userIds = students.stream()
+                        .map(Student::getUserId)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .collect(java.util.stream.Collectors.toList());
+                if (!userIds.isEmpty()) {
+                    List<UserInfo> validUsers = userMapper.selectList(
+                            new LambdaQueryWrapper<UserInfo>()
+                                    .in(UserInfo::getUserId, userIds)
+                                    .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(UserInfo::getUserId)
+                    );
+                    if (validUsers != null && !validUsers.isEmpty()) {
+                        List<Long> validUserIds = validUsers.stream()
+                                .map(UserInfo::getUserId)
+                                .collect(java.util.stream.Collectors.toList());
+                        students = students.stream()
+                                .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                                .collect(java.util.stream.Collectors.toList());
+                    } else {
+                        students = java.util.Collections.emptyList();
+                    }
+                } else {
+                    students = java.util.Collections.emptyList();
+                }
+            }
             if (students != null && !students.isEmpty()) {
                 List<Long> studentIds = students.stream()
                         .map(Student::getStudentId)

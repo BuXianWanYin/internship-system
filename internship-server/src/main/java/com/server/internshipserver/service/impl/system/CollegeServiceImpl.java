@@ -112,12 +112,19 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
         // 如果指定了院长用户ID，验证该用户是否为该学校的教师，并填充院长姓名
         if (college.getDeanUserId() != null) {
             // 验证该用户是否为该学校的教师
+            // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, college.getDeanUserId())
                             .eq(Teacher::getSchoolId, existCollege.getSchoolId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (teacher != null && teacher.getUserId() != null) {
+                UserInfo user = userMapper.selectById(teacher.getUserId());
+                if (user == null || user.getDeleteFlag() == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    teacher = null;
+                }
+            }
             if (teacher == null) {
                 throw new BusinessException("指定的院长用户不是该学校的教师");
             }

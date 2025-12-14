@@ -20,7 +20,9 @@ import com.server.internshipserver.mapper.internship.InternshipPlanMapper;
 import com.server.internshipserver.mapper.system.ClassMapper;
 import com.server.internshipserver.mapper.system.CollegeMapper;
 import com.server.internshipserver.mapper.system.MajorMapper;
+import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.mapper.user.StudentMapper;
+import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.service.system.MajorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,9 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
     
     @Autowired
     private StudentMapper studentMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
     
     @Autowired
     private InternshipPlanMapper internshipPlanMapper;
@@ -204,12 +209,28 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         }
         
         // 检查是否有学生关联，如果有学生则不允许停用
-        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
-        studentWrapper.eq(Student::getMajorId, majorId)
-                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        long studentCount = studentMapper.selectCount(studentWrapper);
-        if (studentCount > 0) {
-            throw new BusinessException("该专业下还有" + studentCount + "名学生，不允许停用");
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getMajorId, majorId)
+        );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            if (!userIds.isEmpty()) {
+                long validStudentCount = userMapper.selectCount(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (validStudentCount > 0) {
+                    throw new BusinessException("该专业下还有" + validStudentCount + "名学生，不允许停用");
+                }
+            }
         }
         
         // 检查是否有实习计划关联，如果有实习计划则不允许停用
@@ -257,12 +278,28 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         }
         
         // 检查是否有学生关联，如果有学生则不允许删除
-        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
-        studentWrapper.eq(Student::getMajorId, majorId)
-                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        long studentCount = studentMapper.selectCount(studentWrapper);
-        if (studentCount > 0) {
-            throw new BusinessException("该专业下还有" + studentCount + "名学生，不允许删除");
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getMajorId, majorId)
+        );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            if (!userIds.isEmpty()) {
+                long validStudentCount = userMapper.selectCount(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (validStudentCount > 0) {
+                    throw new BusinessException("该专业下还有" + validStudentCount + "名学生，不允许删除");
+                }
+            }
         }
         
         // 检查是否有实习计划关联，如果有实习计划则不允许删除

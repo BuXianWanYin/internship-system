@@ -98,6 +98,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
     private ClassMapper classMapper;
     
     
+    
     @Autowired
     private EnterpriseMentorMapper enterpriseMentorMapper;
     
@@ -215,10 +216,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         }
         
         // 检查学号是否已存在
-        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Student::getStudentNo, user.getStudentNo())
-               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        Student existStudent = studentMapper.selectOne(wrapper);
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        Student existStudent = studentMapper.selectOne(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getStudentNo, user.getStudentNo())
+        );
+        // 检查关联的user_info是否已删除
+        if (existStudent != null && existStudent.getUserId() != null) {
+            UserInfo studentUser = this.getById(existStudent.getUserId());
+            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                existStudent = null;
+            }
+        }
         if (existStudent != null) {
             throw new BusinessException("学号已存在");
         }
@@ -231,7 +240,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         student.setSchoolId(user.getSchoolId());
         student.setCollegeId(user.getCollegeId());
         student.setMajorId(user.getMajorId());
-        student.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
+        // 注意：Student表不再有status字段，status统一在user_info表中管理
         EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(student);
         studentMapper.insert(student);
     }
@@ -276,10 +285,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         }
         
         // 检查工号是否已存在
-        LambdaQueryWrapper<Teacher> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Teacher::getTeacherNo, user.getUsername())
-               .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        Teacher existTeacher = teacherMapper.selectOne(wrapper);
+        // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        Teacher existTeacher = teacherMapper.selectOne(
+                new LambdaQueryWrapper<Teacher>()
+                        .eq(Teacher::getTeacherNo, user.getUsername())
+        );
+        // 检查关联的user_info是否已删除
+        if (existTeacher != null && existTeacher.getUserId() != null) {
+            UserInfo teacherUser = this.getById(existTeacher.getUserId());
+            if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                existTeacher = null;
+            }
+        }
         if (existTeacher != null) {
             throw new BusinessException("工号已存在");
         }
@@ -288,7 +305,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         teacher.setUserId(user.getUserId());
         teacher.setCollegeId(user.getCollegeId());
         teacher.setSchoolId(user.getSchoolId());
-        teacher.setStatus(UserStatus.ENABLED.getCode()); // 默认启用
+        // 注意：Teacher表不再有status字段，status统一在user_info表中管理
         teacher.setTeacherNo(user.getUsername());
         EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(teacher);
         teacherMapper.insert(teacher);
@@ -357,8 +374,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         }
         
         // 如果修改了密码，需要加密
+        // 注意：如果密码已经是BCrypt加密格式（以$2a$、$2b$或$2y$开头），说明可能是错误地传入了已加密的密码
+        // 为避免双重加密导致密码无法匹配，应该忽略该字段，不更新密码
         if (StringUtils.hasText(user.getPassword())) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            String password = user.getPassword();
+            // 检查是否是BCrypt加密格式（BCrypt加密后的密码以$2a$、$2b$或$2y$开头，长度通常为60）
+            if (password.length() == 60 && (password.startsWith("$2a$") || password.startsWith("$2b$") || password.startsWith("$2y$"))) {
+                // 如果已经是加密格式，说明可能是误传，忽略密码字段，不更新密码
+                // 这样可以避免双重加密的问题，同时也提醒开发者不应该传入已加密的密码
+                user.setPassword(null);
+            } else {
+                // 如果是明文密码，进行加密
+                user.setPassword(passwordEncoder.encode(password));
+            }
         } else {
             // 不更新密码
             user.setPassword(null);
@@ -931,16 +959,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 添加班级用户ID
      */
     private void addClassUserIds(List<Long> orgUserIds, Long classId) {
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getClassId, classId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
+        // 通过关联user_info表过滤已删除的学生
         if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             orgUserIds.addAll(students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                     .map(Student::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
     }
     
@@ -949,29 +997,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      */
     private void addCollegeUserIds(List<Long> orgUserIds, Long collegeId) {
         // 查询本院的学生
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
+        // 通过关联user_info表过滤已删除的学生
         if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             orgUserIds.addAll(students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                     .map(Student::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本院的教师
+        // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Teacher> teachers = teacherMapper.selectList(
                 new LambdaQueryWrapper<Teacher>()
                         .eq(Teacher::getCollegeId, collegeId)
-                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Teacher::getUserId)
         );
+        // 通过关联user_info表过滤已删除的教师
         if (teachers != null && !teachers.isEmpty()) {
+            List<Long> userIds = teachers.stream()
+                    .map(Teacher::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             orgUserIds.addAll(teachers.stream()
+                            .filter(t -> t.getUserId() != null && validUserIds.contains(t.getUserId()))
                     .map(Teacher::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
     }
     
@@ -980,29 +1068,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      */
     private void addSchoolUserIds(List<Long> orgUserIds, Long schoolId) {
         // 查询本校的学生
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
+        // 通过关联user_info表过滤已删除的学生
         if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             orgUserIds.addAll(students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                     .map(Student::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本校的教师
+        // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Teacher> teachers = teacherMapper.selectList(
                 new LambdaQueryWrapper<Teacher>()
                         .eq(Teacher::getSchoolId, schoolId)
-                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Teacher::getUserId)
         );
+        // 通过关联user_info表过滤已删除的教师
         if (teachers != null && !teachers.isEmpty()) {
+            List<Long> userIds = teachers.stream()
+                    .map(Teacher::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             orgUserIds.addAll(teachers.stream()
+                            .filter(t -> t.getUserId() != null && validUserIds.contains(t.getUserId()))
                     .map(Teacher::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本校的学校管理员
@@ -1050,16 +1178,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 获取班主任管理的班级学生用户ID列表
      */
     private List<Long> getClassTeacherUserIds(List<Long> classIds) {
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .in(Student::getClassId, classIds)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
         if (students == null || students.isEmpty()) {
             return new ArrayList<>();
         }
+        // 通过关联user_info表过滤已删除的学生
+        List<Long> userIds = students.stream()
+                .map(Student::getUserId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<UserInfo> validUsers = this.list(
+                new LambdaQueryWrapper<UserInfo>()
+                        .in(UserInfo::getUserId, userIds)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                        .select(UserInfo::getUserId)
+        );
+        if (validUsers == null || validUsers.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Long> validUserIds = validUsers.stream()
+                .map(UserInfo::getUserId)
+                .collect(Collectors.toList());
         return students.stream()
+                .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                 .map(Student::getUserId)
                 .distinct()
                 .collect(Collectors.toList());
@@ -1072,29 +1222,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         List<Long> userIds = new ArrayList<>();
         
         // 查询本院的学生
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
+        // 通过关联user_info表过滤已删除的学生
         if (students != null && !students.isEmpty()) {
+            List<Long> studentUserIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!studentUserIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, studentUserIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             userIds.addAll(students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                     .map(Student::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本院的教师
+        // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Teacher> teachers = teacherMapper.selectList(
                 new LambdaQueryWrapper<Teacher>()
                         .eq(Teacher::getCollegeId, collegeId)
-                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Teacher::getUserId)
         );
+        // 通过关联user_info表过滤已删除的教师
         if (teachers != null && !teachers.isEmpty()) {
+            List<Long> teacherUserIds = teachers.stream()
+                    .map(Teacher::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!teacherUserIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, teacherUserIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             userIds.addAll(teachers.stream()
+                            .filter(t -> t.getUserId() != null && validUserIds.contains(t.getUserId()))
                     .map(Teacher::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         return userIds;
@@ -1107,29 +1297,69 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         List<Long> userIds = new ArrayList<>();
         
         // 查询本校的学生
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Student::getUserId)
         );
+        // 通过关联user_info表过滤已删除的学生
         if (students != null && !students.isEmpty()) {
+            List<Long> studentUserIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!studentUserIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, studentUserIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             userIds.addAll(students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                     .map(Student::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本校的教师
+        // 注意：Teacher表不再有deleteFlag字段，需要通过关联user_info表来过滤
         List<Teacher> teachers = teacherMapper.selectList(
                 new LambdaQueryWrapper<Teacher>()
                         .eq(Teacher::getSchoolId, schoolId)
-                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         .select(Teacher::getUserId)
         );
+        // 通过关联user_info表过滤已删除的教师
         if (teachers != null && !teachers.isEmpty()) {
+            List<Long> teacherUserIds = teachers.stream()
+                    .map(Teacher::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!teacherUserIds.isEmpty()) {
+                List<UserInfo> validUsers = this.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, teacherUserIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
             userIds.addAll(teachers.stream()
+                            .filter(t -> t.getUserId() != null && validUserIds.contains(t.getUserId()))
                     .map(Teacher::getUserId)
                     .collect(Collectors.toList()));
+                }
+            }
         }
         
         // 查询本校的学校管理员
@@ -1225,8 +1455,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, targetUserId)
                             .in(Student::getClassId, currentUserClassIds)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = this.getById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             return student != null;
         }
         
@@ -1237,8 +1473,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, targetUserId)
                             .eq(Student::getCollegeId, currentUserCollegeId)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = this.getById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 return true;
             }
@@ -1247,8 +1489,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, targetUserId)
                             .eq(Teacher::getCollegeId, currentUserCollegeId)
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (teacher != null && teacher.getUserId() != null) {
+                UserInfo teacherUser = this.getById(teacher.getUserId());
+                if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    teacher = null;
+                }
+            }
             return teacher != null;
         }
         
@@ -1259,8 +1507,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, targetUserId)
                             .eq(Student::getSchoolId, currentUserSchoolId)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = this.getById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 return true;
             }
@@ -1269,8 +1523,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, targetUserId)
                             .eq(Teacher::getSchoolId, currentUserSchoolId)
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (teacher != null && teacher.getUserId() != null) {
+                UserInfo teacherUser = this.getById(teacher.getUserId());
+                if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    teacher = null;
+                }
+            }
             if (teacher != null) {
                 return true;
             }

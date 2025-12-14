@@ -6,6 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -84,6 +87,42 @@ public class GlobalExceptionHandler {
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
         logger.error("权限不足: {}", e.getMessage());
         return Result.error(ResultCode.FORBIDDEN);
+    }
+
+    /**
+     * 处理认证异常（登录相关异常）
+     * 包括 UsernameNotFoundException、BadCredentialsException 等
+     * 
+     * 按照异常类型返回对应的中文提示：
+     * - UsernameNotFoundException 且消息为"用户不存在" → 返回"用户不存在"
+     * - BadCredentialsException → 返回"用户名或密码错误"
+     * - 其他 UsernameNotFoundException → 返回原消息（如"账号已被禁用"等）
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public Result<?> handleAuthenticationException(AuthenticationException e, HttpServletRequest request) {
+        String errorMessage;
+        
+        // 根据异常类型返回对应的中文提示
+        if (e instanceof UsernameNotFoundException) {
+            // 如果是 UsernameNotFoundException，检查消息内容
+            String message = e.getMessage();
+            if (message != null && message.contains("用户不存在")) {
+                errorMessage = "用户不存在";
+            } else {
+                // 其他 UsernameNotFoundException（如"账号已被禁用"、"账号未审核通过"等）
+                errorMessage = message != null ? message : "用户不存在";
+            }
+        } else if (e instanceof BadCredentialsException) {
+            // 密码错误
+            errorMessage = "用户名或密码错误";
+        } else {
+            // 其他认证异常
+            errorMessage = e.getMessage() != null ? e.getMessage() : "用户名或密码错误";
+        }
+        
+        logger.error("认证失败: {} - {}", request.getRequestURI(), errorMessage);
+        return Result.error(ResultCode.LOGIN_ERROR.getCode(), errorMessage);
     }
 
     /**

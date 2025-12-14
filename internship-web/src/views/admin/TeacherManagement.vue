@@ -154,10 +154,13 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="status" label="状态" min-width="80" align="center">
+      <el-table-column label="启用状态" min-width="80" align="center">
         <template #default="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-            {{ row.status === 1 ? '启用' : '禁用' }}
+          <el-tag 
+            :type="row.userStatus === 1 ? 'success' : 'danger'" 
+            size="small"
+          >
+            {{ row.userStatus === 1 ? '启用' : '禁用' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -434,20 +437,18 @@
       >
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="工号" prop="teacherNo">
-              <el-input v-model="formData.teacherNo" placeholder="请输入工号" :disabled="isEdit" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
             <el-form-item label="用户名" prop="username">
               <el-input 
                 v-model="formData.username" 
-                placeholder="请输入用户名（不填写则使用工号）" 
+                placeholder="请输入用户名" 
                 :disabled="isEdit"
               />
-              <div v-if="!isEdit" style="font-size: 12px; color: #909399; margin-top: 4px;">
-                不填写则默认使用工号作为用户名
-              </div>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12">
+            <el-form-item label="工号" prop="teacherNo">
+              <el-input v-model="formData.teacherNo" placeholder="请输入工号" :disabled="isEdit" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -529,7 +530,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="职称">
+        <el-form-item label="职称" prop="title">
           <el-select
             v-model="formData.title"
             placeholder="请选择职称"
@@ -724,11 +725,17 @@ const formData = reactive({
 
 // 表单验证规则
 const formRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' }
+  ],
   teacherNo: [
     { required: true, message: '请输入工号', trigger: 'blur' }
   ],
   realName: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  gender: [
+    { required: true, message: '请选择性别', trigger: 'change' }
   ],
   idCard: [
     { pattern: /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '请输入正确的身份证号', trigger: 'blur' }
@@ -751,6 +758,9 @@ const formRules = {
   ],
   status: [
     { required: true, message: '请选择状态', trigger: 'change' }
+  ],
+  title: [
+    { required: true, message: '请选择职称', trigger: 'change' }
   ]
 }
 
@@ -838,6 +848,13 @@ const loadData = async () => {
       if (userIds.length > 0) {
         await loadUserInfos(userIds)
       }
+      
+      // 将用户状态映射到教师记录中（用于显示）
+      tableData.value.forEach(teacher => {
+        if (teacher.userId && userInfoMap.value[teacher.userId]) {
+          teacher.userStatus = userInfoMap.value[teacher.userId].status
+        }
+      })
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -952,7 +969,7 @@ const handleEdit = async (row) => {
         collegeId: teacher.collegeId,
         schoolId: teacher.schoolId,
         title: teacher.title || '',
-        status: teacher.status,
+        status: userInfo.status || 1, // 使用UserInfo.status，不再使用Teacher.status
         password: ''
       })
       dialogVisible.value = true

@@ -154,8 +154,14 @@ public class InternshipPlanController {
         Student student = studentMapper.selectOne(
             new LambdaQueryWrapper<Student>()
                 .eq(Student::getUserId, user.getUserId())
-                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
+        // 检查关联的user_info是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo studentUser = userMapper.selectById(student.getUserId());
+            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                student = null;
+            }
+        }
         
         if (student == null) {
             return Result.error("学生信息不存在");

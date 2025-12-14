@@ -32,15 +32,15 @@ public class AuditUtil {
         try {
             Class<?> clazz = entity.getClass();
             
-            // 设置审核状态（如果实体有status字段）
+            // 设置审核状态：优先设置auditStatus字段（审核状态），如果没有则设置status字段（启用状态）
             try {
-                Method setStatusMethod = clazz.getMethod("setStatus", Integer.class);
-                setStatusMethod.invoke(entity, auditStatus);
+                Method setAuditStatusMethod = clazz.getMethod("setAuditStatus", Integer.class);
+                setAuditStatusMethod.invoke(entity, auditStatus);
             } catch (NoSuchMethodException e) {
-                // 如果没有status字段，尝试设置auditStatus
+                // 如果没有auditStatus字段，尝试设置status字段
                 try {
-                    Method setAuditStatusMethod = clazz.getMethod("setAuditStatus", Integer.class);
-                    setAuditStatusMethod.invoke(entity, auditStatus);
+                    Method setStatusMethod = clazz.getMethod("setStatus", Integer.class);
+                    setStatusMethod.invoke(entity, auditStatus);
                 } catch (NoSuchMethodException ex) {
                     // 如果都没有，忽略
                 }

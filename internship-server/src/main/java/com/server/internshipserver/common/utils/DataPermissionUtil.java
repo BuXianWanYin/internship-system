@@ -150,8 +150,14 @@ public class DataPermissionUtil {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (teacher != null && teacher.getUserId() != null) {
+                UserInfo teacherUser = userMapper.selectById(teacher.getUserId());
+                if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    teacher = null;
+                }
+            }
             if (teacher != null) {
                 return teacher.getSchoolId();
             }
@@ -162,8 +168,14 @@ public class DataPermissionUtil {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 return student.getSchoolId();
             }
@@ -194,8 +206,14 @@ public class DataPermissionUtil {
             Teacher teacher = teacherMapper.selectOne(
                     new LambdaQueryWrapper<Teacher>()
                             .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (teacher != null && teacher.getUserId() != null) {
+                UserInfo teacherUser = userMapper.selectById(teacher.getUserId());
+                if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    teacher = null;
+                }
+            }
             if (teacher != null) {
                 return teacher.getCollegeId();
             }
@@ -206,8 +224,14 @@ public class DataPermissionUtil {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 return student.getCollegeId();
             }
@@ -253,8 +277,14 @@ public class DataPermissionUtil {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null) {
                 return student.getClassId();
             }
@@ -376,8 +406,14 @@ public class DataPermissionUtil {
             Student student = studentMapper.selectOne(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getUserId, user.getUserId())
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
+            // 检查关联的user_info是否已删除
+            if (student != null && student.getUserId() != null) {
+                UserInfo studentUser = userMapper.selectById(student.getUserId());
+                if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                    student = null;
+                }
+            }
             if (student != null && student.getClassId() != null) {
                 return Collections.singletonList(student.getClassId());
             }
@@ -448,8 +484,14 @@ public class DataPermissionUtil {
         Teacher teacher = teacherMapper.selectOne(
                 new LambdaQueryWrapper<Teacher>()
                         .eq(Teacher::getUserId, user.getUserId())
-                        .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
+        // 检查关联的user_info是否已删除
+        if (teacher != null && teacher.getUserId() != null) {
+            UserInfo teacherUser = userMapper.selectById(teacher.getUserId());
+            if (teacherUser == null || teacherUser.getDeleteFlag() == null || teacherUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                teacher = null;
+            }
+        }
         if (teacher != null) {
             return teacher.getTeacherId();
         }
@@ -570,8 +612,14 @@ public class DataPermissionUtil {
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getUserId, userId)
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
+        // 检查关联的user_info是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo studentUser = userMapper.selectById(student.getUserId());
+            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                student = null;
+            }
+        }
         
         if (student != null) {
             return student.getStudentId();
@@ -621,12 +669,40 @@ public class DataPermissionUtil {
         // 班主任：获取和管理的班级有合作关系的企业ID列表
         if (currentUserClassId != null) {
             // 先查询本班学生所属学校
+            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getClassId, currentUserClassId)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Student::getSchoolId)
+                            .select(Student::getSchoolId, Student::getUserId)
             );
+            // 通过关联user_info表过滤已删除的学生
+            if (students != null && !students.isEmpty()) {
+                List<Long> userIds = students.stream()
+                        .map(Student::getUserId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .collect(Collectors.toList());
+                if (!userIds.isEmpty()) {
+                    List<UserInfo> validUsers = userMapper.selectList(
+                            new LambdaQueryWrapper<UserInfo>()
+                                    .in(UserInfo::getUserId, userIds)
+                                    .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .select(UserInfo::getUserId)
+                    );
+                    if (validUsers != null && !validUsers.isEmpty()) {
+                        List<Long> validUserIds = validUsers.stream()
+                                .map(UserInfo::getUserId)
+                                .collect(Collectors.toList());
+                        students = students.stream()
+                                .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                                .collect(Collectors.toList());
+                    } else {
+                        students = Collections.emptyList();
+                    }
+                } else {
+                    students = Collections.emptyList();
+                }
+            }
             
             if (students == null || students.isEmpty()) {
                 return Collections.emptyList();

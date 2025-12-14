@@ -104,15 +104,15 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="状态">
+            <el-form-item label="启用状态">
               <el-select
                 v-model="searchForm.status"
                 placeholder="请选择状态"
                 clearable
                 style="width: 150px"
               >
-                <el-option label="已审核" :value="1" />
-                <el-option label="待审核" :value="0" />
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="0" />
               </el-select>
             </el-form-item>
             <el-form-item label="入学年份">
@@ -210,10 +210,23 @@
               <span v-else style="color: #909399">-</span>
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="状态" min-width="80" align="center">
+          <el-table-column label="审核状态" min-width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
-                {{ row.status === 1 ? '已审核' : '待审核' }}
+              <el-tag 
+                :type="getAuditStatusType(row.auditStatus)" 
+                size="small"
+              >
+                {{ getAuditStatusText(row.auditStatus) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="启用状态" min-width="80" align="center">
+            <template #default="{ row }">
+              <el-tag 
+                :type="row.userStatus === 1 ? 'success' : 'danger'" 
+                size="small"
+              >
+                {{ row.userStatus === 1 ? '启用' : '禁用' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -812,6 +825,13 @@ const loadStudentList = async () => {
       await loadUserInfo(userIds)
       await loadClassInfo(classIds)
       await loadMajorInfo(majorIds)
+      
+      // 将用户状态映射到学生记录中（用于显示）
+      tableData.value.forEach(student => {
+        if (student.userId && userInfoMap.value[student.userId]) {
+          student.userStatus = userInfoMap.value[student.userId].status
+        }
+      })
     }
   } catch (error) {
     ElMessage.error('加载失败：' + (error.message || '未知错误'))
@@ -1048,7 +1068,7 @@ const handleSubmit = async () => {
           idCard: formData.idCard,
           phone: formData.phone,
           email: formData.email,
-          status: formData.status
+          status: formData.userStatus // 使用UserInfo.status（启用状态）
         }
         const userRes = await userApi.addUser(userData)
         if (userRes.code !== 200 || !userRes.data) {
@@ -1064,14 +1084,16 @@ const handleSubmit = async () => {
         }
         const classInfo = classRes.data
 
-        // 创建学生
+        // 创建学生（不再设置status，统一使用UserInfo.status）
         const studentData = {
           userId: userRes.data.userId,
           studentNo: formData.studentNo,
           classId: formData.classId,
           enrollmentYear: formData.enrollmentYear,
-          majorId: classInfo.majorId,
-          status: formData.status
+          majorId: classInfo.majorId
+          // 注意：Student表不再有status字段，统一使用UserInfo.status
+          // 导入的学生不需要审核，直接设置为已审核通过（auditStatus=1）
+          // 手动添加的学生也不需要审核，直接设置为已审核通过
         }
         const studentRes = await studentApi.addStudent(studentData)
         if (studentRes.code === 200) {
@@ -1178,10 +1200,44 @@ const handleApprovalView = (row) => {
   detailDialogVisible.value = true
 }
 
+// 获取审核状态文本
+const getAuditStatusText = (auditStatus) => {
+  if (auditStatus === null || auditStatus === undefined) {
+    return '-'
+  }
+  // 审核状态：0-待审核，1-已通过，2-已拒绝
+  const statusMap = {
+    0: '待审核',
+    1: '已通过',
+    2: '已拒绝'
+  }
+  return statusMap[auditStatus] || '-'
+}
+
+// 获取审核状态标签类型
+const getAuditStatusType = (auditStatus) => {
+  if (auditStatus === null || auditStatus === undefined) {
+    return 'info'
+  }
+  // 审核状态：0-待审核（warning），1-已通过（success），2-已拒绝（danger）
+  const typeMap = {
+    0: 'warning',
+    1: 'success',
+    2: 'danger'
+  }
+  return typeMap[auditStatus] || 'info'
+}
+
 const handleApprove = (row, approved) => {
   currentStudent.value = row
   approveForm.approved = approved
   approveForm.auditOpinion = ''
+  
+  // 确保加载用户信息（如果userInfoMap中没有）
+  if (row.userId && !userInfoMap.value[row.userId]) {
+    loadUserInfo([row.userId])
+  }
+  
   approveDialogVisible.value = true
 }
 

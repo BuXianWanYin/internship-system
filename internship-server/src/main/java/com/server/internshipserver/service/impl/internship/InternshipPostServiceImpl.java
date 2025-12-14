@@ -159,25 +159,35 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
         }
         // 学生端：只显示合作企业的已发布岗位，且招聘人数未满
-        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly() && cooperationEnterpriseIds != null) {
-            if (cooperationEnterpriseIds.isEmpty()) {
+        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly()) {
+            if (cooperationEnterpriseIds == null) {
+                // 系统管理员，不限制
+            } else if (cooperationEnterpriseIds.isEmpty()) {
                 // 如果没有合作关系，返回空列表
                 return page;
+            } else {
+                wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+                // 学生只能看到已发布的岗位
+                wrapper.eq(InternshipPost::getStatus, InternshipPostStatus.PUBLISHED.getCode());
+                // 过滤掉招聘人数已满的岗位（acceptedCount >= recruitCount）
+                // 逻辑：如果recruitCount为null，则认为未满；如果acceptedCount为null，则认为0
+                // SQL: (recruit_count IS NULL) OR (IFNULL(accepted_count, 0) < recruit_count)
+                wrapper.and(w -> w.isNull(InternshipPost::getRecruitCount)
+                        .or()
+                        .apply("IFNULL(accepted_count, 0) < recruit_count"));
             }
-            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
-            // 学生只能看到已发布的岗位
-            wrapper.eq(InternshipPost::getStatus, InternshipPostStatus.PUBLISHED.getCode());
-            // 过滤掉招聘人数已满的岗位（acceptedCount >= recruitCount）
-            // 逻辑：如果recruitCount为null，则认为未满；如果acceptedCount为null，则认为0
-            // SQL: (recruit_count IS NULL) OR (IFNULL(accepted_count, 0) < recruit_count)
-            wrapper.and(w -> w.isNull(InternshipPost::getRecruitCount)
-                    .or()
-                    .apply("IFNULL(accepted_count, 0) < recruit_count"));
         }
-        // 学校管理员和班主任：只显示合作企业的岗位
-        else if (EntityValidationUtil.isNotEmpty(cooperationEnterpriseIds)) {
-            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+        // 学校管理员、学院负责人和班主任：只显示合作企业的岗位
+        else if (cooperationEnterpriseIds != null) {
+            // 如果不是null（系统管理员返回null，不限制），则需要过滤
+            if (cooperationEnterpriseIds.isEmpty()) {
+                // 如果没有合作关系，返回空结果
+                wrapper.eq(InternshipPost::getEnterpriseId, -1L);
+            } else {
+                wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+            }
         }
+        // 如果cooperationEnterpriseIds为null（系统管理员），不添加限制
         
         // 条件查询
         if (queryDTO != null) {
@@ -403,16 +413,27 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
         }
         // 学生端：只显示合作企业的岗位
-        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly() && cooperationEnterpriseIds != null) {
-            if (cooperationEnterpriseIds.isEmpty()) {
+        else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly()) {
+            if (cooperationEnterpriseIds == null) {
+                // 系统管理员，不限制
+            } else if (cooperationEnterpriseIds.isEmpty()) {
+                // 如果没有合作关系，返回空列表
                 return new java.util.ArrayList<>();
+            } else {
+                wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
             }
-            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
         }
-        // 学校管理员和班主任：只显示合作企业的岗位
-        else if (EntityValidationUtil.isNotEmpty(cooperationEnterpriseIds)) {
-            wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+        // 学校管理员、学院负责人和班主任：只显示合作企业的岗位
+        else if (cooperationEnterpriseIds != null) {
+            // 如果不是null（系统管理员返回null，不限制），则需要过滤
+            if (cooperationEnterpriseIds.isEmpty()) {
+                // 如果没有合作关系，返回空结果
+                wrapper.eq(InternshipPost::getEnterpriseId, -1L);
+            } else {
+                wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
+            }
         }
+        // 如果cooperationEnterpriseIds为null（系统管理员），不添加限制
         
         // 条件查询
         if (queryDTO != null) {

@@ -209,18 +209,23 @@ public class TeacherController {
                         teacher.setTeacherName(user.getRealName());
                         teacher.setPhone(user.getPhone());
                         teacher.setEmail(user.getEmail());
+                        // 从UserInfo获取状态并设置statusText
+                        if (user.getStatus() != null) {
+                            teacher.setStatusText(user.getStatus() == 1 ? "启用" : "禁用");
+                        } else {
+                            teacher.setStatusText("");
+                        }
+                    } else {
+                        teacher.setStatusText("");
                     }
+                } else {
+                    teacher.setStatusText("");
                 }
             }
         }
         
-        // 处理数据，转换状态和时间为文字
+        // 处理数据，转换时间为文字
         for (Teacher teacher : teachers) {
-            if (teacher.getStatus() != null) {
-                teacher.setStatusText(teacher.getStatus() == 1 ? "启用" : "禁用");
-            } else {
-                teacher.setStatusText("");
-            }
             if (teacher.getCreateTime() != null) {
                 teacher.setCreateTimeText(teacher.getCreateTime().format(
                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));

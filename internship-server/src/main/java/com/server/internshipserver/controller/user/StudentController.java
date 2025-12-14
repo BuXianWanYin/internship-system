@@ -50,7 +50,7 @@ public class StudentController {
             @ApiParam(value = "专业ID") @RequestParam(required = false) Long majorId,
             @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId,
             @ApiParam(value = "学校ID") @RequestParam(required = false) Long schoolId,
-            @ApiParam(value = "状态：1-已审核，0-待审核") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "启用状态：1-启用，0-禁用") @RequestParam(required = false) Integer status,
             @ApiParam(value = "入学年份") @RequestParam(required = false) Integer enrollmentYear) {
         Page<Student> page = new Page<>(current, size);
         StudentQueryDTO queryDTO = new StudentQueryDTO();
@@ -178,7 +178,7 @@ public class StudentController {
             @ApiParam(value = "学院ID") @RequestParam(required = false) Long collegeId,
             @ApiParam(value = "专业ID") @RequestParam(required = false) Long majorId,
             @ApiParam(value = "班级ID") @RequestParam(required = false) Long classId,
-            @ApiParam(value = "状态：1-已审核，0-待审核") @RequestParam(required = false) Integer status,
+            @ApiParam(value = "启用状态：1-启用，0-禁用") @RequestParam(required = false) Integer status,
             @ApiParam(value = "入学年份") @RequestParam(required = false) Integer enrollmentYear,
             HttpServletResponse response) throws IOException {
         StudentQueryDTO queryDTO = new StudentQueryDTO();

@@ -271,8 +271,14 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
         Student student = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getStudentId, attendance.getStudentId())
-                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
+        // 检查关联的user_info是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo studentUser = userMapper.selectById(student.getUserId());
+            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                student = null;
+            }
+        }
         
         if (student != null) {
             attendance.setStudentNo(student.getStudentNo());
@@ -319,8 +325,14 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                         Student student = studentMapper.selectOne(
                                 new LambdaQueryWrapper<Student>()
                                         .eq(Student::getUserId, user.getUserId())
-                                        .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
                         );
+                        // 检查关联的user_info是否已删除
+                        if (student != null && student.getUserId() != null) {
+                            UserInfo studentUser = userMapper.selectById(student.getUserId());
+                            if (studentUser == null || studentUser.getDeleteFlag() == null || studentUser.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                                student = null;
+                            }
+                        }
                         if (student != null) {
                             wrapper.eq(Attendance::getStudentId, student.getStudentId());
                         } else {
@@ -341,12 +353,40 @@ public class AttendanceServiceImpl extends ServiceImpl<AttendanceMapper, Attenda
                             
                             // 方式2：通过student.current_enterprise_id查询（查询当前实习企业为本企业的学生）
                             // 注意：只查询合作企业实习的学生，不包含自主实习
+                            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
                             List<Student> students = studentMapper.selectList(
                                     new LambdaQueryWrapper<Student>()
                                             .eq(Student::getCurrentEnterpriseId, currentUserEnterpriseId)
-                                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                            .select(Student::getStudentId)
+                                            .select(Student::getStudentId, Student::getUserId)
                             );
+                            // 通过关联user_info表过滤已删除的学生
+                            if (students != null && !students.isEmpty()) {
+                                List<Long> userIds = students.stream()
+                                        .map(Student::getUserId)
+                                        .filter(java.util.Objects::nonNull)
+                                        .distinct()
+                                        .collect(java.util.stream.Collectors.toList());
+                                if (!userIds.isEmpty()) {
+                                    List<UserInfo> validUsers = userMapper.selectList(
+                                            new LambdaQueryWrapper<UserInfo>()
+                                                    .in(UserInfo::getUserId, userIds)
+                                                    .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                                    .select(UserInfo::getUserId)
+                                    );
+                                    if (validUsers != null && !validUsers.isEmpty()) {
+                                        List<Long> validUserIds = validUsers.stream()
+                                                .map(UserInfo::getUserId)
+                                                .collect(java.util.stream.Collectors.toList());
+                                        students = students.stream()
+                                                .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                                                .collect(java.util.stream.Collectors.toList());
+                                    } else {
+                                        students = java.util.Collections.emptyList();
+                                    }
+                                } else {
+                                    students = java.util.Collections.emptyList();
+                                }
+                            }
                             
                             // 合并两种方式的查询结果
                             List<Long> applyIds = new ArrayList<>();

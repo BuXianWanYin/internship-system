@@ -132,7 +132,12 @@ service.interceptors.response.use(
       if (res.code === 401) {
         handle401Error('未认证，请先登录')
       } else {
-        ElMessage.error(res.message || '请求失败')
+        // 登录接口的错误消息由Login.vue处理，不在拦截器中显示
+        // 其他接口的错误消息在这里显示
+        const isLoginRequest = response.config.url && response.config.url.includes('/auth/login')
+        if (!isLoginRequest) {
+          ElMessage.error(res.message || '请求失败')
+        }
       }
       
       return Promise.reject(new Error(res.message || '请求失败'))
@@ -194,7 +199,9 @@ service.interceptors.response.use(
     }
     
     // 只在需要时显示错误消息
-    if (shouldShowError && !isHandling401 && !isLoggingOut) {
+    // 登录接口的错误消息由Login.vue处理，不在拦截器中显示
+    const isLoginRequest = error.config && error.config.url && error.config.url.includes('/auth/login')
+    if (shouldShowError && !isHandling401 && !isLoggingOut && !isLoginRequest) {
       ElMessage.error(message)
     }
     

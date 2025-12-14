@@ -27,7 +27,7 @@ public class StudentQueryDTO {
     @ApiModelProperty("学校ID")
     private Long schoolId;
     
-    @ApiModelProperty("状态：1-已审核，0-待审核")
+    @ApiModelProperty("启用状态：1-启用，0-禁用（统一使用UserInfo.status）")
     private Integer status;
     
     @ApiModelProperty("入学年份")

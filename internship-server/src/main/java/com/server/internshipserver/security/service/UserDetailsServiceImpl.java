@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.enums.AuditStatus;
+import com.server.internshipserver.domain.user.Student;
 import com.server.internshipserver.domain.user.UserInfo;
 import com.server.internshipserver.domain.user.Teacher;
+import com.server.internshipserver.mapper.user.StudentMapper;
 import org.springframework.security.core.userdetails.User;
 import com.server.internshipserver.mapper.user.UserMapper;
 import com.server.internshipserver.mapper.user.TeacherMapper;
@@ -34,6 +36,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     
     @Autowired
     private TeacherMapper teacherMapper;
+    
+    @Autowired
+    private StudentMapper studentMapper;
 
     /**
      * 根据用户名加载用户详情
@@ -49,39 +54,71 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("用户名不能为空");
         }
         
-        // 从数据库查询用户信息
+        // 按照正确的顺序进行校验：
+        // 1. 先校验是否有账号（用户是否存在）
+        // 2. 再校验是否删除（如果已删除，提示"用户不存在"）
+        // 3. 再校验是否启用
+        // 4. 再校验审核状态（如果是教师/学生）
+        // 注意：用户名和密码的校验由Spring Security的AuthenticationManager负责
+        
+        // 步骤1和2：检查用户是否存在，以及是否已删除
+        // 注意：这里不过滤deleteFlag，以便判断用户是否存在以及是否已删除
         UserInfo user = userMapper.selectOne(
                 new LambdaQueryWrapper<UserInfo>()
                         .eq(UserInfo::getUsername, username)
-                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
         );
         
+        // 步骤1：如果用户不存在，直接抛出异常
         if (user == null) {
-            throw new UsernameNotFoundException("用户不存在：" + username);
+            throw new UsernameNotFoundException("用户不存在");
         }
         
-        // 检查用户状态
+        // 步骤2：检查是否已删除（如果已删除，提示"用户不存在"）
+        if (user.getDeleteFlag() == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+            throw new UsernameNotFoundException("用户不存在");
+        }
+        
+        // 步骤3：检查用户状态（必须是启用）
         if (user.getStatus() == null || user.getStatus().equals(UserStatus.DISABLED.getCode())) {
-            // 如果是教师，检查审核状态，给出更明确的提示
-            Teacher teacher = teacherMapper.selectOne(
-                    new LambdaQueryWrapper<Teacher>()
-                            .eq(Teacher::getUserId, user.getUserId())
-                            .eq(Teacher::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+            throw new UsernameNotFoundException("账号已被禁用，无法登录");
+        }
+        
+        // 步骤4：检查审核状态（如果是教师或学生）
+        Teacher teacher = teacherMapper.selectOne(
+                new LambdaQueryWrapper<Teacher>()
+                        .eq(Teacher::getUserId, user.getUserId())
+        );
+        
+        // 如果是教师，检查审核状态
+        if (teacher != null) {
+            if (teacher.getAuditStatus() == null || !teacher.getAuditStatus().equals(AuditStatus.APPROVED.getCode())) {
+                if (teacher.getAuditStatus() != null && teacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+                    throw new UsernameNotFoundException("账号未审核通过，无法登录，请等待管理员审核");
+                } else if (teacher.getAuditStatus() != null && teacher.getAuditStatus().equals(AuditStatus.REJECTED.getCode())) {
+                    throw new UsernameNotFoundException("账号审核未通过，无法登录");
+                } else {
+                    throw new UsernameNotFoundException("账号审核状态异常，无法登录");
+                }
+            }
+        } else {
+            // 检查是否是学生
+            Student student = studentMapper.selectOne(
+                    new LambdaQueryWrapper<Student>()
+                            .eq(Student::getUserId, user.getUserId())
             );
             
-            if (teacher != null) {
-                // 检查审核状态
-                if (teacher.getAuditStatus() != null) {
-                    if (teacher.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+            // 如果是学生，检查审核状态
+            if (student != null) {
+                if (student.getAuditStatus() == null || !student.getAuditStatus().equals(AuditStatus.APPROVED.getCode())) {
+                    if (student.getAuditStatus() != null && student.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
                         throw new UsernameNotFoundException("账号未审核通过，无法登录，请等待管理员审核");
-                    } else if (teacher.getAuditStatus().equals(AuditStatus.REJECTED.getCode())) {
+                    } else if (student.getAuditStatus() != null && student.getAuditStatus().equals(AuditStatus.REJECTED.getCode())) {
                         throw new UsernameNotFoundException("账号审核未通过，无法登录");
+                    } else {
+                        throw new UsernameNotFoundException("账号审核状态异常，无法登录");
                     }
                 }
             }
-            
-            // 如果不是教师或审核状态不是待审核/已拒绝，则提示用户已被禁用
-            throw new UsernameNotFoundException("用户已被禁用：" + username);
         }
         
         // 查询用户角色

@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
 import com.server.internshipserver.common.utils.EntityValidationUtil;
 import com.server.internshipserver.common.utils.ExcelUtil;
-import com.server.internshipserver.common.utils.QueryWrapperUtil;
 import com.server.internshipserver.domain.user.dto.StudentImportDTO;
 import com.server.internshipserver.domain.user.dto.StudentImportResult;
 import com.server.internshipserver.domain.user.dto.StudentQueryDTO;
@@ -31,6 +31,8 @@ import com.server.internshipserver.service.system.MajorService;
 import com.server.internshipserver.service.user.StudentService;
 import com.server.internshipserver.service.user.UserService;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
+import com.server.internshipserver.common.utils.UserUtil;
+import com.server.internshipserver.mapper.user.UserMapper;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -69,6 +71,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     @Autowired
     private DataPermissionUtil dataPermissionUtil;
     
+    @Autowired
+    private com.server.internshipserver.mapper.user.UserMapper userMapper;
+    
     
     @Override
     public Student getStudentByUserId(Long userId) {
@@ -78,9 +83,19 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         }
         
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Student::getUserId, userId)
-               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        return this.getOne(wrapper);
+        wrapper.eq(Student::getUserId, userId);
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        Student student = this.getOne(wrapper);
+        
+        // 验证用户是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo user = userService.getUserById(student.getUserId());
+            if (user == null || user.getDeleteFlag() == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                return null; // 用户已删除，返回null
+            }
+        }
+        
+        return student;
     }
     
     @Override
@@ -89,9 +104,20 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             return null;
         }
         
-        LambdaQueryWrapper<Student> wrapper = QueryWrapperUtil.buildNotDeletedWrapper(Student::getDeleteFlag);
+        LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Student::getStudentNo, studentNo);
-        return this.getOne(wrapper);
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        Student student = this.getOne(wrapper);
+        
+        // 验证用户是否已删除
+        if (student != null && student.getUserId() != null) {
+            UserInfo user = userService.getUserById(student.getUserId());
+            if (user == null || user.getDeleteFlag() == null || user.getDeleteFlag().equals(DeleteFlag.DELETED.getCode())) {
+                return null; // 用户已删除，返回null
+            }
+        }
+        
+        return student;
     }
     
     @Override
@@ -125,8 +151,13 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("该用户已经是学生");
         }
         
-        // 设置默认值
-        EntityDefaultValueUtil.setDefaultValuesWithEnabledStatus(student);
+        // 设置默认值（不再设置status，统一使用UserInfo.status）
+        EntityDefaultValueUtil.setDefaultValues(student);
+        
+        // 手动添加的学生不需要审核，直接设置为已审核通过
+        if (student.getAuditStatus() == null) {
+            student.setAuditStatus(AuditStatus.APPROVED.getCode());
+        }
         
         // 保存
         this.save(student);
@@ -193,8 +224,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public Page<Student> getStudentPage(Page<Student> page, StudentQueryDTO queryDTO) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
-        // 只查询未删除的数据
-        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
+        // 注意：Student表不再有deleteFlag和status字段，需要通过关联user_info表来过滤
         
         // 条件查询
         if (queryDTO != null) {
@@ -213,33 +243,50 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             if (queryDTO.getSchoolId() != null) {
                 wrapper.eq(Student::getSchoolId, queryDTO.getSchoolId());
             }
-            if (queryDTO.getStatus() != null) {
-                wrapper.eq(Student::getStatus, queryDTO.getStatus());
-            }
+            // 注意：不再通过Student.status查询，而是通过关联user_info表查询
             if (queryDTO.getEnrollmentYear() != null) {
                 wrapper.eq(Student::getEnrollmentYear, queryDTO.getEnrollmentYear());
             }
         }
         
         // 数据权限过滤：根据用户角色自动添加查询条件
-        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
-        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
-        Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        
-        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            // 班主任：只能查看管理的班级的学生（支持多班级）
-            wrapper.in(Student::getClassId, currentUserClassIds);
-        } else if (currentUserCollegeId != null) {
-            // 学院负责人：只能查看本院的学生
-            wrapper.eq(Student::getCollegeId, currentUserCollegeId);
-        } else if (currentUserSchoolId != null) {
-            // 学校管理员：只能查看本校的学生
-            wrapper.eq(Student::getSchoolId, currentUserSchoolId);
-        } else if (currentUserId != null && !dataPermissionUtil.isSystemAdmin()) {
-            // 学生：只能查看自己的信息
-            if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
-                wrapper.eq(Student::getUserId, currentUserId);
+        // 先检查用户角色，如果是班主任，必须严格按班级ID过滤
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null && !dataPermissionUtil.isSystemAdmin()) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+            // 如果用户是班主任角色，必须通过班级ID过滤
+            if (DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                // 班主任：只能查看管理的班级的学生（支持多班级）
+                // 如果没有管理的班级，返回空结果
+                if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                    wrapper.in(Student::getClassId, currentUserClassIds);
+                } else {
+                    wrapper.eq(Student::getClassId, -1L); // 返回空结果
+                }
+                // 班主任角色的权限过滤已完成，直接进入后续处理
+            } else {
+                // 非班主任角色的数据权限过滤
+                List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+                Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+                Long currentUserId = dataPermissionUtil.getCurrentUserId();
+                
+                if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                    // 学生：只能查看自己班级的学生
+                    wrapper.in(Student::getClassId, currentUserClassIds);
+                } else if (currentUserCollegeId != null) {
+                    // 学院负责人：只能查看本院的学生
+                    wrapper.eq(Student::getCollegeId, currentUserCollegeId);
+                } else if (currentUserSchoolId != null) {
+                    // 学校管理员：只能查看本校的学生
+                    wrapper.eq(Student::getSchoolId, currentUserSchoolId);
+                } else if (currentUserId != null) {
+                    // 学生：只能查看自己的信息
+                    if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
+                        wrapper.eq(Student::getUserId, currentUserId);
+                    }
+                }
             }
         }
         // 系统管理员不添加限制
@@ -248,6 +295,42 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         wrapper.orderByDesc(Student::getCreateTime);
         
         Page<Student> result = this.page(page, wrapper);
+        
+        // 通过关联user_info表过滤已删除的用户和状态不匹配的用户
+        if (EntityValidationUtil.hasRecords(result)) {
+            List<Long> userIds = result.getRecords().stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!userIds.isEmpty()) {
+                // 构建用户查询条件
+                LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<UserInfo>()
+                        .in(UserInfo::getUserId, userIds)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+                // 如果查询条件中有status，也进行过滤
+                if (queryDTO != null && queryDTO.getStatus() != null) {
+                    userWrapper.eq(UserInfo::getStatus, queryDTO.getStatus());
+                }
+                List<UserInfo> users = userService.list(userWrapper);
+                
+                java.util.Set<Long> validUserIds = users.stream()
+                        .map(UserInfo::getUserId)
+                        .collect(java.util.stream.Collectors.toSet());
+                
+                // 过滤掉已删除和状态不匹配的学生
+                result.setRecords(result.getRecords().stream()
+                        .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
+                        .collect(java.util.stream.Collectors.toList()));
+                
+                // 重新计算总数（简化处理）
+                result.setTotal(result.getRecords().size());
+            } else {
+                result.setRecords(new ArrayList<>());
+                result.setTotal(0);
+            }
+        }
         
         // 填充企业信息（如果有当前实习企业）
         if (EntityValidationUtil.hasRecords(result)) {
@@ -323,8 +406,27 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             }
         }
         
-        // 使用MyBatis Plus逻辑删除
-        return this.removeById(studentId);
+        // 权限检查：检查当前用户是否可以编辑该学生对应的用户（删除权限与编辑权限相同）
+        if (!dataPermissionUtil.canEditUser(student.getUserId())) {
+            throw new BusinessException("无权限删除该学生");
+        }
+        
+        // 软删除学生表
+        boolean studentDeleted = this.removeById(studentId);
+        
+        // 同时更新用户表：软删除和禁用状态
+        if (studentDeleted && student.getUserId() != null) {
+            UserInfo user = userService.getUserById(student.getUserId());
+            if (user != null) {
+                // 设置用户为禁用状态
+                user.setStatus(UserStatus.DISABLED.getCode());
+                // 软删除用户（注意：UserService的deleteUser方法有额外的权限检查，这里直接更新）
+                user.setDeleteFlag(DeleteFlag.DELETED.getCode());
+                userService.updateById(user);
+            }
+        }
+        
+        return studentDeleted;
     }
     
     @Override
@@ -525,7 +627,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         student.setMajorId(classInfo.getMajorId());
         student.setCollegeId(collegeId);
         student.setSchoolId(schoolId);
-        student.setStatus(UserStatus.ENABLED.getCode()); // 导入的学生不需要审核，直接启用
+        // 导入的学生不需要审核，直接设置为已审核通过
+        student.setAuditStatus(AuditStatus.APPROVED.getCode());
         this.addStudent(student);
     }
     
@@ -609,7 +712,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 ? studentImportDTO.getPassword() 
                 : Constants.DEFAULT_PASSWORD;
         
-        // 创建用户
+        // 创建用户（注册时默认为启用状态，但需要审核才能登录）
         UserInfo user = new UserInfo();
         user.setUsername(username);
         user.setPassword(password); // UserService会自动加密
@@ -618,7 +721,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         user.setIdCard(studentImportDTO.getIdCard());
         user.setPhone(studentImportDTO.getPhone());
         user.setEmail(studentImportDTO.getEmail());
-        user.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
+        user.setStatus(UserStatus.ENABLED.getCode()); // 注册时默认为启用状态
         user = userService.addUser(user);
         
         // 获取专业信息以获取collegeId
@@ -644,7 +747,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         student.setMajorId(classInfo.getMajorId());
         student.setCollegeId(collegeId);
         student.setSchoolId(schoolId);
-        student.setStatus(UserStatus.DISABLED.getCode()); // 待审核状态
+        // 注册时审核状态为待审核（status已在user中设置为启用，但需要审核才能登录）
+        student.setAuditStatus(AuditStatus.PENDING.getCode());
         student = this.addStudent(student);
         
         // 增加分享码使用次数
@@ -658,11 +762,10 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public Page<Student> getPendingApprovalStudentPage(Page<Student> page, String studentNo, String realName) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
-        // 只查询未删除的数据
-        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
+        // 注意：Student表不再有deleteFlag和status字段，需要通过关联user_info表来过滤
         
-        // 只查询待审核的学生（status=DISABLED，禁用状态）
-        wrapper.eq(Student::getStatus, UserStatus.DISABLED.getCode());
+        // 只查询待审核状态的学生（auditStatus=0）
+        wrapper.eq(Student::getAuditStatus, AuditStatus.PENDING.getCode());
         
         // 条件查询
         if (StringUtils.hasText(studentNo)) {
@@ -675,7 +778,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                     new LambdaQueryWrapper<UserInfo>()
                             .like(UserInfo::getRealName, realName)
                             .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .eq(UserInfo::getStatus, UserStatus.DISABLED.getCode()) // 待审核状态
+                            // 注意：注册时user.status默认为ENABLED，但需要审核通过才能登录，这里通过audit_status过滤，不需要再过滤status
             );
             if (users != null && !users.isEmpty()) {
                 List<Long> userIds = new ArrayList<>();
@@ -702,7 +805,42 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         // 按创建时间倒序
         wrapper.orderByDesc(Student::getCreateTime);
         
-        return this.page(page, wrapper);
+        Page<Student> result = this.page(page, wrapper);
+        
+        // 通过关联user_info表过滤已删除的用户
+        if (EntityValidationUtil.hasRecords(result)) {
+            List<Long> userIds = result.getRecords().stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!userIds.isEmpty()) {
+                // 构建用户查询条件（只过滤已删除的，待审核学生不需要按status过滤）
+                List<UserInfo> users = userService.list(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                
+                java.util.Set<Long> validUserIds = users.stream()
+                        .map(UserInfo::getUserId)
+                        .collect(java.util.stream.Collectors.toSet());
+                
+                // 过滤掉已删除的学生
+                result.setRecords(result.getRecords().stream()
+                        .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
+                        .collect(java.util.stream.Collectors.toList()));
+                
+                // 重新计算总数（简化处理）
+                result.setTotal(result.getRecords().size());
+            } else {
+                result.setRecords(new ArrayList<>());
+                result.setTotal(0);
+            }
+        }
+        
+        return result;
     }
     
     @Override
@@ -714,8 +852,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         Student student = this.getById(studentId);
         EntityValidationUtil.validateEntityExists(student, "学生");
         
-        // 检查学生状态是否为待审核
-        if (!student.getStatus().equals(UserStatus.DISABLED.getCode())) {
+        // 检查学生审核状态是否为待审核
+        if (student.getAuditStatus() == null || !student.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
             throw new BusinessException("该学生不是待审核状态");
         }
         
@@ -733,10 +871,22 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             throw new BusinessException("用户不存在");
         }
         
+        // 设置审核状态（auditStatus），这是主要的审核结果字段
+        Integer auditStatus = approved ? AuditStatus.APPROVED.getCode() : AuditStatus.REJECTED.getCode();
+        student.setAuditStatus(auditStatus);
+        student.setAuditOpinion(auditOpinion);
+        student.setAuditTime(java.time.LocalDateTime.now());
+        
+        // 获取当前用户作为审核人
+        com.server.internshipserver.domain.user.UserInfo currentUser = com.server.internshipserver.common.utils.UserUtil.getCurrentUserOrNull(userMapper);
+        if (currentUser != null) {
+            student.setAuditorId(currentUser.getUserId());
+        }
+        
+        // 根据审核状态（auditStatus）设置启用状态（status）
         if (approved) {
-            // 审核通过：激活用户账号
+            // 审核通过：激活用户账号（统一使用user.status）
             user.setStatus(UserStatus.ENABLED.getCode());
-            student.setStatus(UserStatus.ENABLED.getCode());
             
             // 权限检查：检查当前用户是否可以分配学生角色
             if (!dataPermissionUtil.canAssignRole(Constants.ROLE_STUDENT)) {
@@ -746,11 +896,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             // 分配学生角色
             userService.assignRoleToUser(user.getUserId(), Constants.ROLE_STUDENT);
         } else {
-            // 审核拒绝：保持禁用状态（status=DISABLED），或者可以软删除
-            // 这里选择保持status=DISABLED，表示审核被拒绝
-            // 如果需要，可以添加一个拒绝原因字段
+            // 审核拒绝：保持禁用状态（统一使用user.status）
             user.setStatus(UserStatus.DISABLED.getCode());
-            student.setStatus(UserStatus.DISABLED.getCode());
         }
         
         // 更新用户和学生状态
@@ -764,8 +911,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public List<Student> getAllStudents(StudentQueryDTO queryDTO) {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         
-        // 只查询未删除的数据
-        QueryWrapperUtil.notDeleted(wrapper, Student::getDeleteFlag);
+        // 注意：Student表不再有deleteFlag和status字段，需要通过关联user_info表来过滤
         
         // 条件查询
         if (queryDTO != null) {
@@ -784,33 +930,50 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
             if (queryDTO.getSchoolId() != null) {
                 wrapper.eq(Student::getSchoolId, queryDTO.getSchoolId());
             }
-            if (queryDTO.getStatus() != null) {
-                wrapper.eq(Student::getStatus, queryDTO.getStatus());
-            }
+            // 注意：不再通过Student.status查询，而是通过关联user_info表查询
             if (queryDTO.getEnrollmentYear() != null) {
                 wrapper.eq(Student::getEnrollmentYear, queryDTO.getEnrollmentYear());
             }
         }
         
         // 数据权限过滤：根据用户角色自动添加查询条件
-        List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
-        Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
-        Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
-        Long currentUserId = dataPermissionUtil.getCurrentUserId();
-        
-        if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            // 班主任：只能查看管理的班级的学生（支持多班级）
-            wrapper.in(Student::getClassId, currentUserClassIds);
-        } else if (currentUserCollegeId != null) {
-            // 学院负责人：只能查看本院的学生
-            wrapper.eq(Student::getCollegeId, currentUserCollegeId);
-        } else if (currentUserSchoolId != null) {
-            // 学校管理员：只能查看本校的学生
-            wrapper.eq(Student::getSchoolId, currentUserSchoolId);
-        } else if (currentUserId != null && !dataPermissionUtil.isSystemAdmin()) {
-            // 学生：只能查看自己的信息
-            if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
-                wrapper.eq(Student::getUserId, currentUserId);
+        // 先检查用户角色，如果是班主任，必须严格按班级ID过滤
+        UserInfo user = UserUtil.getCurrentUserOrNull(userMapper);
+        if (user != null && !dataPermissionUtil.isSystemAdmin()) {
+            List<String> roleCodes = userMapper.selectRoleCodesByUserId(user.getUserId());
+            // 如果用户是班主任角色，必须通过班级ID过滤
+            if (DataPermissionUtil.hasRole(roleCodes, Constants.ROLE_CLASS_TEACHER)) {
+                List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                // 班主任：只能查看管理的班级的学生（支持多班级）
+                // 如果没有管理的班级，返回空结果
+                if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                    wrapper.in(Student::getClassId, currentUserClassIds);
+                } else {
+                    wrapper.eq(Student::getClassId, -1L); // 返回空结果
+                }
+                // 班主任角色的权限过滤已完成，直接进入后续处理
+            } else {
+                // 非班主任角色的数据权限过滤
+                List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
+                Long currentUserCollegeId = dataPermissionUtil.getCurrentUserCollegeId();
+                Long currentUserSchoolId = dataPermissionUtil.getCurrentUserSchoolId();
+                Long currentUserId = dataPermissionUtil.getCurrentUserId();
+                
+                if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
+                    // 学生：只能查看自己班级的学生
+                    wrapper.in(Student::getClassId, currentUserClassIds);
+                } else if (currentUserCollegeId != null) {
+                    // 学院负责人：只能查看本院的学生
+                    wrapper.eq(Student::getCollegeId, currentUserCollegeId);
+                } else if (currentUserSchoolId != null) {
+                    // 学校管理员：只能查看本校的学生
+                    wrapper.eq(Student::getSchoolId, currentUserSchoolId);
+                } else if (currentUserId != null) {
+                    // 学生：只能查看自己的信息
+                    if (dataPermissionUtil.hasRole(Constants.ROLE_STUDENT)) {
+                        wrapper.eq(Student::getUserId, currentUserId);
+                    }
+                }
             }
         }
         // 系统管理员不添加限制
@@ -820,16 +983,48 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         List<Student> students = this.list(wrapper);
         
+        // 通过关联user_info表过滤已删除和状态不匹配的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!userIds.isEmpty()) {
+                // 构建用户查询条件
+                LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<UserInfo>()
+                        .in(UserInfo::getUserId, userIds)
+                        .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode());
+                // 如果查询条件中有status，也进行过滤
+                if (queryDTO != null && queryDTO.getStatus() != null) {
+                    userWrapper.eq(UserInfo::getStatus, queryDTO.getStatus());
+                }
+                List<UserInfo> users = userService.list(userWrapper);
+                
+                java.util.Set<Long> validUserIds = users.stream()
+                        .map(UserInfo::getUserId)
+                        .collect(java.util.stream.Collectors.toSet());
+                
+                // 过滤掉已删除和状态不匹配的学生
+                students = students.stream()
+                        .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
+                        .collect(java.util.stream.Collectors.toList());
+            } else {
+                students = new ArrayList<>();
+            }
+        }
+        
         // 填充关联信息
         if (students != null && !students.isEmpty()) {
             for (Student student : students) {
                 // 填充用户信息
                 if (student.getUserId() != null) {
-                    UserInfo user = userService.getById(student.getUserId());
-                    if (user != null) {
-                        student.setRealName(user.getRealName());
-                        student.setPhone(user.getPhone());
-                        student.setEmail(user.getEmail());
+                    UserInfo studentUser = userService.getById(student.getUserId());
+                    if (studentUser != null) {
+                        student.setRealName(studentUser.getRealName());
+                        student.setPhone(studentUser.getPhone());
+                        student.setEmail(studentUser.getEmail());
                     }
                 }
                 
@@ -865,9 +1060,17 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                     }
                 }
                 
-                // 转换状态文字
-                if (student.getStatus() != null) {
-                    student.setStatusText(student.getStatus() == 1 ? "已审核" : "待审核");
+                // 转换状态文字（使用audit_status）
+                if (student.getAuditStatus() != null) {
+                    if (student.getAuditStatus().equals(AuditStatus.APPROVED.getCode())) {
+                        student.setStatusText("已审核");
+                    } else if (student.getAuditStatus().equals(AuditStatus.PENDING.getCode())) {
+                        student.setStatusText("待审核");
+                    } else if (student.getAuditStatus().equals(AuditStatus.REJECTED.getCode())) {
+                        student.setStatusText("已拒绝");
+                    } else {
+                        student.setStatusText("");
+                    }
                 } else {
                     student.setStatusText("");
                 }
@@ -889,7 +1092,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public List<Integer> getDistinctEnrollmentYears() {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(Student::getEnrollmentYear)
-               .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+               // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
                .isNotNull(Student::getEnrollmentYear)
                .groupBy(Student::getEnrollmentYear)
                .orderByDesc(Student::getEnrollmentYear);

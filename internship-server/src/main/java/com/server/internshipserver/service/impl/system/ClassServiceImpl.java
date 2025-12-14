@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.constant.ConfigKeys;
+import com.server.internshipserver.common.enums.AuditStatus;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.UserStatus;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
@@ -309,12 +310,28 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
         // 检查是否有学生关联，如果有学生则不允许停用
-        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
-        studentWrapper.eq(Student::getClassId, classId)
-                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        long studentCount = studentMapper.selectCount(studentWrapper);
-        if (studentCount > 0) {
-            throw new BusinessException("该班级下还有" + studentCount + "名学生，不允许停用");
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getClassId, classId)
+        );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            if (!userIds.isEmpty()) {
+                long validStudentCount = userMapper.selectCount(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (validStudentCount > 0) {
+                    throw new BusinessException("该班级下还有" + validStudentCount + "名学生，不允许停用");
+                }
+            }
         }
         
         // 只设置停用状态，不删除数据
@@ -344,12 +361,28 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
         // 检查是否有学生关联，如果有学生则不允许删除
-        LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
-        studentWrapper.eq(Student::getClassId, classId)
-                     .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode());
-        long studentCount = studentMapper.selectCount(studentWrapper);
-        if (studentCount > 0) {
-            throw new BusinessException("该班级下还有" + studentCount + "名学生，不允许删除");
+        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+        List<Student> students = studentMapper.selectList(
+                new LambdaQueryWrapper<Student>()
+                        .eq(Student::getClassId, classId)
+        );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
+            if (!userIds.isEmpty()) {
+                long validStudentCount = userMapper.selectCount(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                );
+                if (validStudentCount > 0) {
+                    throw new BusinessException("该班级下还有" + validStudentCount + "名学生，不允许删除");
+                }
+            }
         }
         
         // 使用MyBatis Plus逻辑删除
@@ -444,13 +477,41 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         if (StringUtils.hasText(classInfo.getShareCode()) && classInfo.getShareCodeGenerateTime() != null) {
             // 查询该班级中通过分享码注册的学生数量
             // 通过创建时间和班级ID来判断（分享码注册的学生创建时间应该在分享码生成时间之后）
-            registeredStudentCount = studentMapper.selectCount(
+            // 注意：Student表不再有deleteFlag和status字段，需要通过关联user_info表来过滤
+            List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getClassId, classId)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .eq(Student::getStatus, UserStatus.ENABLED.getCode()) // 已审核通过
                             .ge(Student::getCreateTime, classInfo.getShareCodeGenerateTime())
             );
+            // 通过关联user_info表过滤已删除和已审核通过的学生
+            if (students != null && !students.isEmpty()) {
+                List<Long> userIds = students.stream()
+                        .map(Student::getUserId)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .collect(java.util.stream.Collectors.toList());
+                if (!userIds.isEmpty()) {
+                    // 过滤：已删除标志=正常 且 状态=启用 且 审核状态=已通过
+                    List<UserInfo> validUsers = userMapper.selectList(
+                            new LambdaQueryWrapper<UserInfo>()
+                                    .in(UserInfo::getUserId, userIds)
+                                    .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                    .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
+                    );
+                    // 进一步检查学生的审核状态
+                    if (validUsers != null && !validUsers.isEmpty()) {
+                        List<Long> validUserIds = validUsers.stream()
+                                .map(UserInfo::getUserId)
+                                .collect(java.util.stream.Collectors.toList());
+                        registeredStudentCount = students.stream()
+                                .filter(student -> student.getUserId() != null 
+                                        && validUserIds.contains(student.getUserId())
+                                        && student.getAuditStatus() != null 
+                                        && student.getAuditStatus().equals(AuditStatus.APPROVED.getCode()))
+                                .count();
+                    }
+                }
+            }
         }
         
         Map<String, Object> data = new HashMap<>();

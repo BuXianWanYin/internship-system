@@ -41,6 +41,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -501,12 +502,40 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据班级ID列表获取申请ID列表
      */
     private List<Long> getApplyIdsByClassIds(List<Long> classIds) {
+            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, classIds)
-                            .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                            .select(Student::getStudentId)
+                            .select(Student::getStudentId, Student::getUserId)
             );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = userMapper.selectList(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
+                    students = students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                            .collect(Collectors.toList());
+                } else {
+                    students = new ArrayList<>();
+                }
+            } else {
+                students = new ArrayList<>();
+            }
+        }
         
         if (students == null || students.isEmpty()) {
             return null;
@@ -523,12 +552,40 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学院ID获取申请ID列表
      */
     private List<Long> getApplyIdsByCollegeId(Long collegeId) {
+                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
+                                .select(Student::getStudentId, Student::getUserId)
                 );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = userMapper.selectList(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
+                    students = students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                            .collect(Collectors.toList());
+                } else {
+                    students = new ArrayList<>();
+                }
+            } else {
+                students = new ArrayList<>();
+            }
+        }
         
         if (students == null || students.isEmpty()) {
             return null;
@@ -545,12 +602,40 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学校ID获取申请ID列表
      */
     private List<Long> getApplyIdsBySchoolId(Long schoolId) {
+                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
-                                .eq(Student::getDeleteFlag, DeleteFlag.NORMAL.getCode())
-                                .select(Student::getStudentId)
+                                .select(Student::getStudentId, Student::getUserId)
                 );
+        // 通过关联user_info表过滤已删除的学生
+        if (students != null && !students.isEmpty()) {
+            List<Long> userIds = students.stream()
+                    .map(Student::getUserId)
+                    .filter(java.util.Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!userIds.isEmpty()) {
+                List<UserInfo> validUsers = userMapper.selectList(
+                        new LambdaQueryWrapper<UserInfo>()
+                                .in(UserInfo::getUserId, userIds)
+                                .eq(UserInfo::getDeleteFlag, DeleteFlag.NORMAL.getCode())
+                                .select(UserInfo::getUserId)
+                );
+                if (validUsers != null && !validUsers.isEmpty()) {
+                    List<Long> validUserIds = validUsers.stream()
+                            .map(UserInfo::getUserId)
+                            .collect(Collectors.toList());
+                    students = students.stream()
+                            .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
+                            .collect(Collectors.toList());
+                } else {
+                    students = new ArrayList<>();
+                }
+            } else {
+                students = new ArrayList<>();
+            }
+        }
         
         if (students == null || students.isEmpty()) {
             return null;
