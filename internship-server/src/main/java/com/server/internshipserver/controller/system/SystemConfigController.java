@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+import java.util.HashMap;
+
 /**
  * 系统配置管理控制器
  */
@@ -91,8 +94,8 @@ public class SystemConfigController {
     
     @ApiOperation("获取评价权重配置（公开接口，所有已登录用户可访问）")
     @GetMapping("/evaluation-weights")
-    public Result<java.util.Map<String, String>> getEvaluationWeights() {
-        java.util.Map<String, String> weights = new java.util.HashMap<>();
+    public Result<Map<String, String>> getEvaluationWeights() {
+        Map<String, String> weights = new HashMap<>();
         
         // 合作企业实习权重
         SystemConfig enterpriseWeight = systemConfigService.getConfigByKey("enterprise_evaluation_weight");

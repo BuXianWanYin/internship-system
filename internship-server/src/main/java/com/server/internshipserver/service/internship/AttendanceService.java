@@ -6,6 +6,8 @@ import com.server.internshipserver.domain.internship.Attendance;
 import com.server.internshipserver.domain.internship.dto.AttendanceStatistics;
 
 import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 考勤管理Service接口
@@ -52,7 +54,7 @@ public interface AttendanceService extends IService<Attendance> {
      * @return 考勤列表
      */
     Page<Attendance> getAttendancePage(Page<Attendance> page, Long studentId, Long applyId,
-                                     java.time.LocalDate attendanceDate, Integer attendanceType, Integer confirmStatus);
+                                     LocalDate attendanceDate, Integer attendanceType, Integer confirmStatus);
     
     /**
      * 确认考勤
@@ -64,7 +66,7 @@ public interface AttendanceService extends IService<Attendance> {
      * @return 是否成功
      */
     boolean confirmAttendance(Long attendanceId, Integer confirmStatus, String confirmComment, 
-                             java.time.LocalDateTime checkInTime, java.time.LocalDateTime checkOutTime);
+                             LocalDateTime checkInTime, LocalDateTime checkOutTime);
     
     /**
      * 删除考勤（软删除）
@@ -82,7 +84,7 @@ public interface AttendanceService extends IService<Attendance> {
      * @return 考勤统计信息
      */
     AttendanceStatistics getAttendanceStatistics(
-            Long studentId, Long applyId, java.time.LocalDate startDate, java.time.LocalDate endDate);
+            Long studentId, Long applyId, LocalDate startDate, LocalDate endDate);
     
     /**
      * 学生签到
@@ -90,7 +92,7 @@ public interface AttendanceService extends IService<Attendance> {
      * @param timeSlotId 时间段ID（可选，如果考勤组只有一个时间段则自动使用）
      * @return 考勤信息
      */
-    Attendance studentCheckIn(java.time.LocalDate attendanceDate, Long timeSlotId);
+    Attendance studentCheckIn(LocalDate attendanceDate, Long timeSlotId);
     
     /**
      * 学生签退
@@ -98,7 +100,7 @@ public interface AttendanceService extends IService<Attendance> {
      * @param timeSlotId 时间段ID（可选，如果考勤组只有一个时间段则自动使用）
      * @return 考勤信息
      */
-    Attendance studentCheckOut(java.time.LocalDate attendanceDate, Long timeSlotId);
+    Attendance studentCheckOut(LocalDate attendanceDate, Long timeSlotId);
     
     /**
      * 学生申请请假
@@ -107,14 +109,14 @@ public interface AttendanceService extends IService<Attendance> {
      * @param leaveReason 请假原因
      * @return 考勤信息
      */
-    Attendance studentApplyLeave(java.time.LocalDate attendanceDate, String leaveType, String leaveReason);
+    Attendance studentApplyLeave(LocalDate attendanceDate, String leaveType, String leaveReason);
     
     /**
      * 学生选择休息
      * @param attendanceDate 考勤日期
      * @return 考勤信息
      */
-    Attendance studentSelectRest(java.time.LocalDate attendanceDate);
+    Attendance studentSelectRest(LocalDate attendanceDate);
     
     /**
      * 获取今天的考勤记录（学生端）

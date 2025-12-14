@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -154,6 +155,9 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
         
+        // 判断是否为系统管理员（系统管理员不限制）
+        boolean isSystemAdmin = dataPermissionUtil.isSystemAdmin();
+        
         // 企业管理员：只能查看自己企业的岗位
         if (currentUserEnterpriseId != null) {
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
@@ -162,6 +166,10 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly()) {
             if (cooperationEnterpriseIds == null) {
                 // 系统管理员，不限制
+                if (!isSystemAdmin) {
+                    // 非系统管理员但返回null，返回空列表
+                    return page;
+                }
             } else if (cooperationEnterpriseIds.isEmpty()) {
                 // 如果没有合作关系，返回空列表
                 return page;
@@ -178,16 +186,17 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
             }
         }
         // 学校管理员、学院负责人和班主任：只显示合作企业的岗位
-        else if (cooperationEnterpriseIds != null) {
-            // 如果不是null（系统管理员返回null，不限制），则需要过滤
-            if (cooperationEnterpriseIds.isEmpty()) {
-                // 如果没有合作关系，返回空结果
+        // 注意：必须对非系统管理员用户进行过滤，即使cooperationEnterpriseIds为null（异常情况）也要过滤
+        else if (!isSystemAdmin) {
+            // 非系统管理员（学校管理员、学院负责人、班主任）必须过滤
+            if (cooperationEnterpriseIds == null || cooperationEnterpriseIds.isEmpty()) {
+                // 如果没有合作关系或返回null（异常情况），返回空结果
                 wrapper.eq(InternshipPost::getEnterpriseId, -1L);
             } else {
                 wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
             }
         }
-        // 如果cooperationEnterpriseIds为null（系统管理员），不添加限制
+        // 系统管理员不添加限制（cooperationEnterpriseIds为null）
         
         // 条件查询
         if (queryDTO != null) {
@@ -239,8 +248,9 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         
         // 根据审核结果设置岗位状态
         if (auditStatus.equals(AuditStatus.APPROVED.getCode())) {
-            // 审核通过：设置为已通过状态，等待企业管理员发布
-            post.setStatus(InternshipPostStatus.APPROVED.getCode());
+            // 审核通过：直接设置为已发布状态，并设置发布时间
+            post.setStatus(InternshipPostStatus.PUBLISHED.getCode());
+            post.setPublishTime(LocalDateTime.now());
         } else if (auditStatus.equals(AuditStatus.REJECTED.getCode())) {
             // 审核拒绝：设置为已拒绝状态
             post.setStatus(InternshipPostStatus.REJECTED.getCode());
@@ -408,6 +418,9 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         Long currentUserEnterpriseId = dataPermissionUtil.getCurrentUserEnterpriseId();
         List<Long> cooperationEnterpriseIds = dataPermissionUtil.getCooperationEnterpriseIds();
         
+        // 判断是否为系统管理员（系统管理员不限制）
+        boolean isSystemAdmin = dataPermissionUtil.isSystemAdmin();
+        
         // 企业管理员：只能查看自己企业的岗位
         if (currentUserEnterpriseId != null) {
             wrapper.eq(InternshipPost::getEnterpriseId, currentUserEnterpriseId);
@@ -416,24 +429,29 @@ public class InternshipPostServiceImpl extends ServiceImpl<InternshipPostMapper,
         else if (queryDTO != null && queryDTO.getCooperationOnly() != null && queryDTO.getCooperationOnly()) {
             if (cooperationEnterpriseIds == null) {
                 // 系统管理员，不限制
+                if (!isSystemAdmin) {
+                    // 非系统管理员但返回null，返回空列表
+                    return new ArrayList<>();
+                }
             } else if (cooperationEnterpriseIds.isEmpty()) {
                 // 如果没有合作关系，返回空列表
-                return new java.util.ArrayList<>();
+                return new ArrayList<>();
             } else {
                 wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
             }
         }
         // 学校管理员、学院负责人和班主任：只显示合作企业的岗位
-        else if (cooperationEnterpriseIds != null) {
-            // 如果不是null（系统管理员返回null，不限制），则需要过滤
-            if (cooperationEnterpriseIds.isEmpty()) {
-                // 如果没有合作关系，返回空结果
+        // 注意：必须对非系统管理员用户进行过滤，即使cooperationEnterpriseIds为null（异常情况）也要过滤
+        else if (!isSystemAdmin) {
+            // 非系统管理员（学校管理员、学院负责人、班主任）必须过滤
+            if (cooperationEnterpriseIds == null || cooperationEnterpriseIds.isEmpty()) {
+                // 如果没有合作关系或返回null（异常情况），返回空结果
                 wrapper.eq(InternshipPost::getEnterpriseId, -1L);
             } else {
                 wrapper.in(InternshipPost::getEnterpriseId, cooperationEnterpriseIds);
             }
         }
-        // 如果cooperationEnterpriseIds为null（系统管理员），不添加限制
+        // 系统管理员不添加限制（cooperationEnterpriseIds为null）
         
         // 条件查询
         if (queryDTO != null) {

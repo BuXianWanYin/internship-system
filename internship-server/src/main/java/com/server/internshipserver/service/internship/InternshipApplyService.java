@@ -7,6 +7,9 @@ import com.server.internshipserver.domain.internship.dto.AuditApplyDTO;
 import com.server.internshipserver.domain.internship.dto.FilterApplyDTO;
 import com.server.internshipserver.domain.internship.dto.InternshipApplyQueryDTO;
 
+import java.util.List;
+import java.time.LocalDate;
+
 /**
  * 实习申请管理Service接口
  * 提供实习申请的提交、审核、筛选等业务功能
@@ -136,7 +139,7 @@ public interface InternshipApplyService extends IService<InternshipApply> {
      * @param endDate 实习结束日期（可选，不传则使用当前日期）
      * @param remark 备注
      */
-    void completeInternship(Long applyId, java.time.LocalDate endDate, String remark);
+    void completeInternship(Long applyId, LocalDate endDate, String remark);
     
     /**
      * 批量结束实习
@@ -144,6 +147,6 @@ public interface InternshipApplyService extends IService<InternshipApply> {
      * @param endDate 实习结束日期（可选，不传则使用当前日期）
      * @param remark 备注
      */
-    void batchCompleteInternship(java.util.List<Long> applyIds, java.time.LocalDate endDate, String remark);
+    void batchCompleteInternship(List<Long> applyIds, LocalDate endDate, String remark);
 }
 

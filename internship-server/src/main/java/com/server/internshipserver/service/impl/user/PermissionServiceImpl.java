@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -85,7 +86,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
                             .eq(Permission::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
         }
-        return java.util.Collections.emptyList();
+        return Collections.emptyList();
     }
     
     @Override
@@ -111,7 +112,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
                         .select(UserRole::getRoleId)
         );
         if (userRoles == null || userRoles.isEmpty()) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         
         List<Long> roleIds = userRoles.stream()
@@ -126,7 +127,7 @@ public class PermissionServiceImpl extends ServiceImpl<PermissionMapper, Permiss
                         .select(RolePermission::getPermissionId)
         );
         if (rolePermissions == null || rolePermissions.isEmpty()) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         
         // 去重permission_id

@@ -32,6 +32,7 @@ import com.server.internshipserver.common.utils.ExcelUtil;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 实习计划管理控制器
@@ -147,7 +148,7 @@ public class InternshipPlanController {
     @ApiOperation("获取学生可用的实习计划列表")
     @PreAuthorize("hasRole('ROLE_STUDENT')")
     @GetMapping("/available")
-    public Result<java.util.List<InternshipPlan>> getAvailablePlans() {
+    public Result<List<InternshipPlan>> getAvailablePlans() {
         // 获取当前登录学生信息
         UserInfo user = UserUtil.getCurrentUser(userMapper);
         
@@ -167,7 +168,7 @@ public class InternshipPlanController {
             return Result.error("学生信息不存在");
         }
         
-        java.util.List<InternshipPlan> plans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
+        List<InternshipPlan> plans = internshipPlanService.getAvailablePlansForStudent(student.getStudentId());
         return Result.success(plans);
     }
     
@@ -221,19 +222,19 @@ public class InternshipPlanController {
             // 转换日期
             if (plan.getStartDate() != null) {
                 plan.setStartDateText(plan.getStartDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 plan.setStartDateText("");
             }
             if (plan.getEndDate() != null) {
                 plan.setEndDateText(plan.getEndDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 plan.setEndDateText("");
             }
             if (plan.getCreateTime() != null) {
                 plan.setCreateTimeText(plan.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 plan.setCreateTimeText("");
             }

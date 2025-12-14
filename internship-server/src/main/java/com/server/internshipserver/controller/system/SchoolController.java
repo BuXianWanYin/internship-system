@@ -23,6 +23,7 @@ import com.server.internshipserver.common.utils.ExcelUtil;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 学校管理控制器
@@ -112,7 +113,7 @@ public class SchoolController {
             // 转换创建时间
             if (school.getCreateTime() != null) {
                 school.setCreateTimeText(school.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 school.setCreateTimeText("");
             }

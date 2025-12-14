@@ -39,9 +39,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 学生管理Service实现类
@@ -84,7 +89,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Student::getUserId, userId);
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         Student student = this.getOne(wrapper);
         
         // 验证用户是否已删除
@@ -106,7 +111,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Student::getStudentNo, studentNo);
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         Student student = this.getOne(wrapper);
         
         // 验证用户是否已删除
@@ -300,9 +305,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         if (EntityValidationUtil.hasRecords(result)) {
             List<Long> userIds = result.getRecords().stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 // 构建用户查询条件
@@ -315,14 +320,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 }
                 List<UserInfo> users = userService.list(userWrapper);
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 // 过滤掉已删除和状态不匹配的学生
                 result.setRecords(result.getRecords().stream()
                         .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
-                        .collect(java.util.stream.Collectors.toList()));
+                        .collect(Collectors.toList()));
                 
                 // 重新计算总数（简化处理）
                 result.setTotal(result.getRecords().size());
@@ -811,8 +816,8 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         if (EntityValidationUtil.hasRecords(result)) {
             List<Long> userIds = result.getRecords().stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toList());
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 // 构建用户查询条件（只过滤已删除的，待审核学生不需要按status过滤）
@@ -823,14 +828,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                                 .select(UserInfo::getUserId)
                 );
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 // 过滤掉已删除的学生
                 result.setRecords(result.getRecords().stream()
                         .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
-                        .collect(java.util.stream.Collectors.toList()));
+                        .collect(Collectors.toList()));
                 
                 // 重新计算总数（简化处理）
                 result.setTotal(result.getRecords().size());
@@ -875,7 +880,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         Integer auditStatus = approved ? AuditStatus.APPROVED.getCode() : AuditStatus.REJECTED.getCode();
         student.setAuditStatus(auditStatus);
         student.setAuditOpinion(auditOpinion);
-        student.setAuditTime(java.time.LocalDateTime.now());
+        student.setAuditTime(LocalDateTime.now());
         
         // 获取当前用户作为审核人
         com.server.internshipserver.domain.user.UserInfo currentUser = com.server.internshipserver.common.utils.UserUtil.getCurrentUserOrNull(userMapper);
@@ -987,9 +992,9 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 // 构建用户查询条件
@@ -1002,14 +1007,14 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 }
                 List<UserInfo> users = userService.list(userWrapper);
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 // 过滤掉已删除和状态不匹配的学生
                 students = students.stream()
                         .filter(student -> student.getUserId() != null && validUserIds.contains(student.getUserId()))
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
             } else {
                 students = new ArrayList<>();
             }
@@ -1078,7 +1083,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                 // 转换创建时间
                 if (student.getCreateTime() != null) {
                     student.setCreateTimeText(student.getCreateTime().format(
-                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
                 } else {
                     student.setCreateTimeText("");
                 }
@@ -1092,7 +1097,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
     public List<Integer> getDistinctEnrollmentYears() {
         LambdaQueryWrapper<Student> wrapper = new LambdaQueryWrapper<>();
         wrapper.select(Student::getEnrollmentYear)
-               // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+               = 
                .isNotNull(Student::getEnrollmentYear)
                .groupBy(Student::getEnrollmentYear)
                .orderByDesc(Student::getEnrollmentYear);
@@ -1102,7 +1107,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
                        .map(Student::getEnrollmentYear)
                        .distinct()
                        .sorted((a, b) -> b.compareTo(a)) // 降序排列
-                       .collect(java.util.stream.Collectors.toList());
+                       .collect(Collectors.toList());
     }
 }
 

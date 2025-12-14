@@ -26,8 +26,11 @@ import com.server.internshipserver.mapper.system.CollegeMapper;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.Objects;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 专业管理控制器
@@ -137,7 +140,7 @@ public class MajorController {
             if (!collegeIds.isEmpty()) {
                 List<College> colleges = collegeMapper.selectBatchIds(collegeIds);
                 if (colleges != null && !colleges.isEmpty()) {
-                    java.util.Map<Long, Long> collegeSchoolMap = colleges.stream()
+                    Map<Long, Long> collegeSchoolMap = colleges.stream()
                             .filter(c -> c != null && c.getCollegeId() != null && c.getSchoolId() != null)
                             .collect(Collectors.toMap(College::getCollegeId, College::getSchoolId, (v1, v2) -> v1));
                     
@@ -147,7 +150,7 @@ public class MajorController {
                             .distinct()
                             .collect(Collectors.toList());
                     
-                    java.util.Map<Long, String> schoolNameMap = new java.util.HashMap<>();
+                    Map<Long, String> schoolNameMap = new HashMap<>();
                     for (Long sid : schoolIds) {
                         try {
                             com.server.internshipserver.domain.system.School school = schoolService.getSchoolById(sid);
@@ -180,7 +183,7 @@ public class MajorController {
             }
             if (major.getCreateTime() != null) {
                 major.setCreateTimeText(major.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 major.setCreateTimeText("");
             }

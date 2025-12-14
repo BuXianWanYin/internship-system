@@ -33,8 +33,10 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.Objects;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 班级管理控制器
@@ -220,7 +222,7 @@ public class ClassController {
                 // 查询专业信息
                 List<Major> majors = majorMapper.selectBatchIds(majorIds);
                 if (majors != null && !majors.isEmpty()) {
-                    java.util.Map<Long, Major> majorMap = majors.stream()
+                    Map<Long, Major> majorMap = majors.stream()
                             .filter(m -> m != null && m.getMajorId() != null)
                             .collect(Collectors.toMap(Major::getMajorId, m -> m, (v1, v2) -> v1));
                     
@@ -232,7 +234,7 @@ public class ClassController {
                             .collect(Collectors.toList());
                     
                     // 查询学院信息
-                    java.util.Map<Long, College> collegeMap = new java.util.HashMap<>();
+                    Map<Long, College> collegeMap = new HashMap<>();
                     List<College> colleges = null;
                     if (!collegeIds.isEmpty()) {
                         colleges = collegeMapper.selectBatchIds(collegeIds);
@@ -244,7 +246,7 @@ public class ClassController {
                     }
                     
                     // 获取所有学校ID并查询学校信息
-                    java.util.Map<Long, String> schoolNameMap = new java.util.HashMap<>();
+                    Map<Long, String> schoolNameMap = new HashMap<>();
                     if (colleges != null && !colleges.isEmpty()) {
                         List<Long> schoolIds = colleges.stream()
                                 .map(College::getSchoolId)
@@ -272,7 +274,7 @@ public class ClassController {
                             .collect(Collectors.toList());
                     
                     // 查询班主任信息
-                    java.util.Map<Long, String> teacherNameMap = new java.util.HashMap<>();
+                    Map<Long, String> teacherNameMap = new HashMap<>();
                     if (!teacherUserIds.isEmpty()) {
                         List<UserInfo> teachers = userMapper.selectBatchIds(teacherUserIds);
                         if (teachers != null && !teachers.isEmpty()) {
@@ -316,7 +318,7 @@ public class ClassController {
             }
             if (classInfo.getCreateTime() != null) {
                 classInfo.setCreateTimeText(classInfo.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 classInfo.setCreateTimeText("");
             }

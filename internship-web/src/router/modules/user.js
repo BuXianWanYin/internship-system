@@ -90,6 +90,16 @@ export default [
     }
   },
   {
+    path: '/enterprise/info',
+    name: 'EnterpriseInfoManagement',
+    component: () => import('@/views/enterprise/EnterpriseInfoManagement.vue'),
+    meta: {
+      title: '企业信息管理',
+      requiresAuth: true,
+      roles: ['ROLE_ENTERPRISE_ADMIN']
+    }
+  },
+  {
     path: '/admin/cooperation/audit',
     name: 'CooperationAudit',
     component: () => import('@/views/admin/CooperationAudit.vue'),

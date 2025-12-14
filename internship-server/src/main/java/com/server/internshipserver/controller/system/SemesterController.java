@@ -25,6 +25,7 @@ import com.server.internshipserver.service.system.SchoolService;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 import java.util.Objects;
 
@@ -174,19 +175,19 @@ public class SemesterController {
             }
             if (semester.getStartDate() != null) {
                 semester.setStartDateText(semester.getStartDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 semester.setStartDateText("");
             }
             if (semester.getEndDate() != null) {
                 semester.setEndDateText(semester.getEndDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 semester.setEndDateText("");
             }
             if (semester.getCreateTime() != null) {
                 semester.setCreateTimeText(semester.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 semester.setCreateTimeText("");
             }

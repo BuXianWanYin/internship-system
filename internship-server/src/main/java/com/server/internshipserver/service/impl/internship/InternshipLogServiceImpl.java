@@ -35,6 +35,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -416,7 +418,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
         if (schoolId != null) {
             // 查询本学校的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getSchoolId, schoolId)
@@ -426,7 +428,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -469,7 +471,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
         if (collegeId != null) {
             // 查询本学院的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getCollegeId, collegeId)
@@ -479,7 +481,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -522,7 +524,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
         List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
         if (classIds != null && !classIds.isEmpty()) {
             // 查询管理的班级的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, classIds)
@@ -532,7 +534,7 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -550,10 +552,10 @@ public class InternshipLogServiceImpl extends ServiceImpl<InternshipLogMapper, I
                                 .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                                 .collect(Collectors.toList());
                     } else {
-                        students = java.util.Collections.emptyList();
+                        students = Collections.emptyList();
                     }
                 } else {
-                    students = java.util.Collections.emptyList();
+                    students = Collections.emptyList();
                 }
             }
             if (students != null && !students.isEmpty()) {

@@ -58,6 +58,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 
@@ -1476,7 +1478,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setStudentConfirmTime(LocalDateTime.now());
         // 如果实习开始日期为空，设置为当前日期
         if (apply.getInternshipStartDate() == null) {
-            apply.setInternshipStartDate(java.time.LocalDate.now());
+            apply.setInternshipStartDate(LocalDate.now());
         }
     }
     
@@ -1812,7 +1814,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
         if (collegeId != null) {
             // 查询该学院下的所有学生ID
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getCollegeId, collegeId)
@@ -1822,7 +1824,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             if (EntityValidationUtil.isNotEmpty(students)) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -1865,7 +1867,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         List<Long> managedClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (EntityValidationUtil.isNotEmpty(managedClassIds)) {
             // 查询这些班级下的所有学生ID
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, managedClassIds)
@@ -1875,7 +1877,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
             if (EntityValidationUtil.isNotEmpty(students)) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -1893,10 +1895,10 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
                                 .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                                 .collect(Collectors.toList());
                     } else {
-                        students = java.util.Collections.emptyList();
+                        students = Collections.emptyList();
                     }
                 } else {
-                    students = java.util.Collections.emptyList();
+                    students = Collections.emptyList();
                 }
             }
             if (EntityValidationUtil.isNotEmpty(students)) {
@@ -2204,7 +2206,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setStudentConfirmStatus(StudentConfirmStatus.CONFIRMED.getCode());
         apply.setStudentConfirmTime(LocalDateTime.now());
         if (apply.getInternshipStartDate() == null) {
-            apply.setInternshipStartDate(java.time.LocalDate.now());
+            apply.setInternshipStartDate(LocalDate.now());
         }
         this.updateById(apply);
     }
@@ -2273,7 +2275,7 @@ public class InternshipApplyServiceImpl extends ServiceImpl<InternshipApplyMappe
         apply.setUnbindReason(reason);
         // 使用 unbind_audit_opinion 字段存储备注（字段名保持不变，但含义改为备注）
         apply.setUnbindAuditOpinion(remark);
-        apply.setInternshipEndDate(java.time.LocalDate.now());
+        apply.setInternshipEndDate(LocalDate.now());
         
         // 根据申请类型设置状态
         if (isSelfApply(apply)) {

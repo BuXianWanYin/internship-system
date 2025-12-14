@@ -38,6 +38,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -459,7 +461,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
         if (schoolId != null) {
             // 查询本学校的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getSchoolId, schoolId)
@@ -469,7 +471,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -511,7 +513,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
         Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
         if (collegeId != null) {
             // 查询本学院的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getCollegeId, collegeId)
@@ -521,7 +523,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -562,7 +564,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
     private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipWeeklyReport> wrapper) {
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
@@ -572,7 +574,7 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -590,10 +592,10 @@ public class InternshipWeeklyReportServiceImpl extends ServiceImpl<InternshipWee
                                 .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                                 .collect(Collectors.toList());
                     } else {
-                        students = java.util.Collections.emptyList();
+                        students = Collections.emptyList();
                     }
                 } else {
-                    students = java.util.Collections.emptyList();
+                    students = Collections.emptyList();
                 }
             }
             if (students != null && !students.isEmpty()) {

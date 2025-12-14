@@ -7,6 +7,7 @@ import com.server.internshipserver.domain.user.Role;
 import com.server.internshipserver.domain.user.dto.UserQueryDTO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户管理Service接口
@@ -112,7 +113,7 @@ public interface UserService extends IService<UserInfo> {
      * 获取当前用户组织信息（学校、学院、班级）
      * @return 组织信息Map，包含schoolId、schoolName、collegeId、collegeName、classIds、classNames
      */
-    java.util.Map<String, Object> getCurrentUserOrgInfo();
+    Map<String, Object> getCurrentUserOrgInfo();
     
     /**
      * 查询所有用户列表（用于导出）

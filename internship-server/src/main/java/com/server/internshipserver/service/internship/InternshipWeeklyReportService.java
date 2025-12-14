@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipWeeklyReport;
 import com.server.internshipserver.domain.internship.dto.InternshipWeeklyReportQueryDTO;
 
+import java.math.BigDecimal;
+
 /**
  * 周报管理Service接口
  * 提供实习周报的提交、批阅、查询等业务功能
@@ -47,7 +49,7 @@ public interface InternshipWeeklyReportService extends IService<InternshipWeekly
      * @param reviewScore 批阅评分（0-100）
      * @return 是否成功
      */
-    boolean reviewReport(Long reportId, String reviewComment, java.math.BigDecimal reviewScore);
+    boolean reviewReport(Long reportId, String reviewComment, BigDecimal reviewScore);
     
     /**
      * 删除周报（软删除）

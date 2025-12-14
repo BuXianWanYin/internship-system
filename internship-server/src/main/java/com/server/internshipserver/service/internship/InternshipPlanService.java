@@ -6,6 +6,7 @@ import com.server.internshipserver.domain.internship.InternshipPlan;
 import com.server.internshipserver.domain.internship.dto.InternshipPlanQueryDTO;
 
 import java.util.List;
+import java.time.LocalDate;
 
 /**
  * 实习计划管理Service接口
@@ -77,7 +78,7 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
      * @param studentId 学生ID
      * @return 实习计划列表
      */
-    java.util.List<InternshipPlan> getAvailablePlansForStudent(Long studentId);
+    List<InternshipPlan> getAvailablePlansForStudent(Long studentId);
     
     /**
      * 根据组织架构和时间范围查询已发布的实习计划
@@ -87,7 +88,7 @@ public interface InternshipPlanService extends IService<InternshipPlan> {
      * @param currentDate 当前日期（用于判断计划是否有效）
      * @return 实习计划列表
      */
-    java.util.List<InternshipPlan> getPublishedPlans(Long schoolId, Long collegeId, Long majorId, java.time.LocalDate currentDate);
+    List<InternshipPlan> getPublishedPlans(Long schoolId, Long collegeId, Long majorId, LocalDate currentDate);
     
     /**
      * 查询所有实习计划列表（用于导出）

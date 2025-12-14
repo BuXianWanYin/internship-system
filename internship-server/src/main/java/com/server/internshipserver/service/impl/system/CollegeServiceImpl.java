@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -335,7 +336,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
             if (!schoolIds.isEmpty() && schoolMapper != null) {
                 List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
                 if (schools != null && !schools.isEmpty()) {
-                    java.util.Map<Long, String> schoolNameMap = schools.stream()
+                    Map<Long, String> schoolNameMap = schools.stream()
                             .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
                             .collect(Collectors.toMap(
                                     com.server.internshipserver.domain.system.School::getSchoolId,
@@ -373,7 +374,7 @@ public class CollegeServiceImpl extends ServiceImpl<CollegeMapper, College> impl
             if (!schoolIds.isEmpty() && schoolMapper != null) {
                 List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
                 if (schools != null && !schools.isEmpty()) {
-                    java.util.Map<Long, String> schoolNameMap = schools.stream()
+                    Map<Long, String> schoolNameMap = schools.stream()
                             .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
                             .collect(Collectors.toMap(
                                     com.server.internshipserver.domain.system.School::getSchoolId,

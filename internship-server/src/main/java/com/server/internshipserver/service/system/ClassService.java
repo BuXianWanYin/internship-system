@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.system.Class;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 班级管理Service接口
@@ -91,7 +92,7 @@ public interface ClassService extends IService<Class> {
      * @param classId 班级ID
      * @return 分享码信息（包含分享码、生成时间、过期时间、使用次数）
      */
-    java.util.Map<String, Object> getShareCodeInfo(Long classId);
+    Map<String, Object> getShareCodeInfo(Long classId);
     
     /**
      * 增加分享码使用次数

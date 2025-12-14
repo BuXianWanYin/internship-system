@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -216,7 +217,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         }
         
         // 检查学号是否已存在
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         Student existStudent = studentMapper.selectOne(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getStudentNo, user.getStudentNo())
@@ -959,7 +960,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 添加班级用户ID
      */
     private void addClassUserIds(List<Long> orgUserIds, Long classId) {
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getClassId, classId)
@@ -969,7 +970,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -997,7 +998,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      */
     private void addCollegeUserIds(List<Long> orgUserIds, Long collegeId) {
         // 查询本院的学生
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
@@ -1007,7 +1008,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1040,7 +1041,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> userIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1068,7 +1069,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      */
     private void addSchoolUserIds(List<Long> orgUserIds, Long schoolId) {
         // 查询本校的学生
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
@@ -1078,7 +1079,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1111,7 +1112,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> userIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1178,7 +1179,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
      * 获取班主任管理的班级学生用户ID列表
      */
     private List<Long> getClassTeacherUserIds(List<Long> classIds) {
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .in(Student::getClassId, classIds)
@@ -1190,7 +1191,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         // 通过关联user_info表过滤已删除的学生
         List<Long> userIds = students.stream()
                 .map(Student::getUserId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
         if (userIds.isEmpty()) {
@@ -1222,7 +1223,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         List<Long> userIds = new ArrayList<>();
         
         // 查询本院的学生
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
@@ -1232,7 +1233,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (students != null && !students.isEmpty()) {
             List<Long> studentUserIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!studentUserIds.isEmpty()) {
@@ -1265,7 +1266,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> teacherUserIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!teacherUserIds.isEmpty()) {
@@ -1297,7 +1298,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         List<Long> userIds = new ArrayList<>();
         
         // 查询本校的学生
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
@@ -1307,7 +1308,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (students != null && !students.isEmpty()) {
             List<Long> studentUserIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!studentUserIds.isEmpty()) {
@@ -1340,7 +1341,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserInfo> implement
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> teacherUserIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!teacherUserIds.isEmpty()) {

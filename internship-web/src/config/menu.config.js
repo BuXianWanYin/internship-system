@@ -24,7 +24,8 @@ import {
   List,
   Star,
   DataAnalysis,
-  Connection
+  Connection,
+  InfoFilled
 } from '@element-plus/icons-vue'
 
 /**
@@ -226,6 +227,12 @@ export const menuItems = [
     icon: OfficeBuilding,
     roles: ['ROLE_ENTERPRISE_ADMIN'],
     children: [
+      {
+        index: '/enterprise/info',
+        title: '企业信息管理',
+        icon: InfoFilled,
+        roles: ['ROLE_ENTERPRISE_ADMIN']
+      },
       {
         index: '/admin/enterprise-mentor',
         title: '企业导师管理',

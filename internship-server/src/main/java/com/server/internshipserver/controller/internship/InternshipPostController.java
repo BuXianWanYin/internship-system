@@ -26,6 +26,7 @@ import com.server.internshipserver.common.utils.ExcelUtil;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 实习岗位管理控制器
@@ -191,25 +192,25 @@ public class InternshipPostController {
             // 转换日期
             if (post.getInternshipStartDate() != null) {
                 post.setInternshipStartDateText(post.getInternshipStartDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 post.setInternshipStartDateText("");
             }
             if (post.getInternshipEndDate() != null) {
                 post.setInternshipEndDateText(post.getInternshipEndDate().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")));
             } else {
                 post.setInternshipEndDateText("");
             }
             if (post.getPublishTime() != null) {
                 post.setPublishTimeText(post.getPublishTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 post.setPublishTimeText("");
             }
             if (post.getCreateTime() != null) {
                 post.setCreateTimeText(post.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 post.setCreateTimeText("");
             }

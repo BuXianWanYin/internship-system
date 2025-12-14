@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -209,7 +211,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         }
         
         // 检查是否有学生关联，如果有学生则不允许停用
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getMajorId, majorId)
@@ -218,9 +220,9 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
                 long validStudentCount = userMapper.selectCount(
                         new LambdaQueryWrapper<UserInfo>()
@@ -278,7 +280,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         }
         
         // 检查是否有学生关联，如果有学生则不允许删除
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getMajorId, majorId)
@@ -287,9 +289,9 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
                 long validStudentCount = userMapper.selectCount(
                         new LambdaQueryWrapper<UserInfo>()
@@ -385,20 +387,20 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
         if (majors != null && !majors.isEmpty()) {
             List<Long> collegeIds = majors.stream()
                     .map(Major::getCollegeId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!collegeIds.isEmpty()) {
                 List<College> colleges = collegeMapper.selectBatchIds(collegeIds);
                 if (colleges != null && !colleges.isEmpty()) {
-                    java.util.Map<Long, College> collegeMap = colleges.stream()
+                    Map<Long, College> collegeMap = colleges.stream()
                             .filter(c -> c != null && c.getCollegeId() != null)
                             .collect(Collectors.toMap(College::getCollegeId, c -> c, (v1, v2) -> v1));
                     
                     // 获取学校ID列表
                     List<Long> schoolIds = colleges.stream()
                             .map(College::getSchoolId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     
@@ -406,7 +408,7 @@ public class MajorServiceImpl extends ServiceImpl<MajorMapper, Major> implements
                     if (!schoolIds.isEmpty() && schoolMapper != null) {
                         List<com.server.internshipserver.domain.system.School> schools = schoolMapper.selectBatchIds(schoolIds);
                         if (schools != null && !schools.isEmpty()) {
-                            java.util.Map<Long, String> schoolNameMap = schools.stream()
+                            Map<Long, String> schoolNameMap = schools.stream()
                                     .filter(s -> s != null && s.getSchoolId() != null && s.getSchoolName() != null)
                                     .collect(Collectors.toMap(
                                             com.server.internshipserver.domain.system.School::getSchoolId,

@@ -35,6 +35,9 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 教师管理Service实现类
@@ -247,8 +250,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         if (EntityValidationUtil.hasRecords(result)) {
             List<Long> userIds = result.getRecords().stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toList());
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 // 查询用户信息
@@ -259,14 +262,14 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
                                 .apply(status != null, "status = {0}", status)
                 );
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 // 过滤掉已删除或状态不匹配的教师
                 result.setRecords(result.getRecords().stream()
                         .filter(teacher -> teacher.getUserId() != null && validUserIds.contains(teacher.getUserId()))
-                        .collect(java.util.stream.Collectors.toList()));
+                        .collect(Collectors.toList()));
                 
                 // 重新计算总数（简化处理，实际应该用JOIN查询）
                 result.setTotal(result.getRecords().size());
@@ -650,8 +653,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> userIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toList());
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 List<UserInfo> users = userService.list(
@@ -661,13 +664,13 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
                                 .eq(UserInfo::getStatus, UserStatus.ENABLED.getCode())
                 );
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 teachers = teachers.stream()
                         .filter(teacher -> teacher.getUserId() != null && validUserIds.contains(teacher.getUserId()))
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
             } else {
                 teachers = new ArrayList<>();
             }
@@ -722,8 +725,8 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> userIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(java.util.stream.Collectors.toList());
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
             
             if (!userIds.isEmpty()) {
                 LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<UserInfo>()
@@ -734,13 +737,13 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
                 }
                 List<UserInfo> users = userService.list(userWrapper);
                 
-                java.util.Set<Long> validUserIds = users.stream()
+                Set<Long> validUserIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toSet());
+                        .collect(Collectors.toSet());
                 
                 teachers = teachers.stream()
                         .filter(teacher -> teacher.getUserId() != null && validUserIds.contains(teacher.getUserId()))
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
             } else {
                 teachers = new ArrayList<>();
             }
@@ -860,7 +863,7 @@ public class TeacherServiceImpl extends ServiceImpl<TeacherMapper, Teacher> impl
             if (users != null && !users.isEmpty()) {
                 List<Long> userIds = users.stream()
                         .map(UserInfo::getUserId)
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 wrapper.in(Teacher::getUserId, userIds);
             } else {
                 // 如果没有找到匹配的用户，返回空结果

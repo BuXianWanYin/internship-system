@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -69,7 +70,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                             .eq(Role::getDeleteFlag, DeleteFlag.NORMAL.getCode())
             );
         }
-        return java.util.Collections.emptyList();
+        return Collections.emptyList();
     }
 }
 

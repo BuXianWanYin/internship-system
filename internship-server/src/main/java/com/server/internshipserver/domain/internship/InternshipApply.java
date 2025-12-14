@@ -13,6 +13,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 实习申请实体类
@@ -270,7 +271,7 @@ public class InternshipApply implements Serializable {
     // ========== 状态流转相关字段（不映射到数据库） ==========
     @ApiModelProperty(value = "状态流转历史")
     @TableField(exist = false)
-    private java.util.List<StatusHistoryItem> statusHistory;
+    private List<StatusHistoryItem> statusHistory;
     
     @ApiModelProperty(value = "下一步操作提示")
     @TableField(exist = false)

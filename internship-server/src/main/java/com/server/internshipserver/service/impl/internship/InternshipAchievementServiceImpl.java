@@ -8,7 +8,6 @@ import com.server.internshipserver.common.constant.Constants;
 import com.server.internshipserver.common.enums.ApplyType;
 import com.server.internshipserver.common.enums.DeleteFlag;
 import com.server.internshipserver.common.enums.ReviewStatus;
-import com.server.internshipserver.common.enums.InternshipApplyStatus;
 import com.server.internshipserver.common.exception.BusinessException;
 import com.server.internshipserver.common.utils.DataPermissionUtil;
 import com.server.internshipserver.common.utils.EntityDefaultValueUtil;
@@ -33,6 +32,8 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -404,7 +405,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
         if (schoolId != null) {
             // 查询本学校的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getSchoolId, schoolId)
@@ -414,7 +415,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -456,7 +457,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
         Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
         if (collegeId != null) {
             // 查询本学院的所有学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getCollegeId, collegeId)
@@ -466,7 +467,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -507,7 +508,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
     private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipAchievement> wrapper) {
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
@@ -517,7 +518,7 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -535,10 +536,10 @@ public class InternshipAchievementServiceImpl extends ServiceImpl<InternshipAchi
                                 .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
                                 .collect(Collectors.toList());
                     } else {
-                        students = java.util.Collections.emptyList();
+                        students = Collections.emptyList();
                     }
                 } else {
-                    students = java.util.Collections.emptyList();
+                    students = Collections.emptyList();
                 }
             }
             if (students != null && !students.isEmpty()) {

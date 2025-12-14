@@ -28,7 +28,10 @@ import com.server.internshipserver.service.user.RoleService;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 用户管理控制器
@@ -176,8 +179,8 @@ public class UserController {
     @ApiOperation("获取当前用户组织信息（学校、学院、班级）")
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/current/org-info")
-    public Result<java.util.Map<String, Object>> getCurrentUserOrgInfo() {
-        java.util.Map<String, Object> orgInfo = userService.getCurrentUserOrgInfo();
+    public Result<Map<String, Object>> getCurrentUserOrgInfo() {
+        Map<String, Object> orgInfo = userService.getCurrentUserOrgInfo();
         return Result.success("查询成功", orgInfo);
     }
     
@@ -209,13 +212,13 @@ public class UserController {
         
         // 获取所有角色信息，用于角色代码到角色名称的转换
         List<Role> allRoles = roleService.list();
-        final java.util.Map<String, String> roleNameMap;
+        final Map<String, String> roleNameMap;
         if (allRoles != null && !allRoles.isEmpty()) {
             roleNameMap = allRoles.stream()
                     .filter(r -> r != null && r.getRoleCode() != null && r.getRoleName() != null)
                     .collect(Collectors.toMap(Role::getRoleCode, Role::getRoleName, (v1, v2) -> v1));
         } else {
-            roleNameMap = new java.util.HashMap<>();
+            roleNameMap = new HashMap<>();
         }
         
         // 处理数据，转换状态和时间为文字
@@ -227,7 +230,7 @@ public class UserController {
             }
             if (user.getCreateTime() != null) {
                 user.setCreateTimeText(user.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 user.setCreateTimeText("");
             }

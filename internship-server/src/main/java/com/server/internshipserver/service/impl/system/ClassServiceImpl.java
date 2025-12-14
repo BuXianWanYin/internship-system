@@ -39,6 +39,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -310,7 +311,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
         // 检查是否有学生关联，如果有学生则不允许停用
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getClassId, classId)
@@ -319,9 +320,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
                 long validStudentCount = userMapper.selectCount(
                         new LambdaQueryWrapper<UserInfo>()
@@ -361,7 +362,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         EntityValidationUtil.validateEntityExists(classInfo, "班级");
         
         // 检查是否有学生关联，如果有学生则不允许删除
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getClassId, classId)
@@ -370,9 +371,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(java.util.stream.Collectors.toList());
+                    .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
                 long validStudentCount = userMapper.selectCount(
                         new LambdaQueryWrapper<UserInfo>()
@@ -487,9 +488,9 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
                     // 过滤：已删除标志=正常 且 状态=启用 且 审核状态=已通过
                     List<UserInfo> validUsers = userMapper.selectList(
@@ -502,7 +503,7 @@ public class ClassServiceImpl extends ServiceImpl<ClassMapper, Class> implements
                     if (validUsers != null && !validUsers.isEmpty()) {
                         List<Long> validUserIds = validUsers.stream()
                                 .map(UserInfo::getUserId)
-                                .collect(java.util.stream.Collectors.toList());
+                                .collect(Collectors.toList());
                         registeredStudentCount = students.stream()
                                 .filter(student -> student.getUserId() != null 
                                         && validUserIds.contains(student.getUserId())

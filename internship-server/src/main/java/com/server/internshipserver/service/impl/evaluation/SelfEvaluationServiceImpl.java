@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * 学生自评管理Service实现类
@@ -91,7 +92,7 @@ public class SelfEvaluationServiceImpl extends ServiceImpl<SelfEvaluationMapper,
             if (apply.getInternshipEndDate() == null) {
                 throw new BusinessException("实习结束日期未设置，无法填写自我评价");
             }
-            java.time.LocalDate today = java.time.LocalDate.now();
+            LocalDate today = LocalDate.now();
             if (apply.getInternshipEndDate().isAfter(today)) {
                 throw new BusinessException("实习尚未结束，请在实习结束后填写自我评价");
             }

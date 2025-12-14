@@ -43,6 +43,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -502,7 +503,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据班级ID列表获取申请ID列表
      */
     private List<Long> getApplyIdsByClassIds(List<Long> classIds) {
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, classIds)
@@ -512,7 +513,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -552,7 +553,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学院ID获取申请ID列表
      */
     private List<Long> getApplyIdsByCollegeId(Long collegeId) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
@@ -562,7 +563,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -602,7 +603,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
      * 根据学校ID获取申请ID列表
      */
     private List<Long> getApplyIdsBySchoolId(Long schoolId) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
@@ -612,7 +613,7 @@ public class SchoolEvaluationServiceImpl extends ServiceImpl<SchoolEvaluationMap
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {

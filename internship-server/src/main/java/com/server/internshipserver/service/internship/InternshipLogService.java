@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.server.internshipserver.domain.internship.InternshipLog;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
 /**
  * 实习日志管理Service接口
  * 提供实习日志的提交、批阅、查询等业务功能
@@ -41,7 +44,7 @@ public interface InternshipLogService extends IService<InternshipLog> {
      * @return 日志列表
      */
     Page<InternshipLog> getLogPage(Page<InternshipLog> page, Long studentId, Long applyId, 
-                                   java.time.LocalDate logDate, Integer reviewStatus);
+                                   LocalDate logDate, Integer reviewStatus);
     
     /**
      * 批阅日志
@@ -50,7 +53,7 @@ public interface InternshipLogService extends IService<InternshipLog> {
      * @param reviewScore 批阅评分（0-100）
      * @return 是否成功
      */
-    boolean reviewLog(Long logId, String reviewComment, java.math.BigDecimal reviewScore);
+    boolean reviewLog(Long logId, String reviewComment, BigDecimal reviewScore);
     
     /**
      * 删除日志（软删除）

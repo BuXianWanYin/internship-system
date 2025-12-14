@@ -32,8 +32,11 @@ import com.server.internshipserver.domain.user.UserInfo;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import java.util.Objects;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 教师管理控制器
@@ -144,7 +147,7 @@ public class TeacherController {
                     .collect(Collectors.toList());
             
             // 查询学院信息
-            java.util.Map<Long, College> collegeMap = new java.util.HashMap<>();
+            Map<Long, College> collegeMap = new HashMap<>();
             if (!collegeIds.isEmpty()) {
                 List<College> colleges = collegeMapper.selectBatchIds(collegeIds);
                 if (colleges != null && !colleges.isEmpty()) {
@@ -162,7 +165,7 @@ public class TeacherController {
                     .collect(Collectors.toList());
             
             // 查询学校信息
-            java.util.Map<Long, String> schoolNameMap = new java.util.HashMap<>();
+            Map<Long, String> schoolNameMap = new HashMap<>();
             for (Long sid : schoolIds) {
                 try {
                     com.server.internshipserver.domain.system.School school = schoolService.getSchoolById(sid);
@@ -182,7 +185,7 @@ public class TeacherController {
                     .collect(Collectors.toList());
             
             // 查询用户信息
-            java.util.Map<Long, UserInfo> userMap = new java.util.HashMap<>();
+            Map<Long, UserInfo> userMap = new HashMap<>();
             if (!userIds.isEmpty()) {
                 List<UserInfo> users = userMapper.selectBatchIds(userIds);
                 if (users != null && !users.isEmpty()) {
@@ -228,7 +231,7 @@ public class TeacherController {
         for (Teacher teacher : teachers) {
             if (teacher.getCreateTime() != null) {
                 teacher.setCreateTimeText(teacher.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 teacher.setCreateTimeText("");
             }

@@ -12,6 +12,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -93,12 +94,12 @@ public class ComprehensiveScore implements Serializable {
     @ApiModelProperty(value = "实习开始日期")
     @TableField(exist = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private java.time.LocalDate internshipStartDate;
+    private LocalDate internshipStartDate;
     
     @ApiModelProperty(value = "实习结束日期")
     @TableField(exist = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private java.time.LocalDate internshipEndDate;
+    private LocalDate internshipEndDate;
     
     @ApiModelProperty(value = "申请类型：1-合作企业，2-自主实习")
     @TableField(exist = false)

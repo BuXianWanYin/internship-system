@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 报表管理Service实现类
@@ -98,7 +99,7 @@ public class ReportServiceImpl implements ReportService {
             // 转换创建时间
             if (apply.getCreateTime() != null) {
                 apply.setCreateTimeText(apply.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 apply.setCreateTimeText("");
             }

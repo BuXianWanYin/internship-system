@@ -39,12 +39,15 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -306,7 +309,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         Map<String, List<Long>> monthDurations = applies.stream()
                 .filter(a -> a.getInternshipStartDate() != null && a.getInternshipEndDate() != null)
                 .collect(Collectors.groupingBy(
-                    a -> a.getInternshipStartDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")),
+                    a -> a.getInternshipStartDate().format(DateTimeFormatter.ofPattern("yyyy-MM")),
                     Collectors.mapping(
                         a -> ChronoUnit.DAYS.between(a.getInternshipStartDate(), a.getInternshipEndDate()),
                         Collectors.toList()
@@ -474,7 +477,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 查询学生信息，按专业ID分组统计
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .in(Student::getStudentId, studentIds)
@@ -485,7 +488,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -563,7 +566,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 查询学生信息，按班级ID分组统计
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .in(Student::getStudentId, studentIds)
@@ -574,7 +577,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -696,7 +699,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 查询学生信息，按学院ID分组统计
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .in(Student::getStudentId, studentIds)
@@ -707,7 +710,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -768,7 +771,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         // 通过applyId关联查询，应用权限过滤
         if (queryDTO != null && queryDTO.getClassId() != null) {
             // 根据班级ID查询学生
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getClassId, queryDTO.getClassId())
@@ -778,7 +781,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -940,7 +943,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             // 组织维度筛选
             if (queryDTO.getSchoolId() != null) {
                 // 通过student关联查询
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getSchoolId, queryDTO.getSchoolId())
@@ -950,7 +953,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -985,7 +988,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
             
             if (queryDTO.getCollegeId() != null) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getCollegeId, queryDTO.getCollegeId())
@@ -995,7 +998,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1030,7 +1033,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
             
             if (queryDTO.getMajorId() != null) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getMajorId, queryDTO.getMajorId())
@@ -1040,7 +1043,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1075,7 +1078,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
             
             if (queryDTO.getClassId() != null) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getClassId, queryDTO.getClassId())
@@ -1085,7 +1088,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1200,7 +1203,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             List<Long> classIds = dataPermissionUtil.getCurrentUserClassIds();
             if (classIds != null && !classIds.isEmpty()) {
                 // 通过班级ID查询学生，再通过学生ID过滤申请
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .in(Student::getClassId, classIds)
@@ -1210,7 +1213,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1252,7 +1255,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (roleCodes.contains("ROLE_COLLEGE_LEADER")) {
             Long collegeId = dataPermissionUtil.getCurrentUserCollegeId();
             if (collegeId != null) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getCollegeId, collegeId)
@@ -1262,7 +1265,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1304,7 +1307,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (roleCodes.contains("ROLE_SCHOOL_ADMIN")) {
             Long schoolId = dataPermissionUtil.getCurrentUserSchoolId();
             if (schoolId != null) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getSchoolId, schoolId)
@@ -1314,7 +1317,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1405,10 +1408,10 @@ public class StatisticsServiceImpl implements StatisticsService {
         
         // 6. 用户角色分布统计
         List<UserInfo> allUsers = userMapper.selectList(userWrapper);
-        Map<String, Long> roleCountMap = new java.util.HashMap<>();
+        Map<String, Long> roleCountMap = new HashMap<>();
         
         // 定义角色代码到角色名称的映射
-        Map<String, String> roleNameMap = new java.util.HashMap<>();
+        Map<String, String> roleNameMap = new HashMap<>();
         roleNameMap.put("ROLE_SYSTEM_ADMIN", "系统管理员");
         roleNameMap.put("ROLE_SCHOOL_ADMIN", "学校管理员");
         roleNameMap.put("ROLE_COLLEGE_LEADER", "学院负责人");
@@ -1448,7 +1451,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<SystemAdminDashboardDTO.BarChartItem> schoolComparison = new ArrayList<>();
         for (School school : schools) {
             // 查询该校实习学生数
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getSchoolId, school.getSchoolId())
@@ -1460,7 +1463,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
                         .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
@@ -1494,7 +1497,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         // 8. 实习岗位类型分布（按岗位名称分组，显示前10个最常见的岗位，包含自主实习）
         // 统计合作企业的岗位
         List<InternshipPost> posts = internshipPostMapper.selectList(postWrapper);
-        Map<String, Long> postTypeCountMap = new java.util.HashMap<>();
+        Map<String, Long> postTypeCountMap = new HashMap<>();
         for (InternshipPost post : posts) {
             String postName = post.getPostName();
             if (postName != null && !postName.trim().isEmpty()) {
@@ -1517,7 +1520,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         
         List<SystemAdminDashboardDTO.PieItem> postTypeDistribution = new ArrayList<>();
         // 按数量降序排序，只取前10个
-        java.util.concurrent.atomic.AtomicInteger colorIndexAtomic = new java.util.concurrent.atomic.AtomicInteger(0);
+        AtomicInteger colorIndexAtomic = new AtomicInteger(0);
         postTypeCountMap.entrySet().stream()
                 .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue()))
                 .limit(10)
@@ -1573,7 +1576,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             List<Major> majors = majorMapper.selectList(majorWrapper);
             List<SchoolAdminDashboardDTO.BarChartItem> majorComparison = new ArrayList<>();
             for (Major major : majors) {
-                // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+                 
                 List<Student> students = studentMapper.selectList(
                         new LambdaQueryWrapper<Student>()
                                 .eq(Student::getMajorId, major.getMajorId())
@@ -1585,7 +1588,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 if (students != null && !students.isEmpty()) {
                     List<Long> userIds = students.stream()
                             .map(Student::getUserId)
-                            .filter(java.util.Objects::nonNull)
+                            .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList());
                     if (!userIds.isEmpty()) {
@@ -1621,7 +1624,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
         
         // 4. 统计学生总数和性别分布
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getSchoolId, schoolId)
@@ -1630,7 +1633,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1659,7 +1662,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         // 统计性别分布（需要通过userId关联UserInfo查询性别）
         long maleCount = 0;
         long femaleCount = 0;
-        List<Long> userIds = students.stream().map(Student::getUserId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        List<Long> userIds = students.stream().map(Student::getUserId).filter(Objects::nonNull).collect(Collectors.toList());
         if (!userIds.isEmpty()) {
             LambdaQueryWrapper<UserInfo> userWrapper = new LambdaQueryWrapper<>();
             userWrapper.in(UserInfo::getUserId, userIds)
@@ -1707,7 +1710,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> teacherUserIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!teacherUserIds.isEmpty()) {
@@ -1768,7 +1771,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         dto.setMajorCount(majorCount);
         
         // 2. 统计学生总数
-        // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+         
         List<Student> students = studentMapper.selectList(
                 new LambdaQueryWrapper<Student>()
                         .eq(Student::getCollegeId, collegeId)
@@ -1777,7 +1780,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (students != null && !students.isEmpty()) {
             List<Long> userIds = students.stream()
                     .map(Student::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1808,7 +1811,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (teachers != null && !teachers.isEmpty()) {
             List<Long> userIds = teachers.stream()
                     .map(Teacher::getUserId)
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
             if (!userIds.isEmpty()) {
@@ -1869,7 +1872,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         // 2. 查询这些班级的学生
         LambdaQueryWrapper<Student> studentWrapper = new LambdaQueryWrapper<>();
         studentWrapper.in(Student::getClassId, classIds);
-                     // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤;
+                      ;
         List<Student> students = studentMapper.selectList(studentWrapper);
         dashboard.setStudentCount((long) students.size());
         

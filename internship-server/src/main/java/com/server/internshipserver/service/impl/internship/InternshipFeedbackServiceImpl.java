@@ -34,6 +34,8 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 /**
@@ -416,7 +418,7 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
     private void applyClassTeacherFilter(LambdaQueryWrapper<InternshipFeedback> wrapper) {
         List<Long> currentUserClassIds = dataPermissionUtil.getCurrentUserClassIds();
         if (currentUserClassIds != null && !currentUserClassIds.isEmpty()) {
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .in(Student::getClassId, currentUserClassIds)
@@ -426,9 +428,9 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
             if (students != null && !students.isEmpty()) {
                 List<Long> userIds = students.stream()
                         .map(Student::getUserId)
-                        .filter(java.util.Objects::nonNull)
+                        .filter(Objects::nonNull)
                         .distinct()
-                        .collect(java.util.stream.Collectors.toList());
+                        .collect(Collectors.toList());
                 if (!userIds.isEmpty()) {
                     List<UserInfo> validUsers = userMapper.selectList(
                             new LambdaQueryWrapper<UserInfo>()
@@ -439,15 +441,15 @@ public class InternshipFeedbackServiceImpl extends ServiceImpl<InternshipFeedbac
                     if (validUsers != null && !validUsers.isEmpty()) {
                         List<Long> validUserIds = validUsers.stream()
                                 .map(UserInfo::getUserId)
-                                .collect(java.util.stream.Collectors.toList());
+                                .collect(Collectors.toList());
                         students = students.stream()
                                 .filter(s -> s.getUserId() != null && validUserIds.contains(s.getUserId()))
-                                .collect(java.util.stream.Collectors.toList());
+                                .collect(Collectors.toList());
                     } else {
-                        students = java.util.Collections.emptyList();
+                        students = Collections.emptyList();
                     }
                 } else {
-                    students = java.util.Collections.emptyList();
+                    students = Collections.emptyList();
                 }
             }
             if (students != null && !students.isEmpty()) {

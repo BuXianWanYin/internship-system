@@ -32,6 +32,7 @@ import org.springframework.util.StringUtils;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -642,7 +643,7 @@ public class DataPermissionUtil {
         
         // 学校管理员：获取和本校有合作关系的企业ID列表（包括已建立合作关系的和待审核的）
         if (currentUserSchoolId != null && currentUserClassId == null) {
-            List<Long> enterpriseIds = new java.util.ArrayList<>();
+            List<Long> enterpriseIds = new ArrayList<>();
             
             // 1. 查询已建立合作关系的企业
             LambdaQueryWrapper<EnterpriseSchoolCooperation> cooperationWrapper = new LambdaQueryWrapper<>();
@@ -669,7 +670,7 @@ public class DataPermissionUtil {
         // 班主任：获取和管理的班级有合作关系的企业ID列表
         if (currentUserClassId != null) {
             // 先查询本班学生所属学校
-            // 注意：Student表不再有deleteFlag字段，需要通过关联user_info表来过滤
+             
             List<Student> students = studentMapper.selectList(
                     new LambdaQueryWrapper<Student>()
                             .eq(Student::getClassId, currentUserClassId)

@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -234,14 +235,14 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
             }
             
             // 构建用户ID到用户信息的映射
-            java.util.Map<Long, UserInfo> userMap = null;
+            Map<Long, UserInfo> userMap = null;
             if (users != null && !users.isEmpty()) {
                 userMap = users.stream()
                         .collect(Collectors.toMap(UserInfo::getUserId, user -> user, (v1, v2) -> v1));
             }
             
             // 构建学校ID到管理员的映射（取第一个启用的管理员）
-            java.util.Map<Long, SchoolAdmin> schoolAdminMap = schoolAdmins.stream()
+            Map<Long, SchoolAdmin> schoolAdminMap = schoolAdmins.stream()
                     .collect(Collectors.toMap(
                             SchoolAdmin::getSchoolId,
                             admin -> admin,
@@ -334,14 +335,14 @@ public class SchoolServiceImpl extends ServiceImpl<SchoolMapper, School> impleme
             }
             
             // 构建用户ID到用户信息的映射
-            java.util.Map<Long, UserInfo> userMap = null;
+            Map<Long, UserInfo> userMap = null;
             if (users != null && !users.isEmpty()) {
                 userMap = users.stream()
                         .collect(Collectors.toMap(UserInfo::getUserId, user -> user, (v1, v2) -> v1));
             }
             
             // 构建学校ID到管理员的映射（取第一个启用的管理员）
-            java.util.Map<Long, SchoolAdmin> schoolAdminMap = schoolAdmins.stream()
+            Map<Long, SchoolAdmin> schoolAdminMap = schoolAdmins.stream()
                     .collect(Collectors.toMap(
                             SchoolAdmin::getSchoolId,
                             admin -> admin,

@@ -27,7 +27,9 @@ import com.server.internshipserver.domain.user.Enterprise;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 /**
@@ -141,7 +143,7 @@ public class EnterpriseMentorController {
             if (!enterpriseIds.isEmpty()) {
                 List<Enterprise> enterprises = enterpriseMapper.selectBatchIds(enterpriseIds);
                 if (enterprises != null && !enterprises.isEmpty()) {
-                    java.util.Map<Long, String> enterpriseNameMap = enterprises.stream()
+                    Map<Long, String> enterpriseNameMap = enterprises.stream()
                             .filter(e -> e != null && e.getEnterpriseId() != null && e.getEnterpriseName() != null)
                             .collect(Collectors.toMap(Enterprise::getEnterpriseId, Enterprise::getEnterpriseName, (v1, v2) -> v1));
                     
@@ -163,7 +165,7 @@ public class EnterpriseMentorController {
             }
             if (mentor.getCreateTime() != null) {
                 mentor.setCreateTimeText(mentor.getCreateTime().format(
-                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             } else {
                 mentor.setCreateTimeText("");
             }
